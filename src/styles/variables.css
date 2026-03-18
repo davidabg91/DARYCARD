@@ -1,0 +1,35 @@
+:root {
+  /* Brand Colors */
+  --primary-color: #00ADB5;
+  --secondary-color: #393E46;
+  --accent-color: #00FFF5;
+  
+  /* Status Colors */
+  --success-color: #00E676;
+  --success-bg: rgba(0, 230, 118, 0.1);
+  --error-color: #FF1744;
+  --error-bg: rgba(255, 23, 68, 0.1);
+  
+  /* Background & Surface */
+  --bg-color: #222831;
+  --surface-color: rgba(57, 62, 70, 0.6);
+  --surface-border: rgba(255, 255, 255, 0.08);
+  
+  /* Text Colors */
+  --text-primary: #EEEEEE;
+  --text-secondary: #9BA4B5;
+  
+  /* Fonts */
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  
+  /* Transitions */
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Shadows */
+  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.2);
+  --shadow-neon: 0 0 15px rgba(0, 173, 181, 0.3);
+}
+

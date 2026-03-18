@@ -1,0 +1,877 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Camera, Save, RefreshCw, BarChart, Users, PlusCircle, XCircle, DollarSign, List, Trash2, Eye, EyeOff, ShieldCheck, Shield, Clock, ExternalLink, TrendingUp, Percent, PiggyBank } from 'lucide-react';
+import Card from '../components/Card';
+import { useAuth } from '../context/AuthContext';
+
+interface ClientLog {
+    date: string;
+    action: string;
+    details?: string;
+    amount?: number;
+}
+
+interface Client {
+    id: string;
+    name: string;
+    route: string;
+    amountPaid: number;
+    expiryDate: string; // "YYYY-MM"
+    photo: string;
+    createdAt: string;
+    isCanceled?: boolean;
+    cancelReason?: string;
+    renewalHistory?: { date: string, amount: number, month: string }[];
+    history?: ClientLog[];
+}
+
+const ROUTES = [
+    "Бъркач", "Тръстеник", "Биволаре", "Горна Митрополия", "Долни Дъбник",
+    "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
+    "Долна Митрополия", "Ясен", "Крушовица", "Дисевица", "Градина",
+    "Петърница", "Опанец", "Победа", "Подем", "Божурица"
+];
+
+const AdminPanel: React.FC = () => {
+    const { currentUser } = useAuth();
+    const location = useLocation();
+    const isAdmin = currentUser?.role === 'admin';
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register'>(
+        isAdmin ? 'dashboard' : 'clients'
+    );
+    const [clients, setClients] = useState<Client[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Registration Form State
+    const [clientName, setClientName] = useState('');
+    const [selectedRoute, setSelectedRoute] = useState('');
+    const [amountPaid, setAmountPaid] = useState('');
+    const [expiryDate, setExpiryDate] = useState('');
+    const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
+
+    // Modal/Action State
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+    const [showActionModal, setShowActionModal] = useState(false);
+    const [cancelReason, setCancelReason] = useState('');
+    const [newMonth, setNewMonth] = useState('');
+    const [newAmount, setNewAmount] = useState('');
+
+    const [showTotalRevenue, setShowTotalRevenue] = useState(false);
+    const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
+    
+    const [statsMonth, setStatsMonth] = useState<string>(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+    });
+
+    const [filterMonth, setFilterMonth] = useState<string>(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+    });
+    const [filterRoute, setFilterRoute] = useState<string>('all');
+
+    const [isCameraActive, setIsCameraActive] = useState(false);
+    const [photoMode, setPhotoMode] = useState<'camera' | 'upload'>('upload');
+    const [photoError, setPhotoError] = useState<string | null>(null);
+    
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    const getDefaultExpiryMonth = () => {
+        const now = new Date();
+        let targetMonth = now.getMonth() + 1;
+        let targetYear = now.getFullYear();
+        if (now.getDate() >= 20) {
+            targetMonth += 1;
+            if (targetMonth > 12) {
+                targetMonth = 1;
+                targetYear += 1;
+            }
+        }
+        return `${targetYear}-${targetMonth.toString().padStart(2, '0')}`;
+    };
+
+    useEffect(() => {
+        const loadedClients = JSON.parse(localStorage.getItem('dary_clients') || '[]');
+        setClients(loadedClients);
+
+        // Detect mobile to default to camera mode
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+            setPhotoMode('camera');
+        }
+
+        // Set initial default month
+        setExpiryDate(getDefaultExpiryMonth());
+
+        // Check for edit param in URL
+        const params = new URLSearchParams(location.search);
+        const editId = params.get('edit');
+        if (editId) {
+            const clientToEdit = loadedClients.find((c: Client) => c.id === editId);
+            if (clientToEdit) {
+                setSelectedClient(clientToEdit);
+                setShowActionModal(true);
+                setActiveTab('clients');
+            }
+        }
+    }, [location.search]);
+
+    useEffect(() => {
+        return () => stopCamera();
+    }, [activeTab]);
+
+    const stopCamera = () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+            videoRef.current.srcObject = null;
+            setIsCameraActive(false);
+        }
+    };
+
+    const startCamera = async () => {
+        setPhotoError(null);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', aspectRatio: 1 } });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                videoRef.current.play();
+                setIsCameraActive(true);
+            }
+        } catch (err) {
+            console.error('Error accessing camera', err);
+            setPhotoError('Грешка при достъп до камерата. Моля, проверете разрешенията или качете файл.');
+            setPhotoMode('upload');
+        }
+    };
+
+    const takePhoto = () => {
+        if (videoRef.current && canvasRef.current) {
+            const context = canvasRef.current.getContext('2d');
+            if (context) {
+                canvasRef.current.width = 400;
+                canvasRef.current.height = 400;
+                const video = videoRef.current;
+                const size = Math.min(video.videoWidth, video.videoHeight);
+                const xMode = (video.videoWidth - size) / 2;
+                const yMode = (video.videoHeight - size) / 2;
+                context.drawImage(video, xMode, yMode, size, size, 0, 0, 400, 400);
+                setPhotoDataURL(canvasRef.current.toDataURL('image/jpeg', 0.85));
+                stopCamera();
+            }
+        }
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPhotoError(null);
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                setPhotoError('Снимката е твърде голяма (макс. 2MB)');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => setPhotoDataURL(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const retakePhoto = () => {
+        setPhotoDataURL(null);
+        if (photoMode === 'camera') startCamera();
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!clientName || !selectedRoute || !expiryDate || !photoDataURL || !amountPaid) {
+            setMessage({ text: 'Моля, изберете маршрут и попълнете всички полета.', type: 'error' });
+            return;
+        }
+
+        const newClient: Client = {
+            id: Math.random().toString(36).substr(2, 9).toUpperCase(),
+            name: clientName,
+            route: selectedRoute,
+            amountPaid: Number(amountPaid),
+            expiryDate: expiryDate,
+            photo: photoDataURL || '',
+            createdAt: new Date().toISOString(),
+            renewalHistory: [{ date: new Date().toISOString(), amount: Number(amountPaid), month: expiryDate }],
+            history: [{
+                date: new Date().toISOString(),
+                action: 'Създаване',
+                details: `Първоначално плащане: ${amountPaid} лв. за месец ${expiryDate}`,
+                amount: Number(amountPaid)
+            }]
+        };
+
+        saveClient(newClient);
+    };
+
+    const saveClient = (client: Client) => {
+        try {
+            const updatedClients = [...clients.filter(c => c.id !== client.id), client];
+            localStorage.setItem('dary_clients', JSON.stringify(updatedClients));
+            setClients(updatedClients);
+            setMessage({ text: `Успешно запазен профил: ${client.name}`, type: 'success' });
+            setClientName(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null);
+            setShowActionModal(false);
+            setSelectedClient(null);
+        } catch (err) {
+            console.error(err);
+            setMessage({ text: 'Грешка при запазване.', type: 'error' });
+        }
+    };
+
+    const renewClient = () => {
+        if (!selectedClient || !newMonth || !newAmount) return;
+        const updatedClients = clients.map(c => {
+            if (c.id === selectedClient.id) {
+                const history = c.history || [];
+                return {
+                    ...c,
+                    expiryDate: newMonth,
+                    amountPaid: c.amountPaid + Number(newAmount),
+                    isCanceled: false,
+                    cancelReason: undefined,
+                    renewalHistory: [...(c.renewalHistory || []), { date: new Date().toISOString(), amount: Number(newAmount), month: newMonth }],
+                    history: [...history, {
+                        date: new Date().toISOString(),
+                        action: 'Подновяване',
+                        details: `Нов месец: ${newMonth}`,
+                        amount: Number(newAmount)
+                    }]
+                };
+            }
+            return c;
+        });
+        saveClient(updatedClients.find(c => c.id === selectedClient.id)!);
+        setNewMonth('');
+        setNewAmount('');
+    };
+
+    const cancelClient = () => {
+        if (!selectedClient || !cancelReason) return;
+        const updatedClients = clients.map(c => {
+            if (c.id === selectedClient.id) {
+                const history = c.history || [];
+                return {
+                    ...c,
+                    isCanceled: true,
+                    cancelReason,
+                    history: [...history, {
+                        date: new Date().toISOString(),
+                        action: 'Анулиране',
+                        details: cancelReason
+                    }]
+                };
+            }
+            return c;
+        });
+        saveClient(updatedClients.find(c => c.id === selectedClient.id)!);
+        setCancelReason('');
+    };
+
+    const handleDeleteClient = (id: string, name: string) => {
+        if (currentUser?.role !== 'admin') return;
+        if (window.confirm(`Сигурни ли сте, че искате да ИЗТРИЕТЕ ПОСТОЯННО клиента "${name}"? Това ще премахне цялата история и плащания!`)) {
+            const updated = clients.filter(c => c.id !== id);
+            localStorage.setItem('dary_clients', JSON.stringify(updated));
+            setClients(updated);
+            setMessage({ text: `Клиентът "${name}" бе изтрит постоянно.`, type: 'success' });
+            if (selectedClient?.id === id) {
+                setShowActionModal(false);
+                setSelectedClient(null);
+            }
+        }
+    };
+    const isExpired = (monthStr: string | undefined, client?: Client) => {
+        if (!monthStr) return true;
+        const now = new Date();
+        const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+        
+        // If we have the full client, check if they have paid for THIS month
+        if (client?.renewalHistory) {
+            return !client.renewalHistory.some(rh => rh.month === currentMonthStr);
+        }
+
+        const [year, month] = monthStr.split('-');
+        const expiry = new Date(Number(year), Number(month), 0, 23, 59, 59);
+        return now > expiry;
+    };
+
+    // Stats
+    const allMonths = Array.from(new Set([
+        new Date().toISOString().slice(0, 7), // Always include current month
+        ...clients.flatMap(c => (c.renewalHistory || []).map(r => r.month))
+    ])).sort().reverse();
+
+    const isAll = statsMonth === 'all';
+    
+    // Route Color Helper
+    const getRouteColor = (route: string = '') => {
+        if (!route) return 'var(--text-secondary)';
+        let hash = 0;
+        for (let i = 0; i < route.length; i++) {
+            hash = route.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const h = Math.abs(hash % 360);
+        return `hsl(${h}, 70%, 60%)`;
+    };
+    
+    const totalRevenue = isAll 
+        ? clients.reduce((acc, c) => acc + (c.amountPaid || 0), 0)
+        : clients.reduce((acc, c) => {
+            const monthlyRenewal = (c.renewalHistory || []).find(r => r.month === statsMonth);
+            return acc + (monthlyRenewal ? monthlyRenewal.amount : 0);
+          }, 0);
+
+    const activeClientsCount = isAll
+        ? clients.filter(c => !c.isCanceled && !isExpired(c.expiryDate, c)).length
+        : clients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;
+
+    const routeStats = ROUTES.map(route => {
+        const routeClients = clients.filter(c => c.route === route);
+        const revenue = isAll
+            ? routeClients.reduce((acc, c) => acc + (c.amountPaid || 0), 0)
+            : routeClients.reduce((acc, c) => {
+                const monthlyRenewal = (c.renewalHistory || []).find(r => r.month === statsMonth);
+                return acc + (monthlyRenewal ? monthlyRenewal.amount : 0);
+              }, 0);
+        const count = isAll 
+            ? routeClients.length 
+            : routeClients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;
+        
+        return { route, count, revenue };
+    }).sort((a, b) => b.revenue - a.revenue);
+
+    const getClientStatusForMonth = (client: Client, month: string) => {
+        if (client.isCanceled) return 'Анулиран';
+        
+        const hasPaymentForMonth = (client.renewalHistory || []).some(rh => rh.month === month);
+        return hasPaymentForMonth ? 'Активен' : 'Неактивен';
+    };
+
+    const getMonthPayment = (client: Client, month: string) => {
+        const payment = (client.renewalHistory || []).find(rh => rh.month === month);
+        return payment ? payment.amount : 0;
+    };
+
+    // Advanced Stats for Dashboard
+    const totalNonCanceled = clients.filter(c => !c.isCanceled).length;
+    const newClientsMonth = clients.filter(c => c.createdAt?.startsWith(statsMonth)).length;
+    const paymentRate = totalNonCanceled > 0 ? Math.round((activeClientsCount / totalNonCanceled) * 100) : 0;
+    const avgProfit = activeClientsCount > 0 ? Math.round(totalRevenue / activeClientsCount) : 0;
+    const pendingTotal = totalNonCanceled - activeClientsCount;
+
+    const filteredClientsByFilters = clients.filter(c => {
+        const matchesSearch = !searchTerm || 
+            c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.route.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const matchesRoute = filterRoute === 'all' || c.route === filterRoute;
+        
+        return matchesSearch && matchesRoute;
+    }).sort((a, b) => {
+        const statusA = getClientStatusForMonth(a, filterMonth);
+        const statusB = getClientStatusForMonth(b, filterMonth);
+        
+        const weights: Record<string, number> = { 'Неактивен': 0, 'Активен': 1, 'Анулиран': 2 };
+        return weights[statusA] - weights[statusB];
+    });
+
+    const TabButton = ({ id, icon: Icon, label, activeColor = 'var(--primary-color)' }: any) => (
+        <button
+            onClick={() => setActiveTab(id)}
+            style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '50px',
+                fontWeight: 600, background: activeTab === id ? activeColor : 'transparent',
+                color: activeTab === id ? '#fff' : 'var(--text-secondary)',
+                border: `1px solid ${activeTab === id ? activeColor : 'var(--surface-border)'}`,
+                transition: 'var(--transition-fast)'
+            }}
+        >
+            <Icon size={18} /> <span className="mobile-hide">{label}</span>
+        </button>
+    );
+
+    return (
+        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                    <h2 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Управление на Карти</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                        {isAdmin ? <ShieldCheck size={14} color="#ff5252" /> : <Shield size={14} color="var(--primary-color)" />}
+                        {isAdmin ? 'Администратор' : 'Модератор'} — {currentUser?.username}
+                    </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {isAdmin && <TabButton id="dashboard" icon={BarChart} label="Табло" />}
+                    <TabButton id="clients" icon={Users} label="Клиенти" />
+                    <TabButton id="register" icon={PlusCircle} label="Добави Нова Карта" activeColor="#00c853" />
+                </div>
+            </div>
+
+            <style>{`
+        @media (max-width: 600px) { .mobile-hide { display: none; } }
+        .stat-card { padding: 1.5rem; border-radius: 16px; min-height: 140px; }
+        .table-container { overflow-x: auto; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--surface-border); }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 1rem; border-bottom: 1px solid var(--surface-border); }
+        th { color: var(--text-secondary); font-weight: 500; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-content { background: var(--bg-color); border: 1px solid var(--surface-border); border-radius: 20px; width: 100%; maxWidth: 500px; padding: 2rem; position: relative; }
+        .route-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.05); overflow: hidden; }
+        .route-fill { height: 100%; background: var(--primary-color); transition: width 0.5s ease; }
+      `}</style>
+
+            {activeTab === 'dashboard' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    {/* Period Selector */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Период за Статистика:</span>
+                        <select 
+                            value={statsMonth} 
+                            onChange={(e) => setStatsMonth(e.target.value)}
+                            style={{ background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', outline: 'none' }}
+                        >
+                            <option value="all">Всичко до момента (Общо)</option>
+                            {allMonths.map(m => (
+                                <option key={m} value={m}>{m}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                        <Card className="stat-card" style={{ borderLeft: '4px solid var(--primary-color)' }}>
+                            <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><DollarSign size={16} /> Общ Оборот</div>
+                                <button
+                                    onClick={() => setShowTotalRevenue(!showTotalRevenue)}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                                    type="button"
+                                    title={showTotalRevenue ? "Скрий оборота" : "Покажи оборота"}
+                                >
+                                    {showTotalRevenue ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', fontWeight: 700 }}>
+                                {showTotalRevenue ? `${totalRevenue.toFixed(2)} €` : '••••••'}
+                            </div>
+                        </Card>
+                        <Card className="stat-card" style={{ borderLeft: '4px solid #00e676' }}>
+                            <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}><Users size={16} />{isAll ? 'Всички Профили' : 'Активни Карти'}</div>
+                            <div style={{ fontSize: '2.5rem', fontWeight: 800 }}>{activeClientsCount}</div>
+                        </Card>
+                        <Card className="stat-card" style={{ borderLeft: '4px solid var(--accent-color)' }}>
+                            <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Users size={16} /> Клиенти</div>
+                            <div style={{ fontSize: '2.5rem', fontWeight: 700 }}>{clients.length}</div>
+                        </Card>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+                        <Card>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><List size={20} /> Статистика по Курсове</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                {routeStats.slice(0, 8).map(st => (
+                                    <div key={st.route}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                            <span>{st.route}</span>
+                                            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{st.count} карти | <b>{st.revenue} €</b></span>
+                                        </div>
+                                        <div className="route-bar">
+                                            <div className="route-fill" style={{ width: `${totalRevenue ? (st.revenue / totalRevenue) * 100 : 0}%` }} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                        <Card>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={20} color="var(--primary-color)" /> Бизнес Инсайти ({statsMonth})</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><PlusCircle size={12} /> Нови Клиенти</div>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-color)' }}>+{newClientsMonth}</div>
+                                </div>
+                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Percent size={12} /> Събираемост</div>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#00e676' }}>{paymentRate}%</div>
+                                </div>
+                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><PiggyBank size={12} /> Среден Приход</div>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{avgProfit} €</div>
+                                </div>
+                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Clock size={12} /> Остават</div>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: pendingTotal > 0 ? '#ff5252' : 'var(--text-secondary)' }}>{pendingTotal}</div>
+                                </div>
+                            </div>
+                            <div style={{ marginTop: '1.5rem', padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,173,181,0.05)', fontSize: '0.8rem', color: 'var(--primary-color)' }}>
+                                💡 {paymentRate > 80 ? 'Отлична събираемост този месец!' : 'Внимание: Има голям брой неплатени карти.'}
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'clients' && (
+                <div style={{ animation: 'fadeIn 0.4s ease' }}>
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                            <input
+                                type="text" placeholder="Търсене по име, ID или курс..."
+                                style={{ width: '100%', padding: '0.75rem 1.5rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: 'var(--text-primary)', outline: 'none' }}
+                                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <select 
+                                value={filterMonth}
+                                onChange={(e) => setFilterMonth(e.target.value)}
+                                style={{ padding: '0.75rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer' }}
+                            >
+                                {allMonths.map(m => (
+                                    <option key={m} value={m} style={{ background: '#222' }}>{m}</option>
+                                ))}
+                            </select>
+
+                            <select 
+                                value={filterRoute}
+                                onChange={(e) => setFilterRoute(e.target.value)}
+                                style={{ padding: '0.75rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer' }}
+                            >
+                                <option value="all" style={{ background: '#222' }}>Всички Курсове</option>
+                                {ROUTES.map(r => (
+                                    <option key={r} value={r} style={{ background: '#222' }}>{r}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Клиент</th>
+                                    <th>Курс</th>
+                                    <th>Платено (€)</th>
+                                    <th>Статус за {filterMonth}</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredClientsByFilters.length > 0 ? (
+                                    filteredClientsByFilters.map(client => {
+                                        const status = getClientStatusForMonth(client, filterMonth);
+                                        return (
+                                            <tr key={client.id}>
+                                                <td style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    <img src={client.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                    <div>
+                                                        <div style={{ fontWeight: 600 }}>{client.name}</div>
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{client.id}</div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span style={{ 
+                                                        fontSize: '0.75rem', 
+                                                        fontWeight: 700, 
+                                                        color: getRouteColor(client.route),
+                                                        padding: '0.2rem 0.6rem',
+                                                        borderRadius: '6px',
+                                                        background: 'rgba(255,255,255,0.03)',
+                                                        border: `1px solid ${getRouteColor(client.route)}`
+                                                    }}>
+                                                        {client.route}
+                                                    </span>
+                                                </td>
+                                                <td style={{ fontWeight: 700, color: getMonthPayment(client, filterMonth) > 0 ? 'var(--success-color)' : 'var(--text-secondary)' }}>
+                                                    {getMonthPayment(client, filterMonth)} €
+                                                </td>
+                                                <td>
+                                                    <span style={{
+                                                        padding: '0.25rem 0.75rem', borderRadius: '50px', fontSize: '0.75rem',
+                                                        background: status === 'Анулиран' || status === 'Неактивен' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
+                                                        color: status === 'Анулиран' || status === 'Неактивен' ? '#ff4040' : 'var(--success-color)',
+                                                        fontWeight: 700
+                                                    }}>
+                                                        {status}
+                                                    </span>
+                                                </td>
+                                                <td style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button
+                                                        onClick={() => { setSelectedClient(client); setShowActionModal(true); }}
+                                                        style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.75rem', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', color: '#fff' }}
+                                                    >
+                                                        Управление
+                                                    </button>
+                                                    {isAdmin && (
+                                                        <button
+                                                            onClick={() => handleDeleteClient(client.id, client.name)}
+                                                            style={{ padding: '0.4rem', color: 'var(--error-color)', borderRadius: '6px', border: '1px solid rgba(255,0,0,0.2)', cursor: 'pointer', background: 'rgba(255,0,0,0.05)', display: 'flex', alignItems: 'center' }}
+                                                            title="Изтрий Постоянно"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
+                                                    <a 
+                                                        href={`/client/${client.id}`} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--primary-color)', fontSize: '0.75rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}
+                                                    >
+                                                        <ExternalLink size={14} /> Виж
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                ) : (
+                                    <tr>
+                                        <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                            Няма намерени клиенти по този критерий.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'register' && (
+                <div style={{ marginBottom: '2rem', animation: 'fadeIn 0.4s ease' }}>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#00c853', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <PlusCircle size={24} /> ДОБАВЯНЕ НА КАРТА
+                    </h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                    <Card style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0 }}>Снимка</h3>
+                            {!photoDataURL && (
+                                <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '2px' }}>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => { setPhotoMode('upload'); setPhotoError(null); stopCamera(); }}
+                                        style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, background: photoMode === 'upload' ? 'var(--primary-color)' : 'transparent', color: photoMode === 'upload' ? '#fff' : 'var(--text-secondary)' }}
+                                    >Файл</button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => { setPhotoMode('camera'); setPhotoError(null); startCamera(); }}
+                                        style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, background: photoMode === 'camera' ? 'var(--primary-color)' : 'transparent', color: photoMode === 'camera' ? '#fff' : 'var(--text-secondary)' }}
+                                    >Камера</button>
+                                </div>
+                            )}
+                        </div>
+
+                        {!photoDataURL && (
+                            <div style={{ width: '100%', aspectRatio: '1', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', border: '2px dashed var(--surface-border)' }}>
+                                {photoMode === 'upload' && (
+                                    <>
+                                        <PlusCircle size={40} color="var(--primary-color)" style={{ marginBottom: '1rem', opacity: 0.6 }} />
+                                        <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.6rem 1.2rem', borderRadius: '50px', fontWeight: 600 }}>Избери Снимка</button>
+                                        <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>JPG или PNG, макс. 2MB</p>
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            capture="user"
+                                            ref={fileInputRef} 
+                                            style={{ display: 'none' }} 
+                                            onChange={handleFileUpload} 
+                                        />
+                                    </>
+                                )}
+                                
+                                {photoMode === 'camera' && (
+                                    <>
+                                        {!isCameraActive ? (
+                                            <div style={{ textAlign: 'center' }}>
+                                                <Camera size={48} color="var(--primary-color)" style={{ marginBottom: '1rem' }} /><br />
+                                                <button type="button" onClick={startCamera} style={{ color: 'var(--primary-color)', fontWeight: 600 }}>Пусни Камерата</button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }} />
+                                                <div style={{ position: 'absolute', inset: 0, border: '2px solid var(--primary-color)', borderRadius: '16px', pointerEvents: 'none', opacity: 0.3 }} />
+                                                <button type="button" onClick={takePhoto} style={{ position: 'absolute', bottom: '1rem', left: '50%', transform: 'translateX(-50%)', background: 'var(--primary-color)', color: '#fff', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', border: '4px solid rgba(255,255,255,0.2)' }}>
+                                                    <Camera size={24} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        )}
+                        
+                        {photoDataURL && (
+                            <div style={{ position: 'relative' }}>
+                                <img src={photoDataURL} style={{ width: '100%', aspectRatio: '1', borderRadius: '16px', objectFit: 'cover', border: '2px solid var(--primary-color)' }} />
+                                <button type="button" onClick={retakePhoto} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.75rem', backdropFilter: 'blur(4px)' }}>Промени</button>
+                            </div>
+                        )}
+                        
+                        {photoError && <div style={{ marginTop: '1rem', color: 'var(--error-color)', fontSize: '0.8rem', textAlign: 'center' }}>{photoError}</div>}
+                        <canvas ref={canvasRef} style={{ display: 'none' }} />
+                    </Card>
+                    <Card>
+                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Име</label>
+                                <input type="text" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} value={clientName} onChange={e => setClientName(e.target.value)} required />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Курс (Маршрут)</label>
+                                <select style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }} value={selectedRoute} onChange={e => setSelectedRoute(e.target.value)} required>
+                                    <option value="" disabled>-- Изберете Маршрут --</option>
+                                    {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Сума (€)</label>
+                                    <input type="number" step="0.01" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} value={amountPaid} onChange={e => setAmountPaid(e.target.value)} required />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Месец</label>
+                                    <input type="month" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', colorScheme: 'dark' }} value={expiryDate} onChange={e => setExpiryDate(e.target.value)} required />
+                                </div>
+                            </div>
+                            {message && <div style={{ color: message.type === 'success' ? 'var(--success-color)' : 'var(--error-color)' }}>{message.text}</div>}
+                            <button type="submit" style={{ background: 'var(--primary-color)', color: 'white', padding: '1rem', borderRadius: '8px', fontWeight: 600, display: 'flex', justifyContent: 'center', gap: '0.5rem' }}><Save size={20} /> Запази</button>
+                        </form>
+                    </Card>
+                </div>
+            </div>
+            )}
+
+            {/* Action Modal */}
+            {showActionModal && selectedClient && (
+                <div className="modal-overlay" onClick={() => setShowActionModal(false)}>
+                    <div className="modal-content" style={{ maxWidth: '600px', padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <img src={selectedClient.photo} style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover' }} />
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{selectedClient.name}</h3>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>ID: {selectedClient.id}</div>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowActionModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer' }}><XCircle size={20} /></button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div style={{ display: 'flex', padding: '0.5rem', gap: '0.5rem', background: 'rgba(0,0,0,0.2)' }}>
+                            <button 
+                                onClick={() => setModalTab('info')}
+                                style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'info' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'info' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' }}
+                            >Инфо</button>
+                            <button 
+                                onClick={() => setModalTab('actions')}
+                                style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'actions' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'actions' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' }}
+                            >Действие</button>
+                            <button 
+                                onClick={() => setModalTab('history')}
+                                style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'history' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'history' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                            ><Clock size={14} /> История</button>
+                        </div>
+
+                        {/* Content */}
+                        <div style={{ padding: '1.5rem', minHeight: '300px', maxHeight: '70vh', overflowY: 'auto' }}>
+                            {modalTab === 'info' && (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', animation: 'fadeIn 0.3s ease' }}>
+                                    <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Статус</div>
+                                        <div style={{ fontWeight: 700, color: selectedClient.isCanceled || isExpired(selectedClient.expiryDate, selectedClient) ? 'var(--error-color)' : 'var(--success-color)' }}>
+                                            {selectedClient.isCanceled ? 'Анулиран' : isExpired(selectedClient.expiryDate, selectedClient) ? 'Невалиден' : 'Активен'}
+                                        </div>
+                                    </div>
+                                    <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Линия</div>
+                                        <div style={{ fontWeight: 600 }}>{selectedClient.route}</div>
+                                    </div>
+                                    <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Дата на регистрация</div>
+                                        <div style={{ fontWeight: 600 }}>{new Date(selectedClient.createdAt).toLocaleDateString('bg-BG')}</div>
+                                    </div>
+                                    <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Общо платено</div>
+                                        <div style={{ fontWeight: 700, color: 'var(--success-color)', fontSize: '1.1rem' }}>{selectedClient.amountPaid} €</div>
+                                    </div>
+                                    {selectedClient.isCanceled && (
+                                        <div style={{ gridColumn: 'span 2', padding: '1rem', background: 'rgba(255,0,0,0.1)', borderRadius: '10px', border: '1px solid rgba(255,0,0,0.2)', fontSize: '0.85rem' }}>
+                                            <b style={{ color: 'var(--error-color)' }}>Причина за анулиране:</b> {selectedClient.cancelReason}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {modalTab === 'actions' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.3s ease' }}>
+                                    {/* Renew */}
+                                    <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(0,255,150,0.03)', border: '1px solid rgba(0,255,150,0.1)' }}>
+                                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)', margin: '0 0 1rem 0' }}><RefreshCw size={18} /> Подновяване</h4>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Месец</label>
+                                                <input type="month" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff', colorScheme: 'dark' }} value={newMonth} onChange={e => setNewMonth(e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Сума (€)</label>
+                                                <input type="number" placeholder="0.00" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff' }} value={newAmount} onChange={e => setNewAmount(e.target.value)} />
+                                            </div>
+                                        </div>
+                                        <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#000', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
+                                    </div>
+
+                                    {/* Cancel */}
+                                    <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(255,0,0,0.03)', border: '1px solid rgba(255,0,0,0.1)' }}>
+                                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--error-color)', margin: '0 0 1rem 0' }}><Trash2 size={18} /> Анулиране</h4>
+                                        <textarea
+                                            placeholder="Причина за анулиране..."
+                                            style={{ width: '100%', padding: '0.8rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', marginBottom: '1rem', minHeight: '80px', color: '#fff', fontSize: '0.85rem' }}
+                                            value={cancelReason} onChange={e => setCancelReason(e.target.value)}
+                                        />
+                                        <button onClick={cancelClient} style={{ width: '100%', background: 'var(--error-color)', color: '#fff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Анулирай Картата</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {modalTab === 'history' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', animation: 'fadeIn 0.3s ease' }}>
+                                    {selectedClient.history && selectedClient.history.length > 0 ? (
+                                        selectedClient.history.slice().reverse().map((log, idx) => (
+                                            <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '10px', display: 'flex', gap: '1rem' }}>
+                                                <div style={{ width: '3px', background: log.action === 'Създаване' ? 'var(--primary-color)' : log.action === 'Подновяване' ? 'var(--success-color)' : 'var(--error-color)', borderRadius: '3px' }} />
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                                                        <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{log.action}</span>
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{new Date(log.date).toLocaleString('bg-BG')}</span>
+                                                    </div>
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{log.details}</div>
+                                                    {log.amount && <div style={{ fontWeight: 600, color: 'var(--success-color)', fontSize: '0.85rem', marginTop: '0.25rem' }}>+{log.amount} €</div>}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма история на дейностите.</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+        </div>
+    );
+};
+
+export default AdminPanel;
