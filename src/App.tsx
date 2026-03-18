@@ -11,7 +11,7 @@ import UsersPanel from './pages/UsersPanel';
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           {/* Public — no login needed */}
           <Route path="/login" element={<LoginPage />} />
