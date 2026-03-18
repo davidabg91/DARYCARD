@@ -84,6 +84,7 @@ textarea {
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
 }
 ::-webkit-scrollbar-track {
     background: var(--bg-color);
@@ -100,4 +101,51 @@ textarea {
 ::selection {
     background: rgba(0, 173, 181, 0.25);
     color: var(--text-primary);
+}
+
+/* Mobile & PWA Optimization */
+body {
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+}
+
+@media (max-width: 900px) {
+    .desktop-nav {
+        display: none !important;
+    }
+
+    .mobile-toggle {
+        display: block !important;
+    }
+
+    main {
+        padding: 1rem !important;
+    }
+
+    footer {
+        padding: 2rem 1.5rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-header {
+        padding: 0.6rem 1rem !important;
+    }
+    
+    .mobile-menu {
+        padding: 1.5rem !important;
+    }
+}
+
+/* Header & Safe Areas */
+header {
+    padding-top: max(0.6rem, env(safe-area-inset-top));
+}
+
+main {
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}
+
+.mobile-menu {
+    box-shadow: -10px 0 30px rgba(0,0,0,0.5);
 }

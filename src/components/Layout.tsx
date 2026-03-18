@@ -2,157 +2,220 @@ import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, ShieldCheck, Shield } from 'lucide-react';
+import { LogOut, ShieldCheck, Shield, Menu, X } from 'lucide-react';
 
 const Layout: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const isAdminPath = location.pathname.startsWith('/admin');
     const { currentUser, logout } = useAuth();
+    const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
     const handleLogout = () => {
         logout();
         navigate('/login');
+        setIsMenuOpen(false);
     };
 
+    const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+    const closeMenu = () => setIsMenuOpen(false);
+
+    const navLinks = (
+        <>
+            <Link
+                to="/"
+                onClick={closeMenu}
+                style={{
+                    color: location.pathname === '/' ? '#ff5252' : 'var(--text-secondary)',
+                    fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
+                    borderBottom: location.pathname === '/' ? '2px solid #ff5252' : '2px solid transparent',
+                    paddingBottom: '2px',
+                    display: 'flex',
+                    alignItems: 'center'
+                }}
+            >Начало</Link>
+
+            {currentUser && (
+                <>
+                    <Link
+                        to="/admin"
+                        onClick={closeMenu}
+                        style={{
+                            color: isAdminPath && location.pathname === '/admin' ? '#ff5252' : 'var(--text-secondary)',
+                            fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
+                            borderBottom: isAdminPath && location.pathname === '/admin' ? '2px solid #ff5252' : '2px solid transparent',
+                            paddingBottom: '2px',
+                        }}
+                    >Карти</Link>
+
+                    {currentUser.role === 'admin' && (
+                        <Link
+                            to="/admin/users"
+                            onClick={closeMenu}
+                            style={{
+                                color: location.pathname === '/admin/users' ? '#ff5252' : 'var(--text-secondary)',
+                                fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
+                                borderBottom: location.pathname === '/admin/users' ? '2px solid #ff5252' : '2px solid transparent',
+                                paddingBottom: '2px',
+                            }}
+                        >Потребители</Link>
+                    )}
+
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        padding: '0.4rem 0.8rem', borderRadius: '50px',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid var(--surface-border)',
+                        fontSize: '0.85rem',
+                    }}>
+                        {currentUser.role === 'admin'
+                            ? <ShieldCheck size={16} color="#ff5252" />
+                            : <Shield size={16} color="var(--primary-color)" />}
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{currentUser.username}</span>
+                    </div>
+
+                    <button
+                        onClick={handleLogout}
+                        title="Изход"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            padding: '0.5rem 1rem', borderRadius: '10px',
+                            background: 'rgba(229,57,53,0.12)', color: '#ff5252',
+                            border: '1px solid rgba(229,57,53,0.3)', fontWeight: 600,
+                            fontSize: '0.9rem', cursor: 'pointer', transition: 'background 0.2s',
+                            width: 'fit-content'
+                        }}
+                    >
+                        <LogOut size={16} /> Изход
+                    </button>
+                </>
+            )}
+
+            {!currentUser && (
+                <Link
+                    to="/login"
+                    onClick={closeMenu}
+                    style={{
+                        padding: '0.5rem 1.5rem', borderRadius: '10px',
+                        background: '#e53935', color: '#fff',
+                        fontWeight: 700, fontSize: '0.9rem',
+                        textAlign: 'center',
+                        boxShadow: '0 4px 12px rgba(229,57,53,0.3)'
+                    }}
+                >Вход</Link>
+            )}
+        </>
+    );
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-            <header style={{
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
+            <header className="main-header" style={{
                 position: 'sticky',
                 top: 0,
-                zIndex: 100,
-                background: 'var(--bg-color)',
-                padding: '0.6rem 2.5rem',
+                zIndex: 1000,
+                background: 'rgba(26, 26, 26, 0.85)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                padding: '0.6rem 1.5rem',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                borderBottom: '2px solid rgba(229,57,53,0.35)',
-                boxShadow: '0 2px 16px rgba(0,0,0,0.3)',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
             }}>
-                <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', gap: '0', userSelect: 'none' }}>
-                    {/* Logo in a small white pill so the JPEG bg blends cleanly */}
+                <Link to="/" onClick={closeMenu} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', gap: '0', userSelect: 'none' }}>
                     <div style={{
                         background: '#fff',
                         borderRadius: '10px',
-                        padding: '4px 10px',
+                        padding: '4px 8px',
                         display: 'flex',
                         alignItems: 'center',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
                     }}>
                         <img
                             src={logo}
                             alt="Dary Travel"
                             style={{
-                                height: '46px',
+                                height: '36px',
                                 width: 'auto',
                                 objectFit: 'contain',
                                 display: 'block',
                             }}
                         />
                     </div>
-                    {/* CARD SYSTEM badge */}
                     <div style={{
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'flex-start',
-                        marginLeft: '12px',
+                        marginLeft: '10px',
                         alignSelf: 'center',
-                        borderLeft: '3px solid #e53935',
-                        paddingLeft: '10px',
-                        lineHeight: 1.2,
+                        borderLeft: '2px solid #e53935',
+                        paddingLeft: '8px',
+                        lineHeight: 1.1,
                     }}>
                         <span style={{
-                            fontSize: '1.25rem',
+                            fontSize: '1.1rem',
                             fontWeight: 900,
-                            letterSpacing: '0.1em',
+                            letterSpacing: '0.05em',
                             textTransform: 'uppercase',
                             color: '#ff5252',
                         }}>CARD</span>
                         <span style={{
-                            fontSize: '0.6rem',
+                            fontSize: '0.55rem',
                             fontWeight: 700,
-                            letterSpacing: '0.22em',
+                            letterSpacing: '0.15em',
                             textTransform: 'uppercase',
                             color: 'var(--text-secondary)',
                         }}>SYSTEM</span>
                     </div>
                 </Link>
 
-                <nav style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
-                    <Link
-                        to="/"
-                        style={{
-                            color: location.pathname === '/' ? '#ff5252' : 'var(--text-secondary)',
-                            fontWeight: 600, fontSize: '0.9rem', transition: 'color 0.2s',
-                            borderBottom: location.pathname === '/' ? '2px solid #ff5252' : '2px solid transparent',
-                            paddingBottom: '2px',
-                        }}
-                    >Начало</Link>
-
-                    {currentUser && (
-                        <>
-                            <Link
-                                to="/admin"
-                                style={{
-                                    color: isAdminPath && location.pathname === '/admin' ? '#ff5252' : 'var(--text-secondary)',
-                                    fontWeight: 600, fontSize: '0.9rem', transition: 'color 0.2s',
-                                    borderBottom: isAdminPath && location.pathname === '/admin' ? '2px solid #ff5252' : '2px solid transparent',
-                                    paddingBottom: '2px',
-                                }}
-                            >Карти</Link>
-
-                            {currentUser.role === 'admin' && (
-                                <Link
-                                    to="/admin/users"
-                                    style={{
-                                        color: location.pathname === '/admin/users' ? '#ff5252' : 'var(--text-secondary)',
-                                        fontWeight: 600, fontSize: '0.9rem', transition: 'color 0.2s',
-                                        borderBottom: location.pathname === '/admin/users' ? '2px solid #ff5252' : '2px solid transparent',
-                                        paddingBottom: '2px',
-                                    }}
-                                >Потребители</Link>
-                            )}
-
-                            {/* User chip */}
-                            <div style={{
-                                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                padding: '0.3rem 0.75rem', borderRadius: '50px',
-                                background: 'rgba(255,255,255,0.06)',
-                                border: '1px solid var(--surface-border)',
-                                fontSize: '0.82rem',
-                            }}>
-                                {currentUser.role === 'admin'
-                                    ? <ShieldCheck size={14} color="#ff5252" />
-                                    : <Shield size={14} color="var(--primary-color)" />}
-                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{currentUser.username}</span>
-                            </div>
-
-                            <button
-                                onClick={handleLogout}
-                                title="Изход"
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: '0.4rem',
-                                    padding: '0.35rem 0.85rem', borderRadius: '8px',
-                                    background: 'rgba(229,57,53,0.12)', color: '#ff5252',
-                                    border: '1px solid rgba(229,57,53,0.3)', fontWeight: 600,
-                                    fontSize: '0.82rem', cursor: 'pointer', transition: 'background 0.2s',
-                                }}
-                            >
-                                <LogOut size={14} /> Изход
-                            </button>
-                        </>
-                    )}
-
-                    {!currentUser && (
-                        <Link
-                            to="/login"
-                            style={{
-                                padding: '0.35rem 1rem', borderRadius: '8px',
-                                background: '#e53935', color: '#fff',
-                                fontWeight: 600, fontSize: '0.85rem',
-                            }}
-                        >Вход</Link>
-                    )}
+                {/* Desktop Nav */}
+                <nav className="desktop-nav" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                    {navLinks}
                 </nav>
+
+                {/* Mobile Menu Toggle */}
+                <button 
+                    className="mobile-toggle"
+                    onClick={toggleMenu}
+                    style={{
+                        padding: '8px',
+                        borderRadius: '8px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#fff',
+                        display: 'none', // Hidden by default, shown via CSS media query
+                    }}
+                >
+                    {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
+
+                {/* Mobile Menu Overlay */}
+                <div 
+                    className={`mobile-menu ${isMenuOpen ? 'open' : ''}`}
+                    style={{
+                        position: 'fixed',
+                        top: '64px', // Header height
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(26, 26, 26, 0.98)',
+                        backdropFilter: 'blur(15px)',
+                        padding: '2rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2rem',
+                        zIndex: 999,
+                        transform: isMenuOpen ? 'translateX(0)' : 'translateX(100%)',
+                        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        opacity: isMenuOpen ? 1 : 0,
+                        visibility: isMenuOpen ? 'visible' : 'hidden',
+                        overflowY: 'auto'
+                    }}
+                >
+                    {navLinks}
+                </div>
             </header>
 
             <main style={{ flex: 1, padding: '2rem', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.4s ease' }}>
