@@ -2,6 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 
+// Import assets for relative path resolution
+import stepRegistration from '../assets/step_registration.png';
+import stepScan from '../assets/step_scan.png';
+import stepVerify from '../assets/step_verify.png';
+import stepAnalytics from '../assets/step_analytics.png';
+
 const Landing: React.FC = () => {
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '2rem 1rem' }}>
@@ -84,7 +90,7 @@ const Landing: React.FC = () => {
                     {/* Step 1 - Moderators */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', textAlign: 'center' }}>
                         <div style={{ position: 'relative' }}>
-                            <img src="/assets/step_registration.png" style={{ width: '100%', borderRadius: '24px', boxShadow: '0 15px 30px rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.2)' }} alt="Registration" />
+                            <img src={stepRegistration} style={{ width: '100%', borderRadius: '24px', boxShadow: '0 15px 30px rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.2)' }} alt="Registration" />
                             <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: '#00e676', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', border: '3px solid var(--bg-color)', color: '#000' }}>1</div>
                         </div>
                         <div>
@@ -98,7 +104,7 @@ const Landing: React.FC = () => {
                     {/* Step 2 - Drivers */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', textAlign: 'center' }}>
                         <div style={{ position: 'relative' }}>
-                            <img src="/assets/step_scan.png" style={{ width: '100%', borderRadius: '24px', boxShadow: 'var(--shadow-neon)', border: '1px solid rgba(0,173,181,0.2)' }} alt="Scan" />
+                            <img src={stepScan} style={{ width: '100%', borderRadius: '24px', boxShadow: 'var(--shadow-neon)', border: '1px solid rgba(0,173,181,0.2)' }} alt="Scan" />
                             <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: 'var(--primary-color)', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', border: '3px solid var(--bg-color)' }}>2</div>
                         </div>
                         <div>
@@ -112,7 +118,7 @@ const Landing: React.FC = () => {
                     {/* Step 3 */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', textAlign: 'center' }}>
                         <div style={{ position: 'relative' }}>
-                            <img src="/assets/step_verify.png" style={{ width: '100%', borderRadius: '24px', boxShadow: '0 15px 30px rgba(0,0,0,0.4)', border: '1px solid rgba(255,165,0,0.2)' }} alt="Verify" />
+                            <img src={stepVerify} style={{ width: '100%', borderRadius: '24px', boxShadow: '0 15px 30px rgba(0,0,0,0.4)', border: '1px solid rgba(255,165,0,0.2)' }} alt="Verify" />
                             <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: '#ffa500', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', border: '3px solid var(--bg-color)', color: '#000' }}>3</div>
                         </div>
                         <div>
@@ -126,7 +132,7 @@ const Landing: React.FC = () => {
                     {/* Step 4 - Admins */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', textAlign: 'center' }}>
                         <div style={{ position: 'relative' }}>
-                            <img src="/assets/step_analytics.png" style={{ width: '100%', borderRadius: '24px', boxShadow: '0 15px 30px rgba(160,32,240,0.15)', border: '1px solid rgba(160,32,240,0.2)' }} alt="Analytics" />
+                            <img src={stepAnalytics} style={{ width: '100%', borderRadius: '24px', boxShadow: '0 15px 30px rgba(160,32,240,0.15)', border: '1px solid rgba(160,32,240,0.2)' }} alt="Analytics" />
                             <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: '#a020f0', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', border: '3px solid var(--bg-color)' }}>4</div>
                         </div>
                         <div>
