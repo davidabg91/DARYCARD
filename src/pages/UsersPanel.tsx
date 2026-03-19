@@ -36,9 +36,10 @@ const UsersPanel: React.FC = () => {
             await addUser(newUsername.trim(), newPassword, newRole);
             showMsg(`Потребител "${newUsername}" е създаден.`, 'success');
             setNewUsername(''); setNewPassword('');
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            if (err.code === 'auth/email-already-in-use') {
+            const error = err as { code?: string };
+            if (error.code === 'auth/email-already-in-use') {
                 showMsg('Потребителското име вече съществува.', 'error');
             } else {
                 showMsg('Грешка при създаване на потребител.', 'error');

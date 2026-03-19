@@ -18,11 +18,12 @@ const LoginPage: React.FC = () => {
         try {
             await login(username, password);
             navigate('/admin');
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+            const error = err as { code?: string };
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
                 setError('Грешно потребителско име или парола.');
-            } else if (err.code === 'auth/invalid-email') {
+            } else if (error.code === 'auth/invalid-email') {
                 setError('Невалиден формат на потребителско име.');
             } else {
                 setError('Възникна грешка при влизане. Моля, опитайте пак.');
