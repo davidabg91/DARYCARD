@@ -7,6 +7,12 @@ import AdminPanel from './pages/AdminPanel';
 import ClientProfile from './pages/ClientProfile';
 import LoginPage from './pages/LoginPage';
 import UsersPanel from './pages/UsersPanel';
+import { useParams } from 'react-router-dom';
+
+function ClientProfileWrapper() {
+  const { id } = useParams<{ id: string }>();
+  return <ClientProfile key={id} />;
+}
 
 function App() {
   return (
@@ -16,7 +22,7 @@ function App() {
           {/* Public — no login needed */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/client/:id" element={<Layout />}>
-            <Route index element={<ClientProfile />} />
+            <Route index element={<ClientProfileWrapper />} />
           </Route>
 
           {/* App shell */}

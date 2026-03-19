@@ -36,9 +36,6 @@ const ClientProfile: React.FC = () => {
     useEffect(() => {
         if (!id) return;
         
-        setError(null);
-        setLoading(true);
-
         // Listen to specific client in Firestore
         const unsubscribe = onSnapshot(doc(db, 'clients', id), (docSnap) => {
             if (docSnap.exists()) {
