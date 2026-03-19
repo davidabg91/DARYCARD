@@ -98,6 +98,7 @@ const AdminPanel: React.FC = () => {
 
     const [isCameraActive, setIsCameraActive] = useState(false);
     const [photoMode, setPhotoMode] = useState<'camera' | 'upload'>('upload');
+    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
     const [photoError, setPhotoError] = useState<string | null>(null);
     
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -163,7 +164,12 @@ const AdminPanel: React.FC = () => {
     const startCamera = async () => {
         setPhotoError(null);
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', aspectRatio: 1 } });
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: facingMode,
+                    aspectRatio: 1 
+                } 
+            });
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
                 videoRef.current.play();
@@ -711,11 +717,35 @@ const AdminPanel: React.FC = () => {
                                             </div>
                                         ) : (
                                             <>
-                                                <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }} />
+                                                <video 
+                                                    ref={videoRef} 
+                                                    autoPlay 
+                                                    muted 
+                                                    playsInline 
+                                                    style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }} 
+                                                />
                                                 <div style={{ position: 'absolute', inset: 0, border: '2px solid var(--primary-color)', borderRadius: '16px', pointerEvents: 'none', opacity: 0.3 }} />
-                                                <button type="button" onClick={takePhoto} style={{ position: 'absolute', bottom: '1rem', left: '50%', transform: 'translateX(-50%)', background: 'var(--primary-color)', color: '#fff', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', border: '4px solid rgba(255,255,255,0.2)' }}>
-                                                    <Camera size={24} />
-                                                </button>
+                                                
+                                                <div style={{ position: 'absolute', bottom: '1rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '1rem', alignItems: 'center' }}>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => {
+                                                            const newMode = facingMode === 'user' ? 'environment' : 'user';
+                                                            setFacingMode(newMode);
+                                                            stopCamera();
+                                                            setTimeout(() => startCamera(), 100);
+                                                        }} 
+                                                        style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', padding: '0.5rem 1rem', borderRadius: '50px', fontSize: '0.75rem', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.2)' }}
+                                                    >
+                                                        {facingMode === 'user' ? 'Задна Камера' : 'Предна Камера'}
+                                                    </button>
+                                                    
+                                                    <button type="button" onClick={takePhoto} style={{ background: 'var(--primary-color)', color: '#fff', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', border: '4px solid rgba(255,255,255,0.2)' }}>
+                                                        <Camera size={24} />
+                                                    </button>
+                                                    
+                                                    <div style={{ width: '80px' }} /> {/* Spacer to center the capture button */}
+                                                </div>
                                             </>
                                         )}
                                     </>

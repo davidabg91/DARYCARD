@@ -107,6 +107,30 @@ const Layout: React.FC = () => {
         </>
     );
 
+    const mobileNavLinks = (
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <Link to="/" onClick={closeMenu} className="mobile-nav-link">Начало</Link>
+            {currentUser && (
+                <>
+                    <Link to="/admin" onClick={closeMenu} className="mobile-nav-link">Карти</Link>
+                    {currentUser.role === 'admin' && (
+                        <Link to="/admin/users" onClick={closeMenu} className="mobile-nav-link">Потребители</Link>
+                    )}
+                    <div style={{ padding: '0.8rem 1.2rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
+                        {currentUser.role === 'admin' ? <ShieldCheck size={18} color="#ff5252" /> : <Shield size={18} color="var(--primary-color)" />}
+                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{currentUser.username}</span>
+                    </div>
+                    <button onClick={handleLogout} className="mobile-nav-link" style={{ color: '#ff5252', background: 'rgba(229,57,53,0.1)', border: '1px solid rgba(229,57,53,0.2)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <LogOut size={18} /> Изход
+                    </button>
+                </>
+            )}
+            {!currentUser && (
+                <Link to="/login" onClick={closeMenu} className="mobile-nav-link" style={{ background: '#e53935', color: '#fff', textAlign: 'center', marginTop: '1rem', border: 'none' }}>Вход</Link>
+            )}
+        </nav>
+    );
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
             <header className="main-header" style={{
@@ -196,16 +220,16 @@ const Layout: React.FC = () => {
                     className={`mobile-menu ${isMenuOpen ? 'open' : ''}`}
                     style={{
                         position: 'fixed',
-                        top: '64px', // Header height
+                        top: '64px',
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        background: 'rgba(26, 26, 26, 0.98)',
+                        height: 'calc(100dvh - 64px)',
+                        background: 'rgba(26, 26, 26, 0.99)',
                         backdropFilter: 'blur(15px)',
-                        padding: '2rem',
+                        padding: '1.5rem',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '2rem',
                         zIndex: 999,
                         transform: isMenuOpen ? 'translateX(0)' : 'translateX(100%)',
                         transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -214,7 +238,7 @@ const Layout: React.FC = () => {
                         overflowY: 'auto'
                     }}
                 >
-                    {navLinks}
+                    {mobileNavLinks}
                 </div>
             </header>
 
