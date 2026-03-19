@@ -38,17 +38,25 @@ const ClientProfile: React.FC = () => {
         try {
             const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
             const context = new AudioContextClass();
-            const osc = context.createOscillator();
-            const gain = context.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, context.currentTime); // A5
-            osc.frequency.exponentialRampToValueAtTime(1320, context.currentTime + 0.1); 
-            gain.gain.setValueAtTime(0.1, context.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
-            osc.connect(gain);
-            gain.connect(context.destination);
-            osc.start();
-            osc.stop(context.currentTime + 0.3);
+            
+            // Clean chime: C6 (1046Hz) and E6 (1318Hz)
+            const playTone = (freq: number, start: number, duration: number) => {
+                const osc = context.createOscillator();
+                const gain = context.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, context.currentTime + start);
+                gain.gain.setValueAtTime(0, context.currentTime + start);
+                gain.gain.linearRampToValueAtTime(0.08, context.currentTime + start + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + start + duration);
+                osc.connect(gain);
+                gain.connect(context.destination);
+                osc.start(context.currentTime + start);
+                osc.stop(context.currentTime + start + duration);
+            };
+
+            playTone(880, 0, 0.4);      // A5
+            playTone(1108.73, 0.08, 0.4); // C#6 (Major)
+            playTone(1318.51, 0.16, 0.5); // E6
         } catch (e) { console.error("Audio error", e); }
     };
 
@@ -58,15 +66,15 @@ const ClientProfile: React.FC = () => {
             const context = new AudioContextClass();
             const osc = context.createOscillator();
             const gain = context.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(150, context.currentTime); 
-            osc.frequency.linearRampToValueAtTime(100, context.currentTime + 0.2);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, context.currentTime); 
+            osc.frequency.linearRampToValueAtTime(110, context.currentTime + 0.15);
             gain.gain.setValueAtTime(0.1, context.currentTime);
-            gain.gain.linearRampToValueAtTime(0.01, context.currentTime + 0.4);
+            gain.gain.linearRampToValueAtTime(0.01, context.currentTime + 0.3);
             osc.connect(gain);
             gain.connect(context.destination);
             osc.start();
-            osc.stop(context.currentTime + 0.4);
+            osc.stop(context.currentTime + 0.3);
         } catch (e) { console.error("Audio error", e); }
     };
 
