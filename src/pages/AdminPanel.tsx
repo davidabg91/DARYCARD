@@ -32,6 +32,32 @@ const ROUTES = [
     "Петърница", "Опанец", "Победа", "Подем", "Божурица"
 ];
 
+const generateClientId = () => Math.random().toString(36).substr(2, 9).toUpperCase();
+
+interface TabButtonProps {
+    id: 'dashboard' | 'clients' | 'register';
+    icon: React.ElementType;
+    label: string;
+    activeTab: 'dashboard' | 'clients' | 'register';
+    setActiveTab: (id: 'dashboard' | 'clients' | 'register') => void;
+    activeColor?: string;
+}
+
+const TabButton = ({ id, icon: Icon, label, activeTab, setActiveTab, activeColor = 'var(--primary-color)' }: TabButtonProps) => (
+    <button
+        onClick={() => setActiveTab(id)}
+        style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '50px',
+            fontWeight: 600, background: activeTab === id ? activeColor : 'transparent',
+            color: activeTab === id ? '#fff' : 'var(--text-secondary)',
+            border: `1px solid ${activeTab === id ? activeColor : 'var(--surface-border)'}`,
+            transition: 'var(--transition-fast)'
+        }}
+    >
+        <Icon size={18} /> <span className="mobile-hide">{label}</span>
+    </button>
+);
+
 const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
@@ -96,6 +122,7 @@ const AdminPanel: React.FC = () => {
 
     useEffect(() => {
         const loadedClients = JSON.parse(localStorage.getItem('dary_clients') || '[]');
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setClients(loadedClients);
 
         // Detect mobile to default to camera mode
@@ -120,10 +147,6 @@ const AdminPanel: React.FC = () => {
         }
     }, [location.search]);
 
-    useEffect(() => {
-        return () => stopCamera();
-    }, [activeTab]);
-
     const stopCamera = () => {
         if (videoRef.current && videoRef.current.srcObject) {
             const stream = videoRef.current.srcObject as MediaStream;
@@ -132,6 +155,10 @@ const AdminPanel: React.FC = () => {
             setIsCameraActive(false);
         }
     };
+
+    useEffect(() => {
+        return () => stopCamera();
+    }, [activeTab]);
 
     const startCamera = async () => {
         setPhotoError(null);
@@ -192,8 +219,9 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
+        const generatedId = generateClientId();
         const newClient: Client = {
-            id: Math.random().toString(36).substr(2, 9).toUpperCase(),
+            id: generatedId,
             name: clientName,
             route: selectedRoute,
             amountPaid: Number(amountPaid),
@@ -385,21 +413,6 @@ const AdminPanel: React.FC = () => {
         return weights[statusA] - weights[statusB];
     });
 
-    const TabButton = ({ id, icon: Icon, label, activeColor = 'var(--primary-color)' }: any) => (
-        <button
-            onClick={() => setActiveTab(id)}
-            style={{
-                display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '50px',
-                fontWeight: 600, background: activeTab === id ? activeColor : 'transparent',
-                color: activeTab === id ? '#fff' : 'var(--text-secondary)',
-                border: `1px solid ${activeTab === id ? activeColor : 'var(--surface-border)'}`,
-                transition: 'var(--transition-fast)'
-            }}
-        >
-            <Icon size={18} /> <span className="mobile-hide">{label}</span>
-        </button>
-    );
-
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease' }}>
 
@@ -412,9 +425,9 @@ const AdminPanel: React.FC = () => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {isAdmin && <TabButton id="dashboard" icon={BarChart} label="Табло" />}
-                    <TabButton id="clients" icon={Users} label="Клиенти" />
-                    <TabButton id="register" icon={PlusCircle} label="Добави Нова Карта" activeColor="#00c853" />
+                    {isAdmin && <TabButton id="dashboard" icon={BarChart} label="Табло" activeTab={activeTab} setActiveTab={setActiveTab} />}
+                    <TabButton id="clients" icon={Users} label="Клиенти" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton id="register" icon={PlusCircle} label="Добави Нова Карта" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} />
                 </div>
             </div>
 

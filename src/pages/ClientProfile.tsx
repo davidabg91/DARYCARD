@@ -32,6 +32,7 @@ const ClientProfile: React.FC = () => {
     useEffect(() => {
         const clients: Client[] = JSON.parse(localStorage.getItem('dary_clients') || '[]');
         const found = clients.find(c => c.id === id);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setClient(found || null);
         setLoading(false);
     }, [id]);
@@ -115,7 +116,7 @@ const ClientProfile: React.FC = () => {
             localStorage.setItem('dary_clients', JSON.stringify(updatedClients));
             setClient(updatedClients.find(c => c.id === client.id) || null);
             setShowRenewConfirm(false);
-        } catch (err) {
+        } catch {
             setRenewError('Грешка при записване. Моля, опитайте пак.');
         }
     };

@@ -1,14 +1,7 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type UserRole = 'admin' | 'moderator';
-
-export interface AppUser {
-    id: string;
-    username: string;
-    passwordHash: string; // simple hash for demo
-    role: UserRole;
-    createdAt: string;
-}
+import type { AppUser, UserRole } from '../types/auth';
 
 interface AuthContextType {
     currentUser: AppUser | null;
@@ -59,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         localStorage.setItem('dary_users', JSON.stringify(stored));
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setUsers(stored);
 
         const sessionUser = localStorage.getItem('dary_session');
@@ -141,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
     const ctx = useContext(AuthContext);
     if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
