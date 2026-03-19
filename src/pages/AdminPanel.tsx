@@ -36,6 +36,20 @@ const ROUTES = [
 
 const generateClientId = () => Math.random().toString(36).substr(2, 9).toUpperCase();
 
+const getDefaultExpiryMonth = () => {
+    const now = new Date();
+    let targetMonth = now.getMonth() + 1;
+    let targetYear = now.getFullYear();
+    if (now.getDate() >= 20) {
+        targetMonth += 1;
+        if (targetMonth > 12) {
+            targetMonth = 1;
+            targetYear += 1;
+        }
+    }
+    return `${targetYear}-${targetMonth.toString().padStart(2, '0')}`;
+};
+
 interface TabButtonProps {
     id: 'dashboard' | 'clients' | 'register';
     icon: React.ElementType;
@@ -74,7 +88,7 @@ const AdminPanel: React.FC = () => {
     const [clientName, setClientName] = useState('');
     const [selectedRoute, setSelectedRoute] = useState('');
     const [amountPaid, setAmountPaid] = useState('');
-    const [expiryDate, setExpiryDate] = useState('');
+    const [expiryDate, setExpiryDate] = useState(getDefaultExpiryMonth());
     const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
 
     // Modal/Action State
@@ -105,19 +119,7 @@ const AdminPanel: React.FC = () => {
     const [registrationSuccess, setRegistrationSuccess] = useState<Client | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-    const getDefaultExpiryMonth = () => {
-        const now = new Date();
-        let targetMonth = now.getMonth() + 1;
-        let targetYear = now.getFullYear();
-        if (now.getDate() >= 20) {
-            targetMonth += 1;
-            if (targetMonth > 12) {
-                targetMonth = 1;
-                targetYear += 1;
-            }
-        }
-        return `${targetYear}-${targetMonth.toString().padStart(2, '0')}`;
-    };
+
 
     useEffect(() => {
         // 1. Listen for Clients in Real-time
@@ -156,8 +158,7 @@ const AdminPanel: React.FC = () => {
         };
         migrateData();
 
-        // Set initial default month
-        setExpiryDate(getDefaultExpiryMonth());
+
 
         return () => unsubscribe();
     }, [location.search]);
