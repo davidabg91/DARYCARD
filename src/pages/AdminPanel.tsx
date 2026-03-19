@@ -592,7 +592,7 @@ const AdminPanel: React.FC = () => {
                                                             </button>
                                                         )}
                                                         <a 
-                                                            href={`/client/${client.id}`} 
+                                                            href={`#/client/${client.id}`} 
                                                             target="_blank" 
                                                             rel="noopener noreferrer"
                                                             style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--primary-color)', fontSize: '0.75rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}
@@ -660,7 +660,7 @@ const AdminPanel: React.FC = () => {
                                                 Управление
                                             </button>
                                             <a 
-                                                href={`/client/${client.id}`} target="_blank" rel="noopener noreferrer"
+                                                href={`#/client/${client.id}`} target="_blank" rel="noopener noreferrer"
                                                 style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--primary-color)', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                             >
                                                 <ExternalLink size={18} />
