@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, MapPin, Ban, Clock, User, Settings, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -32,6 +32,41 @@ const ClientProfile: React.FC = () => {
     const [showPhotoModal, setShowPhotoModal] = useState(false);
 
     const [error, setError] = useState<string | null>(null);
+    const hasPlayedSound = useRef(false);
+
+    const playSuccessSound = () => {
+        try {
+            const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = context.createOscillator();
+            const gain = context.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, context.currentTime); // A5
+            osc.frequency.exponentialRampToValueAtTime(1320, context.currentTime + 0.1); 
+            gain.gain.setValueAtTime(0.1, context.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+            osc.connect(gain);
+            gain.connect(context.destination);
+            osc.start();
+            osc.stop(context.currentTime + 0.3);
+        } catch (e) { console.error("Audio error", e); }
+    };
+
+    const playErrorSound = () => {
+        try {
+            const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = context.createOscillator();
+            const gain = context.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(150, context.currentTime); 
+            osc.frequency.linearRampToValueAtTime(100, context.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.1, context.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, context.currentTime + 0.4);
+            osc.connect(gain);
+            gain.connect(context.destination);
+            osc.start();
+            osc.stop(context.currentTime + 0.4);
+        } catch (e) { console.error("Audio error", e); }
+    };
 
     useEffect(() => {
         if (!id) return;
@@ -39,9 +74,24 @@ const ClientProfile: React.FC = () => {
         // Listen to specific client in Firestore
         const unsubscribe = onSnapshot(doc(db, 'clients', id), (docSnap) => {
             if (docSnap.exists()) {
-                setClient({ id: docSnap.id, ...docSnap.data() } as Client);
+                const data = docSnap.data() as any;
+                const clientData: Client = { ...data, id: docSnap.id };
+                setClient(clientData);
+
+                // Play sound once based on status
+                if (!hasPlayedSound.current) {
+                    const isExpired = new Date(clientData.expiryDate) < new Date();
+                    const isInvalid = clientData.isCanceled || isExpired;
+                    if (isInvalid) playErrorSound();
+                    else playSuccessSound();
+                    hasPlayedSound.current = true;
+                }
             } else {
                 setClient(null);
+                if (!hasPlayedSound.current) {
+                    playErrorSound();
+                    hasPlayedSound.current = true;
+                }
             }
             setLoading(false);
         }, (err) => {
