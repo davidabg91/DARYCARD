@@ -4,41 +4,28 @@ import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.png';
 
 const LoginPage: React.FC = () => {
-    const { login, addUser } = useAuth();
+    const { login } = useAuth();
     const navigate = useNavigate();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const [isSignup, setIsSignup] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        setMessage(null);
         setLoading(true);
 
         try {
-            if (isSignup) {
-                await addUser(username.trim(), password, 'admin');
-                setMessage({ text: 'Профилът е създаден успешно! Сега влезете.', type: 'success' });
-                setIsSignup(false);
-            } else {
-                await login(username.trim(), password);
-                navigate('/admin');
-            }
+            await login(username.trim(), password);
+            navigate('/admin');
         } catch (err: unknown) {
             console.error(err);
             const error = err as { code?: string };
             if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
                 setError('Грешно потребителско име или парола.');
-            } else if (error.code === 'auth/email-already-in-use') {
-                setError('Този потребител вече съществува.');
-            } else if (error.code === 'auth/weak-password') {
-                setError('Паролата трябва да е поне 6 символа.');
             } else {
-                setError('Възникна грешка. Моля, опитайте пак.');
+                setError('Възникна грешка при вход. Моля, опитайте пак.');
             }
         } finally {
             setLoading(false);
@@ -58,12 +45,8 @@ const LoginPage: React.FC = () => {
                     </div>
                 </div>
 
-                <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem', fontWeight: 800 }}>
-                    {isSignup ? 'Нов Администратор' : 'Добре дошли'}
-                </h2>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                    {isSignup ? 'Създайте първия си облачен акаунт' : 'Влезте в системния панел'}
-                </p>
+                <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem', fontWeight: 800 }}>Добре дошли</h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>Влезте в системния панел</p>
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{ textAlign: 'left' }}>
@@ -113,27 +96,17 @@ const LoginPage: React.FC = () => {
                         </div>
                     )}
 
-                    {message && (
-                        <div style={{ padding: '0.75rem', background: 'rgba(0,200,83,0.1)', border: '1px solid rgba(0,200,83,0.2)', borderRadius: '8px', color: '#00c853', fontSize: '0.85rem' }}>
-                            {message.text}
-                        </div>
-                    )}
-
                     <button
                         type="submit"
                         disabled={loading}
                         style={{ width: '100%', padding: '1rem', borderRadius: '12px', background: 'var(--primary-color)', color: '#fff', border: 'none', fontWeight: 700, fontSize: '1rem', cursor: loading ? 'not-allowed' : 'pointer', marginTop: '0.5rem', boxShadow: '0 4px 15px rgba(0, 173, 181, 0.3)' }}
                     >
-                        {loading ? 'Зареждане...' : isSignup ? 'Регистрирай' : 'Вход'}
+                        {loading ? 'Зареждане...' : 'Вход'}
                     </button>
-
-                    <button
-                        type="button"
-                        onClick={() => { setIsSignup(!isSignup); setError(null); setMessage(null); }}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                        {isSignup ? 'Вече имате акаунт? Вход' : 'Нямате акаунт? Създайте първия админ'}
-                    </button>
+                    
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '1rem' }}>
+                        Система за сигурност Dary Travel © 2026
+                    </p>
                 </form>
             </div>
         </div>
