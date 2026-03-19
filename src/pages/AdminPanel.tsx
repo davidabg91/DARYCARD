@@ -100,6 +100,7 @@ const AdminPanel: React.FC = () => {
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [registrationSuccess, setRegistrationSuccess] = useState<Client | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
     const getDefaultExpiryMonth = () => {
@@ -188,7 +189,10 @@ const AdminPanel: React.FC = () => {
             const updatedClients = [...clients.filter(c => c.id !== client.id), client];
             localStorage.setItem('dary_clients', JSON.stringify(updatedClients));
             setClients(updatedClients);
-            setMessage({ text: `Успешно запазен профил: ${client.name}`, type: 'success' });
+            
+            // Set success view instead of simple message
+            setRegistrationSuccess(client);
+            
             setClientName(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null);
             setShowActionModal(false);
             setSelectedClient(null);
@@ -375,9 +379,18 @@ const AdminPanel: React.FC = () => {
             </div>
 
             <style>{`
-        @media (max-width: 600px) { .mobile-hide { display: none; } }
+        @media (max-width: 600px) { 
+            .mobile-hide { display: none; }
+            .desktop-table { display: none; }
+            .mobile-cards { display: grid !important; }
+        }
+        @media (min-width: 601px) {
+            .mobile-cards { display: none !important; }
+        }
         .stat-card { padding: 1.5rem; border-radius: 16px; min-height: 140px; }
         .table-container { overflow-x: auto; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--surface-border); }
+        .mobile-cards { display: none; grid-template-columns: 1fr; gap: 1rem; }
+        .client-card { background: rgba(255,255,255,0.03); border: 1px solid var(--surface-border); border-radius: 16px; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th, td { padding: 1rem; border-bottom: 1px solid var(--surface-border); }
         th { color: var(--text-secondary); font-weight: 500; }
@@ -511,93 +524,162 @@ const AdminPanel: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Клиент</th>
-                                    <th>Курс</th>
-                                    <th>Платено (€)</th>
-                                    <th>Статус за {filterMonth}</th>
-                                    <th>Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredClientsByFilters.length > 0 ? (
-                                    filteredClientsByFilters.map(client => {
-                                        const status = getClientStatusForMonth(client, filterMonth);
-                                        return (
-                                            <tr key={client.id}>
-                                                <td style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                    <img src={client.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
-                                                    <div>
-                                                        <div style={{ fontWeight: 600 }}>{client.name}</div>
-                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{client.id}</div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span style={{ 
-                                                        fontSize: '0.75rem', 
-                                                        fontWeight: 700, 
-                                                        color: getRouteColor(client.route),
-                                                        padding: '0.2rem 0.6rem',
-                                                        borderRadius: '6px',
-                                                        background: 'rgba(255,255,255,0.03)',
-                                                        border: `1px solid ${getRouteColor(client.route)}`
-                                                    }}>
-                                                        {client.route}
-                                                    </span>
-                                                </td>
-                                                <td style={{ fontWeight: 700, color: getMonthPayment(client, filterMonth) > 0 ? 'var(--success-color)' : 'var(--text-secondary)' }}>
-                                                    {getMonthPayment(client, filterMonth)} €
-                                                </td>
-                                                <td>
-                                                    <span style={{
-                                                        padding: '0.25rem 0.75rem', borderRadius: '50px', fontSize: '0.75rem',
-                                                        background: status === 'Анулиран' || status === 'Неактивен' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
-                                                        color: status === 'Анулиран' || status === 'Неактивен' ? '#ff4040' : 'var(--success-color)',
-                                                        fontWeight: 700
-                                                    }}>
-                                                        {status}
-                                                    </span>
-                                                </td>
-                                                <td style={{ display: 'flex', gap: '0.5rem' }}>
-                                                    <button
-                                                        onClick={() => { setSelectedClient(client); setShowActionModal(true); }}
-                                                        style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.75rem', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', color: '#fff' }}
-                                                    >
-                                                        Управление
-                                                    </button>
-                                                    {isAdmin && (
-                                                        <button
-                                                            onClick={() => handleDeleteClient(client.id, client.name)}
-                                                            style={{ padding: '0.4rem', color: 'var(--error-color)', borderRadius: '6px', border: '1px solid rgba(255,0,0,0.2)', cursor: 'pointer', background: 'rgba(255,0,0,0.05)', display: 'flex', alignItems: 'center' }}
-                                                            title="Изтрий Постоянно"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    )}
-                                                    <a 
-                                                        href={`/client/${client.id}`} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer"
-                                                        style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--primary-color)', fontSize: '0.75rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}
-                                                    >
-                                                        <ExternalLink size={14} /> Виж
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                ) : (
+                    <div className="desktop-table">
+                        <div className="table-container">
+                            <table>
+                                <thead>
                                     <tr>
-                                        <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                                            Няма намерени клиенти по този критерий.
-                                        </td>
+                                        <th>Клиент</th>
+                                        <th>Курс</th>
+                                        <th>Платено (€)</th>
+                                        <th>Статус за {filterMonth}</th>
+                                        <th>Действия</th>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {filteredClientsByFilters.length > 0 ? (
+                                        filteredClientsByFilters.map(client => {
+                                            const status = getClientStatusForMonth(client, filterMonth);
+                                            return (
+                                                <tr key={client.id}>
+                                                    <td style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                        <img src={client.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                        <div>
+                                                            <div style={{ fontWeight: 600 }}>{client.name}</div>
+                                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{client.id}</div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span style={{ 
+                                                            fontSize: '0.75rem', 
+                                                            fontWeight: 700, 
+                                                            color: getRouteColor(client.route),
+                                                            padding: '0.2rem 0.6rem',
+                                                            borderRadius: '6px',
+                                                            background: 'rgba(255,255,255,0.03)',
+                                                            border: `1px solid ${getRouteColor(client.route)}`
+                                                        }}>
+                                                            {client.route}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ fontWeight: 700, color: getMonthPayment(client, filterMonth) > 0 ? 'var(--success-color)' : 'var(--text-secondary)' }}>
+                                                        {getMonthPayment(client, filterMonth)} €
+                                                    </td>
+                                                    <td>
+                                                        <span style={{
+                                                            padding: '0.25rem 0.75rem', borderRadius: '50px', fontSize: '0.75rem',
+                                                            background: status === 'Анулиран' || status === 'Неактивен' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
+                                                            color: status === 'Анулиран' || status === 'Неактивен' ? '#ff4040' : 'var(--success-color)',
+                                                            fontWeight: 700
+                                                        }}>
+                                                            {status}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <button
+                                                            onClick={() => { setSelectedClient(client); setShowActionModal(true); }}
+                                                            style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.75rem', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', color: '#fff' }}
+                                                        >
+                                                            Управление
+                                                        </button>
+                                                        {isAdmin && (
+                                                            <button
+                                                                onClick={() => handleDeleteClient(client.id, client.name)}
+                                                                style={{ padding: '0.4rem', color: 'var(--error-color)', borderRadius: '6px', border: '1px solid rgba(255,0,0,0.2)', cursor: 'pointer', background: 'rgba(255,0,0,0.05)', display: 'flex', alignItems: 'center' }}
+                                                                title="Изтрий Постоянно"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
+                                                        <a 
+                                                            href={`/client/${client.id}`} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--primary-color)', fontSize: '0.75rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}
+                                                        >
+                                                            <ExternalLink size={14} /> Виж
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                Няма намерени клиенти по този критерий.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="mobile-cards">
+                        {filteredClientsByFilters.length > 0 ? (
+                            filteredClientsByFilters.map(client => {
+                                const status = getClientStatusForMonth(client, filterMonth);
+                                const isMonthPaid = getMonthPayment(client, filterMonth) > 0;
+                                return (
+                                    <div key={client.id} className="client-card">
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                                <img src={client.photo} style={{ width: '50px', height: '50px', borderRadius: '12px', objectFit: 'cover' }} />
+                                                <div>
+                                                    <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{client.name}</div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>ID: {client.id}</div>
+                                                </div>
+                                            </div>
+                                            <span style={{ 
+                                                fontSize: '0.7rem', fontWeight: 700, color: getRouteColor(client.route),
+                                                padding: '0.2rem 0.6rem', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${getRouteColor(client.route)}`
+                                            }}>
+                                                {client.route}
+                                            </span>
+                                        </div>
+                                        
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '10px' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.1rem' }}>Платено {filterMonth}</div>
+                                                <div style={{ fontWeight: 700, color: isMonthPaid ? 'var(--success-color)' : 'var(--text-secondary)' }}>{getMonthPayment(client, filterMonth)} €</div>
+                                            </div>
+                                            <span style={{
+                                                padding: '0.2rem 0.6rem', borderRadius: '50px', fontSize: '0.7rem', fontWeight: 700,
+                                                background: status === 'Анулиран' || status === 'Неактивен' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
+                                                color: status === 'Анулиран' || status === 'Неактивен' ? '#ff4040' : 'var(--success-color)'
+                                            }}>
+                                                {status}
+                                            </span>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => { setSelectedClient(client); setShowActionModal(true); }}
+                                                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--surface-border)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', background: 'var(--primary-color)', color: '#fff' }}
+                                            >
+                                                Управление
+                                            </button>
+                                            <a 
+                                                href={`/client/${client.id}`} target="_blank" rel="noopener noreferrer"
+                                                style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--primary-color)', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            >
+                                                <ExternalLink size={18} />
+                                            </a>
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={() => handleDeleteClient(client.id, client.name)}
+                                                    style={{ padding: '0.7rem', color: 'var(--error-color)', borderRadius: '8px', border: '1px solid rgba(255,0,0,0.2)', background: 'rgba(255,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Няма намерени клиенти.</div>
+                        )}
                     </div>
                 </div>
             )}
@@ -607,70 +689,124 @@ const AdminPanel: React.FC = () => {
                     <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#00c853', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <PlusCircle size={24} /> ДОБАВЯНЕ НА КАРТА
                     </h2>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                    <Card style={{ padding: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h3 style={{ margin: 0 }}>Снимка на Клиента</h3>
-                        </div>
-
-                        {!photoDataURL && (
-                            <div style={{ width: '100%', aspectRatio: '1', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', border: '2px dashed var(--surface-border)' }}>
-                                <PlusCircle size={40} color="var(--primary-color)" style={{ marginBottom: '1rem', opacity: 0.6 }} />
-                                <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.8rem 1.5rem', borderRadius: '50px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Camera size={18} /> Направи Снимка
+                    
+                    {registrationSuccess ? (
+                        <Card style={{ 
+                            padding: '3rem 2rem', 
+                            textAlign: 'center', 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center', 
+                            gap: '1.5rem',
+                            border: '2px solid rgba(0, 200, 83, 0.3)',
+                            background: 'linear-gradient(135deg, rgba(0, 200, 83, 0.05) 0%, rgba(0, 0, 0, 0) 100%)'
+                        }}>
+                            <div style={{ 
+                                width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(0, 200, 83, 0.1)', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00c853',
+                                marginBottom: '0.5rem', boxShadow: '0 0 20px rgba(0, 200, 83, 0.2)'
+                            }}>
+                                <ShieldCheck size={48} />
+                            </div>
+                            
+                            <div>
+                                <h3 style={{ fontSize: '1.75rem', marginBottom: '0.5rem', color: '#00c853' }}>Успешно създадена карта!</h3>
+                                <p style={{ color: 'var(--text-secondary)' }}>Картата на <b>{registrationSuccess.name}</b> за курс <b>{registrationSuccess.route}</b> е готова.</p>
+                                <div style={{ marginTop: '1rem', padding: '0.6rem 1.2rem', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', display: 'inline-block', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.1em', fontSize: '1.1rem', color: 'var(--primary-color)' }}>
+                                    ID: {registrationSuccess.id}
+                                </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '1rem' }}>
+                                <button 
+                                    onClick={() => setRegistrationSuccess(null)}
+                                    style={{ 
+                                        padding: '1rem 2rem', borderRadius: '50px', background: '#00c853', color: '#fff', 
+                                        fontWeight: 700, fontSize: '1rem', cursor: 'pointer', border: 'none',
+                                        display: 'flex', alignItems: 'center', gap: '0.75rem', boxShadow: '0 4px 15px rgba(0, 200, 83, 0.3)'
+                                    }}
+                                >
+                                    <PlusCircle size={20} /> Добави нова карта
                                 </button>
-                                <p style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>или изберете файл от галерията</p>
-                                <p style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>Макс. 10MB (Samsung Galaxy/iPhone OK)</p>
-                                <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    capture="environment"
-                                    ref={fileInputRef} 
-                                    style={{ display: 'none' }} 
-                                    onChange={handleFileUpload} 
-                                />
+                                <button 
+                                    onClick={() => { setRegistrationSuccess(null); setActiveTab('clients'); }}
+                                    style={{ 
+                                        padding: '1rem 2rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', color: '#fff', 
+                                        fontWeight: 700, fontSize: '1rem', cursor: 'pointer', border: '1px solid var(--surface-border)',
+                                        display: 'flex', alignItems: 'center', gap: '0.75rem'
+                                    }}
+                                >
+                                    <Users size={20} /> Виж всички карти
+                                </button>
                             </div>
-                        )}
-                        
-                        {photoDataURL && (
-                            <div style={{ position: 'relative' }}>
-                                <img src={photoDataURL} style={{ width: '100%', aspectRatio: '1', borderRadius: '16px', objectFit: 'cover', border: '2px solid var(--primary-color)' }} />
-                                <button type="button" onClick={retakePhoto} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8rem', backdropFilter: 'blur(4px)', fontWeight: 600 }}>Нова Снимка</button>
-                            </div>
-                        )}
-                        
-                        {photoError && <div style={{ marginTop: '1rem', color: 'var(--error-color)', fontSize: '0.85rem', textAlign: 'center', background: 'rgba(255,0,0,0.1)', padding: '0.5rem', borderRadius: '8px' }}>{photoError}</div>}
-                    </Card>
-                    <Card>
-                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Име</label>
-                                <input type="text" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} value={clientName} onChange={e => setClientName(e.target.value)} required />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Курс (Маршрут)</label>
-                                <select style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }} value={selectedRoute} onChange={e => setSelectedRoute(e.target.value)} required>
-                                    <option value="" disabled>-- Изберете Маршрут --</option>
-                                    {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
-                                </select>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Сума (€)</label>
-                                    <input type="number" step="0.01" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} value={amountPaid} onChange={e => setAmountPaid(e.target.value)} required />
+                        </Card>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                            <Card style={{ padding: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h3 style={{ margin: 0 }}>Снимка на Клиента</h3>
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Месец</label>
-                                    <input type="month" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', colorScheme: 'dark' }} value={expiryDate} onChange={e => setExpiryDate(e.target.value)} required />
-                                </div>
-                            </div>
-                            {message && <div style={{ color: message.type === 'success' ? 'var(--success-color)' : 'var(--error-color)' }}>{message.text}</div>}
-                            <button type="submit" style={{ background: 'var(--primary-color)', color: 'white', padding: '1rem', borderRadius: '8px', fontWeight: 600, display: 'flex', justifyContent: 'center', gap: '0.5rem' }}><Save size={20} /> Запази</button>
-                        </form>
-                    </Card>
+
+                                {!photoDataURL && (
+                                    <div style={{ width: '100%', aspectRatio: '1', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', border: '2px dashed var(--surface-border)' }}>
+                                        <PlusCircle size={40} color="var(--primary-color)" style={{ marginBottom: '1rem', opacity: 0.6 }} />
+                                        <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.8rem 1.5rem', borderRadius: '50px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Camera size={18} /> Направи Снимка
+                                        </button>
+                                        <p style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>или изберете файл от галерията</p>
+                                        <p style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>Макс. 10MB (Samsung Galaxy/iPhone OK)</p>
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            capture="environment"
+                                            ref={fileInputRef} 
+                                            style={{ display: 'none' }} 
+                                            onChange={handleFileUpload} 
+                                        />
+                                    </div>
+                                )}
+                                
+                                {photoDataURL && (
+                                    <div style={{ position: 'relative' }}>
+                                        <img src={photoDataURL} style={{ width: '100%', aspectRatio: '1', borderRadius: '16px', objectFit: 'cover', border: '2px solid var(--primary-color)' }} />
+                                        <button type="button" onClick={retakePhoto} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8rem', backdropFilter: 'blur(4px)', fontWeight: 600 }}>Нова Снимка</button>
+                                    </div>
+                                )}
+                                
+                                {photoError && <div style={{ marginTop: '1rem', color: 'var(--error-color)', fontSize: '0.85rem', textAlign: 'center', background: 'rgba(255,0,0,0.1)', padding: '0.5rem', borderRadius: '8px' }}>{photoError}</div>}
+                            </Card>
+                            <Card>
+                                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Име</label>
+                                        <input type="text" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} value={clientName} onChange={e => setClientName(e.target.value)} required />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Курс (Маршрут)</label>
+                                        <select style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }} value={selectedRoute} onChange={e => setSelectedRoute(e.target.value)} required>
+                                            <option value="" disabled>-- Изберете Маршрут --</option>
+                                            {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Сума (€)</label>
+                                            <input type="number" step="0.01" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} value={amountPaid} onChange={e => setAmountPaid(e.target.value)} required />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Месец</label>
+                                            <input type="month" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', colorScheme: 'dark' }} value={expiryDate} onChange={e => setExpiryDate(e.target.value)} required />
+                                        </div>
+                                    </div>
+                                    {message && <div style={{ color: message.type === 'success' ? 'var(--success-color)' : 'var(--error-color)' }}>{message.text}</div>}
+                                    <button type="submit" style={{ background: 'var(--primary-color)', color: 'white', padding: '1rem', borderRadius: '8px', fontWeight: 600, display: 'flex', justifyContent: 'center', gap: '0.5rem' }}><Save size={20} /> Запази</button>
+                                </form>
+                            </Card>
+                        </div>
+                    )}
                 </div>
-            </div>
             )}
+
 
             {/* Action Modal */}
             {showActionModal && selectedClient && (
