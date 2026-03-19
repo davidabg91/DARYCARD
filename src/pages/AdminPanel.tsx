@@ -116,6 +116,8 @@ const AdminPanel: React.FC = () => {
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [isSyncing, setIsSyncing] = useState(true);
+    const [syncError, setSyncError] = useState<string | null>(null);
     const [registrationSuccess, setRegistrationSuccess] = useState<Client | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -130,6 +132,8 @@ const AdminPanel: React.FC = () => {
                 clientList.push({ id: doc.id, ...doc.data() } as Client);
             });
             setClients(clientList);
+            setIsSyncing(false);
+            setSyncError(null);
 
             // Check for edit param in URL after clients are loaded
             const params = new URLSearchParams(location.search);
@@ -142,6 +146,11 @@ const AdminPanel: React.FC = () => {
                     setActiveTab('clients');
                 }
             }
+        }, (err) => {
+            console.error("Firestore error:", err);
+            setSyncError(err.message);
+            setIsSyncing(false);
+            setMessage({ text: 'Грешка при синхронизация: ' + err.message, type: 'error' });
         });
 
         // 2. Data Migration from LocalStorage (one-time)
@@ -392,9 +401,21 @@ const AdminPanel: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                     <h2 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Управление на Карти</h2>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                        {isAdmin ? <ShieldCheck size={14} color="#ff5252" /> : <Shield size={14} color="var(--primary-color)" />}
-                        {isAdmin ? 'Администратор' : 'Модератор'} — {currentUser?.username}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                            {isAdmin ? <ShieldCheck size={14} color="#ff5252" /> : <Shield size={14} color="var(--primary-color)" />}
+                            {isAdmin ? 'Администратор' : 'Модератор'} — {currentUser?.username}
+                        </div>
+                        <div style={{ 
+                            display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', 
+                            padding: '2px 8px', borderRadius: '50px', 
+                            background: syncError ? 'rgba(255,82,82,0.1)' : 'rgba(0,173,181,0.1)',
+                            color: syncError ? '#ff5252' : 'var(--primary-color)',
+                            border: `1px solid ${syncError ? 'rgba(255,82,82,0.2)' : 'rgba(0,173,181,0.2)'}`
+                        }}>
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: syncError ? '#ff5252' : 'var(--primary-color)', animation: isSyncing ? 'pulse 1.5s infinite' : 'none' }} />
+                            {isSyncing ? 'Синхронизиране...' : syncError ? 'Грешка в Облака' : 'Облак: Свързан'}
+                        </div>
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -424,6 +445,11 @@ const AdminPanel: React.FC = () => {
         .modal-content { background: var(--bg-color); border: 1px solid var(--surface-border); border-radius: 20px; width: 100%; maxWidth: 500px; padding: 2rem; position: relative; }
         .route-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.05); overflow: hidden; }
         .route-fill { height: 100%; background: var(--primary-color); transition: width 0.5s ease; }
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
       `}</style>
 
             {activeTab === 'dashboard' && (
@@ -618,7 +644,7 @@ const AdminPanel: React.FC = () => {
                                                             </button>
                                                         )}
                                                         <a 
-                                                            href={`#/client/${client.id}`} 
+                                                            href={`${import.meta.env.BASE_URL}#/client/${client.id}`} 
                                                             target="_blank" 
                                                             rel="noopener noreferrer"
                                                             style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--primary-color)', fontSize: '0.75rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}

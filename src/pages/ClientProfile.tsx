@@ -31,9 +31,14 @@ const ClientProfile: React.FC = () => {
     const [renewMonth, setRenewMonth] = useState<string>('');
     const [showPhotoModal, setShowPhotoModal] = useState(false);
 
+    const [error, setError] = useState<string | null>(null);
+
     useEffect(() => {
         if (!id) return;
         
+        setError(null);
+        setLoading(true);
+
         // Listen to specific client in Firestore
         const unsubscribe = onSnapshot(doc(db, 'clients', id), (docSnap) => {
             if (docSnap.exists()) {
@@ -42,10 +47,51 @@ const ClientProfile: React.FC = () => {
                 setClient(null);
             }
             setLoading(false);
+        }, (err) => {
+            console.error("Firestore error:", err);
+            setError(err.message);
+            setLoading(false);
         });
 
         return () => unsubscribe();
     }, [id]);
+
+    if (loading) {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', color: '#fff' }}>
+                <div style={{ textAlign: 'center' }}>
+                    <RefreshCw className="spin" size={48} color="var(--primary-color)" />
+                    <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Зареждане на данни...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', color: '#fff', padding: '1rem' }}>
+                <div style={{ textAlign: 'center', maxWidth: '400px', width: '100%' }}>
+                    <Ban size={64} color="var(--error-color)" style={{ marginBottom: '1.5rem' }} />
+                    <h2 style={{ marginBottom: '1rem' }}>Грешка при зареждане</h2>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>{error}</p>
+                    <Link to="/" style={{ padding: '0.8rem 2rem', background: 'var(--primary-color)', color: '#fff', borderRadius: '50px', textDecoration: 'none', fontWeight: 600 }}>Към Начало</Link>
+                </div>
+            </div>
+        );
+    }
+
+    if (!client) {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', color: '#fff', padding: '1rem' }}>
+                <div style={{ textAlign: 'center', maxWidth: '400px', width: '100%' }}>
+                    <XCircle size={64} color="var(--error-color)" style={{ marginBottom: '1.5rem' }} />
+                    <h2 style={{ marginBottom: '1rem' }}>Картата не е намерена</h2>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>ID: {id}</p>
+                    <Link to="/" style={{ padding: '0.8rem 2rem', background: 'var(--primary-color)', color: '#fff', borderRadius: '50px', textDecoration: 'none', fontWeight: 600 }}>Към Начало</Link>
+                </div>
+            </div>
+        );
+    }
 
     const getQuickRenewSummary = () => {
         const now = new Date();
