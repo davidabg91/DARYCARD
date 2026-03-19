@@ -148,3 +148,22 @@ main {
 .mobile-menu {
     box-shadow: -10px 0 30px rgba(0,0,0,0.5);
 }
+
+.mobile-nav-link {
+    display: block;
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-primary);
+    font-weight: 600;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.mobile-nav-link:active {
+    background: rgba(255,255,255,0.1);
+    transform: scale(0.98);
+}
