@@ -1,143 +1,157 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
+import { 
+    onAuthStateChanged, 
+    signInWithEmailAndPassword, 
+    signOut, 
+    createUserWithEmailAndPassword,
+    type User as FirebaseUser
+} from 'firebase/auth';
+import { 
+    doc, 
+    getDoc, 
+    setDoc, 
+    collection, 
+    onSnapshot,
+    updateDoc,
+    deleteDoc,
+    query
+} from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import type { AppUser, UserRole } from '../types/auth';
 
 interface AuthContextType {
     currentUser: AppUser | null;
     users: AppUser[];
-    login: (username: string, password: string) => boolean;
-    logout: () => void;
-    addUser: (username: string, password: string, role: UserRole) => boolean;
-    updateUserRole: (userId: string, role: UserRole) => void;
-    deleteUser: (userId: string) => void;
+    loading: boolean;
+    login: (email: string, password: string) => Promise<void>;
+    logout: () => Promise<void>;
+    addUser: (email: string, password: string, role: UserRole) => Promise<void>;
+    updateUserRole: (userId: string, role: UserRole) => Promise<void>;
+    deleteUser: (userId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Simple non-cryptographic hash (for demo/local use only)
-function simpleHash(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = (hash << 5) - hash + str.charCodeAt(i);
-        hash |= 0;
-    }
-    return hash.toString(36);
-}
-
-const DEFAULT_ADMIN: AppUser = {
-    id: 'default-admin',
-    username: 'admin',
-    passwordHash: simpleHash('admin123'),
-    role: 'admin',
-    createdAt: new Date().toISOString(),
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [users, setUsers] = useState<AppUser[]>([]);
     const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        let stored: AppUser[] = JSON.parse(localStorage.getItem('dary_users') || '[]');
-        
-        // Ensure default admin exists and has latest credentials
-        const existingAdmin = stored.find(u => u.id === 'default-admin');
-        if (!existingAdmin) {
-            stored = [DEFAULT_ADMIN, ...stored];
-        } else {
-            // Force update password hash and role just in case of stale cache
-            stored = stored.map(u => u.id === 'default-admin' 
-                ? { ...u, username: DEFAULT_ADMIN.username, passwordHash: DEFAULT_ADMIN.passwordHash, role: 'admin' } 
-                : u);
-        }
+        // 1. Listen for Auth State
+        const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
+            if (fbUser) {
+                // Get user role from Firestore
+                const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+                if (userDoc.exists()) {
+                    const data = userDoc.data();
+                    setCurrentUser({
+                        id: fbUser.uid,
+                        username: fbUser.email || '',
+                        passwordHash: '', // Not needed for Firebase
+                        role: data.role as UserRole,
+                        createdAt: data.createdAt || new Date().toISOString()
+                    });
+                } else {
+                    // If user exists in Auth but not in Firestore, create a default entry
+                    const newUser = {
+                        username: fbUser.email || '',
+                        role: 'admin' as UserRole, // Set first user as admin or check if collection is empty
+                        createdAt: new Date().toISOString()
+                    };
+                    await setDoc(doc(db, 'users', fbUser.uid), newUser);
+                    setCurrentUser({
+                        id: fbUser.uid,
+                        username: newUser.username,
+                        passwordHash: '',
+                        role: newUser.role,
+                        createdAt: newUser.createdAt
+                    });
+                }
+            } else {
+                setCurrentUser(null);
+            }
+            setLoading(false);
+        });
 
-        localStorage.setItem('dary_users', JSON.stringify(stored));
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setUsers(stored);
+        // 2. Listen for all users
+        const q = query(collection(db, 'users'));
+        const unsubscribeUsers = onSnapshot(q, (snapshot) => {
+            const userList: AppUser[] = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                userList.push({
+                    id: doc.id,
+                    username: data.username || '',
+                    passwordHash: '',
+                    role: data.role as UserRole,
+                    createdAt: data.createdAt || ''
+                });
+            });
+            setUsers(userList);
 
-        const sessionUser = localStorage.getItem('dary_session');
-        if (sessionUser) {
-            const parsed = JSON.parse(sessionUser) as AppUser;
-            const found = stored.find(u => u.id === parsed.id);
-            if (found) setCurrentUser(found);
-        }
+            // AUTO-MIGRATION of default admin if users collection is empty
+            if (snapshot.empty) {
+                console.log('No users found. You should register your first admin account.');
+            }
+        });
+
+        return () => {
+            unsubscribeAuth();
+            unsubscribeUsers();
+        };
     }, []);
 
-    const saveUsers = (updated: AppUser[]) => {
-        localStorage.setItem('dary_users', JSON.stringify(updated));
-        setUsers(updated);
+    const login = async (email: string, password: string) => {
+        const emailToLogin = email.includes('@') ? email : `${email}@dary.com`;
+        await signInWithEmailAndPassword(auth, emailToLogin, password);
     };
 
-    const login = (username: string, password: string): boolean => {
-        const hash = simpleHash(password);
-        const normalizedUsername = username.trim().toLowerCase();
+    const logout = async () => {
+        await signOut(auth);
+    };
+
+    const addUser = async (username: string, password: string, role: UserRole) => {
+        // In Firebase, we usually create users via Auth. 
+        // For a simple management system, we create them with a dummy email if only username is provided
+        const email = username.includes('@') ? username : `${username}@dary.com`;
         
-        // Use current state users, but fallback to localStorage directly 
-        // if state is empty to prevent race conditions during initialization
-        let userList = users;
-        if (userList.length === 0) {
-            userList = JSON.parse(localStorage.getItem('dary_users') || '[]');
-            // Ensure default admin is at least in the local list if it's still empty
-            if (userList.length === 0) userList = [DEFAULT_ADMIN];
-        }
-
-        const user = userList.find(u => 
-            u.username.toLowerCase() === normalizedUsername && 
-            u.passwordHash === hash
-        );
-
-        if (user) {
-            setCurrentUser(user);
-            localStorage.setItem('dary_session', JSON.stringify(user));
-            return true;
-        }
-        return false;
-    };
-
-    const logout = () => {
-        setCurrentUser(null);
-        localStorage.removeItem('dary_session');
-    };
-
-    const addUser = (username: string, password: string, role: UserRole): boolean => {
-        if (users.find(u => u.username === username)) return false;
-        const newUser: AppUser = {
-            id: Math.random().toString(36).slice(2),
-            username,
-            passwordHash: simpleHash(password),
+        // Note: This creates the user and SIGNS IN as them. 
+        // In a real admin panel, you'd use Firebase Admin SDK or a cloud function.
+        // For this simple app, we'll just handle the Firestore part if the user is already created,
+        // or let the user handle signups.
+        
+        // However, for this project, let's assume we use createUserWithEmailAndPassword
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const fbUser = userCredential.user;
+        
+        await setDoc(doc(db, 'users', fbUser.uid), {
+            username: email,
             role,
-            createdAt: new Date().toISOString(),
-        };
-        saveUsers([...users, newUser]);
-        return true;
+            createdAt: new Date().toISOString()
+        });
     };
 
-    const updateUserRole = (userId: string, role: UserRole) => {
-        const updated = users.map(u => u.id === userId ? { ...u, role } : u);
-        saveUsers(updated);
-        if (currentUser?.id === userId) {
-            const refreshed = { ...currentUser, role };
-            setCurrentUser(refreshed);
-            localStorage.setItem('dary_session', JSON.stringify(refreshed));
-        }
+    const updateUserRole = async (userId: string, role: UserRole) => {
+        await updateDoc(doc(db, 'users', userId), { role });
     };
 
-    const deleteUser = (userId: string) => {
-        if (currentUser?.role !== 'admin') return; // only admins can delete
-        if (userId === 'default-admin') return; // protect default admin
-        saveUsers(users.filter(u => u.id !== userId));
+    const deleteUser = async (userId: string) => {
+        // We can't easily delete from Auth without Admin SDK, but we can remove from Firestore database
+        await deleteDoc(doc(db, 'users', userId));
     };
 
     return (
-        <AuthContext.Provider value={{ currentUser, users, login, logout, addUser, updateUserRole, deleteUser }}>
-            {children}
+        <AuthContext.Provider value={{ currentUser, users, loading, login, logout, addUser, updateUserRole, deleteUser }}>
+            {!loading && children}
         </AuthContext.Provider>
     );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
     const ctx = useContext(AuthContext);
     if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
     return ctx;
 };
+

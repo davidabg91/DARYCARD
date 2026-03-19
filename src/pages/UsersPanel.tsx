@@ -21,20 +21,30 @@ const UsersPanel: React.FC = () => {
     const [newRole, setNewRole] = useState<UserRole>('moderator');
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+    const [loading, setLoading] = useState(false);
+
     const showMsg = (text: string, type: 'success' | 'error') => {
         setMessage({ text, type });
         setTimeout(() => setMessage(null), 3000);
     };
 
-    const handleAdd = (e: React.FormEvent) => {
+    const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newUsername.trim() || !newPassword.trim()) return;
-        const ok = addUser(newUsername.trim(), newPassword, newRole);
-        if (ok) {
+        setLoading(true);
+        try {
+            await addUser(newUsername.trim(), newPassword, newRole);
             showMsg(`Потребител "${newUsername}" е създаден.`, 'success');
             setNewUsername(''); setNewPassword('');
-        } else {
-            showMsg('Потребителското име вече съществува.', 'error');
+        } catch (err: any) {
+            console.error(err);
+            if (err.code === 'auth/email-already-in-use') {
+                showMsg('Потребителското име вече съществува.', 'error');
+            } else {
+                showMsg('Грешка при създаване на потребител.', 'error');
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -81,18 +91,19 @@ const UsersPanel: React.FC = () => {
                             <option value="admin">Администратор</option>
                         </select>
                     </div>
-                    <button type="submit" style={{ 
+                    <button type="submit" disabled={loading} style={{ 
                         padding: '0.8rem 1.5rem', 
-                        background: 'var(--primary-color)', 
+                        background: loading ? 'rgba(0,173,181,0.5)' : 'var(--primary-color)', 
                         color: '#fff', 
                         borderRadius: '10px', 
                         fontWeight: 700, 
-                        cursor: 'pointer', 
+                        cursor: loading ? 'not-allowed' : 'pointer', 
                         whiteSpace: 'nowrap',
                         height: 'fit-content',
-                        marginTop: '0.5rem'
+                        marginTop: '0.5rem',
+                        border: 'none'
                     }}>
-                        Добави
+                        {loading ? 'Добавяне...' : 'Добави'}
                     </button>
                 </form>
                 {message && (

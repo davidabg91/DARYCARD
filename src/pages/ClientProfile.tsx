@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, MapPin, Ban, Clock, User, Settings, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { db } from '../firebase';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 interface Client {
     id: string;
@@ -30,11 +32,19 @@ const ClientProfile: React.FC = () => {
     const [showPhotoModal, setShowPhotoModal] = useState(false);
 
     useEffect(() => {
-        const clients: Client[] = JSON.parse(localStorage.getItem('dary_clients') || '[]');
-        const found = clients.find(c => c.id === id);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setClient(found || null);
-        setLoading(false);
+        if (!id) return;
+        
+        // Listen to specific client in Firestore
+        const unsubscribe = onSnapshot(doc(db, 'clients', id), (docSnap) => {
+            if (docSnap.exists()) {
+                setClient({ id: docSnap.id, ...docSnap.data() } as Client);
+            } else {
+                setClient(null);
+            }
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, [id]);
 
     const getQuickRenewSummary = () => {
@@ -75,7 +85,7 @@ const ClientProfile: React.FC = () => {
         setShowRenewConfirm(true);
     };
 
-    const handleConfirmRenew = () => {
+    const handleConfirmRenew = async () => {
         if (!client) return;
         setRenewError(null);
 
@@ -91,32 +101,29 @@ const ClientProfile: React.FC = () => {
                 setRenewError('Моля, изберете месец.');
                 return;
             }
-            const clients: Client[] = JSON.parse(localStorage.getItem('dary_clients') || '[]');
             
-            const updatedClients = clients.map(c => {
-                if (c.id === client.id) {
-                    const history = c.history || [];
-                    const renewalHistory = c.renewalHistory || [];
-                    return {
-                        ...c,
-                        expiryDate: targetMonth,
-                        amountPaid: (c.amountPaid || 0) + amount,
-                        renewalHistory: [...renewalHistory, { date: new Date().toISOString(), amount, month: targetMonth }],
-                        history: [...history, {
-                            date: new Date().toISOString(),
-                            action: 'Бързо Подновяване',
-                            details: `Месец: ${targetMonth}`,
-                            amount
-                        }]
-                    };
-                }
-                return c;
-            });
+            const history = client.history || [];
+            const renewalHistory = client.renewalHistory || [];
+            
+            const updatedClient = {
+                ...client,
+                expiryDate: targetMonth,
+                amountPaid: (client.amountPaid || 0) + amount,
+                isCanceled: false,
+                cancelReason: "",
+                renewalHistory: [...renewalHistory, { date: new Date().toISOString(), amount, month: targetMonth }],
+                history: [...history, {
+                    date: new Date().toISOString(),
+                    action: 'Бързо Подновяване (Профил)',
+                    details: `Месец: ${targetMonth}`,
+                    amount
+                }]
+            };
 
-            localStorage.setItem('dary_clients', JSON.stringify(updatedClients));
-            setClient(updatedClients.find(c => c.id === client.id) || null);
+            await setDoc(doc(db, 'clients', client.id), updatedClient);
             setShowRenewConfirm(false);
-        } catch {
+        } catch (err) {
+            console.error(err);
             setRenewError('Грешка при записване. Моля, опитайте пак.');
         }
     };

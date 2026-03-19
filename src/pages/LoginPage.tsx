@@ -11,19 +11,25 @@ const LoginPage: React.FC = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError('');
-        setTimeout(() => {
-            const ok = login(username, password);
-            if (ok) {
-                navigate('/admin');
-            } else {
+        try {
+            await login(username, password);
+            navigate('/admin');
+        } catch (err: any) {
+            console.error(err);
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
                 setError('Грешно потребителско име или парола.');
+            } else if (err.code === 'auth/invalid-email') {
+                setError('Невалиден формат на потребителско име.');
+            } else {
+                setError('Възникна грешка при влизане. Моля, опитайте пак.');
             }
+        } finally {
             setLoading(false);
-        }, 400);
+        }
     };
 
     return (

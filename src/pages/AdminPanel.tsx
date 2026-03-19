@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Camera, Save, RefreshCw, BarChart, Users, PlusCircle, XCircle, DollarSign, List, Trash2, Eye, EyeOff, ShieldCheck, Shield, Clock, ExternalLink, TrendingUp, Percent, PiggyBank } from 'lucide-react';
 import Card from '../components/Card';
+import { db } from '../firebase';
+import { collection, onSnapshot, query, setDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
 interface ClientLog {
@@ -118,24 +120,46 @@ const AdminPanel: React.FC = () => {
     };
 
     useEffect(() => {
-        const loadedClients = JSON.parse(localStorage.getItem('dary_clients') || '[]');
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setClients(loadedClients);
+        // 1. Listen for Clients in Real-time
+        const q = query(collection(db, 'clients'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const clientList: Client[] = [];
+            snapshot.forEach((doc) => {
+                clientList.push({ id: doc.id, ...doc.data() } as Client);
+            });
+            setClients(clientList);
+
+            // Check for edit param in URL after clients are loaded
+            const params = new URLSearchParams(location.search);
+            const editId = params.get('edit');
+            if (editId) {
+                const clientToEdit = clientList.find((c: Client) => c.id === editId);
+                if (clientToEdit) {
+                    setSelectedClient(clientToEdit);
+                    setShowActionModal(true);
+                    setActiveTab('clients');
+                }
+            }
+        });
+
+        // 2. Data Migration from LocalStorage (one-time)
+        const migrateData = async () => {
+            const localClients = JSON.parse(localStorage.getItem('dary_clients') || '[]');
+            if (localClients.length > 0) {
+                console.log('Migrating local clients to Firestore...');
+                for (const client of localClients) {
+                    await setDoc(doc(db, 'clients', client.id), client);
+                }
+                localStorage.removeItem('dary_clients');
+                console.log('Migration complete.');
+            }
+        };
+        migrateData();
 
         // Set initial default month
         setExpiryDate(getDefaultExpiryMonth());
 
-        // Check for edit param in URL
-        const params = new URLSearchParams(location.search);
-        const editId = params.get('edit');
-        if (editId) {
-            const clientToEdit = loadedClients.find((c: Client) => c.id === editId);
-            if (clientToEdit) {
-                setSelectedClient(clientToEdit);
-                setShowActionModal(true);
-                setActiveTab('clients');
-            }
-        }
+        return () => unsubscribe();
     }, [location.search]);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,11 +208,9 @@ const AdminPanel: React.FC = () => {
         saveClient(newClient);
     };
 
-    const saveClient = (client: Client) => {
+    const saveClient = async (client: Client) => {
         try {
-            const updatedClients = [...clients.filter(c => c.id !== client.id), client];
-            localStorage.setItem('dary_clients', JSON.stringify(updatedClients));
-            setClients(updatedClients);
+            await setDoc(doc(db, 'clients', client.id), client);
             
             // Set success view instead of simple message
             setRegistrationSuccess(client);
@@ -198,11 +220,11 @@ const AdminPanel: React.FC = () => {
             setSelectedClient(null);
         } catch (err) {
             console.error(err);
-            setMessage({ text: 'Грешка при запазване.', type: 'error' });
+            setMessage({ text: 'Грешка при записване.', type: 'error' });
         }
     };
 
-    const renewClient = () => {
+    const renewClient = async () => {
         if (!selectedClient || !newMonth || !newAmount) return;
         const updatedClients = clients.map(c => {
             if (c.id === selectedClient.id) {
@@ -224,12 +246,12 @@ const AdminPanel: React.FC = () => {
             }
             return c;
         });
-        saveClient(updatedClients.find(c => c.id === selectedClient.id)!);
+        await saveClient(updatedClients.find(c => c.id === selectedClient.id)!);
         setNewMonth('');
         setNewAmount('');
     };
 
-    const cancelClient = () => {
+    const cancelClient = async () => {
         if (!selectedClient || !cancelReason) return;
         const updatedClients = clients.map(c => {
             if (c.id === selectedClient.id) {
@@ -247,20 +269,23 @@ const AdminPanel: React.FC = () => {
             }
             return c;
         });
-        saveClient(updatedClients.find(c => c.id === selectedClient.id)!);
+        await saveClient(updatedClients.find(c => c.id === selectedClient.id)!);
         setCancelReason('');
     };
 
-    const handleDeleteClient = (id: string, name: string) => {
+    const handleDeleteClient = async (id: string, name: string) => {
         if (currentUser?.role !== 'admin') return;
         if (window.confirm(`Сигурни ли сте, че искате да ИЗТРИЕТЕ ПОСТОЯННО клиента "${name}"? Това ще премахне цялата история и плащания!`)) {
-            const updated = clients.filter(c => c.id !== id);
-            localStorage.setItem('dary_clients', JSON.stringify(updated));
-            setClients(updated);
-            setMessage({ text: `Клиентът "${name}" бе изтрит постоянно.`, type: 'success' });
-            if (selectedClient?.id === id) {
-                setShowActionModal(false);
-                setSelectedClient(null);
+            try {
+                await deleteDoc(doc(db, 'clients', id));
+                setMessage({ text: `Клиентът "${name}" бе изтрит постоянно.`, type: 'success' });
+                if (selectedClient?.id === id) {
+                    setShowActionModal(false);
+                    setSelectedClient(null);
+                }
+            } catch (err) {
+                console.error(err);
+                setMessage({ text: 'Грешка при изтриване.', type: 'error' });
             }
         }
     };
