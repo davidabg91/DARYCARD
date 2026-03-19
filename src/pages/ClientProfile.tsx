@@ -36,7 +36,8 @@ const ClientProfile: React.FC = () => {
 
     const playSuccessSound = () => {
         try {
-            const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            const context = new AudioContextClass();
             const osc = context.createOscillator();
             const gain = context.createGain();
             osc.type = 'sine';
@@ -53,7 +54,8 @@ const ClientProfile: React.FC = () => {
 
     const playErrorSound = () => {
         try {
-            const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            const context = new AudioContextClass();
             const osc = context.createOscillator();
             const gain = context.createGain();
             osc.type = 'square';
@@ -74,8 +76,8 @@ const ClientProfile: React.FC = () => {
         // Listen to specific client in Firestore
         const unsubscribe = onSnapshot(doc(db, 'clients', id), (docSnap) => {
             if (docSnap.exists()) {
-                const data = docSnap.data() as any;
-                const clientData: Client = { ...data, id: docSnap.id };
+                const data = docSnap.data() as Record<string, unknown>;
+                const clientData: Client = { ...data, id: docSnap.id } as Client;
                 setClient(clientData);
 
                 // Play sound once based on status
