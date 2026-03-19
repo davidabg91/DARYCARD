@@ -155,11 +155,23 @@ const AdminPanel: React.FC = () => {
 
         // 2. Data Migration from LocalStorage (one-time)
         const migrateData = async () => {
-            const localClients = JSON.parse(localStorage.getItem('dary_clients') || '[]');
+            const raw = localStorage.getItem('dary_clients');
+            if (!raw) return;
+            
+            const localClients = JSON.parse(raw);
             if (localClients.length > 0) {
                 console.log('Migrating local clients to Firestore...');
                 for (const client of localClients) {
-                    await setDoc(doc(db, 'clients', client.id), client);
+                    try {
+                        // Check if photo is too large
+                        if (client.photo && client.photo.length > 800000) {
+                            console.log(`Compressing photo for client ${client.name}...`);
+                            client.photo = await compressImage(client.photo, 400, 400, 0.7);
+                        }
+                        await setDoc(doc(db, 'clients', client.id), client);
+                    } catch (err) {
+                        console.error(`Failed to migrate client ${client.id}:`, err);
+                    }
                 }
                 localStorage.removeItem('dary_clients');
                 console.log('Migration complete.');
@@ -172,16 +184,47 @@ const AdminPanel: React.FC = () => {
         return () => unsubscribe();
     }, [location.search]);
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const compressImage = (dataUrl: string, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = dataUrl;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+        });
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setPhotoError(null);
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 10 * 1024 * 1024) {
-                setPhotoError('Снимката е твърде голяма (макс. 10MB)');
-                return;
-            }
             const reader = new FileReader();
-            reader.onloadend = () => setPhotoDataURL(reader.result as string);
+            reader.onloadend = async () => {
+                const base64 = reader.result as string;
+                // Always compress to ensure it's under 1MB and consistent
+                const compressed = await compressImage(base64, 500, 500, 0.8);
+                setPhotoDataURL(compressed);
+            };
             reader.readAsDataURL(file);
         }
     };
