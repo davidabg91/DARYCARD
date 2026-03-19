@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import type { UserRole } from '../context/AuthContext';
+import type { UserRole } from '../types/auth';
 import { UserPlus, Trash2, Shield, ShieldCheck } from 'lucide-react';
 import Card from '../components/Card';
 
