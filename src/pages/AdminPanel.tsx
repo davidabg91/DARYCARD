@@ -96,13 +96,8 @@ const AdminPanel: React.FC = () => {
     });
     const [filterRoute, setFilterRoute] = useState<string>('all');
 
-    const [isCameraActive, setIsCameraActive] = useState(false);
-    const [photoMode, setPhotoMode] = useState<'camera' | 'upload'>('upload');
-    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
     const [photoError, setPhotoError] = useState<string | null>(null);
     
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -126,12 +121,6 @@ const AdminPanel: React.FC = () => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setClients(loadedClients);
 
-        // Detect mobile to default to camera mode
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (isMobile) {
-            setPhotoMode('camera');
-        }
-
         // Set initial default month
         setExpiryDate(getDefaultExpiryMonth());
 
@@ -148,63 +137,12 @@ const AdminPanel: React.FC = () => {
         }
     }, [location.search]);
 
-    const stopCamera = () => {
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
-            setIsCameraActive(false);
-        }
-    };
-
-    useEffect(() => {
-        return () => stopCamera();
-    }, [activeTab]);
-
-    const startCamera = async () => {
-        setPhotoError(null);
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    facingMode: facingMode,
-                    aspectRatio: 1 
-                } 
-            });
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.play();
-                setIsCameraActive(true);
-            }
-        } catch (err) {
-            console.error('Error accessing camera', err);
-            setPhotoError('Грешка при достъп до камерата. Моля, проверете разрешенията или качете файл.');
-            setPhotoMode('upload');
-        }
-    };
-
-    const takePhoto = () => {
-        if (videoRef.current && canvasRef.current) {
-            const context = canvasRef.current.getContext('2d');
-            if (context) {
-                canvasRef.current.width = 400;
-                canvasRef.current.height = 400;
-                const video = videoRef.current;
-                const size = Math.min(video.videoWidth, video.videoHeight);
-                const xMode = (video.videoWidth - size) / 2;
-                const yMode = (video.videoHeight - size) / 2;
-                context.drawImage(video, xMode, yMode, size, size, 0, 0, 400, 400);
-                setPhotoDataURL(canvasRef.current.toDataURL('image/jpeg', 0.85));
-                stopCamera();
-            }
-        }
-    };
-
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         setPhotoError(null);
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 2 * 1024 * 1024) {
-                setPhotoError('Снимката е твърде голяма (макс. 2MB)');
+            if (file.size > 10 * 1024 * 1024) {
+                setPhotoError('Снимката е твърде голяма (макс. 10MB)');
                 return;
             }
             const reader = new FileReader();
@@ -215,7 +153,6 @@ const AdminPanel: React.FC = () => {
 
     const retakePhoto = () => {
         setPhotoDataURL(null);
-        if (photoMode === 'camera') startCamera();
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -673,95 +610,35 @@ const AdminPanel: React.FC = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
                     <Card style={{ padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h3 style={{ margin: 0 }}>Снимка</h3>
-                            {!photoDataURL && (
-                                <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '2px' }}>
-                                    <button 
-                                        type="button" 
-                                        onClick={() => { setPhotoMode('upload'); setPhotoError(null); stopCamera(); }}
-                                        style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, background: photoMode === 'upload' ? 'var(--primary-color)' : 'transparent', color: photoMode === 'upload' ? '#fff' : 'var(--text-secondary)' }}
-                                    >Файл</button>
-                                    <button 
-                                        type="button" 
-                                        onClick={() => { setPhotoMode('camera'); setPhotoError(null); startCamera(); }}
-                                        style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, background: photoMode === 'camera' ? 'var(--primary-color)' : 'transparent', color: photoMode === 'camera' ? '#fff' : 'var(--text-secondary)' }}
-                                    >Камера</button>
-                                </div>
-                            )}
+                            <h3 style={{ margin: 0 }}>Снимка на Клиента</h3>
                         </div>
 
                         {!photoDataURL && (
                             <div style={{ width: '100%', aspectRatio: '1', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', border: '2px dashed var(--surface-border)' }}>
-                                {photoMode === 'upload' && (
-                                    <>
-                                        <PlusCircle size={40} color="var(--primary-color)" style={{ marginBottom: '1rem', opacity: 0.6 }} />
-                                        <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.6rem 1.2rem', borderRadius: '50px', fontWeight: 600 }}>Избери Снимка</button>
-                                        <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>JPG или PNG, макс. 2MB</p>
-                                        <input 
-                                            type="file" 
-                                            accept="image/*" 
-                                            capture="user"
-                                            ref={fileInputRef} 
-                                            style={{ display: 'none' }} 
-                                            onChange={handleFileUpload} 
-                                        />
-                                    </>
-                                )}
-                                
-                                {photoMode === 'camera' && (
-                                    <>
-                                        {!isCameraActive ? (
-                                            <div style={{ textAlign: 'center' }}>
-                                                <Camera size={48} color="var(--primary-color)" style={{ marginBottom: '1rem' }} /><br />
-                                                <button type="button" onClick={startCamera} style={{ color: 'var(--primary-color)', fontWeight: 600 }}>Пусни Камерата</button>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <video 
-                                                    ref={videoRef} 
-                                                    autoPlay 
-                                                    muted 
-                                                    playsInline 
-                                                    style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }} 
-                                                />
-                                                <div style={{ position: 'absolute', inset: 0, border: '2px solid var(--primary-color)', borderRadius: '16px', pointerEvents: 'none', opacity: 0.3 }} />
-                                                
-                                                <div style={{ position: 'absolute', bottom: '1rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '1rem', alignItems: 'center' }}>
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={() => {
-                                                            const newMode = facingMode === 'user' ? 'environment' : 'user';
-                                                            setFacingMode(newMode);
-                                                            stopCamera();
-                                                            setTimeout(() => startCamera(), 100);
-                                                        }} 
-                                                        style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', padding: '0.5rem 1rem', borderRadius: '50px', fontSize: '0.75rem', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.2)' }}
-                                                    >
-                                                        {facingMode === 'user' ? 'Задна Камера' : 'Предна Камера'}
-                                                    </button>
-                                                    
-                                                    <button type="button" onClick={takePhoto} style={{ background: 'var(--primary-color)', color: '#fff', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', border: '4px solid rgba(255,255,255,0.2)' }}>
-                                                        <Camera size={24} />
-                                                    </button>
-                                                    
-                                                    <div style={{ width: '80px' }} /> {/* Spacer to center the capture button */}
-                                                </div>
-                                            </>
-                                        )}
-                                    </>
-                                )}
+                                <PlusCircle size={40} color="var(--primary-color)" style={{ marginBottom: '1rem', opacity: 0.6 }} />
+                                <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.8rem 1.5rem', borderRadius: '50px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Camera size={18} /> Направи Снимка
+                                </button>
+                                <p style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>или изберете файл от галерията</p>
+                                <p style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>Макс. 10MB (Samsung Galaxy/iPhone OK)</p>
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    ref={fileInputRef} 
+                                    style={{ display: 'none' }} 
+                                    onChange={handleFileUpload} 
+                                />
                             </div>
                         )}
                         
                         {photoDataURL && (
                             <div style={{ position: 'relative' }}>
                                 <img src={photoDataURL} style={{ width: '100%', aspectRatio: '1', borderRadius: '16px', objectFit: 'cover', border: '2px solid var(--primary-color)' }} />
-                                <button type="button" onClick={retakePhoto} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.75rem', backdropFilter: 'blur(4px)' }}>Промени</button>
+                                <button type="button" onClick={retakePhoto} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8rem', backdropFilter: 'blur(4px)', fontWeight: 600 }}>Нова Снимка</button>
                             </div>
                         )}
                         
-                        {photoError && <div style={{ marginTop: '1rem', color: 'var(--error-color)', fontSize: '0.8rem', textAlign: 'center' }}>{photoError}</div>}
-                        <canvas ref={canvasRef} style={{ display: 'none' }} />
+                        {photoError && <div style={{ marginTop: '1rem', color: 'var(--error-color)', fontSize: '0.85rem', textAlign: 'center', background: 'rgba(255,0,0,0.1)', padding: '0.5rem', borderRadius: '8px' }}>{photoError}</div>}
                     </Card>
                     <Card>
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
