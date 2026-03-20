@@ -92,14 +92,14 @@ const ClientProfile: React.FC = () => {
             const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
             const context = new AudioContextClass();
             
-            // Clean chime: C6 (1046Hz) and E6 (1318Hz)
-            const playTone = (freq: number, start: number, duration: number) => {
+            // Approving Major Chord: D5, F#5, A5, D6
+            const playTone = (freq: number, start: number, duration: number, vol: number = 0.08) => {
                 const osc = context.createOscillator();
                 const gain = context.createGain();
                 osc.type = 'triangle';
                 osc.frequency.setValueAtTime(freq, context.currentTime + start);
                 gain.gain.setValueAtTime(0, context.currentTime + start);
-                gain.gain.linearRampToValueAtTime(0.08, context.currentTime + start + 0.02);
+                gain.gain.linearRampToValueAtTime(vol, context.currentTime + start + 0.02);
                 gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + start + duration);
                 osc.connect(gain);
                 gain.connect(context.destination);
@@ -107,9 +107,10 @@ const ClientProfile: React.FC = () => {
                 osc.stop(context.currentTime + start + duration);
             };
 
-            playTone(880, 0, 0.4);      // A5
-            playTone(1108.73, 0.08, 0.4); // C#6 (Major)
-            playTone(1318.51, 0.16, 0.5); // E6
+            playTone(587.33, 0, 0.5);      // D5
+            playTone(739.99, 0.08, 0.5);   // F#5
+            playTone(880.00, 0.16, 0.6);   // A5
+            playTone(1174.66, 0.24, 0.7);  // D6
         } catch (e) { console.error("Audio error", e); }
     };
 
@@ -169,17 +170,35 @@ const ClientProfile: React.FC = () => {
         try {
             const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
             const context = new AudioContextClass();
-            const osc = context.createOscillator();
-            const gain = context.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(220, context.currentTime); 
-            osc.frequency.linearRampToValueAtTime(110, context.currentTime + 0.15);
-            gain.gain.setValueAtTime(0.1, context.currentTime);
-            gain.gain.linearRampToValueAtTime(0.01, context.currentTime + 0.3);
-            osc.connect(gain);
-            gain.connect(context.destination);
-            osc.start();
-            osc.stop(context.currentTime + 0.3);
+            
+            const createBuzz = (startTime: number, duration: number) => {
+                const osc1 = context.createOscillator();
+                const osc2 = context.createOscillator();
+                const gain = context.createGain();
+                
+                osc1.type = 'sawtooth';
+                osc2.type = 'sawtooth';
+                osc1.frequency.setValueAtTime(140, context.currentTime + startTime);
+                osc2.frequency.setValueAtTime(142, context.currentTime + startTime); // Detune
+                
+                gain.gain.setValueAtTime(0, context.currentTime + startTime);
+                gain.gain.linearRampToValueAtTime(0.1, context.currentTime + startTime + 0.05);
+                gain.gain.linearRampToValueAtTime(0.08, context.currentTime + startTime + duration - 0.05);
+                gain.gain.linearRampToValueAtTime(0, context.currentTime + startTime + duration);
+                
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(context.destination);
+                
+                osc1.start(context.currentTime + startTime);
+                osc2.start(context.currentTime + startTime);
+                osc1.stop(context.currentTime + startTime + duration);
+                osc2.stop(context.currentTime + startTime + duration);
+            };
+
+            // Two long pulses for error
+            createBuzz(0, 0.5);
+            createBuzz(0.6, 0.7); // Longer second pulse
         } catch (e) { console.error("Audio error", e); }
     };
 
@@ -195,16 +214,20 @@ const ClientProfile: React.FC = () => {
 
                 // Play sound once based on status
                 if (!hasPlayedSound.current) {
-                    const isExpired = new Date(clientData.expiryDate) < new Date();
-                    const isInvalid = clientData.isCanceled || isExpired;
-                    if (isInvalid) playSuccessSound(); // Was error
-                    else playErrorSound(); // Was success
+                    const now = new Date();
+                    const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+                    const hasPaidCurrentMonth = (clientData.renewalHistory || []).some(rh => rh.month === currentMonthStr);
+                    const isActive = !clientData.isCanceled && hasPaidCurrentMonth;
+
+                    if (isActive) playSuccessSound();
+                    else playErrorSound();
+                    
                     hasPlayedSound.current = true;
                 }
             } else {
                 setClient(null);
                 if (!hasPlayedSound.current) {
-                    playSuccessSound(); // Was error
+                    playErrorSound();
                     hasPlayedSound.current = true;
                 }
             }
