@@ -217,9 +217,11 @@ const ClientProfile: React.FC = () => {
         return () => unsubscribe();
     }, [id]);
 
+    const scannedRef = useRef<string | null>(null);
+
     // Tracking scans (Usage)
     useEffect(() => {
-        if (!id || !currentUser || loading || !client) return;
+        if (!id || !currentUser || loading || !client || scannedRef.current === id) return;
         
         const trackScan = async () => {
             const scanKey = `scanned_${id}`;
@@ -227,9 +229,13 @@ const ClientProfile: React.FC = () => {
             const now = new Date().getTime();
             
             // Session-based cooldown (1 hour) to avoid spamming the database on refresh
-            if (lastSessionScan && (now - parseInt(lastSessionScan)) < 3600000) return;
+            if (lastSessionScan && (now - parseInt(lastSessionScan)) < 3600000) {
+                scannedRef.current = id;
+                return;
+            }
 
             try {
+                scannedRef.current = id;
                 const clientRef = doc(db, 'clients', id);
                 const isoNow = new Date().toISOString();
                 await updateDoc(clientRef, {
@@ -240,11 +246,12 @@ const ClientProfile: React.FC = () => {
                 sessionStorage.setItem(scanKey, now.toString());
             } catch (e) {
                 console.error("Error tracking scan:", e);
+                scannedRef.current = null; // Allow retry on error
             }
         };
         
         trackScan();
-    }, [id, currentUser, loading, client]);
+    }, [id, currentUser, loading, !!client]);
 
     if (loading) {
         return (
