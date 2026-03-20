@@ -626,6 +626,7 @@ const ClientProfile: React.FC = () => {
                                             return rh.month >= currentMonthStr;
                                         })
                                         .sort((a, b) => a.month.localeCompare(b.month))
+                                        .slice(0, 3)
                                         .map((rh, index) => (
                                             <div key={index} style={{ 
                                                 background: 'rgba(255,255,255,0.05)', 
