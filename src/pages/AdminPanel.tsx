@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Camera, Save, RefreshCw, BarChart, Users, PlusCircle, XCircle, DollarSign, List, Trash2, Eye, EyeOff, ShieldCheck, Shield, Clock, ExternalLink, TrendingUp, Percent, PiggyBank, AlertTriangle, Zap, UserCheck } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, setDoc, deleteDoc, doc, arrayUnion } from 'firebase/firestore';
+import { collection, onSnapshot, query, setDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
 interface ClientLog {
@@ -467,7 +467,7 @@ const AdminPanel: React.FC = () => {
 
         // Find days with > 3 scans
         const abuseDays = Object.entries(byDate)
-            .filter(([_, scans]) => scans.length > 3)
+            .filter(([, scans]) => scans.length > 3)
             .sort((a, b) => b[0].localeCompare(a[0])); // Recent dates first
 
         if (abuseDays.length === 0) return null;

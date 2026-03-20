@@ -244,7 +244,7 @@ const ClientProfile: React.FC = () => {
         };
         
         trackScan();
-    }, [id, currentUser, loading, !!client]);
+    }, [id, currentUser, loading, client]);
 
     if (loading) {
         return (
