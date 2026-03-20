@@ -257,7 +257,7 @@ const AdminPanel: React.FC = () => {
             history: [{
                 date: new Date().toISOString(),
                 action: 'Създаване',
-                details: `Първоначално плащане: ${amountPaid} лв. за месец ${expiryDate}`,
+                details: `Първоначално плащане: ${amountPaid} € за месец ${expiryDate}`,
                 amount: Number(amountPaid)
             }]
         };

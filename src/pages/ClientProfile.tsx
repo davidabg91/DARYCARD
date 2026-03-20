@@ -143,7 +143,7 @@ const ClientProfile: React.FC = () => {
             history: [{
                 date: now.toISOString(),
                 action: 'Активиране (Сканиране)',
-                details: `Първоначално плащане: ${regAmount} лв. за месец ${expiryMonth}`,
+                details: `Първоначално плащане: ${regAmount} € за месец ${expiryMonth}`,
                 amount: Number(regAmount)
             }]
         };
