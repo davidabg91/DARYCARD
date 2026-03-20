@@ -264,7 +264,8 @@ const AdminPanel: React.FC = () => {
                 date: new Date().toISOString(),
                 action: 'Създаване',
                 details: `Първоначално плащане: ${amountPaid} € за месец ${expiryDate}`,
-                amount: Number(amountPaid)
+                amount: Number(amountPaid),
+                performedBy: currentUser?.username || 'Админ'
             }]
         };
 
@@ -303,7 +304,8 @@ const AdminPanel: React.FC = () => {
                         date: new Date().toISOString(),
                         action: 'Подновяване',
                         details: `Нов месец: ${newMonth}`,
-                        amount: Number(newAmount)
+                        amount: Number(newAmount),
+                        performedBy: currentUser?.username || 'Админ'
                     }]
                 };
             }
@@ -341,7 +343,8 @@ const AdminPanel: React.FC = () => {
                     history: [...history, {
                         date: new Date().toISOString(),
                         action: 'Анулиране',
-                        details: cancelReason
+                        details: cancelReason,
+                        performedBy: currentUser?.username || 'Админ'
                     }]
                 };
             }
