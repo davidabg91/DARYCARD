@@ -438,6 +438,9 @@ const AdminPanel: React.FC = () => {
         ? clients.filter(c => !c.isCanceled && !isExpired(c.expiryDate, c)).length
         : clients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;
 
+    const renewedCount = isAll ? 0 : clients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;
+    const nonRenewedCount = isAll ? 0 : clients.filter(c => !c.isCanceled && !(c.renewalHistory || []).some(r => r.month === statsMonth)).length;
+
     const routeStats = ROUTES.map(route => {
         const routeClients = clients.filter(c => c.route === route);
         const revenue = isAll
@@ -641,27 +644,39 @@ const AdminPanel: React.FC = () => {
                             </div>
                         </Card>
                         <Card>
-                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={20} color="var(--primary-color)" /> Бизнес Инсайти ({statsMonth})</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><PlusCircle size={12} /> Нови Клиенти</div>
-                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-color)' }}>+{newClientsMonth}</div>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={20} color="var(--primary-color)" /> Бизнес Инсайти ({isAll ? 'Всичко' : statsMonth})</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+                                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><PlusCircle size={12} /> Нови Клиенти</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-color)' }}>+{newClientsMonth}</div>
                                 </div>
-                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Percent size={12} /> Събираемост</div>
-                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#00e676' }}>{paymentRate}%</div>
+                                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Percent size={12} /> Събираемост</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#00e676' }}>{paymentRate}%</div>
                                 </div>
-                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><PiggyBank size={12} /> Среден Приход</div>
-                                    <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{avgProfit} €</div>
+                                {!isAll && (
+                                    <>
+                                        <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.1)' }}>
+                                            <div style={{ fontSize: '0.65rem', color: 'rgba(0,230,118,0.7)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><UserCheck size={12} /> Активни (Платени)</div>
+                                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#00e676' }}>{renewedCount}</div>
+                                        </div>
+                                        <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(255,82,82,0.05)', border: '1px solid rgba(255,82,82,0.1)' }}>
+                                            <div style={{ fontSize: '0.65rem', color: 'rgba(255,82,82,0.7)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><XCircle size={12} /> Неактивни (Минали)</div>
+                                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ff5252' }}>{nonRenewedCount}</div>
+                                        </div>
+                                    </>
+                                )}
+                                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><PiggyBank size={12} /> Среден Приход</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{avgProfit} €</div>
                                 </div>
-                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Clock size={12} /> Остават</div>
-                                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: pendingTotal > 0 ? '#ff5252' : 'var(--text-secondary)' }}>{pendingTotal}</div>
+                                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Clock size={12} /> Остават</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: pendingTotal > 0 ? '#ff5252' : 'var(--text-secondary)' }}>{pendingTotal}</div>
                                 </div>
                             </div>
-                            <div style={{ marginTop: '1.5rem', padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,173,181,0.05)', fontSize: '0.8rem', color: 'var(--primary-color)' }}>
-                                💡 {paymentRate > 80 ? 'Отлична събираемост този месец!' : 'Внимание: Има голям брой неплатени карти.'}
+                            <div style={{ marginTop: '1rem', padding: '0.75rem', borderRadius: '10px', background: 'rgba(0,173,181,0.05)', fontSize: '0.8rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Zap size={14} /> <span>{paymentRate > 80 ? 'Отлична събираемост този месец!' : 'Внимание: Има голям брой неплатени карти.'}</span>
                             </div>
                         </Card>
                     </div>
