@@ -692,7 +692,7 @@ const AdminPanel: React.FC = () => {
                                 {topScannedClients.length > 0 ? topScannedClients.map((c, idx) => (
                                     <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: idx === 0 ? 'gold' : idx === 1 ? 'silver' : '#cd7f32', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 900 }}>{idx + 1}</div>
+                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: idx === 0 ? 'gold' : idx === 1 ? 'silver' : '#cd7f32', color: '#111111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 900 }}>{idx + 1}</div>
                                             <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.name}</div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
@@ -1321,7 +1321,7 @@ const AdminPanel: React.FC = () => {
                                                 <input type="number" placeholder="0.00" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff' }} value={newAmount} onChange={e => setNewAmount(e.target.value)} />
                                             </div>
                                         </div>
-                                        <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#000', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
+                                        <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#111111', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
                                     </div>
 
                                     {/* Cancel */}

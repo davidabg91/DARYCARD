@@ -378,7 +378,7 @@ const ClientProfile: React.FC = () => {
 
                                 <button 
                                     onClick={handleRegister}
-                                    style={{ marginTop: '1rem', padding: '1.2rem', background: '#00e676', color: '#000', borderRadius: '12px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}
+                                    style={{ marginTop: '1rem', padding: '1.2rem', background: '#00e676', color: '#111111', borderRadius: '12px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}
                                 >
                                     ЗАПАЗИ И АКТИВИРАЙ
                                 </button>
@@ -544,7 +544,7 @@ const ClientProfile: React.FC = () => {
                         margin: 0, 
                         fontSize: '2.5rem', 
                         fontWeight: 900, 
-                        color: '#000',
+                        color: '#111111',
                         letterSpacing: '2px'
                     }}>{statusText}</h1>
                 </div>
@@ -688,7 +688,7 @@ const ClientProfile: React.FC = () => {
                                     justifyContent: 'center',
                                     gap: '0.6rem',
                                     background: '#00e676',
-                                    color: '#000',
+                                    color: '#111111',
                                     padding: '1.2rem 2rem',
                                     border: 'none',
                                     borderRadius: '50px',
@@ -861,7 +861,7 @@ const ClientProfile: React.FC = () => {
                                 onClick={handleConfirmRenew}
                                 style={{
                                     background: '#00e676',
-                                    color: '#000',
+                                    color: '#111111',
                                     border: 'none',
                                     padding: '1.2rem',
                                     borderRadius: '16px',
