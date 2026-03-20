@@ -126,6 +126,8 @@ const AdminPanel: React.FC = () => {
     const [amountPaid, setAmountPaid] = useState('');
     const [expiryDate, setExpiryDate] = useState(getDefaultExpiryMonth());
     const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
+    const [nfcLinkId, setNfcLinkId] = useState('');
+    const [isWaitingForScan, setIsWaitingForScan] = useState(false);
 
     // Modal/Action State
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -179,6 +181,24 @@ const AdminPanel: React.FC = () => {
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const toggleWaitingForScan = async () => {
+        try {
+            const newState = !isWaitingForScan;
+            setIsWaitingForScan(newState);
+            if (newState) {
+                await setDoc(doc(db, 'admin_actions', 'current'), { 
+                    action: 'waiting_for_reg', 
+                    timestamp: new Date().toISOString(),
+                    adminId: currentUser?.email // Use email if UID is not in AppUser
+                });
+            } else {
+                await updateDoc(doc(db, 'admin_actions', 'current'), { action: 'idle' });
+            }
+        } catch (err) {
+            console.error("Cloud scan error:", err);
+        }
+    };
+
     const [isSyncing, setIsSyncing] = useState(true);
     const [syncError, setSyncError] = useState<string | null>(null);
     const [registrationSuccess, setRegistrationSuccess] = useState<Client | null>(null);
@@ -204,7 +224,7 @@ const AdminPanel: React.FC = () => {
             if (editId) {
                 const clientToEdit = clientList.find((c: Client) => c.id === editId);
                 if (clientToEdit) {
-                    setSelectedClient(clientToEdit);
+                    setSelectedClient(clientToEdit as Client);
                     setShowActionModal(true);
                     setActiveTab('clients');
                 }
@@ -213,8 +233,25 @@ const AdminPanel: React.FC = () => {
             console.error("Firestore error:", err);
             setSyncError(err.message);
             setIsSyncing(false);
-            setMessage({ text: 'Грешка при синхронизация: ' + err.message, type: 'error' });
         });
+
+        // 2. Listen for Admin Actions (Cloud Scan)
+        const actionUnsubscribe = onSnapshot(doc(db, 'admin_actions', 'current'), (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.data();
+                if (data.action === 'id_received' && data.cardId) {
+                    setNfcLinkId(data.cardId);
+                    setIsWaitingForScan(false);
+                    // Clear the action so it doesn't trigger again
+                    updateDoc(doc(db, 'admin_actions', 'current'), { action: 'idle' });
+                }
+            }
+        });
+
+        return () => {
+            unsubscribe();
+            actionUnsubscribe();
+        };
 
         // 2. Data Migration from LocalStorage (one-time)
         const migrateData = async () => {
@@ -266,14 +303,15 @@ const AdminPanel: React.FC = () => {
         setPhotoDataURL(null);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
         if (!clientName || !selectedRoute || !expiryDate || !photoDataURL || !amountPaid) {
-            setMessage({ text: 'Моля, изберете маршрут и попълнете всички полета.', type: 'error' });
+            setMessage({ text: 'Моля, попълнете всички полета и направете снимка.', type: 'error' });
             return;
         }
 
-        const generatedId = generateClientId();
+        const generatedId = nfcLinkId.trim() || generateClientId();
         const newClient: Client = {
             id: generatedId,
             name: clientName,
@@ -302,7 +340,7 @@ const AdminPanel: React.FC = () => {
             // Set success view instead of simple message
             setRegistrationSuccess(client);
             
-            setClientName(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null);
+            setClientName(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
             setShowActionModal(false);
             setSelectedClient(null);
         } catch (err) {
@@ -1087,8 +1125,42 @@ const AdminPanel: React.FC = () => {
                                             <input type="month" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', colorScheme: 'dark' }} value={expiryDate} onChange={e => setExpiryDate(e.target.value)} required />
                                         </div>
                                     </div>
+                                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                        <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Свързване на Карта (NFC/Link)</label>
+                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                            <input 
+                                                type="text" 
+                                                placeholder="ID от Карта (напр. ABC123)" 
+                                                style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--surface-border)', color: 'var(--primary-color)', fontWeight: 700, fontFamily: 'monospace' }} 
+                                                value={nfcLinkId} 
+                                                onChange={e => setNfcLinkId(e.target.value.toUpperCase())} 
+                                            />
+                                            <button 
+                                                type="button"
+                                                onClick={toggleWaitingForScan}
+                                                style={{ 
+                                                    padding: '0.8rem 1.2rem', 
+                                                    borderRadius: '8px', 
+                                                    background: isWaitingForScan ? 'var(--error-color)' : 'var(--accent-color)', 
+                                                    color: '#ffffff', 
+                                                    fontWeight: 700, 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: '0.5rem',
+                                                    boxShadow: isWaitingForScan ? '0 0 15px rgba(255,23,68,0.3)' : 'none',
+                                                    animation: isWaitingForScan ? 'pulse 1.5s infinite' : 'none'
+                                                }}
+                                            >
+                                                {isWaitingForScan ? <RefreshCw size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                                                {isWaitingForScan ? 'Чакам...' : 'Сканирай'}
+                                            </button>
+                                        </div>
+                                        <p style={{ marginTop: '0.6rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                            Натиснете "Сканирай" и доближете картата до телефона си. ID-то ще се попълни само.
+                                        </p>
+                                    </div>
                                     {message && <div style={{ color: message.type === 'success' ? 'var(--success-color)' : 'var(--error-color)' }}>{message.text}</div>}
-                                    <button type="submit" style={{ background: 'var(--primary-color)', color: 'white', padding: '1rem', borderRadius: '8px', fontWeight: 600, display: 'flex', justifyContent: 'center', gap: '0.5rem' }}><Save size={20} /> Запази</button>
+                                    <button type="submit" disabled={isWaitingForScan} style={{ background: 'var(--primary-color)', color: '#ffffff', padding: '1rem', borderRadius: '8px', fontWeight: 600, display: 'flex', justifyContent: 'center', gap: '0.5rem', opacity: isWaitingForScan ? 0.5 : 1 }}><Save size={20} /> Запази Клиента</button>
                                 </form>
                             </Card>
                         </div>

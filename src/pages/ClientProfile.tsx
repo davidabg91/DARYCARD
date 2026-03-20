@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, MapPin, Ban, Clock, User, Settings, RefreshCw, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc } from 'firebase/firestore';
 
 interface Client {
     id: string;
@@ -72,6 +72,7 @@ const ClientProfile: React.FC = () => {
     const [regRoute, setRegRoute] = useState('');
     const [regAmount, setRegAmount] = useState('50');
     const [regPhoto, setRegPhoto] = useState<string | null>(null);
+    const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
     const [regMonth, setRegMonth] = useState<string>(() => {
         const now = new Date();
         let targetMonth = now.getMonth() + 1;
@@ -230,6 +231,26 @@ const ClientProfile: React.FC = () => {
                     playErrorSound();
                     hasPlayedSound.current = true;
                 }
+                
+                // Cloud Sync Logic: Send ID to waiting Admin
+                const checkAdminWaiting = async () => {
+                    try {
+                        const actionRef = doc(db, 'admin_actions', 'current');
+                        const actionSnap = await getDoc(actionRef);
+                        if (actionSnap.exists()) {
+                            const data = actionSnap.data();
+                            if (data.action === 'waiting_for_reg') {
+                                setCloudSyncStatus('sending');
+                                await updateDoc(actionRef, {
+                                    action: 'id_received',
+                                    cardId: id
+                                });
+                                setCloudSyncStatus('sent');
+                            }
+                        }
+                    } catch (e) { console.error("Cloud sync error:", e); }
+                };
+                if (cloudSyncStatus === 'idle') checkAdminWaiting();
             }
             setLoading(false);
         }, (err) => {
@@ -294,8 +315,29 @@ const ClientProfile: React.FC = () => {
             <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', color: '#fff', padding: '1rem' }}>
                 <div style={{ textAlign: 'center', maxWidth: '400px', width: '100%' }}>
                     <Ban size={64} color="var(--error-color)" style={{ marginBottom: '1.5rem' }} />
-                    <h2 style={{ marginBottom: '1rem' }}>Грешка при зареждане</h2>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>{error}</p>
+                    <h1 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--error-color)', marginBottom: '0.5rem' }}>Картата не е намерена</h1>
+                    
+                    {cloudSyncStatus === 'sent' && (
+                        <div style={{ 
+                            background: 'rgba(0, 200, 83, 0.15)', 
+                            color: '#00c853', 
+                            padding: '1rem', 
+                            borderRadius: '12px', 
+                            marginBottom: '1.5rem',
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            border: '1px solid rgba(0,200,83,0.3)',
+                            animation: 'fadeIn 0.4s ease'
+                        }}>
+                            <CheckCircle size={20} />
+                            ID-то е изпратено към Админ Панела!
+                        </div>
+                    )}
+
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+{error}</p>
                     <Link to="/" style={{ padding: '0.8rem 2rem', background: 'var(--primary-color)', color: '#fff', borderRadius: '50px', textDecoration: 'none', fontWeight: 600 }}>Към Начало</Link>
                 </div>
             </div>
