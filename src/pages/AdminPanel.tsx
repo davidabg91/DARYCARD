@@ -64,10 +64,12 @@ const TabButton = ({ id, icon: Icon, label, activeTab, setActiveTab, activeColor
         onClick={() => setActiveTab(id)}
         style={{
             display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '50px',
-            fontWeight: 600, background: activeTab === id ? activeColor : 'transparent',
-            color: activeTab === id ? '#fff' : 'var(--text-secondary)',
-            border: `1px solid ${activeTab === id ? activeColor : 'var(--surface-border)'}`,
-            transition: 'var(--transition-fast)'
+            fontWeight: 700, 
+            background: activeTab === id ? activeColor : (id === 'register' ? 'rgba(0, 200, 83, 0.1)' : 'transparent'),
+            color: activeTab === id ? '#fff' : (id === 'register' ? '#00c853' : 'var(--text-secondary)'),
+            border: `2px solid ${activeTab === id ? activeColor : (id === 'register' ? '#00c853' : 'var(--surface-border)')}`,
+            boxShadow: id === 'register' ? '0 0 15px rgba(0, 200, 83, 0.2)' : 'none',
+            transition: 'all 0.3s ease'
         }}
     >
         <Icon size={18} /> <span className="mobile-hide">{label}</span>

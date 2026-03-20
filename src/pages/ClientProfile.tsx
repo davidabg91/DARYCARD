@@ -192,14 +192,14 @@ const ClientProfile: React.FC = () => {
                 if (!hasPlayedSound.current) {
                     const isExpired = new Date(clientData.expiryDate) < new Date();
                     const isInvalid = clientData.isCanceled || isExpired;
-                    if (isInvalid) playErrorSound();
-                    else playSuccessSound();
+                    if (isInvalid) playSuccessSound(); // Was error
+                    else playErrorSound(); // Was success
                     hasPlayedSound.current = true;
                 }
             } else {
                 setClient(null);
                 if (!hasPlayedSound.current) {
-                    playErrorSound();
+                    playSuccessSound(); // Was error
                     hasPlayedSound.current = true;
                 }
             }
