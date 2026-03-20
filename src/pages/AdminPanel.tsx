@@ -594,9 +594,18 @@ const AdminPanel: React.FC = () => {
                             <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}><Users size={16} />{isAll ? 'Всички Профили' : 'Активни Карти'}</div>
                             <div style={{ fontSize: '2.5rem', fontWeight: 800 }}>{activeClientsCount}</div>
                         </Card>
-                        <Card className="stat-card" style={{ borderLeft: '4px solid var(--accent-color)' }}>
+                        <Card className="stat-card" style={{ borderLeft: '4px solid var(--accent-color)', position: 'relative' }}>
                             <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Users size={16} /> Клиенти</div>
                             <div style={{ fontSize: '2.5rem', fontWeight: 700 }}>{clients.length}</div>
+                            {isAdmin && (
+                                <button 
+                                    onClick={handleResetAllScans}
+                                    style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)', color: '#ff5252', borderRadius: '6px', cursor: 'pointer', fontSize: '0.65rem', padding: '0.3rem 0.6rem' }}
+                                    title="Нулирай всички броячи за сканиране"
+                                >
+                                    <RefreshCw size={12} style={{ marginRight: '4px' }} /> Нулирай Сканове
+                                </button>
+                            )}
                         </Card>
                     </div>
 
