@@ -128,6 +128,7 @@ const AdminPanel: React.FC = () => {
     const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
     const [nfcLinkId, setNfcLinkId] = useState('');
     const [isWaitingForScan, setIsWaitingForScan] = useState(false);
+    const [linkingClientId, setLinkingClientId] = useState<string | null>(null);
 
     // Modal/Action State
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -196,7 +197,7 @@ const AdminPanel: React.FC = () => {
         } catch (err) { console.error(err); }
     };
 
-    const handleLinkPhysicalCard = async (oldId: string, newId: string) => {
+    const handleLinkPhysicalCard = useCallback(async (oldId: string, newId: string) => {
         try {
             setMessage({ text: 'Свързване на картата...', type: 'success' });
             // 1. Find the old client
@@ -217,7 +218,7 @@ const AdminPanel: React.FC = () => {
             console.error("Linking error:", err);
             setMessage({ text: 'Грешка при свързване на картата.', type: 'error' });
         }
-    };
+    }, [clients]);
 
     const toggleWaitingForScan = async () => {
         try {
@@ -240,7 +241,6 @@ const AdminPanel: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState(true);
     const [syncError, setSyncError] = useState<string | null>(null);
     const [registrationSuccess, setRegistrationSuccess] = useState<Client | null>(null);
-    const [linkingClientId, setLinkingClientId] = useState<string | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
 
@@ -297,37 +297,7 @@ const AdminPanel: React.FC = () => {
             unsubscribe();
             actionUnsubscribe();
         };
-
-        // 2. Data Migration from LocalStorage (one-time)
-        const migrateData = async () => {
-            const raw = localStorage.getItem('dary_clients');
-            if (!raw) return;
-            
-            const localClients = JSON.parse(raw);
-            if (localClients.length > 0) {
-                console.log('Migrating local clients to Firestore...');
-                for (const client of localClients) {
-                    try {
-                        // Check if photo is too large
-                        if (client.photo && client.photo.length > 800000) {
-                            console.log(`Compressing photo for client ${client.name}...`);
-                            client.photo = await compressImage(client.photo, 400, 400, 0.7);
-                        }
-                        await setDoc(doc(db, 'clients', client.id), client);
-                    } catch (err) {
-                        console.error(`Failed to migrate client ${client.id}:`, err);
-                    }
-                }
-                localStorage.removeItem('dary_clients');
-                console.log('Migration complete.');
-            }
-        };
-        migrateData();
-
-
-
-        return () => unsubscribe();
-    }, [location.search]);
+    }, [location.search, handleLinkPhysicalCard]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setPhotoError(null);
@@ -1201,7 +1171,9 @@ const AdminPanel: React.FC = () => {
                                             </button>
                                         </div>
                                         <p style={{ marginTop: '0.6rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                            Натиснете "Сканирай" и доближете картата до телефона си. ID-то ще се попълни само.
+                                            {linkingClientId 
+                                                ? `Свързване на карта към: ${clients.find(c => c.id === linkingClientId)?.name || 'избран клиент'}...` 
+                                                : 'Натиснете "Сканирай" и доближете картата до телефона си. ID-то ще се попълни само.'}
                                         </p>
                                     </div>
                                     {message && <div style={{ color: message.type === 'success' ? 'var(--success-color)' : 'var(--error-color)' }}>{message.text}</div>}
