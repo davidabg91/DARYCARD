@@ -548,10 +548,10 @@ const AdminPanel: React.FC = () => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {isAdmin && <TabButton id="dashboard" icon={BarChart} label="Табло" activeTab={activeTab} setActiveTab={setActiveTab} />}
+                    <TabButton id="register" icon={PlusCircle} label="Добави" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="clients" icon={Users} label="Клиенти" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="help" icon={HelpCircle} label="Помощ" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton id="register" icon={PlusCircle} label="Добави" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    {isAdmin && <TabButton id="dashboard" icon={BarChart} label="Табло" activeTab={activeTab} setActiveTab={setActiveTab} />}
                     {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC Кодове" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />}
                 </div>
             </div>
@@ -1164,9 +1164,22 @@ const AdminPanel: React.FC = () => {
                         <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--primary-color)' }}>
                             <HelpCircle size={28} /> Ръководство за Модератори
                         </h2>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '2.5rem', fontSize: '1rem', lineHeight: '1.6' }}>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '1rem', lineHeight: '1.6' }}>
                             Добре дошли в помощния панел. Тук ще намерите подробни инструкции как да обслужвате клиентите и да използвате функциите на системата DARYCARD.
                         </p>
+
+                        <div style={{ padding: '1.5rem', background: 'rgba(0, 173, 181, 0.1)', border: '1px solid rgba(0, 173, 181, 0.2)', borderRadius: '16px', marginBottom: '2.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                            <div style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.5rem', borderRadius: '12px', display: 'flex' }}>
+                                <Zap size={24} />
+                            </div>
+                            <div>
+                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary-color)', fontWeight: 800 }}>Бърз съвет за Модератори</h4>
+                                <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: 'rgba(255,255,255,0.9)' }}>
+                                    Най-лесният начин за работа е просто да <b>сканирате физическата карта</b> (нова или на съществуващ клиент), докато сте влезли в системата. 
+                                    Тя автоматично ще ви отведе към правилното действие — <b>регистрация</b> на нов пътник или <b>подновяване</b> на съществуващ, без да се налага да търсите ръчно в списъците.
+                                </p>
+                            </div>
+                        </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
                             <section>
