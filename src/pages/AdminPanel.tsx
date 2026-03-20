@@ -11,6 +11,7 @@ interface ClientLog {
     action: string;
     details?: string;
     amount?: number;
+    performedBy?: string;
 }
 
 interface Client {
@@ -677,8 +678,8 @@ const AdminPanel: React.FC = () => {
                                 
                                 {suspiciousClients.length > 0 ? (
                                     <>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: '0.5rem' }}>Пътници с над 3 сканирания на ден:</div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: '0.5rem' }}>Пътници с над 3 сканирания за ден (цяла история):</div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                                             {suspiciousClients.map(c => (
                                                 <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)', borderRadius: '12px' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -686,7 +687,7 @@ const AdminPanel: React.FC = () => {
                                                         <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>ID: {c.id}</div>
                                                     </div>
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                                        {c.abuseDays.slice(0, 2).map(([date, times]) => (
+                                                        {c.abuseDays.map(([date, times]) => (
                                                             <div key={date} style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '6px' }}>
                                                                 <div style={{ color: '#ff5252', fontWeight: 700, marginBottom: '0.2rem' }}>📅 {new Date(date).toLocaleDateString('bg-BG')} — {times.length} пъти</div>
                                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>

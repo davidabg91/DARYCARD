@@ -16,7 +16,7 @@ interface Client {
     isCanceled?: boolean;
     cancelReason?: string;
     renewalHistory?: { date: string, amount: number, month: string }[];
-    history?: { date: string; action: string; details?: string; amount?: number; }[];
+    history?: { date: string; action: string; details?: string; amount?: number; performedBy?: string; }[];
 }
 
 const ROUTES = [
@@ -148,7 +148,8 @@ const ClientProfile: React.FC = () => {
                 date: now.toISOString(),
                 action: 'Активиране (Сканиране)',
                 details: `Първоначално плащане: ${regAmount} € за месец ${expiryMonth}`,
-                amount: Number(regAmount)
+                amount: Number(regAmount),
+                performedBy: currentUser?.username || 'Система (Линк)'
             }]
         };
 
@@ -436,7 +437,8 @@ const ClientProfile: React.FC = () => {
                     date: new Date().toISOString(),
                     action: 'Бързо Подновяване (Профил)',
                     details: `Месец: ${targetMonth}`,
-                    amount
+                    amount,
+                    performedBy: currentUser?.username || 'Модератор'
                 }]
             };
 
