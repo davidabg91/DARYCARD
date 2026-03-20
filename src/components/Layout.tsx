@@ -26,7 +26,7 @@ const Layout: React.FC = () => {
                 to="/"
                 onClick={closeMenu}
                 style={{
-                    color: location.pathname === '/' ? '#ff5252' : 'var(--text-secondary)',
+                    color: location.pathname === '/' ? '#ff5252' : '#fff',
                     fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
                     borderBottom: location.pathname === '/' ? '2px solid #ff5252' : '2px solid transparent',
                     paddingBottom: '2px',
@@ -41,7 +41,7 @@ const Layout: React.FC = () => {
                         to="/admin"
                         onClick={closeMenu}
                         style={{
-                            color: isAdminPath && location.pathname === '/admin' ? '#ff5252' : 'var(--text-secondary)',
+                            color: isAdminPath && location.pathname === '/admin' ? '#ff5252' : '#fff',
                             fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
                             borderBottom: isAdminPath && location.pathname === '/admin' ? '2px solid #ff5252' : '2px solid transparent',
                             paddingBottom: '2px',
@@ -53,7 +53,7 @@ const Layout: React.FC = () => {
                             to="/admin/users"
                             onClick={closeMenu}
                             style={{
-                                color: location.pathname === '/admin/users' ? '#ff5252' : 'var(--text-secondary)',
+                                color: location.pathname === '/admin/users' ? '#ff5252' : '#fff',
                                 fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
                                 borderBottom: location.pathname === '/admin/users' ? '2px solid #ff5252' : '2px solid transparent',
                                 paddingBottom: '2px',
@@ -189,7 +189,8 @@ const Layout: React.FC = () => {
                             fontWeight: 700,
                             letterSpacing: '0.15em',
                             textTransform: 'uppercase',
-                            color: 'var(--text-secondary)',
+                            color: '#fff',
+                            opacity: 0.8
                         }}>SYSTEM</span>
                     </div>
                 </Link>
@@ -249,7 +250,7 @@ const Layout: React.FC = () => {
             <footer style={{
                 padding: '2rem',
                 textAlign: 'center',
-                color: 'var(--text-secondary)',
+                color: 'rgba(255,255,255,0.5)',
                 borderTop: '1px solid var(--surface-border)',
                 fontSize: '0.875rem',
                 display: 'flex',

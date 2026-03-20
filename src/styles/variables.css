@@ -14,7 +14,10 @@
   --bg-color: #222831;
   --surface-color: rgba(57, 62, 70, 0.6);
   --surface-border: rgba(255, 255, 255, 0.08);
-  
+    /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+
   /* Fonts */
   --font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
   --font-inter: 'Inter', system-ui, sans-serif;

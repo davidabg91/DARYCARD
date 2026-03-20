@@ -51,7 +51,8 @@ const Landing: React.FC = () => {
                         fontWeight: 900,
                         lineHeight: 1.1,
                         margin: '0 0 1.5rem 0',
-                        letterSpacing: '-1px'
+                        letterSpacing: '-1px',
+                        color: '#ffffff'
                     }}>
                         Интелигентен <br/>
                         <span className="gradient-text" style={{ filter: 'drop-shadow(0 0 10px rgba(0, 173, 181, 0.3))' }}>Транспорт</span>
@@ -119,7 +120,7 @@ const Landing: React.FC = () => {
             }}>
                 <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
                     <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-                        <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '1rem' }}>Експертно Управление</h2>
+                        <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '1rem', color: '#ffffff' }}>Експертно Управление</h2>
                         <div style={{ width: '60px', height: '4px', background: 'var(--primary-color)', margin: '0 auto', borderRadius: '2px' }} />
                     </div>
 
