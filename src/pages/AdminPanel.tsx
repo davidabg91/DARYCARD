@@ -192,9 +192,13 @@ const AdminPanel: React.FC = () => {
                 adminId: currentUser?.username,
                 linkingClientId: clientId
             });
-            setShowActionModal(false); // Close the modal to show the "waiting" state
+            setShowActionModal(false); // Close the modal
+            setActiveTab('register'); // Switch to register tab to see the scan UI
             setMessage({ text: 'Режим на свързване активен! Моля, сканирайте новата карта с телефона си.', type: 'success' });
-        } catch (err) { console.error(err); }
+        } catch (err) { 
+            console.error(err); 
+            setMessage({ text: 'Грешка при стартиране на режима.', type: 'error' });
+        }
     };
 
     const handleLinkPhysicalCard = useCallback(async (oldId: string, newId: string) => {
