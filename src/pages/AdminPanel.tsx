@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Camera, Save, RefreshCw, BarChart, Users, PlusCircle, XCircle, DollarSign, List, Trash2, Eye, EyeOff, ShieldCheck, Shield, Clock, ExternalLink, TrendingUp, Percent, PiggyBank, AlertTriangle, Zap, UserCheck, HelpCircle } from 'lucide-react';
 import Card from '../components/Card';
