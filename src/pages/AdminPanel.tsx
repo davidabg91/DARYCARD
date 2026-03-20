@@ -128,7 +128,6 @@ const AdminPanel: React.FC = () => {
     const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
     const [nfcLinkId, setNfcLinkId] = useState('');
     const [isWaitingForScan, setIsWaitingForScan] = useState(false);
-    const [linkingClientId, setLinkingClientId] = useState<string | null>(null);
 
     // Modal/Action State
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -182,47 +181,6 @@ const AdminPanel: React.FC = () => {
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const startLinkingMode = async (clientId: string) => {
-        try {
-            setLinkingClientId(clientId);
-            setIsWaitingForScan(true);
-            await setDoc(doc(db, 'admin_actions', 'current'), { 
-                action: 'waiting_for_reg', 
-                timestamp: new Date().toISOString(),
-                adminId: currentUser?.username,
-                linkingClientId: clientId
-            });
-            setShowActionModal(false); // Close the modal
-            setActiveTab('register'); // Switch to register tab to see the scan UI
-            setMessage({ text: 'Режим на свързване активен! Моля, сканирайте новата карта с телефона си.', type: 'success' });
-        } catch (err) { 
-            console.error(err); 
-            setMessage({ text: 'Грешка при стартиране на режима.', type: 'error' });
-        }
-    };
-
-    const handleLinkPhysicalCard = useCallback(async (oldId: string, newId: string) => {
-        try {
-            setMessage({ text: 'Свързване на картата...', type: 'success' });
-            // 1. Find the old client
-            const oldClient = clients.find(c => c.id === oldId);
-            if (!oldClient) return;
-
-            // 2. Create new doc (effectively renaming the ID)
-            const updatedClient = { ...oldClient, id: newId };
-            await setDoc(doc(db, 'clients', newId), updatedClient);
-
-            // 3. Delete old doc
-            await deleteDoc(doc(db, 'clients', oldId));
-
-            setLinkingClientId(null);
-            setIsWaitingForScan(false);
-            setMessage({ text: `Успешно свързахте ${oldClient.name} с новата карта!`, type: 'success' });
-        } catch (err) {
-            console.error("Linking error:", err);
-            setMessage({ text: 'Грешка при свързване на картата.', type: 'error' });
-        }
-    }, [clients]);
 
     const toggleWaitingForScan = async () => {
         try {
@@ -283,14 +241,9 @@ const AdminPanel: React.FC = () => {
             if (snapshot.exists()) {
                 const data = snapshot.data();
                 if (data.action === 'id_received' && data.cardId) {
-                    if (data.linkingClientId) {
-                        // We are linking an existing client to a new physical card
-                        handleLinkPhysicalCard(data.linkingClientId, data.cardId);
-                    } else {
-                        // Standard registration scan
-                        setNfcLinkId(data.cardId);
-                        setIsWaitingForScan(false);
-                    }
+                    // Standard registration scan
+                    setNfcLinkId(data.cardId);
+                    setIsWaitingForScan(false);
                     // Clear the action so it doesn't trigger again
                     updateDoc(doc(db, 'admin_actions', 'current'), { action: 'idle' });
                 }
@@ -301,7 +254,7 @@ const AdminPanel: React.FC = () => {
             unsubscribe();
             actionUnsubscribe();
         };
-    }, [location.search, handleLinkPhysicalCard]);
+    }, [location.search]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setPhotoError(null);
@@ -1175,9 +1128,7 @@ const AdminPanel: React.FC = () => {
                                             </button>
                                         </div>
                                         <p style={{ marginTop: '0.6rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                            {linkingClientId 
-                                                ? `Свързване на карта към: ${clients.find(c => c.id === linkingClientId)?.name || 'избран клиент'}...` 
-                                                : 'Натиснете "Сканирай" и доближете картата до телефона си. ID-то ще се попълни само.'}
+                                            Натиснете "Сканирай" и доближете картата до телефона си. ID-то ще се попълни само.
                                         </p>
                                     </div>
                                     {message && <div style={{ color: message.type === 'success' ? 'var(--success-color)' : 'var(--error-color)' }}>{message.text}</div>}
@@ -1415,20 +1366,6 @@ const AdminPanel: React.FC = () => {
                                             </div>
                                         </div>
                                         <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
-                                    </div>
-
-                                    {/* Link Physical Card */}
-                                    <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(0, 173, 181, 0.03)', border: '1px solid rgba(0, 173, 181, 0.1)' }}>
-                                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', margin: '0 0 1rem 0' }}><ExternalLink size={18} /> Свързване с Карта</h4>
-                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                                            Използвайте това, ако профилът е създаден ръчно и искате да го свържете с физическа NFC карта.
-                                        </p>
-                                        <button 
-                                            onClick={() => startLinkingMode(selectedClient.id)} 
-                                            style={{ width: '100%', background: 'var(--primary-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                                        >
-                                            <RefreshCw size={16} /> Свържи Физическа Карта
-                                        </button>
                                     </div>
 
                                     {/* Cancel */}
