@@ -15,12 +15,14 @@
   --surface-color: rgba(57, 62, 70, 0.6);
   --surface-border: rgba(255, 255, 255, 0.08);
   
-  /* Text Colors */
-  --text-primary: #EEEEEE;
-  --text-secondary: #9BA4B5;
-  
   /* Fonts */
-  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-inter: 'Inter', system-ui, sans-serif;
+  
+  /* Neon Accents */
+  --neon-blue: #00FFF5;
+  --neon-green: #00E676;
+  --neon-purple: #A020F0;
   
   /* Transitions */
   --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
