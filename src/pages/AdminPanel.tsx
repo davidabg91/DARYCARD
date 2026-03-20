@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Camera, Save, RefreshCw, BarChart, Users, PlusCircle, XCircle, DollarSign, List, Trash2, Eye, EyeOff, ShieldCheck, Shield, Clock, ExternalLink, TrendingUp, Percent, PiggyBank, AlertTriangle, Zap, UserCheck } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, setDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, setDoc, deleteDoc, doc, updateDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
 interface ClientLog {
@@ -141,6 +141,7 @@ const AdminPanel: React.FC = () => {
     const [nfcQuantity, setNfcQuantity] = useState<number>(100);
     const [generatedLinks, setGeneratedLinks] = useState<string[]>([]);
     
+    const [statsLoading, setStatsLoading] = useState(false);
     const [statsMonth, setStatsMonth] = useState<string>(() => {
         const now = new Date();
         return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -1234,8 +1235,15 @@ const AdminPanel: React.FC = () => {
                                                         <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{log.action}</span>
                                                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{new Date(log.date).toLocaleString('bg-BG')}</span>
                                                     </div>
-                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{log.details}</div>
-                                                    {log.amount && <div style={{ fontWeight: 600, color: 'var(--success-color)', fontSize: '0.85rem', marginTop: '0.25rem' }}>+{log.amount} €</div>}
+                                                    {log.details && <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.4rem' }}>{log.details}</div>}
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        {log.amount && <div style={{ fontWeight: 800, color: 'var(--success-color)', fontSize: '0.9rem' }}>{log.amount} €</div>}
+                                                        {log.performedBy && (
+                                                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                                От: {log.performedBy.split('@')[0]}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))
