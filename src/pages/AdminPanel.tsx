@@ -51,11 +51,11 @@ const getDefaultExpiryMonth = () => {
 };
 
 interface TabButtonProps {
-    id: 'dashboard' | 'clients' | 'register';
+    id: 'dashboard' | 'clients' | 'register' | 'nfc';
     icon: React.ElementType;
     label: string;
-    activeTab: 'dashboard' | 'clients' | 'register';
-    setActiveTab: (id: 'dashboard' | 'clients' | 'register') => void;
+    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc';
+    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc') => void;
     activeColor?: string;
 }
 
@@ -108,7 +108,7 @@ const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
     const isAdmin = currentUser?.role === 'admin';
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register'>(
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc'>(
         isAdmin ? 'dashboard' : 'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
@@ -130,6 +130,10 @@ const AdminPanel: React.FC = () => {
 
     const [showTotalRevenue, setShowTotalRevenue] = useState(false);
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
+    
+    // NFC Tools State
+    const [nfcQuantity, setNfcQuantity] = useState<number>(100);
+    const [generatedLinks, setGeneratedLinks] = useState<string[]>([]);
     
     const [statsMonth, setStatsMonth] = useState<string>(() => {
         const now = new Date();
@@ -304,6 +308,21 @@ const AdminPanel: React.FC = () => {
         setNewAmount('');
     };
 
+    const generateNfcBatch = () => {
+        const baseUrl = `${window.location.origin}${window.location.pathname}#/client/`;
+        const newLinks = [];
+        for (let i = 0; i < nfcQuantity; i++) {
+            newLinks.push(`${baseUrl}${generateClientId()}`);
+        }
+        setGeneratedLinks(newLinks);
+    };
+
+    const copyLinksToClipboard = () => {
+        const text = generatedLinks.join('\n');
+        navigator.clipboard.writeText(text);
+        setMessage({ text: 'Линковете са копирани в клипборда!', type: 'success' });
+    };
+
     const cancelClient = async () => {
         if (!selectedClient || !cancelReason) return;
         const updatedClients = clients.map(c => {
@@ -461,10 +480,11 @@ const AdminPanel: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     {isAdmin && <TabButton id="dashboard" icon={BarChart} label="Табло" activeTab={activeTab} setActiveTab={setActiveTab} />}
                     <TabButton id="clients" icon={Users} label="Клиенти" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton id="register" icon={PlusCircle} label="Добави Нова Карта" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton id="register" icon={PlusCircle} label="Добави" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton id="nfc" icon={ExternalLink} label="NFC Кодове" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />
                 </div>
             </div>
 
@@ -899,6 +919,68 @@ const AdminPanel: React.FC = () => {
                             </Card>
                         </div>
                     )}
+                </div>
+            )}
+
+            {activeTab === 'nfc' && (
+                <div style={{ animation: 'fadeIn 0.4s ease' }}>
+                    <Card style={{ padding: '2rem' }}>
+                        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--accent-color)' }}>
+                            <ExternalLink size={24} /> Генериране на NFC Линкове
+                        </h2>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.9rem' }}>
+                            Използвайте този инструмент, за да генерирате уникални линкове за нови карти. 
+                            Изпратете списъка на производителя, за да ги запише в NFC чиповете на картите.
+                        </p>
+
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '2rem' }}>
+                            <div style={{ flex: 1, minWidth: '150px' }}>
+                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Количество карти</label>
+                                <input 
+                                    type="number" 
+                                    value={nfcQuantity} 
+                                    onChange={(e) => setNfcQuantity(parseInt(e.target.value))}
+                                    style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }}
+                                />
+                            </div>
+                            <button 
+                                onClick={generateNfcBatch}
+                                style={{ padding: '0.8rem 2rem', borderRadius: '12px', background: 'var(--accent-color)', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                            >
+                                Генерирай
+                            </button>
+                        </div>
+
+                        {generatedLinks.length > 0 && (
+                            <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <h3 style={{ fontSize: '1rem' }}>Генерирани линкове ({generatedLinks.length})</h3>
+                                    <button 
+                                        onClick={copyLinksToClipboard}
+                                        style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
+                                    >
+                                        Копирай Списъка
+                                    </button>
+                                </div>
+                                <div style={{ 
+                                    maxHeight: '400px', 
+                                    overflowY: 'auto', 
+                                    background: 'rgba(0,0,0,0.3)', 
+                                    borderRadius: '12px', 
+                                    padding: '1rem',
+                                    border: '1px solid var(--surface-border)',
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.85rem'
+                                }}>
+                                    {generatedLinks.map((link, idx) => (
+                                        <div key={idx} style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--primary-color)' }}>
+                                            {link}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </Card>
                 </div>
             )}
 

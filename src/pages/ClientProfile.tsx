@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, XCircle, MapPin, Ban, Clock, User, Settings, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, MapPin, Ban, Clock, User, Settings, RefreshCw, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
@@ -19,6 +19,41 @@ interface Client {
     history?: { date: string; action: string; details?: string; amount?: number; }[];
 }
 
+const ROUTES = [
+    "Бъркач", "Тръстеник", "Биволаре", "Горна Митрополия", "Долни Дъбник",
+    "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
+    "Долна Митрополия", "Ясен", "Крушовица", "Дисевица", "Градина",
+    "Петърница", "Опанец", "Победа", "Подем", "Божурица"
+];
+
+const compressImage = (dataUrl: string, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = dataUrl;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            if (width > height) {
+                if (width > maxWidth) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                }
+            } else {
+                if (height > maxHeight) {
+                    width *= maxHeight / height;
+                    height = maxHeight;
+                }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+    });
+};
+
 const ClientProfile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const { currentUser } = useAuth();
@@ -28,8 +63,16 @@ const ClientProfile: React.FC = () => {
     const [showRenewConfirm, setShowRenewConfirm] = useState(false);
     const [renewError, setRenewError] = useState<string | null>(null);
     const [renewAmount, setRenewAmount] = useState<number>(50);
-    const [renewMonth, setRenewMonth] = useState<string>('');
+    const [renewMonth, setRenewMonth] = useState<string>(''); 
     const [showPhotoModal, setShowPhotoModal] = useState(false);
+    const [isRegistering, setIsRegistering] = useState(false);
+    
+    // Registration form for new cards
+    const [regName, setRegName] = useState('');
+    const [regRoute, setRegRoute] = useState('');
+    const [regAmount, setRegAmount] = useState('50');
+    const [regPhoto, setRegPhoto] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [error, setError] = useState<string | null>(null);
     const hasPlayedSound = useRef(false);
@@ -58,6 +101,63 @@ const ClientProfile: React.FC = () => {
             playTone(1108.73, 0.08, 0.4); // C#6 (Major)
             playTone(1318.51, 0.16, 0.5); // E6
         } catch (e) { console.error("Audio error", e); }
+    };
+
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64 = reader.result as string;
+                const compressed = await compressImage(base64, 500, 500, 0.8);
+                setRegPhoto(compressed);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleRegister = async () => {
+        if (!id || !regName || !regRoute || !regPhoto || !regAmount) {
+            alert('Моля, попълнете всички полета и направете снимка.');
+            return;
+        }
+
+        const now = new Date();
+        let targetMonth = now.getMonth() + 1;
+        let targetYear = now.getFullYear();
+        if (now.getDate() >= 20) {
+            targetMonth += 1;
+            if (targetMonth > 12) { targetMonth = 1; targetYear += 1; }
+        }
+        const expiryMonth = `${targetYear}-${targetMonth.toString().padStart(2, '0')}`;
+
+        const newClient: Client = {
+            id,
+            name: regName,
+            route: regRoute,
+            expiryDate: expiryMonth,
+            photo: regPhoto,
+            createdAt: now.toISOString(),
+            amountPaid: Number(regAmount),
+            renewalHistory: [{ date: now.toISOString(), amount: Number(regAmount), month: expiryMonth }],
+            history: [{
+                date: now.toISOString(),
+                action: 'Активиране (Сканиране)',
+                details: `Първоначално плащане: ${regAmount} лв. за месец ${expiryMonth}`,
+                amount: Number(regAmount)
+            }]
+        };
+
+        try {
+            setLoading(true);
+            await setDoc(doc(db, 'clients', id), newClient);
+            setIsRegistering(false);
+            hasPlayedSound.current = false;
+        } catch (err) {
+            console.error(err);
+            alert('Грешка при записване.');
+            setLoading(false);
+        }
     };
 
     const playErrorSound = () => {
@@ -139,12 +239,83 @@ const ClientProfile: React.FC = () => {
 
     if (!client) {
         return (
-            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', color: '#fff', padding: '1rem' }}>
-                <div style={{ textAlign: 'center', maxWidth: '400px', width: '100%' }}>
-                    <XCircle size={64} color="var(--error-color)" style={{ marginBottom: '1.5rem' }} />
-                    <h2 style={{ marginBottom: '1rem' }}>Картата не е намерена</h2>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>ID: {id}</p>
-                    <Link to="/" style={{ padding: '0.8rem 2rem', background: 'var(--primary-color)', color: '#fff', borderRadius: '50px', textDecoration: 'none', fontWeight: 600 }}>Към Начало</Link>
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', padding: '1rem', fontFamily: 'Inter, sans-serif' }}>
+                <div style={{ textAlign: 'center', maxWidth: '440px', width: '100%' }}>
+                    {!isRegistering ? (
+                        <>
+                            <div style={{ 
+                                width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem',
+                                border: '1px solid rgba(255,255,255,0.1)'
+                            }}>
+                                <Settings size={48} color={currentUser ? "var(--primary-color)" : "rgba(255,255,255,0.2)"} />
+                            </div>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem' }}>
+                                {currentUser ? 'НОВА КАРТА' : 'НЕАКТИВНА КАРТА'}
+                            </h2>
+                            <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem', lineHeight: '1.6' }}>
+                                {currentUser 
+                                    ? 'Тази карта все още не е регистрирана в системата. Можете да я активирате сега.' 
+                                    : 'Тази NFC карта все още не е свързана с клиентски профил. Моля, свържете се с администратор.'}
+                            </p>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {currentUser && (
+                                    <button 
+                                        onClick={() => setIsRegistering(true)}
+                                        style={{ padding: '1.2rem', background: 'var(--primary-color)', color: '#fff', borderRadius: '50px', border: 'none', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 10px 30px rgba(0, 173, 181, 0.3)' }}
+                                    >
+                                        АКТИВИРАЙ КАРТАТА СЕГА
+                                    </button>
+                                )}
+                                <Link to="/" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
+                            </div>
+                        </>
+                    ) : (
+                        <div style={{ animation: 'fadeIn 0.4s ease', textAlign: 'left', background: 'rgba(255,255,255,0.03)', padding: '2rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', textAlign: 'center' }}>Регистрация на Карта</h3>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                                <div onClick={() => fileInputRef.current?.click()} style={{ width: '120px', height: '120px', borderRadius: '24px', background: 'rgba(255,255,255,0.05)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(255,255,255,0.2)', cursor: 'pointer', overflow: 'hidden', position: 'relative' }}>
+                                    {regPhoto ? (
+                                        <img src={regPhoto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <div style={{ textAlign: 'center' }}>
+                                            <Camera size={24} color="var(--primary-color)" />
+                                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.4rem' }}>СНИМКА</div>
+                                        </div>
+                                    )}
+                                    <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handlePhotoUpload} style={{ display: 'none' }} />
+                                </div>
+
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>ИМЕ НА КЛИЕНТА</label>
+                                    <input value={regName} onChange={e => setRegName(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} placeholder="Име Фамилия..." />
+                                </div>
+
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МАРШРУТ (КУРС)</label>
+                                    <select value={regRoute} onChange={e => setRegRoute(e.target.value)} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}>
+                                        <option value="">Избери маршрут...</option>
+                                        {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>СУМА (€)</label>
+                                    <input type="number" value={regAmount} onChange={e => setRegAmount(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} />
+                                </div>
+
+                                <button 
+                                    onClick={handleRegister}
+                                    style={{ marginTop: '1rem', padding: '1.2rem', background: '#00e676', color: '#000', borderRadius: '12px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}
+                                >
+                                    ЗАПАЗИ И АКТИВИРАЙ
+                                </button>
+                                <button onClick={() => setIsRegistering(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', cursor: 'pointer' }}>Отказ</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         );
