@@ -1441,6 +1441,20 @@ const AdminPanel: React.FC = () => {
                                         <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
                                     </div>
 
+                                    {/* Link Physical Card */}
+                                    <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(0, 173, 181, 0.03)', border: '1px solid rgba(0, 173, 181, 0.1)' }}>
+                                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', margin: '0 0 1rem 0' }}><ExternalLink size={18} /> Свързване с Карта</h4>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                                            Използвайте това, ако профилът е създаден ръчно и искате да го свържете с физическа NFC карта.
+                                        </p>
+                                        <button 
+                                            onClick={() => startLinkingMode(selectedClient.id)} 
+                                            style={{ width: '100%', background: 'var(--primary-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                                        >
+                                            <RefreshCw size={16} /> Свържи Физическа Карта
+                                        </button>
+                                    </div>
+
                                     {/* Cancel */}
                                     <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(255,0,0,0.03)', border: '1px solid rgba(255,0,0,0.1)' }}>
                                         <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--error-color)', margin: '0 0 1rem 0' }}><Trash2 size={18} /> Анулиране</h4>
