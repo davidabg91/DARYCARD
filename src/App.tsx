@@ -7,6 +7,7 @@ import AdminPanel from './pages/AdminPanel';
 import ClientProfile from './pages/ClientProfile';
 import LoginPage from './pages/LoginPage';
 import UsersPanel from './pages/UsersPanel';
+import Help from './pages/Help';
 import { useParams } from 'react-router-dom';
 
 function ClientProfileWrapper() {
@@ -37,6 +38,10 @@ function App() {
             {/* Admin only */}
             <Route path="admin/users" element={
               <ProtectedRoute requiredRole="admin"><UsersPanel /></ProtectedRoute>
+            } />
+
+            <Route path="help" element={
+              <ProtectedRoute><Help /></ProtectedRoute>
             } />
           </Route>
         </Routes>
