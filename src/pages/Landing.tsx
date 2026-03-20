@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ShieldCheck, Zap, Users, BarChart3, Fingerprint } from 'lucide-react';
 
 // Import assets
-import heroImage from '../assets/hero_main.png';
+import heroImage from '../assets/hero_white_card.png';
 import stepRegistration from '../assets/step_registration.png';
 import stepScan from '../assets/step_scan.png';
 import stepVerify from '../assets/step_verify.png';
