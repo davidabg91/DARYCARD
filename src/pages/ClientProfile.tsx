@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, MapPin, Ban, Clock, User, Settings, RefreshCw, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc, increment } from 'firebase/firestore';
 
 interface Client {
     id: string;
@@ -216,6 +216,33 @@ const ClientProfile: React.FC = () => {
 
         return () => unsubscribe();
     }, [id]);
+
+    // Tracking scans (Usage)
+    useEffect(() => {
+        if (!id || !currentUser || loading || !client) return;
+        
+        const trackScan = async () => {
+            const scanKey = `scanned_${id}`;
+            const lastSessionScan = sessionStorage.getItem(scanKey);
+            const now = new Date().getTime();
+            
+            // Session-based cooldown (1 hour) to avoid spamming the database on refresh
+            if (lastSessionScan && (now - parseInt(lastSessionScan)) < 3600000) return;
+
+            try {
+                const clientRef = doc(db, 'clients', id);
+                await updateDoc(clientRef, {
+                    scanCount: increment(1),
+                    lastScanAt: new Date().toISOString()
+                });
+                sessionStorage.setItem(scanKey, now.toString());
+            } catch (e) {
+                console.error("Error tracking scan:", e);
+            }
+        };
+        
+        trackScan();
+    }, [id, currentUser, loading, !!client]);
 
     if (loading) {
         return (

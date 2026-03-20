@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Camera, Save, RefreshCw, BarChart, Users, PlusCircle, XCircle, DollarSign, List, Trash2, Eye, EyeOff, ShieldCheck, Shield, Clock, ExternalLink, TrendingUp, Percent, PiggyBank } from 'lucide-react';
+import { Camera, Save, RefreshCw, BarChart, Users, PlusCircle, XCircle, DollarSign, List, Trash2, Eye, EyeOff, ShieldCheck, Shield, Clock, ExternalLink, TrendingUp, Percent, PiggyBank, AlertTriangle, Zap, UserCheck } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
 import { collection, onSnapshot, query, setDoc, deleteDoc, doc } from 'firebase/firestore';
@@ -25,6 +25,8 @@ interface Client {
     cancelReason?: string;
     renewalHistory?: { date: string, amount: number, month: string }[];
     history?: ClientLog[];
+    scanCount?: number;
+    lastScanAt?: string;
 }
 
 const ROUTES = [
@@ -442,6 +444,19 @@ const AdminPanel: React.FC = () => {
     const avgProfit = activeClientsCount > 0 ? Math.round(totalRevenue / activeClientsCount) : 0;
     const pendingTotal = totalNonCanceled - activeClientsCount;
 
+    const topScannedClients = [...clients]
+        .filter(c => (c.scanCount || 0) > 0)
+        .sort((a, b) => (b.scanCount || 0) - (a.scanCount || 0))
+        .slice(0, 5);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const scannedToday = clients.filter(c => c.lastScanAt?.startsWith(todayStr)).length;
+    
+    const suspiciousClients = clients.filter(c => {
+        const wasScannedToday = c.lastScanAt?.startsWith(todayStr);
+        return wasScannedToday && (c.scanCount || 0) > 15; // Example: highly active cards
+    }).slice(0, 3);
+
     const filteredClientsByFilters = clients.filter(c => {
         const matchesSearch = !searchTerm || 
             c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -600,6 +615,64 @@ const AdminPanel: React.FC = () => {
                             </div>
                             <div style={{ marginTop: '1.5rem', padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,173,181,0.05)', fontSize: '0.8rem', color: 'var(--primary-color)' }}>
                                 💡 {paymentRate > 80 ? 'Отлична събираемост този месец!' : 'Внимание: Има голям брой неплатени карти.'}
+                            </div>
+                        </Card>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                        {/* Top Active Users */}
+                        <Card>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-color)' }}>
+                                <UserCheck size={20} /> Най-активни Пътници
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {topScannedClients.length > 0 ? topScannedClients.map((c, idx) => (
+                                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: idx === 0 ? 'gold' : idx === 1 ? 'silver' : '#cd7f32', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 900 }}>{idx + 1}</div>
+                                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.name}</div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-color)' }}>{c.scanCount}</div>
+                                            <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>пътувания</div>
+                                        </div>
+                                    </div>
+                                )) : <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма данни за сканирания.</div>}
+                            </div>
+                        </Card>
+
+                        {/* Security & Alerts */}
+                        <Card>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff5252' }}>
+                                <AlertTriangle size={20} /> Сигурност и Нарушения
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,82,82,0.05)', border: '1px solid rgba(255,82,82,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,82,82,0.7)' }}>Сканирани карти днес</div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ff5252' }}>{scannedToday}</div>
+                                    </div>
+                                    <Zap size={24} color="#ff5252" opacity={0.5} />
+                                </div>
+                                
+                                {suspiciousClients.length > 0 ? (
+                                    <>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Подозрителна активност (Топ 3):</div>
+                                        {suspiciousClients.map(c => (
+                                            <div key={c.id} style={{ padding: '0.8rem', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{c.name}</div>
+                                                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>Последно: {new Date(c.lastScanAt!).toLocaleTimeString('bg-BG')}</div>
+                                                </div>
+                                                <div style={{ padding: '2px 8px', background: '#ff5252', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 900 }}>{c.scanCount} ТOTAL</div>
+                                            </div>
+                                        ))}
+                                    </>
+                                ) : (
+                                    <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--success-color)', background: 'rgba(0,255,150,0.05)', borderRadius: '12px' }}>
+                                        ✅ Няма засечени нарушения днес.
+                                    </div>
+                                )}
                             </div>
                         </Card>
                     </div>
