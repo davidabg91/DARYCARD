@@ -218,12 +218,13 @@ const ClientProfile: React.FC = () => {
     }, [id]);
 
     const scannedRef = useRef<string | null>(null);
+    const hasClient = !!client;
 
     // Tracking scans (Usage)
     useEffect(() => {
-        if (!id || !currentUser || loading || !client || scannedRef.current === id) return;
+        if (!id || !currentUser || loading || !hasClient || scannedRef.current === id) return;
         
-        const trackScan = async () => {
+        const performTrackScan = async () => {
             const scanKey = `scanned_${id}`;
             const lastSessionScan = sessionStorage.getItem(scanKey);
             const now = new Date().getTime();
@@ -250,8 +251,8 @@ const ClientProfile: React.FC = () => {
             }
         };
         
-        trackScan();
-    }, [id, currentUser, loading, !!client]);
+        performTrackScan();
+    }, [id, currentUser, loading, hasClient]);
 
     if (loading) {
         return (
