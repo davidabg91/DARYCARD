@@ -67,16 +67,17 @@ const TabButton = ({ id, icon: Icon, label, activeTab, setActiveTab, activeColor
     <button
         onClick={() => setActiveTab(id)}
         style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '50px',
+            display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', borderRadius: '50px',
             fontWeight: 700, 
             background: activeTab === id ? activeColor : (id === 'register' ? 'rgba(0, 200, 83, 0.1)' : 'transparent'),
             color: activeTab === id ? '#fff' : (id === 'register' ? '#00c853' : 'var(--text-secondary)'),
             border: `2px solid ${activeTab === id ? activeColor : (id === 'register' ? '#00c853' : 'var(--surface-border)')}`,
             boxShadow: id === 'register' ? '0 0 15px rgba(0, 200, 83, 0.2)' : 'none',
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            fontSize: 'var(--tab-font-size, 0.9rem)'
         }}
     >
-        <Icon size={18} /> <span className="mobile-hide">{label}</span>
+        <Icon size={18} /> <span className="tab-label">{label}</span>
     </button>
 );
 
@@ -558,19 +559,22 @@ const AdminPanel: React.FC = () => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <TabButton id="register" icon={PlusCircle} label="Добави" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton id="clients" icon={Users} label="Клиенти" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton id="help" icon={HelpCircle} label="Помощ" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    {isAdmin && <TabButton id="dashboard" icon={BarChart} label="Табло" activeTab={activeTab} setActiveTab={setActiveTab} />}
-                    {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC Кодове" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />}
+                    <TabButton id="register" icon={PlusCircle} label="ДОБАВИ КАРТИ" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton id="clients" icon={Users} label="КЛИЕНТИ" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton id="help" icon={HelpCircle} label="ПОМОЩ" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    {isAdmin && <TabButton id="dashboard" icon={BarChart} label="ТАБЛО" activeTab={activeTab} setActiveTab={setActiveTab} />}
+                    {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />}
                 </div>
             </div>
 
             <style>{`
         @media (max-width: 600px) { 
+            .tab-label { font-size: 0.75rem; }
             .mobile-hide { display: none; }
             .desktop-table { display: none; }
             .mobile-cards { display: grid !important; }
+            .nfc-connect-container { flex-direction: column !important; }
+            .nfc-scan-button { width: 100% !important; justify-content: center !important; }
         }
         @media (min-width: 601px) {
             .mobile-cards { display: none !important; }
@@ -1099,17 +1103,18 @@ const AdminPanel: React.FC = () => {
                                     </div>
                                     <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
                                         <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Свързване на Карта (NFC/Link)</label>
-                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                        <div className="nfc-connect-container" style={{ display: 'flex', gap: '0.75rem' }}>
                                             <input 
                                                 type="text" 
                                                 placeholder="ID от Карта (напр. ABC123)" 
-                                                style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--surface-border)', color: 'var(--primary-color)', fontWeight: 700, fontFamily: 'monospace' }} 
+                                                style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--surface-border)', color: 'var(--primary-color)', fontWeight: 700, fontFamily: 'monospace', minWidth: '0' }} 
                                                 value={nfcLinkId} 
                                                 onChange={e => setNfcLinkId(e.target.value.toUpperCase())} 
                                             />
                                             <button 
                                                 type="button"
                                                 onClick={toggleWaitingForScan}
+                                                className="nfc-scan-button"
                                                 style={{ 
                                                     padding: '0.8rem 1.2rem', 
                                                     borderRadius: '8px', 
@@ -1120,7 +1125,9 @@ const AdminPanel: React.FC = () => {
                                                     alignItems: 'center', 
                                                     gap: '0.5rem',
                                                     boxShadow: isWaitingForScan ? '0 0 15px rgba(255,23,68,0.3)' : 'none',
-                                                    animation: isWaitingForScan ? 'pulse 1.5s infinite' : 'none'
+                                                    animation: isWaitingForScan ? 'pulse 1.5s infinite' : 'none',
+                                                    whiteSpace: 'nowrap',
+                                                    flexShrink: 0
                                                 }}
                                             >
                                                 {isWaitingForScan ? <RefreshCw size={18} className="animate-spin" /> : <RefreshCw size={18} />}
