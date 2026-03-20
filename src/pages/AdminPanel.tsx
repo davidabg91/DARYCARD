@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Camera, Save, RefreshCw, BarChart, Users, PlusCircle, XCircle, DollarSign, List, Trash2, Eye, EyeOff, ShieldCheck, Shield, Clock, ExternalLink, TrendingUp, Percent, PiggyBank, AlertTriangle, Zap, UserCheck } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, setDoc, deleteDoc, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, onSnapshot, query, setDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
 interface ClientLog {
@@ -623,10 +623,20 @@ const AdminPanel: React.FC = () => {
                             {isAdmin && (
                                 <button 
                                     onClick={handleResetAllScans}
-                                    style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)', color: '#ff5252', borderRadius: '6px', cursor: 'pointer', fontSize: '0.65rem', padding: '0.3rem 0.6rem' }}
+                                    disabled={statsLoading}
+                                    style={{ 
+                                        position: 'absolute', top: '1rem', right: '1rem', 
+                                        background: statsLoading ? 'rgba(255,255,255,0.05)' : 'rgba(255,0,0,0.05)', 
+                                        border: '1px solid rgba(255,0,0,0.1)', 
+                                        color: statsLoading ? 'var(--text-secondary)' : '#ff5252', 
+                                        borderRadius: '6px', cursor: statsLoading ? 'not-allowed' : 'pointer', 
+                                        fontSize: '0.65rem', padding: '0.3rem 0.6rem',
+                                        display: 'flex', alignItems: 'center', gap: '4px'
+                                    }}
                                     title="Нулирай всички броячи за сканиране"
                                 >
-                                    <RefreshCw size={12} style={{ marginRight: '4px' }} /> Нулирай Сканове
+                                    <RefreshCw size={12} className={statsLoading ? 'spin' : ''} /> 
+                                    {statsLoading ? 'Нулиране...' : 'Нулирай Сканове'}
                                 </button>
                             )}
                         </Card>
