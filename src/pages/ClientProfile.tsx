@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, MapPin, Ban, Clock, User, Settings, RefreshCw, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { doc, onSnapshot, setDoc, updateDoc, increment } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 
 interface Client {
     id: string;
@@ -231,9 +231,11 @@ const ClientProfile: React.FC = () => {
 
             try {
                 const clientRef = doc(db, 'clients', id);
+                const isoNow = new Date().toISOString();
                 await updateDoc(clientRef, {
                     scanCount: increment(1),
-                    lastScanAt: new Date().toISOString()
+                    lastScanAt: isoNow,
+                    scanHistory: arrayUnion(isoNow)
                 });
                 sessionStorage.setItem(scanKey, now.toString());
             } catch (e) {

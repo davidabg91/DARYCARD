@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Camera, Save, RefreshCw, BarChart, Users, PlusCircle, XCircle, DollarSign, List, Trash2, Eye, EyeOff, ShieldCheck, Shield, Clock, ExternalLink, TrendingUp, Percent, PiggyBank, AlertTriangle, Zap, UserCheck } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, setDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, setDoc, deleteDoc, doc, arrayUnion } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
 interface ClientLog {
@@ -27,6 +27,7 @@ interface Client {
     history?: ClientLog[];
     scanCount?: number;
     lastScanAt?: string;
+    scanHistory?: string[];
 }
 
 const ROUTES = [
@@ -452,10 +453,29 @@ const AdminPanel: React.FC = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const scannedToday = clients.filter(c => c.lastScanAt?.startsWith(todayStr)).length;
     
-    const suspiciousClients = clients.filter(c => {
-        const wasScannedToday = c.lastScanAt?.startsWith(todayStr);
-        return wasScannedToday && (c.scanCount || 0) > 15; // Example: highly active cards
-    }).slice(0, 3);
+    // Group suspicious activity by date and client
+    const suspiciousClientsData = clients.map(c => {
+        if (!c.scanHistory) return null;
+        
+        // Group scans by date
+        const byDate = c.scanHistory.reduce((acc, ts) => {
+            const d = ts.split('T')[0];
+            if (!acc[d]) acc[d] = [];
+            acc[d].push(ts);
+            return acc;
+        }, {} as Record<string, string[]>);
+
+        // Find days with > 3 scans
+        const abuseDays = Object.entries(byDate)
+            .filter(([_, scans]) => scans.length > 3)
+            .sort((a, b) => b[0].localeCompare(a[0])); // Recent dates first
+
+        if (abuseDays.length === 0) return null;
+
+        return { ...c, abuseDays };
+    }).filter(item => item !== null) as (Client & { abuseDays: [string, string[]][] })[];
+
+    const suspiciousClients = suspiciousClientsData.slice(0, 5);
 
     const filteredClientsByFilters = clients.filter(c => {
         const matchesSearch = !searchTerm || 
@@ -657,20 +677,35 @@ const AdminPanel: React.FC = () => {
                                 
                                 {suspiciousClients.length > 0 ? (
                                     <>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Подозрителна активност (Топ 3):</div>
-                                        {suspiciousClients.map(c => (
-                                            <div key={c.id} style={{ padding: '0.8rem', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div>
-                                                    <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{c.name}</div>
-                                                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>Последно: {new Date(c.lastScanAt!).toLocaleTimeString('bg-BG')}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: '0.5rem' }}>Пътници с над 3 сканирания на ден:</div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                                            {suspiciousClients.map(c => (
+                                                <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)', borderRadius: '12px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{c.name}</div>
+                                                        <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>ID: {c.id}</div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                        {c.abuseDays.slice(0, 2).map(([date, times]) => (
+                                                            <div key={date} style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '6px' }}>
+                                                                <div style={{ color: '#ff5252', fontWeight: 700, marginBottom: '0.2rem' }}>📅 {new Date(date).toLocaleDateString('bg-BG')} — {times.length} пъти</div>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                    {times.map((ts, idx) => (
+                                                                        <span key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.65rem' }}>
+                                                                            {new Date(ts).toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                                <div style={{ padding: '2px 8px', background: '#ff5252', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 900 }}>{c.scanCount} ТOTAL</div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
                                     </>
                                 ) : (
                                     <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--success-color)', background: 'rgba(0,255,150,0.05)', borderRadius: '12px' }}>
-                                        ✅ Няма засечени нарушения днес.
+                                        ✅ Няма засечени нарушения.
                                     </div>
                                 )}
                             </div>
