@@ -617,28 +617,9 @@ const AdminPanel: React.FC = () => {
                             <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}><Users size={16} />{isAll ? 'Всички Профили' : 'Активни Карти'}</div>
                             <div style={{ fontSize: '2.5rem', fontWeight: 800 }}>{activeClientsCount}</div>
                         </Card>
-                        <Card className="stat-card" style={{ borderLeft: '4px solid var(--accent-color)', position: 'relative' }}>
+                        <Card className="stat-card" style={{ borderLeft: '4px solid var(--accent-color)' }}>
                             <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Users size={16} /> Клиенти</div>
                             <div style={{ fontSize: '2.5rem', fontWeight: 700 }}>{clients.length}</div>
-                            {isAdmin && (
-                                <button 
-                                    onClick={handleResetAllScans}
-                                    disabled={statsLoading}
-                                    style={{ 
-                                        position: 'absolute', top: '1rem', right: '1rem', 
-                                        background: statsLoading ? 'rgba(255,255,255,0.05)' : 'rgba(255,0,0,0.05)', 
-                                        border: '1px solid rgba(255,0,0,0.1)', 
-                                        color: statsLoading ? 'var(--text-secondary)' : '#ff5252', 
-                                        borderRadius: '6px', cursor: statsLoading ? 'not-allowed' : 'pointer', 
-                                        fontSize: '0.65rem', padding: '0.3rem 0.6rem',
-                                        display: 'flex', alignItems: 'center', gap: '4px'
-                                    }}
-                                    title="Нулирай всички броячи за сканиране"
-                                >
-                                    <RefreshCw size={12} className={statsLoading ? 'spin' : ''} /> 
-                                    {statsLoading ? 'Нулиране...' : 'Нулирай Сканове'}
-                                </button>
-                            )}
                         </Card>
                     </div>
 
@@ -709,9 +690,30 @@ const AdminPanel: React.FC = () => {
 
                         {/* Security & Alerts */}
                         <Card>
-                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff5252' }}>
-                                <AlertTriangle size={20} /> Сигурност и Нарушения
-                            </h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff5252' }}>
+                                    <AlertTriangle size={20} /> Сигурност и Нарушения
+                                </h3>
+                                {isAdmin && (
+                                    <button 
+                                        onClick={handleResetAllScans}
+                                        disabled={statsLoading}
+                                        style={{ 
+                                            background: statsLoading ? 'rgba(255,255,255,0.05)' : 'rgba(255,82,82,0.1)', 
+                                            border: '1px solid rgba(255,82,82,0.2)', 
+                                            color: statsLoading ? 'var(--text-secondary)' : '#ff5252', 
+                                            borderRadius: '8px', cursor: statsLoading ? 'not-allowed' : 'pointer', 
+                                            fontSize: '0.75rem', padding: '0.5rem 1rem',
+                                            display: 'flex', alignItems: 'center', gap: '6px',
+                                            fontWeight: 600, transition: 'all 0.2s'
+                                        }}
+                                        title="Нулирай всички броячи за сканиране"
+                                    >
+                                        <RefreshCw size={14} className={statsLoading ? 'spin' : ''} /> 
+                                        {statsLoading ? 'Нулиране...' : 'Нулирай Сканове'}
+                                    </button>
+                                )}
+                            </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,82,82,0.05)', border: '1px solid rgba(255,82,82,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div>
