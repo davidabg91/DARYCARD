@@ -150,6 +150,28 @@ const AdminPanel: React.FC = () => {
         const now = new Date();
         return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
     });
+
+    const handleResetAllScans = async () => {
+        if (!isAdmin || !window.confirm('Сигурни ли сте, че искате да нулирате статистиката за сканиранията за ВСИЧКИ клиенти?')) return;
+        
+        try {
+            setStatsLoading(true);
+            const batchPromises = clients.map(async (c) => {
+                const ref = doc(db, 'clients', c.id);
+                return updateDoc(ref, {
+                    scanCount: 0,
+                    scanHistory: []
+                });
+            });
+            await Promise.all(batchPromises);
+            alert('Статистиката е нулирана успешно.');
+        } catch (err) {
+            console.error(err);
+            alert('Грешка при нулиране.');
+        } finally {
+            setStatsLoading(false);
+        }
+    };
     const [filterRoute, setFilterRoute] = useState<string>('all');
 
     const [photoError, setPhotoError] = useState<string | null>(null);
