@@ -484,7 +484,7 @@ const AdminPanel: React.FC = () => {
                     {isAdmin && <TabButton id="dashboard" icon={BarChart} label="Табло" activeTab={activeTab} setActiveTab={setActiveTab} />}
                     <TabButton id="clients" icon={Users} label="Клиенти" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="register" icon={PlusCircle} label="Добави" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton id="nfc" icon={ExternalLink} label="NFC Кодове" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC Кодове" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />}
                 </div>
             </div>
 
@@ -922,7 +922,7 @@ const AdminPanel: React.FC = () => {
                 </div>
             )}
 
-            {activeTab === 'nfc' && (
+            {activeTab === 'nfc' && isAdmin && (
                 <div style={{ animation: 'fadeIn 0.4s ease' }}>
                     <Card style={{ padding: '2rem' }}>
                         <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--accent-color)' }}>
