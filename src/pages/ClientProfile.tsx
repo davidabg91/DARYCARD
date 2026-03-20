@@ -72,6 +72,16 @@ const ClientProfile: React.FC = () => {
     const [regRoute, setRegRoute] = useState('');
     const [regAmount, setRegAmount] = useState('50');
     const [regPhoto, setRegPhoto] = useState<string | null>(null);
+    const [regMonth, setRegMonth] = useState<string>(() => {
+        const now = new Date();
+        let targetMonth = now.getMonth() + 1;
+        let targetYear = now.getFullYear();
+        if (now.getDate() >= 20) {
+            targetMonth += 1;
+            if (targetMonth > 12) { targetMonth = 1; targetYear += 1; }
+        }
+        return `${targetYear}-${targetMonth.toString().padStart(2, '0')}`;
+    });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [error, setError] = useState<string | null>(null);
@@ -123,13 +133,7 @@ const ClientProfile: React.FC = () => {
         }
 
         const now = new Date();
-        let targetMonth = now.getMonth() + 1;
-        let targetYear = now.getFullYear();
-        if (now.getDate() >= 20) {
-            targetMonth += 1;
-            if (targetMonth > 12) { targetMonth = 1; targetYear += 1; }
-        }
-        const expiryMonth = `${targetYear}-${targetMonth.toString().padStart(2, '0')}`;
+        const expiryMonth = regMonth;
 
         const newClient: Client = {
             id,
@@ -304,6 +308,11 @@ const ClientProfile: React.FC = () => {
                                 <div>
                                     <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>СУМА (€)</label>
                                     <input type="number" value={regAmount} onChange={e => setRegAmount(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} />
+                                </div>
+
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МЕСЕЦ</label>
+                                    <input type="month" value={regMonth} onChange={e => setRegMonth(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none', colorScheme: 'dark' }} />
                                 </div>
 
                                 <button 
