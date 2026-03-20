@@ -55,11 +55,11 @@ const getDefaultExpiryMonth = () => {
 };
 
 interface TabButtonProps {
-    id: 'dashboard' | 'clients' | 'register' | 'nfc';
+    id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'help';
     icon: React.ElementType;
     label: string;
-    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc';
-    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc') => void;
+    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc' | 'help';
+    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'help') => void;
     activeColor?: string;
 }
 
@@ -114,7 +114,7 @@ const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
     const isAdmin = currentUser?.role === 'admin';
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc'>(
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc' | 'help'>(
         isAdmin ? 'dashboard' : 'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
