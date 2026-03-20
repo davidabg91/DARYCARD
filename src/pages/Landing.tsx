@@ -79,7 +79,7 @@ const Landing: React.FC = () => {
                             gap: '0.75rem',
                             fontSize: '1.1rem',
                             background: 'linear-gradient(135deg, rgba(0, 173, 181, 0.4), rgba(0, 255, 245, 0.1))',
-                            color: '#111111',
+                            color: '#fff',
                             transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                         }}>
                              <ShieldCheck size={24} /> Влез в Системата
