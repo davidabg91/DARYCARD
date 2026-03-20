@@ -1,6 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Camera, Save, RefreshCw, BarChart, Users, PlusCircle, XCircle, DollarSign, List, Trash2, Eye, EyeOff, ShieldCheck, Shield, Clock, ExternalLink, TrendingUp, Percent, PiggyBank, AlertTriangle, Zap, UserCheck, HelpCircle } from 'lucide-react';
+import { 
+    Users, PlusCircle, BarChart, ExternalLink, 
+    Search, Calendar, MapPin, Phone, User, 
+    Trash2, Edit, CheckCircle, XCircle, AlertCircle, 
+    Clock, DollarSign, Camera, RotateCcw, 
+    ChevronDown, ChevronUp, Filter, RefreshCw, List, Zap
+} from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
 import { collection, onSnapshot, query, setDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
