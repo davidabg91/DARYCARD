@@ -260,7 +260,7 @@ const ClientProfile: React.FC = () => {
         });
 
         return () => unsubscribe();
-    }, [id]);
+    }, [id, cloudSyncStatus]);
 
     const scannedRef = useRef<string | null>(null);
     const hasClient = !!client;

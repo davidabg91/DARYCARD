@@ -181,6 +181,44 @@ const AdminPanel: React.FC = () => {
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const startLinkingMode = async (clientId: string) => {
+        try {
+            setLinkingClientId(clientId);
+            setIsWaitingForScan(true);
+            await setDoc(doc(db, 'admin_actions', 'current'), { 
+                action: 'waiting_for_reg', 
+                timestamp: new Date().toISOString(),
+                adminId: currentUser?.username,
+                linkingClientId: clientId
+            });
+            setShowActionModal(false); // Close the modal to show the "waiting" state
+            setMessage({ text: 'Режим на свързване активен! Моля, сканирайте новата карта с телефона си.', type: 'success' });
+        } catch (err) { console.error(err); }
+    };
+
+    const handleLinkPhysicalCard = async (oldId: string, newId: string) => {
+        try {
+            setMessage({ text: 'Свързване на картата...', type: 'success' });
+            // 1. Find the old client
+            const oldClient = clients.find(c => c.id === oldId);
+            if (!oldClient) return;
+
+            // 2. Create new doc (effectively renaming the ID)
+            const updatedClient = { ...oldClient, id: newId };
+            await setDoc(doc(db, 'clients', newId), updatedClient);
+
+            // 3. Delete old doc
+            await deleteDoc(doc(db, 'clients', oldId));
+
+            setLinkingClientId(null);
+            setIsWaitingForScan(false);
+            setMessage({ text: `Успешно свързахте ${oldClient.name} с новата карта!`, type: 'success' });
+        } catch (err) {
+            console.error("Linking error:", err);
+            setMessage({ text: 'Грешка при свързване на картата.', type: 'error' });
+        }
+    };
+
     const toggleWaitingForScan = async () => {
         try {
             const newState = !isWaitingForScan;
@@ -189,7 +227,7 @@ const AdminPanel: React.FC = () => {
                 await setDoc(doc(db, 'admin_actions', 'current'), { 
                     action: 'waiting_for_reg', 
                     timestamp: new Date().toISOString(),
-                    adminId: currentUser?.email // Use email if UID is not in AppUser
+                    adminId: currentUser?.username // AppUser uses username for email
                 });
             } else {
                 await updateDoc(doc(db, 'admin_actions', 'current'), { action: 'idle' });
@@ -202,6 +240,7 @@ const AdminPanel: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState(true);
     const [syncError, setSyncError] = useState<string | null>(null);
     const [registrationSuccess, setRegistrationSuccess] = useState<Client | null>(null);
+    const [linkingClientId, setLinkingClientId] = useState<string | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
 
@@ -240,8 +279,14 @@ const AdminPanel: React.FC = () => {
             if (snapshot.exists()) {
                 const data = snapshot.data();
                 if (data.action === 'id_received' && data.cardId) {
-                    setNfcLinkId(data.cardId);
-                    setIsWaitingForScan(false);
+                    if (data.linkingClientId) {
+                        // We are linking an existing client to a new physical card
+                        handleLinkPhysicalCard(data.linkingClientId, data.cardId);
+                    } else {
+                        // Standard registration scan
+                        setNfcLinkId(data.cardId);
+                        setIsWaitingForScan(false);
+                    }
                     // Clear the action so it doesn't trigger again
                     updateDoc(doc(db, 'admin_actions', 'current'), { action: 'idle' });
                 }
