@@ -1,5 +1,5 @@
 import React from 'react';
-import { HelpCircle, Zap, PlusCircle, RefreshCw, List, CheckCircle, XCircle, Search, User, Settings } from 'lucide-react';
+import { HelpCircle, Zap, PlusCircle, RefreshCw, List, CheckCircle, XCircle, Search, User } from 'lucide-react';
 import Card from '../components/Card';
 
 const Help: React.FC = () => {
@@ -66,44 +66,13 @@ const Help: React.FC = () => {
                 </div>
             </div>
 
-            {/* Загубена карта (Lost Card) */}
-            <Card className="step-card" style={{ 
-                padding: '2rem', 
-                marginBottom: '4rem', 
-                borderLeft: '8px solid var(--accent-color)', 
-                background: 'rgba(255, 160, 0, 0.05)',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
-            }}>
-                <h3 style={{ margin: '0 0 1.2rem 0', color: 'var(--accent-color)', fontSize: '1.6rem', fontWeight: 900 }}>
-                    <Settings size={28} style={{ marginRight: '10px', verticalAlign: 'middle' }} />
-                    Клиентът има профил, но НЯМА КАРТА?
-                </h3>
-                <p style={{ marginBottom: '1.5rem', color: 'rgba(255,255,255,0.7)', fontSize: '1.1rem' }}>
-                    Ако картата е загубена или счупена, ето как да му дадете нова:
+            {/* Ръчно управление (Manual Entry) */}
+            <div style={{ marginBottom: '2.5rem', padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '20px', border: '1px dashed rgba(255,255,255,0.2)' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>Ръчно управление (без карта)</h3>
+                <p style={{ margin: 0, opacity: 0.8, lineHeight: '1.5' }}>
+                    Ако вече имате <b>данните на клиента и неговия код (ID)</b>, можете да ползвате долните два панела директно, <b>без да е нужно картата да е пред вас</b>. Просто въведете кода ръчно в полето за ID.
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', fontSize: '1.1rem' }}>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <div style={{ color: 'var(--accent-color)', fontWeight: 900 }}>1.</div>
-                        <div>Намери клиента в списъка <b>"КЛИЕНТИ"</b>.</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <div style={{ color: 'var(--accent-color)', fontWeight: 900 }}>2.</div>
-                        <div>Натисни бутона <b>"Управление"</b> до името му.</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <div style={{ color: 'var(--accent-color)', fontWeight: 900 }}>3.</div>
-                        <div>Отиди на под-таб <b>"Редактиране"</b> (най-горе в прозореца).</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <div style={{ color: 'var(--accent-color)', fontWeight: 900 }}>4.</div>
-                        <div>Натисни <b>"Сканирай"</b> и доближи новата карта.</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <div style={{ color: 'var(--accent-color)', fontWeight: 900 }}>5.</div>
-                        <div>Натисни <b>"Запази Промените"</b> и всичко е готово!</div>
-                    </div>
-                </div>
-            </Card>
+            </div>
 
             <div className="help-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem' }}>
                 
@@ -123,7 +92,7 @@ const Help: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <div style={{ color: '#00c853', fontWeight: 900 }}>❷</div>
-                            <div>Натисни <b>"Сканирай"</b> и доближи картата до телефона.</div>
+                            <div>Сканирай картата <b>ИЛИ</b> напиши кода ѝ ръчно в полето.</div>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <div style={{ color: '#00c853', fontWeight: 900 }}>❸</div>
@@ -157,7 +126,7 @@ const Help: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>❷</div>
-                            <div>Кликни на <b>Името му</b>.</div>
+                            <div>Кликни на бутона <b>"Управление"</b> до името му.</div>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>❸</div>
@@ -168,6 +137,33 @@ const Help: React.FC = () => {
                             <div>Избери <b>МЕСЕЦА</b> и сумата и готово!</div>
                         </div>
                     </div>
+                </Card>
+
+                {/* Анулиране (Cancellation) */}
+                <Card className="step-card" style={{ padding: '2rem', borderTop: '6px solid #ff1744' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#ff1744', marginBottom: '1.5rem', fontSize: '1.3rem', fontWeight: 800 }}>
+                        <XCircle size={22} /> Как се спира (анулира) карта?
+                    </h3>
+                    <p style={{ lineHeight: '1.6', marginBottom: '1.2rem' }}>
+                        Ако искате да спрете картата на клиент веднага:
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#ff1744', fontWeight: 900 }}>1.</div>
+                            <div>Отиди на <b>"Управление"</b> до името на клиента.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#ff1744', fontWeight: 900 }}>2.</div>
+                            <div>Влез в таб <b>"Действие"</b>.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#ff1744', fontWeight: 900 }}>3.</div>
+                            <div>Натисни червения бутон <b>"Анулирай Абонамент"</b>.</div>
+                        </div>
+                    </div>
+                    <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        *Това ще направи картата <b>НЕВАЛИДНА</b> и шофьорът ще види червен сигнал.
+                    </p>
                 </Card>
 
                 {/* Търсене */}
