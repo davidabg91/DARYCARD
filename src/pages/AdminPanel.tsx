@@ -5,7 +5,7 @@ import {
     Trash2, XCircle, Clock, DollarSign, Camera, 
     RefreshCw, List, Zap, Save, Eye, EyeOff, 
     ShieldCheck, Shield, TrendingUp, Percent, 
-    PiggyBank, AlertTriangle, UserCheck, Filter, ChevronUp
+    PiggyBank, AlertTriangle, UserCheck
 } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
