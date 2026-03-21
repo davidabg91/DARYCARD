@@ -290,6 +290,11 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
+        if (!nfcLinkId) {
+            setMessage({ text: 'Моля, свържете карта (Сканирайте или въведете ID), преди да запишете.', type: 'error' });
+            return;
+        }
+
         const generatedId = nfcLinkId.trim() || generateClientId();
         const newClient: Client = {
             id: generatedId,
@@ -649,8 +654,8 @@ const AdminPanel: React.FC = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
                         <Card>
                             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><List size={20} /> Статистика по Курсове</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                {routeStats.slice(0, 8).map(st => (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                                {routeStats.map(st => (
                                     <div key={st.route}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                             <span>{st.route}</span>
