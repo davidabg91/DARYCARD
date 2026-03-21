@@ -45,15 +45,27 @@ const Landing: React.FC = () => {
             <style>{`
                 @media (max-width: 900px) {
                     .hero-section {
-                        padding: 6rem 1.5rem 6rem 1.5rem !important;
+                        padding: 6rem 1.25rem !important;
                     }
                     .hero-text h1 {
-                        font-size: 3.5rem !important;
-                        letter-spacing: -3px !important;
+                        font-size: clamp(2.4rem, 12vw, 4.5rem) !important;
+                        letter-spacing: -2px !important;
+                        line-height: 1.05 !important;
                     }
                     .hero-text p {
-                        font-size: 1.15rem !important;
+                        font-size: 1.1rem !important;
                         max-width: 100% !important;
+                        margin-bottom: 2.5rem !important;
+                    }
+                    .premium-button-lg {
+                        padding: 1.25rem 2.5rem !important;
+                        font-size: 1.1rem !important;
+                        width: 100% !important;
+                        max-width: 400px !important;
+                    }
+                    .features-grid {
+                        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+                        gap: 2rem !important;
                     }
                 }
                 .premium-button-lg {
