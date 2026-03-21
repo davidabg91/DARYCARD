@@ -117,7 +117,7 @@ const Help: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>3.</div>
-                            <div>Горе вдясно натиснете бутона <b> "Управление" </b>.</div>
+                            <div>Натиснете големия зелен бутон <b>"ПОДНОВИ"</b> (под снимката).</div>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>4.</div>
