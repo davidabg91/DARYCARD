@@ -65,6 +65,45 @@ const Help: React.FC = () => {
                 </div>
             </div>
 
+            {/* Загубена карта (Lost Card) */}
+            <Card className="step-card" style={{ 
+                padding: '2rem', 
+                marginBottom: '4rem', 
+                borderLeft: '8px solid var(--accent-color)', 
+                background: 'rgba(255, 160, 0, 0.05)',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+            }}>
+                <h3 style={{ margin: '0 0 1.2rem 0', color: 'var(--accent-color)', fontSize: '1.6rem', fontWeight: 900 }}>
+                    <Settings size={28} style={{ marginRight: '10px', verticalAlign: 'middle' }} />
+                    Клиентът има профил, но НЯМА КАРТА?
+                </h3>
+                <p style={{ marginBottom: '1.5rem', color: 'rgba(255,255,255,0.7)', fontSize: '1.1rem' }}>
+                    Ако картата е загубена или счупена, ето как да му дадете нова:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', fontSize: '1.1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{ color: 'var(--accent-color)', fontWeight: 900 }}>1.</div>
+                        <div>Намери клиента в списъка <b>"КЛИЕНТИ"</b>.</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{ color: 'var(--accent-color)', fontWeight: 900 }}>2.</div>
+                        <div>Натисни бутона <b>"Управление"</b> до името му.</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{ color: 'var(--accent-color)', fontWeight: 900 }}>3.</div>
+                        <div>Отиди на под-таб <b>"Редактиране"</b> (най-горе в прозореца).</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{ color: 'var(--accent-color)', fontWeight: 900 }}>4.</div>
+                        <div>Натисни <b>"Сканирай"</b> и доближи новата карта.</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{ color: 'var(--accent-color)', fontWeight: 900 }}>5.</div>
+                        <div>Натисни <b>"Запази Промените"</b> и всичко е готово!</div>
+                    </div>
+                </div>
+            </Card>
+
             <div className="help-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem' }}>
                 
                 {/* Стъпка 1: Добавяне */}
