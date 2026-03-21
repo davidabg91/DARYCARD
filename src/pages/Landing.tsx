@@ -116,7 +116,7 @@ const Landing: React.FC = () => {
                         background: 'rgba(0, 173, 181, 0.08)',
                         backdropFilter: 'blur(10px)'
                     }}>
-                        <Fingerprint size={20} /> Advanced Transit Interface
+                        <Fingerprint size={20} /> DARY CARD • ПЛЕВЕН
                     </div>
                     
                     <h1 style={{
@@ -127,11 +127,11 @@ const Landing: React.FC = () => {
                         letterSpacing: '-4px',
                         color: '#ffffff'
                     }}>
-                        Интелигентен <br/>
+                        Система за Контрол <br/>
                         <span className="gradient-text" style={{ 
                             padding: '0 10px',
                             filter: 'drop-shadow(0 0 30px rgba(0, 173, 181, 0.4))' 
-                        }}>Транспорт</span>
+                        }}>на DARY COMMERCE</span>
                     </h1>
 
                     <p style={{
@@ -143,8 +143,8 @@ const Landing: React.FC = () => {
                         fontWeight: 500,
                         letterSpacing: '-0.3px'
                     }}>
-                        Професионална екосистема за дигитален контрол на абонаменти. <br/>
-                        Интелигентна верификация и анализи, проектирани за мащаб.
+                        Интелигентна екосистема за издаване, подновяване и <br/>
+                        анализи на транспортни документи в реално време.
                     </p>
 
                     <div style={{ display: 'flex', justifyContent: 'center' }}>
