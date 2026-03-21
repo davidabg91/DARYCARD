@@ -56,20 +56,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             createdAt: data.createdAt || new Date().toISOString()
                         });
                     } else {
-                        // If user exists in Auth but not in Firestore, create a default entry
-                        const newUser = {
-                            username: fbUser.email || '',
-                            role: 'admin' as UserRole, // Set first user as admin or check if collection is empty
-                            createdAt: new Date().toISOString()
-                        };
-                        await setDoc(doc(db, 'users', fbUser.uid), newUser);
-                        setCurrentUser({
-                            id: fbUser.uid,
-                            username: newUser.username,
-                            passwordHash: '',
-                            role: newUser.role,
-                            createdAt: newUser.createdAt
-                        });
+                        // User exists in Auth but not in Firestore - no default role anymore
+                        // This prevents unauthorized sign-ups from gaining access
+                        console.warn(`User ${fbUser.email} logged in but has no Firestore profile. Access will be restricted.`);
+                        setCurrentUser(null);
                     }
                 } else {
                     setCurrentUser(null);

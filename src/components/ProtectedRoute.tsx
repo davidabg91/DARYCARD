@@ -1,5 +1,4 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../types/auth';
 
@@ -22,16 +21,25 @@ const ProtectedRoute: React.FC<Props> = ({ children, requiredRole }) => {
         );
     }
 
-    if (!currentUser) {
-        return <Navigate to="/login" replace />;
+    if (!currentUser || !currentUser.role) {
+        return (
+            <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#fff', background: 'var(--bg-color)', minHeight: '100vh' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔒</div>
+                <h2 style={{ color: '#ff5252', marginBottom: '0.5rem' }}>Достъпът е ограничен</h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>Вашият акаунт все още не е одобрен от администратор.</p>
+                <div style={{ display: 'inline-block', padding: '0.5rem 1rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '0.85rem' }}>
+                    Свържете се с началник смяна за активиране на профила.
+                </div>
+            </div>
+        );
     }
 
     if (requiredRole === 'admin' && currentUser.role !== 'admin') {
         return (
-            <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
+            <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#fff', background: 'var(--bg-color)', minHeight: '100vh' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚫</div>
-                <h2 style={{ color: 'var(--error-color)', marginBottom: '0.5rem' }}>Забранен достъп</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>Нямаш необходимите права за тази страница.</p>
+                <h2 style={{ color: '#ff5252', marginBottom: '0.5rem' }}>Забранен достъп</h2>
+                <p style={{ color: 'var(--text-secondary)' }}>Нямате администраторски права за тази секция.</p>
             </div>
         );
     }
