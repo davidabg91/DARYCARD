@@ -1,100 +1,175 @@
 import React from 'react';
-import { HelpCircle, Zap, PlusCircle, Camera, RefreshCw, List } from 'lucide-react';
+import { HelpCircle, Zap, PlusCircle, Camera, RefreshCw, List, CheckCircle, XCircle, Search, User } from 'lucide-react';
 import Card from '../components/Card';
 
 const Help: React.FC = () => {
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease', padding: '0 1rem' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease', padding: '1rem' }}>
             <style>{`
-                @media (max-width: 600px) {
-                    .help-card { padding: 1.25rem !important; }
-                    .help-grid { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
-                    .help-span-2 { grid-column: 1 / -1 !important; }
-                    .help-subgrid { grid-template-columns: 1fr !important; }
-                    .help-header { font-size: 1.5rem !important; }
+                @media (max-width: 768px) {
+                    .help-grid { grid-template-columns: 1fr !important; }
+                    .step-number { font-size: 2rem !important; }
+                    .highlight-box { padding: 1.5rem !important; }
+                }
+                .step-card {
+                    transition: transform 0.2s, box-shadow 0.2s;
+                }
+                .step-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
                 }
             `}</style>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <Card className="help-card" style={{ padding: '2rem' }}>
-                    <h2 className="help-header" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--primary-color)' }}>
-                        <HelpCircle size={28} /> Ръководство за Модератори
-                    </h2>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '1rem', lineHeight: '1.6' }}>
-                        Добре дошли в помощния панел. Тук ще намерите подробни инструкции как да обслужвате клиентите и да използвате функциите на системата DARYCARD.
+
+            <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', fontWeight: 900, marginBottom: '1rem', color: '#fff' }}>
+                    <HelpCircle size={40} color="var(--primary-color)" style={{ verticalAlign: 'middle', marginRight: '10px' }} />
+                    Как да работим със сайта?
+                </h1>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', maxWidth: '700px', margin: '0 auto' }}>
+                    Тук ще научиш всичко необходимо, за да обслужваш клиентите бързо и лесно!
+                </p>
+            </div>
+
+            {/* Златното правило (The Golden Rule) */}
+            <div className="highlight-box" style={{ 
+                background: 'linear-gradient(135deg, rgba(0, 173, 181, 0.2) 0%, rgba(0, 173, 181, 0.05) 100%)', 
+                border: '2px solid var(--primary-color)', 
+                borderRadius: '24px', 
+                padding: '2rem', 
+                marginBottom: '4rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2rem',
+                flexWrap: 'wrap',
+                boxShadow: '0 0 30px rgba(0, 173, 181, 0.1)'
+            }}>
+                <div style={{ 
+                    background: 'var(--primary-color)', 
+                    color: '#fff', 
+                    width: '70px', 
+                    height: '70px', 
+                    borderRadius: '50%', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    flexShrink: 0
+                }}>
+                    <Zap size={40} fill="white" />
+                </div>
+                <div style={{ flex: 1, minWidth: '280px' }}>
+                    <h2 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary-color)', fontWeight: 900, fontSize: '1.8rem' }}>Златното Правило!</h2>
+                    <p style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.6', color: '#fff' }}>
+                        Най-лесният начин е просто да <b>СКАНИРАТЕ КАРТАТА</b>! <br/>
+                        Сайтът сам ще разбере какво трябва да направите – да регистрирате нов човек или да подновите стар. Не е нужно да търсите нищо ръчно!
                     </p>
+                </div>
+            </div>
 
-                    <div style={{ padding: '1.5rem', background: 'rgba(0, 173, 181, 0.1)', border: '1px solid rgba(0, 173, 181, 0.2)', borderRadius: '16px', marginBottom: '2.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
-                        <div style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.5rem', borderRadius: '12px', display: 'flex' }}>
-                            <Zap size={24} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: '250px' }}>
-                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary-color)', fontWeight: 800 }}>Бърз съвет за Модератори</h4>
-                            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: 'rgba(255,255,255,0.9)' }}>
-                                Най-лесният начин за работа е просто да <b>сканирате физическата карта</b> (нова или на съществуващ клиент), докато сте влезли в системата. 
-                                Тя автоматично ще ви отведе към правилното действие — <b>регистрация</b> на нов пътник или <b>подновяване</b> на съществуващ, без да се налага да търсите ръчно в списъците.
-                            </p>
-                        </div>
+            <div className="help-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem' }}>
+                
+                {/* Стъпка 1: Добавяне */}
+                <Card className="step-card" style={{ padding: '2rem', borderTop: '6px solid #00c853' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                        <h3 style={{ margin: 0, color: '#00c853', fontSize: '1.5rem', fontWeight: 800 }}>
+                            <PlusCircle size={24} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            Добави нов клиент
+                        </h3>
+                        <span className="step-number" style={{ fontSize: '3rem', fontWeight: 900, opacity: 0.1, lineHeight: 1 }}>1</span>
                     </div>
-
-                    <div className="help-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                        <section>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#00c853', marginBottom: '1.2rem' }}>
-                                <PlusCircle size={20} /> 1. Регистрация на Нова Карта
-                            </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
-                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', borderLeft: '4px solid #00c853' }}>
-                                    <b>Стъпка 1:</b> Отидете в таб <b>"Добави"</b> в горната част на екрана.
-                                </div>
-                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', borderLeft: '4px solid #00c853' }}>
-                                    <b>Стъпка 2:</b> Сканирайте NFC картата или използвайте предварително генериран линк за активация.
-                                </div>
-                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', borderLeft: '4px solid #00c853' }}>
-                                    <b>Стъпка 3:</b> Направете снимка на клиента чрез бутона <b>"<Camera size={14} /> Камера"</b>. Това е важно за сигурността.
-                                </div>
-                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', borderLeft: '4px solid #00c853' }}>
-                                    <b>Стъпка 4:</b> Въведете трите имена и изберете правилния <b>Маршрут (Курс)</b>.
-                                </div>
-                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', borderLeft: '4px solid #00c853' }}>
-                                    <b>Стъпка 5:</b> Изберете месеца и сумата на плащане, след което натиснете <b>"Запази Клиент"</b>.
-                                </div>
-                            </div>
-                        </section>
-
-                        <section>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', marginBottom: '1.2rem' }}>
-                                <RefreshCw size={20} /> 2. Подновяване на Абонамент
-                            </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
-                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', borderLeft: '4px solid var(--primary-color)' }}>
-                                    <b>Стъпка 1:</b> Намерете клиента в таб <b>"Клиенти"</b> чрез търсачката.
-                                </div>
-                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', borderLeft: '4px solid var(--primary-color)' }}>
-                                    <b>Стъпка 2:</b> Кликнете върху името на клиента, за да отворите неговия профил.
-                                </div>
-                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', borderLeft: '4px solid var(--primary-color)' }}>
-                                    <b>Стъпка 3:</b> Отидете на под-таб <b>"Действие"</b> в изскачащия прозорец.
-                                </div>
-                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', borderLeft: '4px solid var(--primary-color)' }}>
-                                    <b>Стъпка 4:</b> Изберете новия месец и сума, след което натиснете <b>"Поднови Абонамент"</b>.
-                                </div>
-                            </div>
-                        </section>
-
-                        <section className="help-span-2" style={{ gridColumn: 'span 2' }}>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-color)', marginBottom: '1.2rem' }}>
-                                <List size={20} /> 3. Търсене и Филтриране
-                            </h3>
-                            <div className="help-subgrid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
-                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-                                    <b>Търсене:</b> Можете да търсите едновременно по име, ID на карта или име на маршрут.
-                                </div>
-                                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-                                    <b>Статус на карта:</b> В списъка с клиенти виждате веднага кой е активен (<span style={{color: 'var(--success-color)'}}>Зелен</span>), неактивен (<span style={{color: 'var(--error-color)'}}>Червен</span>) или анулиран.
-                                </div>
-                            </div>
-                        </section>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#00c853', fontWeight: 900 }}>❶</div>
+                            <div>Отиди на таб <b>"ДОБАВИ"</b>.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#00c853', fontWeight: 900 }}>❷</div>
+                            <div>Натисни <b>"Сканирай"</b> и доближи картата до телефона.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#00c853', fontWeight: 900 }}>❸</div>
+                            <div>Направи <b>СНИМКА</b> на човека (много е важно!).</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#00c853', fontWeight: 900 }}>❹</div>
+                            <div>Напиши <b>Имена</b> и избери неговия <b>Маршрут</b>.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#00c853', fontWeight: 900 }}>❺</div>
+                            <div>Натисни големия бутон <b>"ЗАПАЗИ"</b>.</div>
+                        </div>
                     </div>
                 </Card>
+
+                {/* Стъпка 2: Подновяване */}
+                <Card className="step-card" style={{ padding: '2rem', borderTop: '6px solid var(--primary-color)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                        <h3 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '1.5rem', fontWeight: 800 }}>
+                            <RefreshCw size={24} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            Поднови карта
+                        </h3>
+                        <span className="step-number" style={{ fontSize: '3rem', fontWeight: 900, opacity: 0.1, lineHeight: 1 }}>2</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Ако клиентът вече има карта, но е изтекла:</p>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>❶</div>
+                            <div>Намери го в списъка <b>"КЛИЕНТИ"</b> (ползвай търсачката).</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>❷</div>
+                            <div>Кликни на <b>Името му</b>.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>❸</div>
+                            <div>Натисни бутона <b>"ПОДНОВИ"</b>.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>❹</div>
+                            <div>Избери <b>МЕСЕЦА</b> и сумата и готово!</div>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Търсене */}
+                <Card className="step-card" style={{ padding: '2rem', background: 'rgba(255,255,255,0.02)' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--accent-color)', marginBottom: '1.5rem', fontSize: '1.3rem' }}>
+                        <Search size={22} /> Как да намираме хора?
+                    </h3>
+                    <p style={{ lineHeight: '1.6' }}>
+                        В таб <b>"КЛИЕНТИ"</b> има кутийка за търсене. Можеш да пишеш: <br/>
+                        • Имената на човека <br/>
+                        • Името на селото/маршрута му <br/>
+                        • Кода на картата му (ID) <br/>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Сайтът е умен и ще ти покаже резултатите веднага!</span>
+                    </p>
+                </Card>
+
+                {/* Цветове */}
+                <Card className="step-card" style={{ padding: '2rem', background: 'rgba(255,255,255,0.02)' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#fff', marginBottom: '1.5rem', fontSize: '1.3rem' }}>
+                        <List size={22} /> Какво значат цветовете?
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <CheckCircle size={20} color="#00c853" />
+                            <span><b>ЗЕЛЕНО</b> – Всичко е платено, може да пътува!</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <XCircle size={20} color="#ff1744" />
+                            <span><b>ЧЕРВЕНО</b> – Картата е изтекла, трябва да плати.</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <User size={20} color="var(--primary-color)" />
+                            <span><b>Иконата със снимка</b> – Винаги проверявай дали снимката отговаря на човека.</span>
+                        </div>
+                    </div>
+                </Card>
+
+            </div>
+
+            <div style={{ marginTop: '4rem', textAlign: 'center', padding: '2rem', background: 'rgba(255,255,255,0.02)', borderRadius: '24px' }}>
+                <h4 style={{ color: 'var(--primary-color)', marginBottom: '0.5rem' }}>Имаш още въпроси?</h4>
+                <p style={{ margin: 0, opacity: 0.6 }}>Попитай администратора за допълнителна помощ.</p>
             </div>
         </div>
     );
