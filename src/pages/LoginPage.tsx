@@ -36,11 +36,13 @@ const LoginPage: React.FC = () => {
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', padding: '1rem', color: '#fff' }}>
             <div style={{ width: '100%', maxWidth: '400px', textAlign: 'center' }}>
                 <div style={{ marginBottom: '2.5rem' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                        <img src={logo} alt="Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                        <div style={{ background: '#fff', padding: '6px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+                            <img src={logo} alt="Logo" style={{ height: '50px', width: 'auto', objectFit: 'contain' }} />
+                        </div>
                         <div style={{ textAlign: 'left' }}>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--primary-color)' }}>DARY CARD</div>
-                            <div style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>SYSTEM</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#ff5252' }}>DARY CARD</div>
+                            <div style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>SYSTEM</div>
                         </div>
                     </div>
                 </div>
