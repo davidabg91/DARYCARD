@@ -1,5 +1,5 @@
 import React from 'react';
-import { HelpCircle, Zap, PlusCircle, RefreshCw, List, CheckCircle, XCircle, Search, User } from 'lucide-react';
+import { HelpCircle, Zap, PlusCircle, RefreshCw, List, CheckCircle, XCircle, Search, User, Settings } from 'lucide-react';
 import Card from '../components/Card';
 
 const Help: React.FC = () => {
