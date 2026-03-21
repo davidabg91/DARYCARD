@@ -169,7 +169,10 @@ const AdminPanel: React.FC = () => {
         return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
     });
 
-    const [filterMonth, setFilterMonth] = useState<string>('all');
+    const [filterMonth, setFilterMonth] = useState<string>(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+    });
 
     const handleResetAllScans = async () => {
         if (!isAdmin || !window.confirm('Сигурни ли сте, че искате да нулирате статистиката за сканиранията за ВСИЧКИ клиенти?')) return;
@@ -492,16 +495,11 @@ const AdminPanel: React.FC = () => {
     const getClientStatusForMonth = (client: Client, month: string) => {
         if (client.isCanceled) return 'Анулиран';
         
-        if (month === 'all') {
-            return isExpired(client.expiryDate, client) ? 'Невалиден' : 'Активен';
-        }
-        
         const hasPaymentForMonth = (client.renewalHistory || []).some(rh => rh.month === month);
         return hasPaymentForMonth ? 'Активен' : 'Неактивен';
     };
 
     const getMonthPayment = (client: Client, month: string) => {
-        if (month === 'all') return client.amountPaid || 0;
         const payment = (client.renewalHistory || []).find(rh => rh.month === month);
         return payment ? payment.amount : 0;
     };
@@ -558,7 +556,7 @@ const AdminPanel: React.FC = () => {
         const statusA = getClientStatusForMonth(a, filterMonth);
         const statusB = getClientStatusForMonth(b, filterMonth);
         
-        const weights: Record<string, number> = { 'Неактивен': 0, 'Невалиден': 0, 'Активен': 1, 'Анулиран': 2 };
+        const weights: Record<string, number> = { 'Неактивен': 0, 'Активен': 1, 'Анулиран': 2 };
         return weights[statusA] - weights[statusB];
     });
 
@@ -835,7 +833,6 @@ const AdminPanel: React.FC = () => {
                                 onChange={(e) => setFilterMonth(e.target.value)}
                                 style={{ padding: '0.75rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer' }}
                             >
-                                <option value="all" style={{ background: '#222' }}>Всички месеци</option>
                                 {allMonths.map(m => (
                                     <option key={m} value={m} style={{ background: '#222' }}>{m}</option>
                                 ))}
@@ -862,7 +859,7 @@ const AdminPanel: React.FC = () => {
                                         <th>Клиент</th>
                                         <th>Курс</th>
                                         <th>Платено (€)</th>
-                                        <th>{filterMonth === 'all' ? 'Общ Статус' : `Статус за ${filterMonth}`}</th>
+                                        <th>Статус за {filterMonth}</th>
                                         <th>Действия</th>
                                     </tr>
                                 </thead>
@@ -898,8 +895,8 @@ const AdminPanel: React.FC = () => {
                                                     <td>
                                                         <span style={{
                                                             padding: '0.25rem 0.75rem', borderRadius: '50px', fontSize: '0.75rem',
-                                                            background: status === 'Анулиран' || status === 'Неактивен' || status === 'Невалиден' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
-                                                            color: status === 'Анулиран' || status === 'Неактивен' || status === 'Невалиден' ? '#ff4040' : 'var(--success-color)',
+                                                            background: status === 'Анулиран' || status === 'Неактивен' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
+                                                            color: status === 'Анулиран' || status === 'Неактивен' ? '#ff4040' : 'var(--success-color)',
                                                             fontWeight: 700
                                                         }}>
                                                             {status}
@@ -970,13 +967,13 @@ const AdminPanel: React.FC = () => {
                                         
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '10px' }}>
                                             <div>
-                                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.1rem' }}>{filterMonth === 'all' ? 'Общо Платено' : `Платено ${filterMonth}`}</div>
+                                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.1rem' }}>Платено {filterMonth}</div>
                                                 <div style={{ fontWeight: 700, color: isMonthPaid ? 'var(--success-color)' : 'var(--text-secondary)' }}>{getMonthPayment(client, filterMonth)} €</div>
                                             </div>
                                             <span style={{
                                                 padding: '0.2rem 0.6rem', borderRadius: '50px', fontSize: '0.7rem', fontWeight: 700,
-                                                background: status === 'Анулиран' || status === 'Неактивен' || status === 'Невалиден' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
-                                                color: status === 'Анулиран' || status === 'Неактивен' || status === 'Невалиден' ? '#ff4040' : 'var(--success-color)'
+                                                background: status === 'Анулиран' || status === 'Неактивен' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
+                                                color: status === 'Анулиран' || status === 'Неактивен' ? '#ff4040' : 'var(--success-color)'
                                             }}>
                                                 {status}
                                             </span>
