@@ -1,5 +1,5 @@
 import React from 'react';
-import { HelpCircle, Zap, PlusCircle, RefreshCw, List, CheckCircle, XCircle, Search, User } from 'lucide-react';
+import { HelpCircle, PlusCircle, RefreshCw, List, CheckCircle, XCircle, Search, User } from 'lucide-react';
 import Card from '../components/Card';
 
 const Help: React.FC = () => {
@@ -30,42 +30,49 @@ const Help: React.FC = () => {
                 </p>
             </div>
 
-            {/* Златното правило (The Golden Rule) */}
-            <div className="highlight-box" style={{ 
-                background: 'linear-gradient(135deg, rgba(0, 173, 181, 0.2) 0%, rgba(0, 173, 181, 0.05) 100%)', 
-                border: '2px solid var(--primary-color)', 
-                borderRadius: '24px', 
-                padding: '2rem', 
-                marginBottom: '4rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2rem',
-                flexWrap: 'wrap',
-                boxShadow: '0 0 30px rgba(0, 173, 181, 0.1)'
+            {/* Златното Правило - HERO SECTION */}
+            <div style={{ 
+                background: 'linear-gradient(135deg, rgba(255,160,0,0.1), rgba(255,193,7,0.02))', 
+                padding: '3.5rem 2rem', 
+                borderRadius: '30px', 
+                marginBottom: '4rem', 
+                border: '1px solid rgba(255,160,0,0.2)',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                textAlign: 'center',
+                position: 'relative',
+                overflow: 'hidden'
             }}>
-                <div style={{ 
-                    background: 'var(--primary-color)', 
-                    color: '#fff', 
-                    width: '70px', 
-                    height: '70px', 
-                    borderRadius: '50%', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    flexShrink: 0
-                }}>
-                    <Zap size={40} fill="white" />
-                </div>
-                <div style={{ flex: 1, minWidth: '280px', textAlign: 'center' }}>
-                    <h2 style={{ margin: '0 0 0.2rem 0', color: 'var(--primary-color)', fontWeight: 900, fontSize: '1.8rem' }}>Златното Правило!</h2>
-                    <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
-                        (за създаване на нова карта или подновяване за другия месец)
+                {/* Декорация */}
+                <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'var(--accent-color)', opacity: 0.05, borderRadius: '50%', filter: 'blur(40px)' }}></div>
+                
+                <h2 style={{ margin: '0 0 0.5rem 0', color: 'var(--accent-color)', fontWeight: 900, fontSize: '2.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Златното Правило!
+                </h2>
+                <p style={{ margin: '0 0 2rem 0', fontSize: '1rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
+                    (за създаване на нова карта или подновяване за другия месец)
+                </p>
+                <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                    <p style={{ margin: '0 0 1.5rem 0', fontSize: '1.4rem', lineHeight: '1.5', color: '#fff', fontWeight: 700 }}>
+                        НАЙ-ЛЕСНИЯТ НАЧИН Е ПРОСТО ДА <br/>
+                        <span style={{ fontSize: '2rem', color: 'var(--primary-color)' }}>СКАНИРАТЕ КАРТАТА!</span>
                     </p>
-                    <p style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.6', color: '#fff' }}>
-                        Най-лесният начин е просто да <b>СКАНИРАТЕ КАРТАТА</b>! <br/>
-                        Можеш да я сканираш дори когато телефонът ти е на начален екран. <br/>
-                        <span style={{ color: 'var(--accent-color)', fontWeight: 800 }}>ВАЖНО:</span> Трябва да си <b>влезнал в профила си</b> в браузъра, за да можеш да правиш промени. Ако не си вписан, просто ще видиш данните на клиента без право на редакция.
+                    <p style={{ margin: '0 0 1.5rem 0', fontSize: '1.1rem', color: 'rgba(255,255,255,0.8)' }}>
+                        Можеш да я сканираш дори когато телефонът ти е на начален екран.
                     </p>
+                    <div style={{ 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        gap: '8px', 
+                        padding: '10px 20px', 
+                        background: 'rgba(255,82,82,0.1)', 
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255,82,82,0.2)',
+                        color: '#ff5252',
+                        fontWeight: 800,
+                        fontSize: '1rem'
+                    }}>
+                        <HelpCircle size={18} /> ВАЖНО: Трябва да си вписан в профила си, за да правиш промени!
+                    </div>
                 </div>
             </div>
 
