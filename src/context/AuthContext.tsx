@@ -41,38 +41,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         // 1. Listen for Auth State
         const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
-            if (fbUser) {
-                // Get user role from Firestore
-                const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
-                if (userDoc.exists()) {
-                    const data = userDoc.data();
-                    setCurrentUser({
-                        id: fbUser.uid,
-                        username: fbUser.email || '',
-                        passwordHash: '', // Not needed for Firebase
-                        role: data.role as UserRole,
-                        createdAt: data.createdAt || new Date().toISOString()
-                    });
+            setLoading(true);
+            try {
+                if (fbUser) {
+                    // Get user role from Firestore
+                    const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+                    if (userDoc.exists()) {
+                        const data = userDoc.data();
+                        setCurrentUser({
+                            id: fbUser.uid,
+                            username: fbUser.email || '',
+                            passwordHash: '', // Not needed for Firebase
+                            role: data.role as UserRole,
+                            createdAt: data.createdAt || new Date().toISOString()
+                        });
+                    } else {
+                        // If user exists in Auth but not in Firestore, create a default entry
+                        const newUser = {
+                            username: fbUser.email || '',
+                            role: 'admin' as UserRole, // Set first user as admin or check if collection is empty
+                            createdAt: new Date().toISOString()
+                        };
+                        await setDoc(doc(db, 'users', fbUser.uid), newUser);
+                        setCurrentUser({
+                            id: fbUser.uid,
+                            username: newUser.username,
+                            passwordHash: '',
+                            role: newUser.role,
+                            createdAt: newUser.createdAt
+                        });
+                    }
                 } else {
-                    // If user exists in Auth but not in Firestore, create a default entry
-                    const newUser = {
-                        username: fbUser.email || '',
-                        role: 'admin' as UserRole, // Set first user as admin or check if collection is empty
-                        createdAt: new Date().toISOString()
-                    };
-                    await setDoc(doc(db, 'users', fbUser.uid), newUser);
-                    setCurrentUser({
-                        id: fbUser.uid,
-                        username: newUser.username,
-                        passwordHash: '',
-                        role: newUser.role,
-                        createdAt: newUser.createdAt
-                    });
+                    setCurrentUser(null);
                 }
-            } else {
-                setCurrentUser(null);
+            } catch (error) {
+                console.error("Error in onAuthStateChanged:", error);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         });
 
         // 2. Listen for all users
