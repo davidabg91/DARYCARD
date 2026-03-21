@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Zap, Users, BarChart3, Fingerprint } from 'lucide-react';
+import { ShieldCheck, Zap, Users, BarChart3, CreditCard } from 'lucide-react';
 
 // Import assets
 import stepRegistration from '../assets/step_registration.png';
@@ -48,9 +48,9 @@ const Landing: React.FC = () => {
                         padding: 6rem 1.25rem !important;
                     }
                     .hero-text h1 {
-                        font-size: clamp(2.4rem, 12vw, 4.5rem) !important;
-                        letter-spacing: -2px !important;
-                        line-height: 1.05 !important;
+                        font-size: clamp(2rem, 10vw, 3.5rem) !important;
+                        letter-spacing: -1.5px !important;
+                        line-height: 1.1 !important;
                     }
                     .hero-text p {
                         font-size: 1.1rem !important;
@@ -116,15 +116,15 @@ const Landing: React.FC = () => {
                         background: 'rgba(0, 173, 181, 0.08)',
                         backdropFilter: 'blur(10px)'
                     }}>
-                        <Fingerprint size={20} /> DARY CARD • ПЛЕВЕН
+                        <CreditCard size={20} /> DARY CARD • ПЛЕВЕН
                     </div>
                     
                     <h1 style={{
-                        fontSize: 'clamp(3.5rem, 10vw, 6.5rem)',
+                        fontSize: 'clamp(3rem, 8vw, 5rem)',
                         fontWeight: 900,
-                        lineHeight: 0.9,
-                        margin: '0 0 2.5rem 0',
-                        letterSpacing: '-4px',
+                        lineHeight: 1,
+                        margin: '0 0 2rem 0',
+                        letterSpacing: '-3px',
                         color: '#ffffff'
                     }}>
                         Система за Контрол <br/>
