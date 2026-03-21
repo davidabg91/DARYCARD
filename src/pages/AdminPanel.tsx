@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
     Users, PlusCircle, BarChart, ExternalLink, 
-    Search, Calendar, MapPin, Phone, User, 
-    Trash2, Edit, CheckCircle, XCircle, AlertCircle, 
-    Clock, DollarSign, Camera, RotateCcw, 
-    ChevronDown, ChevronUp, Filter, RefreshCw, List, Zap
+    Trash2, XCircle, Clock, DollarSign, Camera, 
+    RefreshCw, List, Zap, Save, Eye, EyeOff, 
+    ShieldCheck, Shield, TrendingUp, Percent, 
+    PiggyBank, AlertTriangle, UserCheck, Filter, ChevronUp
 } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
