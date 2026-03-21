@@ -6,10 +6,12 @@ const Help: React.FC = () => {
     return (
         <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease', padding: '1rem' }}>
             <style>{`
+                .connector-line { display: flex; flex-direction: column; align-items: center; }
                 @media (max-width: 768px) {
                     .help-grid { grid-template-columns: 1fr !important; }
                     .step-number { font-size: 2rem !important; }
                     .highlight-box { padding: 1.5rem !important; }
+                    .connector-line { display: none !important; }
                 }
                 .step-card {
                     transition: transform 0.2s, box-shadow 0.2s;
@@ -73,6 +75,38 @@ const Help: React.FC = () => {
                     }}>
                         <HelpCircle size={18} /> ВАЖНО: Трябва да си вписан в профила си, за да правиш промени!
                     </div>
+                </div>
+            </div>
+
+            {/* Visual Connector Line */}
+            <div className="connector-line" style={{ 
+                marginTop: '-4rem', 
+                marginBottom: '1rem',
+                position: 'relative',
+                zIndex: 1
+            }}>
+                {/* Vertical start from hero */}
+                <div style={{ 
+                    width: '3px', 
+                    height: '40px', 
+                    background: 'linear-gradient(to bottom, var(--accent-color), #00c853)',
+                    boxShadow: '0 0 15px var(--accent-color)'
+                }}></div>
+                {/* Horizontal branch */}
+                <div style={{ 
+                    width: 'calc(50% + 2rem)', 
+                    height: '3px', 
+                    background: 'linear-gradient(to right, #00c853, var(--primary-color))',
+                    borderRadius: '3px'
+                }}></div>
+                {/* Branch vertical tails */}
+                <div style={{ 
+                    width: 'calc(50% + 2rem)', 
+                    display: 'flex', 
+                    justifyContent: 'space-between' 
+                }}>
+                    <div style={{ width: '3px', height: '20px', background: '#00c853' }}></div>
+                    <div style={{ width: '3px', height: '20px', background: 'var(--primary-color)' }}></div>
                 </div>
             </div>
 
