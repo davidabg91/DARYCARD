@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ShieldCheck, Zap, Users, BarChart3, Fingerprint } from 'lucide-react';
 
 // Import assets
-import heroImage from '../assets/hero_white_card.png';
 import stepRegistration from '../assets/step_registration.png';
 import stepScan from '../assets/step_scan.png';
 import stepVerify from '../assets/step_verify.png';
@@ -26,39 +25,27 @@ const Landing: React.FC = () => {
                 left: '20%',
                 width: '60vw',
                 height: '60vw',
-                background: 'radial-gradient(circle, rgba(0, 173, 181, 0.1) 0%, transparent 70%)',
+                background: 'radial-gradient(circle, rgba(0, 173, 181, 0.12) 0%, transparent 70%)',
                 filter: 'blur(100px)',
                 zIndex: 0,
                 pointerEvents: 'none'
             }} />
             <div style={{
                 position: 'absolute',
-                bottom: '10%',
+                top: '40%',
                 right: '10%',
                 width: '50vw',
                 height: '50vw',
-                background: 'radial-gradient(circle, rgba(255, 82, 82, 0.05) 0%, transparent 70%)',
+                background: 'radial-gradient(circle, rgba(255, 82, 82, 0.06) 0%, transparent 70%)',
                 filter: 'blur(120px)',
                 zIndex: 0,
                 pointerEvents: 'none'
             }} />
 
             <style>{`
-                @keyframes float-hero {
-                    0%, 100% { transform: translateY(0) scale(1); }
-                    50% { transform: translateY(-30px) scale(1.02); }
-                }
-                .hero-centerpiece {
-                    animation: float-hero 8s ease-in-out infinite;
-                    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-                }
-                .hero-centerpiece:hover {
-                    box-shadow: 0 80px 150px rgba(0,0,0,0.8), 0 0 80px rgba(0,173,181,0.3) !important;
-                }
                 @media (max-width: 900px) {
                     .hero-section {
-                        padding: 6rem 1.5rem 2rem 1.5rem !important;
-                        gap: 3.5rem !important;
+                        padding: 6rem 1.5rem 6rem 1.5rem !important;
                     }
                     .hero-text h1 {
                         font-size: 3.5rem !important;
@@ -67,13 +54,6 @@ const Landing: React.FC = () => {
                     .hero-text p {
                         font-size: 1.15rem !important;
                         max-width: 100% !important;
-                    }
-                    .hero-centerpiece {
-                        animation: float-mobile 6s ease-in-out infinite !important;
-                    }
-                    @keyframes float-mobile {
-                        0%, 100% { transform: translateY(0); }
-                        50% { transform: translateY(-20px); }
                     }
                 }
                 .premium-button-lg {
@@ -89,14 +69,13 @@ const Landing: React.FC = () => {
                 }
             `}</style>
 
-            {/* Hero Section - Centered Overhaul */}
+            {/* Hero Section - Typographic Focus */}
             <section className="hero-section" style={{
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 textAlign: 'center',
-                gap: '5rem',
-                padding: '8rem 2rem 4rem 2rem',
+                padding: '10rem 2rem',
                 maxWidth: '1200px',
                 margin: '0 auto',
                 width: '100%',
@@ -172,37 +151,6 @@ const Landing: React.FC = () => {
                              <ShieldCheck size={30} /> Влез в Системата
                         </Link>
                     </div>
-                </div>
-
-                <div className="hero-image-wrapper" style={{ 
-                    position: 'relative',
-                    width: '100%',
-                    maxWidth: '1000px',
-                    perspective: '2000px'
-                }}>
-                    <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: '110%',
-                        height: '110%',
-                        background: 'radial-gradient(circle, rgba(0, 173, 181, 0.2) 0%, rgba(0, 0, 0, 0) 70%)',
-                        zIndex: -1,
-                        filter: 'blur(60px)'
-                    }} />
-                    <img 
-                        src={heroImage} 
-                        className="hero-centerpiece"
-                        style={{ 
-                            width: '100%', 
-                            borderRadius: '48px', 
-                            boxShadow: '0 60px 120px rgba(0,0,0,0.8), 0 0 60px rgba(0,173,181,0.2)',
-                            border: '1px solid rgba(255,255,255,0.12)',
-                            display: 'block'
-                        }} 
-                        alt="Hero visualization" 
-                    />
                 </div>
             </section>
 
