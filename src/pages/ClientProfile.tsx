@@ -26,6 +26,17 @@ const ROUTES = [
     "Петърница", "Опанец", "Победа", "Подем", "Божурица"
 ];
 
+const sanitizeId = (id: string | null | undefined): string => {
+    if (!id) return '';
+    const trimmed = id.trim();
+    if (!trimmed.includes('/')) return trimmed; // Don't uppercase here as useParams should be case-sensitive or match DB
+    
+    const parts = trimmed.split('/');
+    const cleanParts = parts.filter(p => p.length > 0);
+    const lastPart = cleanParts[cleanParts.length - 1];
+    return lastPart || '';
+};
+
 const compressImage = (dataUrl: string, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
     return new Promise((resolve) => {
         const img = new Image();
@@ -55,7 +66,8 @@ const compressImage = (dataUrl: string, maxWidth: number, maxHeight: number, qua
 };
 
 const ClientProfile: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
+    const { id: rawId } = useParams<{ id: string }>();
+    const id = sanitizeId(rawId);
     const { currentUser } = useAuth();
     const [client, setClient] = useState<Client | null>(null);
     const [loading, setLoading] = useState(true);

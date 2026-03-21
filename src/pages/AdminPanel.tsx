@@ -46,6 +46,19 @@ const ROUTES = [
 
 const generateClientId = () => Math.random().toString(36).substr(2, 9).toUpperCase();
 
+const sanitizeId = (id: string | null | undefined): string => {
+    if (!id) return '';
+    const trimmed = id.trim();
+    if (!trimmed.includes('/')) return trimmed.toUpperCase();
+    
+    // Handle URLs like https://site.com/#/client/ABC123 or https://site.com/ABC123
+    const parts = trimmed.split('/');
+    // Filter out empty parts in case of trailing slashes
+    const cleanParts = parts.filter(p => p.length > 0);
+    const lastPart = cleanParts[cleanParts.length - 1];
+    return (lastPart || '').toUpperCase();
+};
+
 const getDefaultExpiryMonth = () => {
     const now = new Date();
     let targetMonth = now.getMonth() + 1;
@@ -249,7 +262,7 @@ const AdminPanel: React.FC = () => {
                 const data = snapshot.data();
                 if (data.action === 'id_received' && data.cardId) {
                     // Standard registration scan
-                    setNfcLinkId(data.cardId);
+                    setNfcLinkId(sanitizeId(data.cardId));
                     setIsWaitingForScan(false);
                     // Clear the action so it doesn't trigger again
                     updateDoc(doc(db, 'admin_actions', 'current'), { action: 'idle' });
@@ -295,7 +308,8 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
-        const generatedId = nfcLinkId.trim() || generateClientId();
+        const sanitizedNfcId = nfcLinkId ? sanitizeId(nfcLinkId) : '';
+        const generatedId = sanitizedNfcId || generateClientId();
         const newClient: Client = {
             id: generatedId,
             name: clientName,
