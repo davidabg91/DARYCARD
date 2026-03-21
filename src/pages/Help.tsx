@@ -169,7 +169,22 @@ const Help: React.FC = () => {
 
             <div style={{ marginTop: '4rem', textAlign: 'center', padding: '2rem', background: 'rgba(255,255,255,0.02)', borderRadius: '24px' }}>
                 <h4 style={{ color: 'var(--primary-color)', marginBottom: '0.5rem' }}>Имаш още въпроси?</h4>
-                <p style={{ margin: 0, opacity: 0.6 }}>Попитай администратора за допълнителна помощ.</p>
+                <p style={{ margin: '0 0 1rem 0', opacity: 0.6 }}>Попитай администратора за допълнителна помощ.</p>
+                <a href="tel:0876141826" style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem', 
+                    background: 'var(--primary-color)', 
+                    color: '#fff', 
+                    padding: '0.8rem 1.5rem', 
+                    borderRadius: '50px', 
+                    textDecoration: 'none', 
+                    fontWeight: 800,
+                    fontSize: '1.1rem',
+                    boxShadow: '0 5px 15px rgba(0, 173, 181, 0.3)'
+                }}>
+                    Позвъни на 0876141826
+                </a>
             </div>
         </div>
     );
