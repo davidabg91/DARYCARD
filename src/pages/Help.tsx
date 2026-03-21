@@ -4,21 +4,30 @@ import Card from '../components/Card';
 
 const Help: React.FC = () => {
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease', padding: '0 1rem' }}>
+            <style>{`
+                @media (max-width: 600px) {
+                    .help-card { padding: 1.25rem !important; }
+                    .help-grid { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
+                    .help-span-2 { grid-column: 1 / -1 !important; }
+                    .help-subgrid { grid-template-columns: 1fr !important; }
+                    .help-header { font-size: 1.5rem !important; }
+                }
+            `}</style>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <Card style={{ padding: '2rem' }}>
-                    <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--primary-color)' }}>
+                <Card className="help-card" style={{ padding: '2rem' }}>
+                    <h2 className="help-header" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--primary-color)' }}>
                         <HelpCircle size={28} /> Ръководство за Модератори
                     </h2>
                     <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '1rem', lineHeight: '1.6' }}>
                         Добре дошли в помощния панел. Тук ще намерите подробни инструкции как да обслужвате клиентите и да използвате функциите на системата DARYCARD.
                     </p>
 
-                    <div style={{ padding: '1.5rem', background: 'rgba(0, 173, 181, 0.1)', border: '1px solid rgba(0, 173, 181, 0.2)', borderRadius: '16px', marginBottom: '2.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                    <div style={{ padding: '1.5rem', background: 'rgba(0, 173, 181, 0.1)', border: '1px solid rgba(0, 173, 181, 0.2)', borderRadius: '16px', marginBottom: '2.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
                         <div style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.5rem', borderRadius: '12px', display: 'flex' }}>
                             <Zap size={24} />
                         </div>
-                        <div>
+                        <div style={{ flex: 1, minWidth: '250px' }}>
                             <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary-color)', fontWeight: 800 }}>Бърз съвет за Модератори</h4>
                             <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: 'rgba(255,255,255,0.9)' }}>
                                 Най-лесният начин за работа е просто да <b>сканирате физическата карта</b> (нова или на съществуващ клиент), докато сте влезли в системата. 
@@ -27,7 +36,7 @@ const Help: React.FC = () => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                    <div className="help-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
                         <section>
                             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#00c853', marginBottom: '1.2rem' }}>
                                 <PlusCircle size={20} /> 1. Регистрация на Нова Карта
@@ -71,11 +80,11 @@ const Help: React.FC = () => {
                             </div>
                         </section>
 
-                        <section style={{ gridColumn: 'span 2' }}>
+                        <section className="help-span-2" style={{ gridColumn: 'span 2' }}>
                             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-color)', marginBottom: '1.2rem' }}>
                                 <List size={20} /> 3. Търсене и Филтриране
                             </h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
+                            <div className="help-subgrid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
                                 <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
                                     <b>Търсене:</b> Можете да търсите едновременно по име, ID на карта или име на маршрут.
                                 </div>

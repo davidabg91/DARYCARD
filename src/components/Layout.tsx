@@ -70,7 +70,7 @@ const Layout: React.FC = () => {
                             borderBottom: location.pathname === '/help' ? '2px solid #ff5252' : '2px solid transparent',
                             paddingBottom: '2px',
                         }}
-                    >ПОМОЩ</Link>
+                    >Помощ</Link>
 
                     <div style={{
                         display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -127,7 +127,7 @@ const Layout: React.FC = () => {
                     {currentUser.role === 'admin' && (
                         <Link to="/admin/users" onClick={closeMenu} className="mobile-nav-link">Потребители</Link>
                     )}
-                    <Link to="/help" onClick={closeMenu} className="mobile-nav-link">ПОМОЩ</Link>
+                    <Link to="/help" onClick={closeMenu} className="mobile-nav-link">Помощ</Link>
                     <div style={{ padding: '0.8rem 1.2rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
                         {currentUser.role === 'admin' ? <ShieldCheck size={18} color="#ff5252" /> : <Shield size={18} color="var(--primary-color)" />}
                         <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{currentUser.username}</span>
