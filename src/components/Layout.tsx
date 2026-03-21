@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import logo from '../assets/logo.png';
+import logo from '../assets/logo_main.png';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, ShieldCheck, Shield, Menu, X } from 'lucide-react';
 
