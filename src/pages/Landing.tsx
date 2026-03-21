@@ -17,8 +17,35 @@ const Landing: React.FC = () => {
             fontFamily: 'var(--font-family)',
             animation: 'fadeIn 0.8s ease-out'
         }}>
+            <style>{`
+                @media (max-width: 900px) {
+                    .hero-section {
+                        padding: 3rem 1rem !important;
+                        gap: 3rem !important;
+                        text-align: center !important;
+                    }
+                    .hero-text {
+                        padding-right: 0 !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                        align-items: center !important;
+                    }
+                    .hero-image-wrapper {
+                        width: 100% !important;
+                        max-width: 500px !important;
+                        margin: 0 auto !important;
+                    }
+                    .hero-image-wrapper img {
+                        transform: none !important;
+                        border-radius: 24px !important;
+                    }
+                    .hero-text h1 {
+                        font-size: 3rem !important;
+                    }
+                }
+            `}</style>
             {/* Hero Section */}
-            <section style={{
+            <section className="hero-section" style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
                 alignItems: 'center',
@@ -28,7 +55,7 @@ const Landing: React.FC = () => {
                 margin: '0 auto',
                 width: '100%'
             }}>
-                <div style={{ paddingRight: '1rem' }}>
+                <div className="hero-text" style={{ paddingRight: '1rem' }}>
                     <div className="glass" style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -70,7 +97,7 @@ const Landing: React.FC = () => {
                         Бързо сканиране, интелигентни анализи и сигурна верификация в реално време.
                     </p>
 
-                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'inherit' }}>
                         <Link to="/admin" className="glass neon-border" style={{
                             padding: '1.2rem 2.8rem',
                             borderRadius: '16px',
@@ -88,7 +115,7 @@ const Landing: React.FC = () => {
                     </div>
                 </div>
 
-                <div style={{ position: 'relative' }}>
+                <div className="hero-image-wrapper" style={{ position: 'relative' }}>
                     <div style={{
                         position: 'absolute',
                         top: '50%',
