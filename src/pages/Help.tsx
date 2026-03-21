@@ -56,8 +56,11 @@ const Help: React.FC = () => {
                 }}>
                     <Zap size={40} fill="white" />
                 </div>
-                <div style={{ flex: 1, minWidth: '280px' }}>
-                    <h2 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary-color)', fontWeight: 900, fontSize: '1.8rem' }}>Златното Правило!</h2>
+                <div style={{ flex: 1, minWidth: '280px', textAlign: 'center' }}>
+                    <h2 style={{ margin: '0 0 0.2rem 0', color: 'var(--primary-color)', fontWeight: 900, fontSize: '1.8rem' }}>Златното Правило!</h2>
+                    <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
+                        (за създаване на нова карта или подновяване за другия месец)
+                    </p>
                     <p style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.6', color: '#fff' }}>
                         Най-лесният начин е просто да <b>СКАНИРАТЕ КАРТАТА</b>! <br/>
                         Можеш да я сканираш дори когато телефонът ти е на начален екран. <br/>
