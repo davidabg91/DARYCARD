@@ -76,6 +76,57 @@ const Help: React.FC = () => {
                 </div>
             </div>
 
+            {/* Scanning Steps */}
+            <div className="help-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '4rem' }}>
+                <div style={{ background: 'rgba(0, 200, 83, 0.05)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(0, 200, 83, 0.1)' }}>
+                    <h3 style={{ color: '#00c853', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', fontSize: '1.2rem', fontWeight: 800 }}>
+                        <PlusCircle size={20} /> НОВА КАРТА (Регистрация)
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#00c853', fontWeight: 900 }}>1.</div>
+                            <div><b>Сканирайте</b> чистата карта с телефона.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#00c853', fontWeight: 900 }}>2.</div>
+                            <div>Системата сама ще ви отвори формата <b>"ДОБАВИ"</b>.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#00c853', fontWeight: 900 }}>3.</div>
+                            <div>Попълнете имената и направете <b>СНИМКА</b>.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: '#00c853', fontWeight: 900 }}>4.</div>
+                            <div>Натиснете <b>ЗАПАЗИ</b> и картата е готова!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{ background: 'rgba(0, 173, 181, 0.05)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(0, 173, 181, 0.1)' }}>
+                    <h3 style={{ color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', fontSize: '1.2rem', fontWeight: 800 }}>
+                        <RefreshCw size={20} /> СТАРА КАРТА (Подновяване)
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>1.</div>
+                            <div><b>Сканирайте</b> картата на клиента.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>2.</div>
+                            <div>Системата ще отвори неговия <b>ПРОФИЛ</b> веднага.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>3.</div>
+                            <div>Горе вдясно натиснете бутона <b> "Управление" </b>.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ color: 'var(--primary-color)', fontWeight: 900 }}>4.</div>
+                            <div>Изберете <b>МЕСЕЦ</b>, сума и натиснете <b>ПОДНОВИ</b>.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Ръчно управление (Manual Entry) */}
             <div style={{ marginBottom: '2.5rem', padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '20px', border: '1px dashed rgba(255,255,255,0.2)' }}>
                 <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>Ръчно управление (без карта)</h3>
