@@ -22,190 +22,186 @@ const Landing: React.FC = () => {
             {/* Background Nebula Orbs */}
             <div style={{
                 position: 'absolute',
-                top: '-10%',
-                left: '-5%',
-                width: '40vw',
-                height: '40vw',
-                background: 'radial-gradient(circle, rgba(0, 173, 181, 0.15) 0%, transparent 70%)',
-                filter: 'blur(80px)',
+                top: '-20%',
+                left: '20%',
+                width: '60vw',
+                height: '60vw',
+                background: 'radial-gradient(circle, rgba(0, 173, 181, 0.1) 0%, transparent 70%)',
+                filter: 'blur(100px)',
                 zIndex: 0,
                 pointerEvents: 'none'
             }} />
             <div style={{
                 position: 'absolute',
-                top: '20%',
-                right: '-10%',
-                width: '35vw',
-                height: '35vw',
-                background: 'radial-gradient(circle, rgba(255, 82, 82, 0.1) 0%, transparent 70%)',
-                filter: 'blur(100px)',
+                bottom: '10%',
+                right: '10%',
+                width: '50vw',
+                height: '50vw',
+                background: 'radial-gradient(circle, rgba(255, 82, 82, 0.05) 0%, transparent 70%)',
+                filter: 'blur(120px)',
                 zIndex: 0,
                 pointerEvents: 'none'
             }} />
 
             <style>{`
-                @keyframes float {
-                    0%, 100% { transform: translateY(0) rotateY(-5deg); }
-                    50% { transform: translateY(-20px) rotateY(-3deg); }
+                @keyframes float-hero {
+                    0%, 100% { transform: translateY(0) scale(1); }
+                    50% { transform: translateY(-30px) scale(1.02); }
                 }
-                .floating-card {
-                    animation: float 6s ease-in-out infinite;
+                .hero-centerpiece {
+                    animation: float-hero 8s ease-in-out infinite;
+                    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .hero-centerpiece:hover {
+                    box-shadow: 0 80px 150px rgba(0,0,0,0.8), 0 0 80px rgba(0,173,181,0.3) !important;
                 }
                 @media (max-width: 900px) {
                     .hero-section {
-                        padding: 4rem 1.5rem !important;
-                        gap: 4rem !important;
-                        text-align: center !important;
+                        padding: 6rem 1.5rem 2rem 1.5rem !important;
+                        gap: 3.5rem !important;
                     }
-                    .hero-text {
-                        padding-right: 0 !important;
-                        display: flex !important;
-                        flex-direction: column !important;
-                        align-items: center !important;
+                    .hero-text h1 {
+                        font-size: 3.5rem !important;
+                        letter-spacing: -3px !important;
                     }
-                    .hero-image-wrapper {
-                        width: 100% !important;
-                        max-width: 450px !important;
-                        margin: 0 auto !important;
+                    .hero-text p {
+                        font-size: 1.15rem !important;
+                        max-width: 100% !important;
                     }
-                    .floating-card {
-                        animation: float-mobile 5s ease-in-out infinite !important;
+                    .hero-centerpiece {
+                        animation: float-mobile 6s ease-in-out infinite !important;
                     }
                     @keyframes float-mobile {
                         0%, 100% { transform: translateY(0); }
-                        50% { transform: translateY(-15px); }
-                    }
-                    .hero-text h1 {
-                        font-size: 3.2rem !important;
-                        letter-spacing: -2px !important;
-                    }
-                    .hero-text p {
-                        font-size: 1.1rem !important;
+                        50% { transform: translateY(-20px); }
                     }
                 }
-                .premium-button {
+                .premium-button-lg {
                     position: relative;
                     overflow: hidden;
                     transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
                 }
-                .premium-button:hover {
-                    transform: translateY(-5px) scale(1.02);
-                    box-shadow: 0 20px 40px rgba(0, 173, 181, 0.3), 0 0 20px rgba(0, 255, 245, 0.2);
-                }
-                .premium-button::after {
-                    content: '';
-                    position: absolute;
-                    top: -50%;
-                    left: -50%;
-                    width: 200%;
-                    height: 200%;
-                    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-                    opacity: 0;
-                    transition: opacity 0.4s;
-                }
-                .premium-button:hover::after {
-                    opacity: 1;
+                .premium-button-lg:hover {
+                    transform: translateY(-8px) scale(1.05);
+                    box-shadow: 0 25px 50px rgba(0, 173, 181, 0.4), 0 0 30px rgba(0, 255, 245, 0.3);
                 }
             `}</style>
 
-            {/* Hero Section */}
+            {/* Hero Section - Centered Overhaul */}
             <section className="hero-section" style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(450px, 1.2fr) 1fr',
+                display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '6rem',
-                padding: '6rem 4rem',
-                maxWidth: '1400px',
+                textAlign: 'center',
+                gap: '5rem',
+                padding: '8rem 2rem 4rem 2rem',
+                maxWidth: '1200px',
                 margin: '0 auto',
                 width: '100%',
                 position: 'relative',
                 zIndex: 1
             }}>
-                <div className="hero-text" style={{ paddingRight: '1rem' }}>
+                <div className="hero-text" style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center',
+                    maxWidth: '900px'
+                }}>
                     <div className="glass" style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '0.6rem',
-                        padding: '0.6rem 1.2rem',
+                        gap: '0.8rem',
+                        padding: '0.8rem 1.5rem',
                         borderRadius: '100px',
-                        fontSize: '0.8rem',
+                        fontSize: '0.85rem',
                         fontWeight: 900,
                         color: 'var(--primary-color)',
                         textTransform: 'uppercase',
-                        letterSpacing: '3px',
-                        marginBottom: '2rem',
-                        border: '1px solid rgba(0, 173, 181, 0.3)',
-                        background: 'rgba(0, 173, 181, 0.05)'
+                        letterSpacing: '4px',
+                        marginBottom: '2.5rem',
+                        border: '1px solid rgba(0, 173, 181, 0.4)',
+                        background: 'rgba(0, 173, 181, 0.08)',
+                        backdropFilter: 'blur(10px)'
                     }}>
-                        <Fingerprint size={18} /> Next-Gen Security
+                        <Fingerprint size={20} /> Advanced Transit Interface
                     </div>
                     
                     <h1 style={{
-                        fontSize: 'clamp(3rem, 8vw, 5.5rem)',
+                        fontSize: 'clamp(3.5rem, 10vw, 6.5rem)',
                         fontWeight: 900,
-                        lineHeight: 0.95,
-                        margin: '0 0 2rem 0',
-                        letterSpacing: '-3px',
+                        lineHeight: 0.9,
+                        margin: '0 0 2.5rem 0',
+                        letterSpacing: '-4px',
                         color: '#ffffff'
                     }}>
                         Интелигентен <br/>
-                        <span className="gradient-text" style={{ filter: 'drop-shadow(0 0 20px rgba(0, 173, 181, 0.4))' }}>Транспорт</span>
+                        <span className="gradient-text" style={{ 
+                            padding: '0 10px',
+                            filter: 'drop-shadow(0 0 30px rgba(0, 173, 181, 0.4))' 
+                        }}>Транспорт</span>
                     </h1>
 
                     <p style={{
-                        fontSize: '1.25rem',
-                        color: 'rgba(255,255,255,0.65)',
-                        maxWidth: '580px',
-                        lineHeight: 1.5,
-                        marginBottom: '3.5rem',
+                        fontSize: '1.4rem',
+                        color: 'rgba(255,255,255,0.6)',
+                        maxWidth: '700px',
+                        lineHeight: 1.4,
+                        marginBottom: '4rem',
                         fontWeight: 500,
-                        letterSpacing: '-0.2px'
+                        letterSpacing: '-0.3px'
                     }}>
-                        Мащабируема екосистема за дигитален контрол. Превърнете управлението на абонаменти в безпроблемно преживяване с AI верификация и анализи в реално време.
+                        Професионална екосистема за дигитален контрол на абонаменти. <br/>
+                        Интелигентна верификация и анализи, проектирани за мащаб.
                     </p>
 
-                    <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'inherit' }}>
-                        <Link to="/admin" className="premium-button glass neon-border" style={{
-                            padding: '1.4rem 3.5rem',
-                            borderRadius: '20px',
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <Link to="/admin" className="premium-button-lg glass neon-border" style={{
+                            padding: '1.5rem 4.5rem',
+                            borderRadius: '24px',
                             fontWeight: 900,
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '1rem',
-                            fontSize: '1.15rem',
-                            background: 'linear-gradient(135deg, rgba(0, 173, 181, 0.6), rgba(0, 173, 181, 0.2))',
+                            gap: '1.2rem',
+                            fontSize: '1.3rem',
+                            background: 'linear-gradient(135deg, rgba(0, 173, 181, 0.7), rgba(0, 173, 181, 0.3))',
                             color: '#ffffff',
-                            boxShadow: '0 10px 30px rgba(0,0,0,0.4)'
+                            boxShadow: '0 15px 40px rgba(0,0,0,0.5)'
                         }}>
-                             <ShieldCheck size={26} /> Влез в Системата
+                             <ShieldCheck size={30} /> Влез в Системата
                         </Link>
                     </div>
                 </div>
 
-                <div className="hero-image-wrapper" style={{ position: 'relative' }}>
+                <div className="hero-image-wrapper" style={{ 
+                    position: 'relative',
+                    width: '100%',
+                    maxWidth: '1000px',
+                    perspective: '2000px'
+                }}>
                     <div style={{
                         position: 'absolute',
                         top: '50%',
                         left: '50%',
                         transform: 'translate(-50%, -50%)',
-                        width: '140%',
-                        height: '140%',
-                        background: 'radial-gradient(circle, rgba(0, 173, 181, 0.15) 0%, rgba(0, 0, 0, 0) 70%)',
+                        width: '110%',
+                        height: '110%',
+                        background: 'radial-gradient(circle, rgba(0, 173, 181, 0.2) 0%, rgba(0, 0, 0, 0) 70%)',
                         zIndex: -1,
-                        filter: 'blur(40px)'
+                        filter: 'blur(60px)'
                     }} />
                     <img 
                         src={heroImage} 
-                        className="floating-card"
+                        className="hero-centerpiece"
                         style={{ 
                             width: '100%', 
-                            borderRadius: '40px', 
-                            boxShadow: '0 50px 100px rgba(0,0,0,0.7), 0 0 50px rgba(0,173,181,0.2)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            transition: 'all 0.5s ease',
+                            borderRadius: '48px', 
+                            boxShadow: '0 60px 120px rgba(0,0,0,0.8), 0 0 60px rgba(0,173,181,0.2)',
+                            border: '1px solid rgba(255,255,255,0.12)',
                             display: 'block'
                         }} 
-                        alt="Hero" 
+                        alt="Hero visualization" 
                     />
                 </div>
             </section>
