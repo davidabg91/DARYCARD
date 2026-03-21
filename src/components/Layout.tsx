@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import logo from '../assets/logo_commerce.png';
+import logo from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, ShieldCheck, Shield, Menu, X } from 'lucide-react';
 
@@ -161,14 +161,18 @@ const Layout: React.FC = () => {
             }}>
                 <Link to="/" onClick={closeMenu} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', gap: '0', userSelect: 'none' }}>
                     <div style={{
+                        background: '#fff',
+                        borderRadius: '10px',
+                        padding: '4px 8px',
                         display: 'flex',
                         alignItems: 'center',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
                     }}>
                         <img
                             src={logo}
                             alt="Dary Travel"
                             style={{
-                                height: '42px',
+                                height: '36px',
                                 width: 'auto',
                                 objectFit: 'contain',
                                 display: 'block',
