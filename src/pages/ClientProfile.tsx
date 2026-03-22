@@ -474,18 +474,19 @@ const ClientProfile: React.FC = () => {
 
     return (
         <div style={{ minHeight: '100vh', background: '#000', display: 'flex', flexDirection: 'column', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
-            <div style={{ background: themeColor, padding: '2rem 1rem', textAlign: 'center', boxShadow: `0 0 40px ${themeColor}44`, position: 'relative', zIndex: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', animation: isActive ? 'pulse 2s infinite' : 'none' }}>
-                    <StatusIcon size={40} color="#000" /><h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, color: '#ffffff', letterSpacing: '2px' }}>{statusText}</h1>
+            <div style={{ background: themeColor, padding: '3.5rem 1rem', textAlign: 'center', boxShadow: `0 0 60px ${themeColor}66`, position: 'relative', zIndex: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', animation: isActive ? 'pulse 2s infinite' : 'none' }}>
+                    <StatusIcon size={56} color="#000" />
+                    <h1 style={{ margin: 0, fontSize: '3rem', fontWeight: 900, color: '#ffffff', letterSpacing: '3px', textTransform: 'uppercase' }}>{statusText}</h1>
                 </div>
             </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 1rem', gap: '2rem' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3rem 1rem', gap: '2.5rem', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
                 <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowPhotoModal(true)}>
                     <div style={{ position: 'absolute', inset: '-10px', background: themeColor, borderRadius: '32px', opacity: 0.2, filter: 'blur(20px)' }} />
                     <img src={client.photo} style={{ width: '240px', height: '240px', borderRadius: '24px', objectFit: 'cover', border: `4px solid ${themeColor}`, position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'} alt="Client" />
                     <div style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.7rem', color: '#fff', backdropFilter: 'blur(4px)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>КЛИКНИ ЗА УВЕЛИЧЕНИЕ</div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', padding: '2.5rem 2rem', width: '100%', maxWidth: '440px', textAlign: 'center', boxShadow: '0 40px 100px rgba(0,0,0,0.5)' }}>
+                <div style={{ background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(30px)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '40px', padding: '3rem 2rem', width: '100%', maxWidth: '800px', textAlign: 'center', boxShadow: '0 50px 120px rgba(0,0,0,0.6)' }}>
                     <h2 style={{ fontSize: '2.4rem', margin: '0 0 1.5rem 0', fontWeight: 900, color: '#fff' }}>{client.name}</h2>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', color: 'rgba(255,255,255,0.6)', fontSize: '1.1rem' }}>
@@ -519,9 +520,9 @@ const ClientProfile: React.FC = () => {
                         </div>
                     )}
                 </div>
-                <div style={{ marginTop: 'auto', padding: '1.5rem', background: 'rgba(255,255,255,0.03)', width: '100%', borderRadius: '24px 24px 0 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' }}><Clock size={16} /> Сканирано на: {scanTime}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: themeColor, fontSize: '0.8rem', fontWeight: 600 }}><User size={14} /> ID: {client.id}</div>
+                <div style={{ marginTop: 'auto', padding: '2rem', background: 'linear-gradient(to top, rgba(255,255,255,0.04), transparent)', width: '100%', borderRadius: '40px 40px 0 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', color: 'rgba(255,255,255,0.4)', fontSize: '1rem' }}><Clock size={18} /> Сканирано на: {scanTime}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', color: themeColor, fontSize: '0.9rem', fontWeight: 700, letterSpacing: '1px' }}><User size={16} /> ID: {client.id}</div>
                 </div>
             </div>
 
