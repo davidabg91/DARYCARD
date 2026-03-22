@@ -47,6 +47,16 @@ interface Client {
     scanHistory?: string[];
 }
 
+interface GlobalLog {
+    id: string;
+    timestamp: string;
+    performedBy: string;
+    action: string;
+    targetName: string;
+    details: string;
+    amount: number;
+}
+
 const ROUTES = [
     "Бъркач", "Тръстеник", "Биволаре", "Горна Митрополия", "Долни Дъбник",
     "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
@@ -96,7 +106,7 @@ const getDefaultExpiryMonth = () => {
 
 interface TabButtonProps {
     id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'audit';
-    icon: any;
+    icon: React.ElementType;
     label: string;
     activeTab: 'dashboard' | 'clients' | 'register' | 'nfc' | 'audit';
     setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'audit') => void;
@@ -180,7 +190,7 @@ const AdminPanel: React.FC = () => {
     const [showTotalRevenue, setShowTotalRevenue] = useState(false);
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
     const [modalMessage, setModalMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
-    const [globalLogs, setGlobalLogs] = useState<any[]>([]);
+    const [globalLogs, setGlobalLogs] = useState<GlobalLog[]>([]);
     
     // Duplicate Check State
     const [duplicateCheckClient, setDuplicateCheckClient] = useState<Client | null>(null);
@@ -314,8 +324,8 @@ const AdminPanel: React.FC = () => {
 
         // 3. Listen for Global Activity Logs
         const unsubscribeGlobalLogs = onSnapshot(query(collection(db, 'activity_logs')), (snapshot) => {
-            const logs: any[] = [];
-            snapshot.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
+            const logs: GlobalLog[] = [];
+            snapshot.forEach(doc => logs.push({ id: doc.id, ...doc.data() } as GlobalLog));
             setGlobalLogs(logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
         });
 
