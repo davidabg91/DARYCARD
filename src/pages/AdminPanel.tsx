@@ -158,6 +158,11 @@ const AdminPanel: React.FC = () => {
 
     const [showTotalRevenue, setShowTotalRevenue] = useState(false);
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
+    const [modalMessage, setModalMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+    
+    // Duplicate Check State
+    const [duplicateCheckClient, setDuplicateCheckClient] = useState<Client | null>(null);
+    const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
     
     // NFC Tools State
     const [nfcQuantity, setNfcQuantity] = useState<number>(100);
@@ -308,6 +313,14 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
+        // Duplicate Name Check
+        const existingClient = clients.find(c => c.name.toLowerCase().trim() === clientName.toLowerCase().trim());
+        if (existingClient && !showDuplicateWarning) {
+            setDuplicateCheckClient(existingClient);
+            setShowDuplicateWarning(true);
+            return;
+        }
+
         const sanitizedNfcId = nfcLinkId ? sanitizeId(nfcLinkId) : '';
         const generatedId = sanitizedNfcId || generateClientId();
         const newClient: Client = {
@@ -338,15 +351,16 @@ const AdminPanel: React.FC = () => {
             if (isNew) {
                 setRegistrationSuccess(client);
                 setClientName(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
+                setShowActionModal(false);
+                setSelectedClient(null);
             } else {
-                setMessage({ text: 'Профилът бе обновен успешно.', type: 'success' });
-                // Reset some state but keep the modal open if needed? 
-                // Actually, user expects the modal to close or reflect changes.
-                setTimeout(() => setMessage(null), 3000);
+                // For updates, we keep the modal open to show the new modalMessage overlay
+                // setMessage({ text: 'Профилът бе обновен успешно.', type: 'success' });
+                // setTimeout(() => setMessage(null), 3000);
             }
             
-            setShowActionModal(false);
-            setSelectedClient(null);
+            setShowDuplicateWarning(false);
+            setDuplicateCheckClient(null);
         } catch (err) {
             console.error(err);
             setMessage({ text: 'Грешка при записване.', type: 'error' });
@@ -384,6 +398,10 @@ const AdminPanel: React.FC = () => {
         };
 
         await saveClient(updatedClient, false);
+        setModalMessage({ 
+            text: `Успешно подновен абонамент за ${newMonth}. Сума: ${newAmount} €.`, 
+            type: 'success' 
+        });
         setNewMonth('');
         setNewAmount('');
     };
@@ -417,6 +435,10 @@ const AdminPanel: React.FC = () => {
         };
 
         await saveClient(updatedClient, false);
+        setModalMessage({ 
+            text: `Изтрито плащане за месец ${entryToDelete.month} (${entryToDelete.amount} €). Общата сума и валидността бяха преизчислени.`, 
+            type: 'success' 
+        });
     };
 
     const generateNfcBatch = () => {
@@ -451,6 +473,10 @@ const AdminPanel: React.FC = () => {
         };
 
         await saveClient(updatedClient, false);
+        setModalMessage({ 
+            text: `Картата бе анулирана успешно. Причина: ${cancelReason}`, 
+            type: 'success' 
+        });
         setCancelReason('');
     };
 
@@ -1206,226 +1232,331 @@ const AdminPanel: React.FC = () => {
                                     {message && <div style={{ color: message.type === 'success' ? 'var(--success-color)' : 'var(--error-color)' }}>{message.text}</div>}
                                     <button type="submit" disabled={isWaitingForScan} style={{ background: 'var(--primary-color)', color: '#ffffff', padding: '1rem', borderRadius: '8px', fontWeight: 600, display: 'flex', justifyContent: 'center', gap: '0.5rem', opacity: isWaitingForScan ? 0.5 : 1 }}><Save size={20} /> Запази Клиента</button>
                                 </form>
-                            </Card>
-                        </div>
-                    )}
-                </div>
-            )}
 
-            {activeTab === 'nfc' && isAdmin && (
-                <div style={{ animation: 'fadeIn 0.4s ease' }}>
-                    <Card style={{ padding: '2rem' }}>
-                        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--accent-color)' }}>
-                            <ExternalLink size={24} /> Генериране на NFC Линкове
-                        </h2>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.9rem' }}>
-                            Използвайте този инструмент, за да генерирате уникални линкове за нови карти. 
-                            Изпратете списъка на производителя, за да ги запише в NFC чиповете на картите.
-                        </p>
-
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '2rem' }}>
-                            <div style={{ flex: 1, minWidth: '150px' }}>
-                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Количество карти</label>
-                                <input 
-                                    type="number" 
-                                    value={nfcQuantity} 
-                                    onChange={(e) => setNfcQuantity(parseInt(e.target.value))}
-                                    style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }}
-                                />
-                            </div>
-                            <button 
-                                onClick={generateNfcBatch}
-                                style={{ padding: '0.8rem 2rem', borderRadius: '12px', background: 'var(--accent-color)', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}
-                            >
-                                Генерирай
-                            </button>
-                        </div>
-
-                        {generatedLinks.length > 0 && (
-                            <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                    <h3 style={{ fontSize: '1rem' }}>Генерирани линкове ({generatedLinks.length})</h3>
-                                    <button 
-                                        onClick={copyLinksToClipboard}
-                                        style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-                                    >
-                                        Копирай Списъка
-                                    </button>
-                                </div>
-                                <div style={{ 
-                                    maxHeight: '400px', 
-                                    overflowY: 'auto', 
-                                    background: 'rgba(0,0,0,0.3)', 
-                                    borderRadius: '12px', 
-                                    padding: '1rem',
-                                    border: '1px solid var(--surface-border)',
-                                    fontFamily: 'monospace',
-                                    fontSize: '0.85rem'
-                                }}>
-                                    {generatedLinks.map((link, idx) => (
-                                        <div key={idx} style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--primary-color)' }}>
-                                            {link}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </Card>
-                </div>
-            )}
-
-
-
-            {/* Action Modal */}
-            {showActionModal && selectedClient && (
-                <div className="modal-overlay" onClick={() => setShowActionModal(false)}>
-                    <div className="modal-content" style={{ maxWidth: '600px', padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-                        {/* Header */}
-                        <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <img src={selectedClient.photo} style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover' }} />
-                                <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{selectedClient.name}</h3>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>ID: {selectedClient.id}</div>
-                                </div>
-                            </div>
-                            <button onClick={() => setShowActionModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer' }}><XCircle size={20} /></button>
-                        </div>
-
-                        {/* Tabs */}
-                        <div style={{ display: 'flex', padding: '0.5rem', gap: '0.5rem', background: 'rgba(0,0,0,0.2)' }}>
-                            <button 
-                                onClick={() => setModalTab('info')}
-                                style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'info' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'info' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' }}
-                            >Инфо</button>
-                            <button 
-                                onClick={() => setModalTab('actions')}
-                                style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'actions' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'actions' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' }}
-                            >Действие</button>
-                            <button 
-                                onClick={() => setModalTab('history')}
-                                style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'history' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'history' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
-                            ><Clock size={14} /> История</button>
-                        </div>
-
-                        {/* Content */}
-                        <div style={{ padding: '1.5rem', minHeight: '300px', maxHeight: '70vh', overflowY: 'auto' }}>
-                            {modalTab === 'info' && (
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', animation: 'fadeIn 0.3s ease' }}>
-                                    <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Статус</div>
-                                        <div style={{ fontWeight: 700, color: selectedClient.isCanceled || isExpired(selectedClient.expiryDate, selectedClient) ? 'var(--error-color)' : 'var(--success-color)' }}>
-                                            {selectedClient.isCanceled ? 'Анулиран' : isExpired(selectedClient.expiryDate, selectedClient) ? 'Невалиден' : 'Активен'}
-                                        </div>
-                                    </div>
-                                    <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Линия</div>
-                                        <div style={{ fontWeight: 600 }}>{selectedClient.route}</div>
-                                    </div>
-                                    <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Дата на регистрация</div>
-                                        <div style={{ fontWeight: 600 }}>{new Date(selectedClient.createdAt).toLocaleDateString('bg-BG')}</div>
-                                    </div>
-                                    <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Общо платено</div>
-                                        <div style={{ fontWeight: 700, color: 'var(--success-color)', fontSize: '1.1rem' }}>{selectedClient.amountPaid} €</div>
-                                    </div>
-                                    {selectedClient.isCanceled && (
-                                        <div style={{ gridColumn: 'span 2', padding: '1rem', background: 'rgba(255,0,0,0.1)', borderRadius: '10px', border: '1px solid rgba(255,0,0,0.2)', fontSize: '0.85rem' }}>
-                                            <b style={{ color: 'var(--error-color)' }}>Причина за анулиране:</b> {selectedClient.cancelReason}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {modalTab === 'actions' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.3s ease' }}>
-                                    {/* Renew */}
-                                    <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(0,255,150,0.03)', border: '1px solid rgba(0,255,150,0.1)' }}>
-                                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)', margin: '0 0 1rem 0' }}><RefreshCw size={18} /> Подновяване</h4>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Месец</label>
-                                                <input type="month" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff', colorScheme: 'dark' }} value={newMonth} onChange={e => setNewMonth(e.target.value)} />
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Сума (€)</label>
-                                                <input type="number" placeholder="0.00" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff' }} value={newAmount} onChange={e => setNewAmount(e.target.value)} />
-                                            </div>
-                                        </div>
-                                        <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
-                                    </div>
-
-                                    {/* Renewal History with Delete option for Admins */}
-                                    {selectedClient.renewalHistory && selectedClient.renewalHistory.length > 0 && (
-                                        <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
-                                            <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>История на Плащанията</h4>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                                {[...selectedClient.renewalHistory].sort((a, b) => b.month.localeCompare(a.month)).map((rh, idx) => (
-                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                                                        <div>
-                                                            <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{rh.month}</div>
-                                                            <div style={{ fontSize: '0.75rem', color: 'var(--success-color)' }}>{rh.amount} €</div>
-                                                        </div>
-                                                        {isAdmin && (
-                                                            <button 
-                                                                onClick={() => {
-                                                                    // We need the original index in renewalHistory, not the sorted one
-                                                                    const originalIndex = selectedClient.renewalHistory!.findIndex(entry => entry === rh);
-                                                                    deleteRenewal(selectedClient, originalIndex);
-                                                                }}
-                                                                style={{ background: 'rgba(255,82,82,0.1)', border: 'none', color: '#ff5252', padding: '0.5rem', borderRadius: '6px', cursor: 'pointer' }}
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Cancel */}
-                                    <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(255,0,0,0.03)', border: '1px solid rgba(255,0,0,0.1)' }}>
-                                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--error-color)', margin: '0 0 1rem 0' }}><Trash2 size={18} /> Анулиране</h4>
-                                        <textarea
-                                            placeholder="Причина за анулиране..."
-                                            style={{ width: '100%', padding: '0.8rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', marginBottom: '1rem', minHeight: '80px', color: '#fff', fontSize: '0.85rem' }}
-                                            value={cancelReason} onChange={e => setCancelReason(e.target.value)}
-                                        />
-                                        <button onClick={cancelClient} style={{ width: '100%', background: 'var(--error-color)', color: '#fff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Анулирай Картата</button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {modalTab === 'history' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', animation: 'fadeIn 0.3s ease' }}>
-                                    {selectedClient.history && selectedClient.history.length > 0 ? (
-                                        selectedClient.history.slice().reverse().map((log, idx) => (
-                                            <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '10px', display: 'flex', gap: '1rem' }}>
-                                                <div style={{ width: '3px', background: log.action === 'Създаване' ? 'var(--primary-color)' : log.action === 'Подновяване' ? 'var(--success-color)' : 'var(--error-color)', borderRadius: '3px' }} />
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-                                                        <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{log.action}</span>
-                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{new Date(log.date).toLocaleString('bg-BG')}</span>
-                                                    </div>
-                                                    {log.details && <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.4rem' }}>{log.details}</div>}
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        {log.amount && <div style={{ fontWeight: 800, color: 'var(--success-color)', fontSize: '0.9rem' }}>{log.amount} €</div>}
-                                                        {log.performedBy && (
-                                                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
-                                                                От: {log.performedBy.split('@')[0]}
-                                                            </div>
-                                                        )}
+                                    {/* Duplicate Warning Overlay */}
+                                    {showDuplicateWarning && duplicateCheckClient && (
+                                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10, borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', textAlign: 'center', animation: 'fadeIn 0.3s ease' }}>
+                                            <AlertTriangle size={48} color="#ffab00" style={{ marginBottom: '1rem' }} />
+                                            <h3 style={{ color: '#ffab00', marginBottom: '0.5rem' }}>Внимание! Дублирано име</h3>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                                                Вече има регистриран клиент с името <b>{duplicateCheckClient.name}</b>.
+                                            </p>
+                                            
+                                            <div style={{ marginBottom: '1.5rem', border: '1px solid var(--surface-border)', borderRadius: '12px', padding: '1rem', background: 'rgba(255,255,255,0.03)', width: '100%' }}>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>СЪЩЕСТВУВАЩ ПРОФИЛ:</div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
+                                                    <img src={duplicateCheckClient.photo} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary-color)' }} />
+                                                    <div style={{ textAlign: 'left' }}>
+                                                        <div style={{ fontWeight: 700 }}>{duplicateCheckClient.name}</div>
+                                                        <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{duplicateCheckClient.route}</div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))
-                                    ) : (
-                                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма история на дейностите.</div>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%' }}>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setShowDuplicateWarning(false);
+                                                        setDuplicateCheckClient(null);
+                                                        setClientName('');
+                                                        alert('Моля, не регистрирайте един и същ човек два пъти. Използвайте менюто "Подновяване" за съществуващи карти.');
+                                                    }}
+                                                    style={{ padding: '0.8rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                                                >
+                                                    Това е същият човек
+                                                </button>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setShowDuplicateWarning(false);
+                                                        setDuplicateCheckClient(null);
+                                                        alert('Моля, добавете презиме на новия клиент, за да ги различаваме.');
+                                                    }}
+                                                    style={{ padding: '0.8rem', borderRadius: '8px', background: 'var(--primary-color)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                                                >
+                                                    Това е друг човек (добавете презиме)
+                                                </button>
+                                            </div>
+                                        </div>
                                     )}
+                                </Card>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'nfc' && isAdmin && (
+                    <div style={{ animation: 'fadeIn 0.4s ease' }}>
+                        <Card style={{ padding: '2rem' }}>
+                            <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--accent-color)' }}>
+                                <ExternalLink size={24} /> Генериране на NFC Линкове
+                            </h2>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.9rem' }}>
+                                Използвайте този инструмент, за да генерирате уникални линкове за нови карти. 
+                                Изпратете списъка на производителя, за да ги запише в NFC чиповете на картите.
+                            </p>
+
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '2rem' }}>
+                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Количество карти</label>
+                                    <input 
+                                        type="number" 
+                                        value={nfcQuantity} 
+                                        onChange={(e) => setNfcQuantity(parseInt(e.target.value))}
+                                        style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }}
+                                    />
+                                </div>
+                                <button 
+                                    onClick={generateNfcBatch}
+                                    style={{ padding: '0.8rem 2rem', borderRadius: '12px', background: 'var(--accent-color)', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                    Генерирай
+                                </button>
+                            </div>
+
+                            {generatedLinks.length > 0 && (
+                                <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                        <h3 style={{ fontSize: '1rem' }}>Генерирани линкове ({generatedLinks.length})</h3>
+                                        <button 
+                                            onClick={copyLinksToClipboard}
+                                            style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
+                                        >
+                                            Копирай Списъка
+                                        </button>
+                                    </div>
+                                    <div style={{ 
+                                        maxHeight: '400px', 
+                                        overflowY: 'auto', 
+                                        background: 'rgba(0,0,0,0.3)', 
+                                        borderRadius: '12px', 
+                                        padding: '1rem',
+                                        border: '1px solid var(--surface-border)',
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.85rem'
+                                    }}>
+                                        {generatedLinks.map((link, idx) => (
+                                            <div key={idx} style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--primary-color)' }}>
+                                                {link}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
+                        </Card>
+                    </div>
+                )}
+
+
+
+                {/* Action Modal */}
+                {showActionModal && selectedClient && (
+                    <div className="modal-overlay" onClick={() => setShowActionModal(false)}>
+                        <div className="modal-content" style={{ maxWidth: '600px', padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+                            {/* Header */}
+                            <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <img src={selectedClient.photo} style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover' }} />
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{selectedClient.name}</h3>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>ID: {selectedClient.id}</div>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowActionModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer' }}><XCircle size={20} /></button>
+                            </div>
+
+                            {/* Tabs */}
+                            <div style={{ display: 'flex', padding: '0.5rem', gap: '0.5rem', background: 'rgba(0,0,0,0.2)' }}>
+                                <button 
+                                    onClick={() => setModalTab('info')}
+                                    style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'info' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'info' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' }}
+                                >Инфо</button>
+                                <button 
+                                    onClick={() => setModalTab('actions')}
+                                    style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'actions' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'actions' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' }}
+                                >Действие</button>
+                                <button 
+                                    onClick={() => setModalTab('history')}
+                                    style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'history' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'history' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                                ><Clock size={14} /> История</button>
+                            </div>
+
+                            {/* Content */}
+                            <div style={{ padding: '1.5rem', minHeight: '300px', maxHeight: '70vh', overflowY: 'auto', position: 'relative' }}>
+                                {modalMessage && (
+                                    <div style={{ 
+                                        position: 'absolute', inset: 0, zIndex: 100, 
+                                        background: 'rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', 
+                                        alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center',
+                                        animation: 'fadeIn 0.3s ease'
+                                    }}>
+                                        <div style={{ 
+                                            width: '64px', height: '64px', borderRadius: '50%', 
+                                            background: modalMessage.type === 'success' ? 'rgba(0,255,150,0.1)' : 'rgba(255,82,82,0.1)',
+                                            color: modalMessage.type === 'success' ? 'var(--success-color)' : 'var(--error-color)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem'
+                                        }}>
+                                            {modalMessage.type === 'success' ? <ShieldCheck size={40} /> : <XCircle size={40} />}
+                                        </div>
+                                        <h3 style={{ color: modalMessage.type === 'success' ? 'var(--success-color)' : 'var(--error-color)', marginBottom: '1rem' }}>
+                                            {modalMessage.type === 'success' ? 'Операцията е успешна' : 'Грешка'}
+                                        </h3>
+                                        <p style={{ fontSize: '1rem', lineHeight: '1.5', marginBottom: '2rem' }}>{modalMessage.text}</p>
+                                        <button 
+                                            onClick={() => setModalMessage(null)}
+                                            style={{ padding: '0.8rem 2rem', borderRadius: '50px', background: 'var(--primary-color)', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                                        >Разбрах</button>
+                                    </div>
+                                )}
+
+                                {modalTab === 'info' && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', animation: 'fadeIn 0.3s ease' }}>
+                                        <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Статус</div>
+                                            <div style={{ fontWeight: 700, color: selectedClient.isCanceled || isExpired(selectedClient.expiryDate, selectedClient) ? 'var(--error-color)' : 'var(--success-color)' }}>
+                                                {selectedClient.isCanceled ? 'Анулиран' : isExpired(selectedClient.expiryDate, selectedClient) ? 'Невалиден' : 'Активен'}
+                                            </div>
+                                        </div>
+                                        <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Линия</div>
+                                            <div style={{ fontWeight: 600 }}>{selectedClient.route}</div>
+                                        </div>
+                                        <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Дата на регистрация</div>
+                                            <div style={{ fontWeight: 600 }}>{new Date(selectedClient.createdAt).toLocaleDateString('bg-BG')}</div>
+                                        </div>
+                                        <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Общо платено</div>
+                                            <div style={{ fontWeight: 700, color: 'var(--success-color)', fontSize: '1.1rem' }}>{selectedClient.amountPaid} €</div>
+                                        </div>
+                                        {selectedClient.isCanceled && (
+                                            <div style={{ gridColumn: 'span 2', padding: '1rem', background: 'rgba(255,0,0,0.1)', borderRadius: '10px', border: '1px solid rgba(255,0,0,0.2)', fontSize: '0.85rem' }}>
+                                                <b style={{ color: 'var(--error-color)' }}>Причина за анулиране:</b> {selectedClient.cancelReason}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {modalTab === 'actions' && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.3s ease' }}>
+                                        {/* Renew */}
+                                        <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(0,255,150,0.03)', border: '1px solid rgba(0,255,150,0.1)' }}>
+                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)', margin: '0 0 1rem 0' }}><RefreshCw size={18} /> Подновяване</h4>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Месец</label>
+                                                    <input type="month" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff', colorScheme: 'dark' }} value={newMonth} onChange={e => setNewMonth(e.target.value)} />
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Сума (€)</label>
+                                                    <input type="number" placeholder="0.00" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff' }} value={newAmount} onChange={e => setNewAmount(e.target.value)} />
+                                                </div>
+                                            </div>
+                                            <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
+                                        </div>
+
+                                        {/* Cancel */}
+                                        <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(255,0,0,0.03)', border: '1px solid rgba(255,0,0,0.1)' }}>
+                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--error-color)', margin: '0 0 1rem 0' }}><Trash2 size={18} /> Анулиране</h4>
+                                            <textarea
+                                                placeholder="Причина за анулиране..."
+                                                style={{ width: '100%', padding: '0.8rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', marginBottom: '1rem', minHeight: '80px', color: '#fff', fontSize: '0.85rem' }}
+                                                value={cancelReason} onChange={e => setCancelReason(e.target.value)}
+                                            />
+                                            <button onClick={cancelClient} style={{ width: '100%', background: 'var(--error-color)', color: '#fff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Анулирай Картата</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {modalTab === 'history' && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.3s ease' }}>
+                                        
+                                        {/* Renewal History with Delete option for Admins (Moved from Actions Tab) */}
+                                        {selectedClient.renewalHistory && selectedClient.renewalHistory.length > 0 && (
+                                            <div style={{ padding: '1.25rem', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)', border: '1px solid var(--surface-border)' }}>
+                                                <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 700, color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                    <DollarSign size={18} /> История на Плащанията
+                                                </h4>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.75rem' }}>
+                                                    {[...selectedClient.renewalHistory].sort((a, b) => b.month.localeCompare(a.month)).map((rh, idx) => (
+                                                        <div key={idx} style={{ 
+                                                            position: 'relative',
+                                                            display: 'flex', 
+                                                            flexDirection: 'column',
+                                                            padding: '0.75rem', 
+                                                            background: 'rgba(0,0,0,0.2)', 
+                                                            borderRadius: '12px', 
+                                                            border: '1px solid var(--surface-border)',
+                                                            transition: 'all 0.2s ease'
+                                                        }}>
+                                                            <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{rh.month}</div>
+                                                            <div style={{ fontSize: '0.8rem', color: 'var(--success-color)', fontWeight: 700 }}>{rh.amount} €</div>
+                                                            
+                                                            {isAdmin && (
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        const originalIndex = selectedClient.renewalHistory!.findIndex(entry => entry === rh);
+                                                                        deleteRenewal(selectedClient, originalIndex);
+                                                                    }}
+                                                                    style={{ 
+                                                                        position: 'absolute',
+                                                                        top: '0.5rem',
+                                                                        right: '0.5rem',
+                                                                        background: 'rgba(255,82,82,0.1)', 
+                                                                        border: 'none', 
+                                                                        color: '#ff5252', 
+                                                                        padding: '4px', 
+                                                                        borderRadius: '6px', 
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center'
+                                                                    }}
+                                                                    title="Изтрий плащането"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div style={{ borderTop: '1px solid var(--surface-border)', paddingTop: '1rem' }}>
+                                            <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                <Clock size={18} /> Пълна История на Активността
+                                            </h4>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                {selectedClient.history && selectedClient.history.length > 0 ? (
+                                                    selectedClient.history.slice().reverse().map((log, idx) => (
+                                                        <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '10px', display: 'flex', gap: '1rem' }}>
+                                                            <div style={{ width: '3px', background: log.action === 'Създаване' ? 'var(--primary-color)' : log.action === 'Подновяване' ? 'var(--success-color)' : 'var(--error-color)', borderRadius: '3px' }} />
+                                                            <div style={{ flex: 1 }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                                                                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{log.action}</span>
+                                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{new Date(log.date).toLocaleString('bg-BG')}</span>
+                                                                </div>
+                                                                {log.details && <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.4rem' }}>{log.details}</div>}
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                    {log.amount && <div style={{ fontWeight: 800, color: 'var(--success-color)', fontSize: '0.9rem' }}>{log.amount} €</div>}
+                                                                    {log.performedBy && (
+                                                                        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                                            От: {log.performedBy.split('@')[0]}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма история на дейностите.</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                         </div>
                     </div>
                 </div>
