@@ -80,7 +80,7 @@ const ClientProfile: React.FC = () => {
     const [showPhotoModal, setShowPhotoModal] = useState(false);
     const [isRegistering, setIsRegistering] = useState(false);
     const [isIdle, setIsIdle] = useState(false);
-    const idleTimerRef = useRef<any>(null);
+    const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     
     const [regName, setRegName] = useState('');
     const [regRoute, setRegRoute] = useState('');
@@ -104,7 +104,7 @@ const ClientProfile: React.FC = () => {
 
     const playSuccessSound = () => {
         try {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
             const context = new AudioContextClass();
             const playTone = (freq: number, start: number, duration: number, vol: number = 0.08) => {
                 const osc = context.createOscillator();
@@ -177,7 +177,7 @@ const ClientProfile: React.FC = () => {
 
     const playErrorSound = () => {
         try {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
             const context = new AudioContextClass();
             const createBuzz = (startTime: number, duration: number) => {
                 const osc1 = context.createOscillator();
