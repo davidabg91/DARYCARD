@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface AdSlideshowProps {
     onClose: () => void;
@@ -36,16 +35,6 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
 
         return () => clearInterval(interval);
     }, [isPaused]);
-
-    const nextSlide = (e?: React.MouseEvent) => {
-        e?.stopPropagation();
-        setCurrentIndex((prev) => (prev + 1) % AD_IMAGES.length);
-    };
-
-    const prevSlide = (e?: React.MouseEvent) => {
-        e?.stopPropagation();
-        setCurrentIndex((prev) => (prev - 1 + AD_IMAGES.length) % AD_IMAGES.length);
-    };
 
     return (
         <div 
@@ -109,54 +98,12 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
                         />
                     </div>
                 ))}
-
-                {/* Navigation Arrows */}
-                <button 
-                    onClick={prevSlide}
-                    style={{
-                        position: 'absolute',
-                        left: '20px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'rgba(0,0,0,0.3)',
-                        border: 'none',
-                        borderRadius: '50%',
-                        padding: '10px',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        backdropFilter: 'blur(5px)'
-                    }}
-                >
-                    <ChevronLeft size={32} />
-                </button>
-                <button 
-                    onClick={nextSlide}
-                    style={{
-                        position: 'absolute',
-                        right: '20px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'rgba(0,0,0,0.3)',
-                        border: 'none',
-                        borderRadius: '50%',
-                        padding: '10px',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        backdropFilter: 'blur(5px)'
-                    }}
-                >
-                    <ChevronRight size={32} />
-                </button>
             </div>
 
             <style>{`
                 @keyframes fadeIn {
                     from { opacity: 0; }
                     to { opacity: 1; }
-                }
-                @keyframes slideUp {
-                    from { transform: translateY(30px); opacity: 0; }
-                    to { transform: translateY(0); opacity: 1; }
                 }
             `}</style>
         </div>
