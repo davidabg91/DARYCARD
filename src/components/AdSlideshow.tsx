@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface AdSlideshowProps {
     onClose: () => void;
@@ -146,40 +146,6 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
                     }}
                 >
                     <ChevronRight size={32} />
-                </button>
-            </div>
-
-            {/* Bottom Bar */}
-            <div style={{ 
-                height: '80px', 
-                background: 'var(--primary-color)', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'space-between',
-                padding: '0 2rem'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Info size={20} color="#fff" />
-                    <span style={{ fontWeight: 700, letterSpacing: '1px' }}>DARY COMMERCE - ВАШИЯТ ПЪТНИК</span>
-                </div>
-                
-                <button 
-                    onClick={onClose}
-                    style={{
-                        background: '#fff',
-                        color: '#000',
-                        border: 'none',
-                        padding: '0.5rem 1.5rem',
-                        borderRadius: '50px',
-                        fontWeight: 900,
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                    }}
-                >
-                    <X size={18} /> ЗАТВОРИ РЕКЛАМАТА
                 </button>
             </div>
 
