@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Zap, Users, BarChart3, CreditCard } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 // Import assets
 import stepRegistration from '../assets/step_registration.png';
@@ -8,6 +9,7 @@ import stepScan from '../assets/step_scan.png';
 import stepVerify from '../assets/step_verify.png';
 
 const Landing: React.FC = () => {
+    const { currentUser } = useAuth();
     return (
         <div style={{ 
             minHeight: 'calc(100vh - 80px)', 
@@ -148,7 +150,7 @@ const Landing: React.FC = () => {
                     </p>
 
                     <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <Link to="/admin" className="premium-button-lg glass neon-border" style={{
+                        <Link to={currentUser ? "/admin" : "/login"} className="premium-button-lg glass neon-border" style={{
                             padding: '1.5rem 4.5rem',
                             borderRadius: '24px',
                             fontWeight: 900,

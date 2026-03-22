@@ -1,5 +1,5 @@
-import React from 'react';
 import { useAuth } from '../context/AuthContext';
+import { Navigate } from 'react-router-dom';
 import type { UserRole } from '../types/auth';
 
 interface Props {
@@ -21,7 +21,11 @@ const ProtectedRoute: React.FC<Props> = ({ children, requiredRole }) => {
         );
     }
 
-    if (!currentUser || !currentUser.role) {
+    if (!currentUser) {
+        return <Navigate to="/login" replace />;
+    }
+
+    if (!currentUser.role) {
         return (
             <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#fff', background: 'var(--bg-color)', minHeight: '100vh' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔒</div>
