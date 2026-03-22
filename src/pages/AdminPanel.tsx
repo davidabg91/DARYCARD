@@ -331,14 +331,20 @@ const AdminPanel: React.FC = () => {
         saveClient(newClient);
     };
 
-    const saveClient = async (client: Client) => {
+    const saveClient = async (client: Client, isNew: boolean = true) => {
         try {
             await setDoc(doc(db, 'clients', client.id), client);
             
-            // Set success view instead of simple message
-            setRegistrationSuccess(client);
+            if (isNew) {
+                setRegistrationSuccess(client);
+                setClientName(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
+            } else {
+                setMessage({ text: 'Профилът бе обновен успешно.', type: 'success' });
+                // Reset some state but keep the modal open if needed? 
+                // Actually, user expects the modal to close or reflect changes.
+                setTimeout(() => setMessage(null), 3000);
+            }
             
-            setClientName(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
             setShowActionModal(false);
             setSelectedClient(null);
         } catch (err) {
@@ -348,31 +354,69 @@ const AdminPanel: React.FC = () => {
     };
 
     const renewClient = async () => {
-        if (!selectedClient || !newMonth || !newAmount) return;
-        const updatedClients = clients.map(c => {
-            if (c.id === selectedClient.id) {
-                const history = c.history || [];
-                return {
-                    ...c,
-                    expiryDate: newMonth,
-                    amountPaid: c.amountPaid + Number(newAmount),
-                    isCanceled: false,
-                    cancelReason: undefined,
-                    renewalHistory: [...(c.renewalHistory || []), { date: new Date().toISOString(), amount: Number(newAmount), month: newMonth }],
-                    history: [...history, {
-                        date: new Date().toISOString(),
-                        action: 'Подновяване',
-                        details: `Нов месец: ${newMonth}`,
-                        amount: Number(newAmount),
-                        performedBy: currentUser?.username || 'Админ'
-                    }]
-                };
-            }
-            return c;
-        });
-        await saveClient(updatedClients.find(c => c.id === selectedClient.id)!);
+        if (!selectedClient) return;
+        
+        if (!newMonth || !newAmount || Number(newAmount) <= 0) {
+            alert('Моля, въведете валиден месец и сума.');
+            return;
+        }
+
+        const history = selectedClient.history || [];
+        const renewalHistory = selectedClient.renewalHistory || [];
+        
+        const updatedClient: Client = {
+            ...selectedClient,
+            expiryDate: newMonth,
+            amountPaid: selectedClient.amountPaid + Number(newAmount),
+            isCanceled: false,
+            renewalHistory: [...renewalHistory, { 
+                date: new Date().toISOString(), 
+                amount: Number(newAmount), 
+                month: newMonth 
+            }],
+            history: [...history, {
+                date: new Date().toISOString(),
+                action: 'Подновяване',
+                details: `Нов месец: ${newMonth}`,
+                amount: Number(newAmount),
+                performedBy: currentUser?.username || 'Админ'
+            }]
+        };
+
+        await saveClient(updatedClient, false);
         setNewMonth('');
         setNewAmount('');
+    };
+
+    const deleteRenewal = async (client: Client, index: number) => {
+        if (!isAdmin || !client.renewalHistory) return;
+        
+        if (!window.confirm('Сигурни ли сте, че искате да изтриете това плащане? Това ще промени общата сума и валидността на картата.')) return;
+
+        const entryToDelete = client.renewalHistory[index];
+        const newRenewalHistory = client.renewalHistory.filter((_, i) => i !== index);
+        
+        // Recalculate expiry date - find the latest month in the remaining history
+        let newExpiryDate = client.expiryDate;
+        if (newRenewalHistory.length > 0) {
+            const sortedByMonth = [...newRenewalHistory].sort((a, b) => b.month.localeCompare(a.month));
+            newExpiryDate = sortedByMonth[0].month;
+        }
+
+        const updatedClient: Client = {
+            ...client,
+            renewalHistory: newRenewalHistory,
+            amountPaid: client.amountPaid - entryToDelete.amount,
+            expiryDate: newExpiryDate,
+            history: [...(client.history || []), {
+                date: new Date().toISOString(),
+                action: 'Изтрито плащане',
+                details: `Изтрито плащане за месец ${entryToDelete.month} (${entryToDelete.amount} €)`,
+                performedBy: currentUser?.username || 'Админ'
+            }]
+        };
+
+        await saveClient(updatedClient, false);
     };
 
     const generateNfcBatch = () => {
@@ -392,24 +436,21 @@ const AdminPanel: React.FC = () => {
 
     const cancelClient = async () => {
         if (!selectedClient || !cancelReason) return;
-        const updatedClients = clients.map(c => {
-            if (c.id === selectedClient.id) {
-                const history = c.history || [];
-                return {
-                    ...c,
-                    isCanceled: true,
-                    cancelReason,
-                    history: [...history, {
-                        date: new Date().toISOString(),
-                        action: 'Анулиране',
-                        details: cancelReason,
-                        performedBy: currentUser?.username || 'Админ'
-                    }]
-                };
-            }
-            return c;
-        });
-        await saveClient(updatedClients.find(c => c.id === selectedClient.id)!);
+        
+        const history = selectedClient.history || [];
+        const updatedClient: Client = {
+            ...selectedClient,
+            isCanceled: true,
+            cancelReason,
+            history: [...history, {
+                date: new Date().toISOString(),
+                action: 'Анулиране',
+                details: cancelReason,
+                performedBy: currentUser?.username || 'Админ'
+            }]
+        };
+
+        await saveClient(updatedClient, false);
         setCancelReason('');
     };
 
@@ -1314,6 +1355,35 @@ const AdminPanel: React.FC = () => {
                                         </div>
                                         <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
                                     </div>
+
+                                    {/* Renewal History with Delete option for Admins */}
+                                    {selectedClient.renewalHistory && selectedClient.renewalHistory.length > 0 && (
+                                        <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
+                                            <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>История на Плащанията</h4>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                {[...selectedClient.renewalHistory].sort((a, b) => b.month.localeCompare(a.month)).map((rh, idx) => (
+                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                                                        <div>
+                                                            <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{rh.month}</div>
+                                                            <div style={{ fontSize: '0.75rem', color: 'var(--success-color)' }}>{rh.amount} €</div>
+                                                        </div>
+                                                        {isAdmin && (
+                                                            <button 
+                                                                onClick={() => {
+                                                                    // We need the original index in renewalHistory, not the sorted one
+                                                                    const originalIndex = selectedClient.renewalHistory!.findIndex(entry => entry === rh);
+                                                                    deleteRenewal(selectedClient, originalIndex);
+                                                                }}
+                                                                style={{ background: 'rgba(255,82,82,0.1)', border: 'none', color: '#ff5252', padding: '0.5rem', borderRadius: '6px', cursor: 'pointer' }}
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Cancel */}
                                     <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(255,0,0,0.03)', border: '1px solid rgba(255,0,0,0.1)' }}>
