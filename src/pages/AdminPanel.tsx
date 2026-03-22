@@ -5,11 +5,21 @@ import {
     Trash2, XCircle, Clock, DollarSign, Camera, 
     RefreshCw, List, Zap, Save, Eye, EyeOff, 
     ShieldCheck, Shield, TrendingUp, Percent, 
-    PiggyBank, AlertTriangle, UserCheck
+    PiggyBank, AlertTriangle, UserCheck,
+    History as HistoryIcon
 } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, setDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { 
+    addDoc,
+    doc, 
+    setDoc, 
+    collection, 
+    onSnapshot,
+    updateDoc,
+    deleteDoc,
+    query
+} from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
 interface ClientLog {
@@ -85,11 +95,11 @@ const getDefaultExpiryMonth = () => {
 };
 
 interface TabButtonProps {
-    id: 'dashboard' | 'clients' | 'register' | 'nfc';
-    icon: React.ElementType;
+    id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'audit';
+    icon: any;
     label: string;
-    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc';
-    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc') => void;
+    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc' | 'audit';
+    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'audit') => void;
     activeColor?: string;
 }
 
@@ -145,7 +155,7 @@ const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
     const isAdmin = currentUser?.role === 'admin';
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc'>(
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc' | 'audit'>(
         isAdmin ? 'dashboard' : 'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
@@ -170,6 +180,7 @@ const AdminPanel: React.FC = () => {
     const [showTotalRevenue, setShowTotalRevenue] = useState(false);
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
     const [modalMessage, setModalMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+    const [globalLogs, setGlobalLogs] = useState<any[]>([]);
     
     // Duplicate Check State
     const [duplicateCheckClient, setDuplicateCheckClient] = useState<Client | null>(null);
@@ -204,6 +215,7 @@ const AdminPanel: React.FC = () => {
             });
             await Promise.all(batchPromises);
             alert('Статистиката е нулирана успешно.');
+            await logGlobalActivity('Нулиране на сканирания', 'Всички клиенти', 'Нулирани са броячите за сканиране и историята за всички клиенти.');
         } catch (err) {
             console.error(err);
             alert('Грешка при нулиране.');
@@ -240,6 +252,20 @@ const AdminPanel: React.FC = () => {
     const [syncError, setSyncError] = useState<string | null>(null);
     const [registrationSuccess, setRegistrationSuccess] = useState<Client | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+    const logGlobalActivity = async (action: string, targetName: string, details: string, amount?: number) => {
+        try {
+            await addDoc(collection(db, 'activity_logs'), {
+                timestamp: new Date().toISOString(),
+                performedBy: currentUser?.username || 'Система',
+                action,
+                targetName,
+                details,
+                amount: amount || 0
+            });
+        } catch (err) {
+            console.error("Error logging global activity:", err);
+        }
+    };
 
 
 
@@ -286,9 +312,17 @@ const AdminPanel: React.FC = () => {
             }
         });
 
+        // 3. Listen for Global Activity Logs
+        const unsubscribeGlobalLogs = onSnapshot(query(collection(db, 'activity_logs')), (snapshot) => {
+            const logs: any[] = [];
+            snapshot.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
+            setGlobalLogs(logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+        });
+
         return () => {
             unsubscribe();
             actionUnsubscribe();
+            unsubscribeGlobalLogs();
         };
     }, [location.search]);
 
@@ -364,7 +398,8 @@ const AdminPanel: React.FC = () => {
             }]
         };
 
-        saveClient(newClient);
+        await saveClient(newClient);
+        await logGlobalActivity('Създаване', newClient.name, `Нова карта: ${newClient.id}. Сума: ${amountPaid} €. Регион: ${selectedRoute}`, Number(amountPaid));
     };
 
     const saveClient = async (client: Client, isNew: boolean = true) => {
@@ -421,6 +456,7 @@ const AdminPanel: React.FC = () => {
         };
 
         await saveClient(updatedClient, false);
+        await logGlobalActivity('Подновяване', selectedClient.name, `Месец: ${newMonth}. Сума: ${newAmount} €.`, Number(newAmount));
         setModalMessage({ 
             text: `Успешно подновен абонамент за ${newMonth}. Сума: ${newAmount} €.`, 
             type: 'success' 
@@ -458,6 +494,7 @@ const AdminPanel: React.FC = () => {
         };
 
         await saveClient(updatedClient, false);
+        await logGlobalActivity('Изтриване на плащане', client.name, `Месец: ${entryToDelete.month} (${entryToDelete.amount} €).`, -entryToDelete.amount);
         setModalMessage({ 
             text: `Изтрито плащане за месец ${entryToDelete.month} (${entryToDelete.amount} €). Общата сума и валидността бяха преизчислени.`, 
             type: 'success' 
@@ -471,12 +508,14 @@ const AdminPanel: React.FC = () => {
             newLinks.push(`${baseUrl}${generateClientId()}`);
         }
         setGeneratedLinks(newLinks);
+        logGlobalActivity('Генериране на NFC линкове', 'Система', `Генерирани ${nfcQuantity} NFC линка.`);
     };
 
     const copyLinksToClipboard = () => {
         const text = generatedLinks.join('\n');
         navigator.clipboard.writeText(text);
         setMessage({ text: 'Линковете са копирани в клипборда!', type: 'success' });
+        logGlobalActivity('Копиране на NFC линкове', 'Система', `Копирани ${generatedLinks.length} NFC линка в клипборда.`);
     };
 
     const cancelClient = async () => {
@@ -496,6 +535,7 @@ const AdminPanel: React.FC = () => {
         };
 
         await saveClient(updatedClient, false);
+        await logGlobalActivity('Анулиране', selectedClient.name, `Анулирана карта. Причина: ${cancelReason}`);
         setModalMessage({ 
             text: `Картата бе анулирана успешно. Причина: ${cancelReason}`, 
             type: 'success' 
@@ -509,6 +549,7 @@ const AdminPanel: React.FC = () => {
             try {
                 await deleteDoc(doc(db, 'clients', id));
                 setMessage({ text: `Клиентът "${name}" бе изтрит постоянно.`, type: 'success' });
+                await logGlobalActivity('Изтриване на клиент', name, `Клиентът "${name}" (ID: ${id}) беше изтрит постоянно.`);
                 if (selectedClient?.id === id) {
                     setShowActionModal(false);
                     setSelectedClient(null);
@@ -1592,6 +1633,74 @@ const AdminPanel: React.FC = () => {
                 </div>
             )}
 
+            {activeTab === 'audit' && isAdmin && (
+                <div style={{ animation: 'fadeIn 0.4s ease' }}>
+                    <Card style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <HistoryIcon size={20} /> Глобален Одит (Лог на Действията)
+                            </h3>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                {globalLogs.length} записани действия
+                            </div>
+                        </div>
+
+                        <div className="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Време</th>
+                                        <th>Изпълнител</th>
+                                        <th>Действие</th>
+                                        <th>Обект</th>
+                                        <th>Детайли</th>
+                                        <th style={{ textAlign: 'right' }}>Сума</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {globalLogs.length > 0 ? (
+                                        globalLogs.map((log) => (
+                                            <tr key={log.id} style={{ fontSize: '0.85rem' }}>
+                                                <td style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                                                    {new Date(log.timestamp).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                </td>
+                                                <td>
+                                                    <span style={{ padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontWeight: 600 }}>
+                                                        {log.performedBy ? log.performedBy.split('@')[0] : 'Система'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <b style={{ 
+                                                        color: log.action === 'Създаване' ? '#00c853' : 
+                                                               log.action === 'Изтриване на клиент' ? '#ff5252' :
+                                                               log.action === 'Анулиране' ? '#ffab00' : 'var(--primary-color)'
+                                                    }}>
+                                                        {log.action}
+                                                    </b>
+                                                </td>
+                                                <td style={{ fontWeight: 600 }}>{log.targetName}</td>
+                                                <td style={{ color: 'var(--text-secondary)', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={log.details}>
+                                                    {log.details}
+                                                </td>
+                                                <td style={{ textAlign: 'right', fontWeight: 800, color: log.amount > 0 ? '#00e676' : log.amount < 0 ? '#ff5252' : 'inherit' }}>
+                                                    {log.amount !== 0 ? `${log.amount} €` : '-'}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                <HistoryIcon size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} /><br />
+                                                Няма записани действия в лога.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 };
