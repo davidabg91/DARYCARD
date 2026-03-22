@@ -79,43 +79,34 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
                             justifyContent: 'center'
                         }}
                     >
+                        {/* Blurred Background */}
+                        <img 
+                            src={ad.url} 
+                            alt="" 
+                            style={{ 
+                                position: 'absolute',
+                                inset: 0,
+                                width: '100%', 
+                                height: '100%', 
+                                objectFit: 'cover',
+                                filter: 'blur(30px) brightness(0.3)',
+                                transform: 'scale(1.1)'
+                            }} 
+                        />
+                        
+                        {/* Main Ad Image */}
                         <img 
                             src={ad.url} 
                             alt={ad.title}
                             style={{ 
-                                width: '100%', 
-                                height: '100%', 
-                                objectFit: 'cover',
-                                filter: 'brightness(0.7)'
+                                position: 'relative',
+                                maxWidth: '100%', 
+                                maxHeight: '100%', 
+                                objectFit: 'contain',
+                                zIndex: 1,
+                                boxShadow: '0 0 100px rgba(0,0,0,0.5)'
                             }} 
                         />
-                        
-                        {/* Text Overlay */}
-                        <div style={{
-                            position: 'absolute',
-                            bottom: '10%',
-                            left: '5%',
-                            right: '5%',
-                            textAlign: 'center',
-                            animation: index === currentIndex ? 'slideUp 0.8s ease' : 'none'
-                        }}>
-                            <h2 style={{ 
-                                fontSize: '2.5rem', 
-                                fontWeight: 900, 
-                                marginBottom: '0.5rem', 
-                                color: '#fff',
-                                textShadow: '0 2px 10px rgba(0,0,0,0.8)'
-                            }}>
-                                {ad.title}
-                            </h2>
-                            <p style={{ 
-                                fontSize: '1.2rem', 
-                                color: 'rgba(255,255,255,0.9)',
-                                textShadow: '0 1px 5px rgba(0,0,0,0.8)'
-                            }}>
-                                {ad.description}
-                            </p>
-                        </div>
                     </div>
                 ))}
 
