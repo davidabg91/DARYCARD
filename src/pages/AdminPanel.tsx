@@ -5,8 +5,7 @@ import {
     Trash2, XCircle, Clock, DollarSign, Camera, 
     RefreshCw, List, Zap, Save, Eye, EyeOff, 
     ShieldCheck, Shield, TrendingUp, Percent, 
-    PiggyBank, AlertTriangle, UserCheck,
-    History as HistoryIcon
+    PiggyBank, AlertTriangle, UserCheck
 } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
@@ -45,16 +44,6 @@ interface Client {
     scanCount?: number;
     lastScanAt?: string;
     scanHistory?: string[];
-}
-
-interface GlobalLog {
-    id: string;
-    timestamp: string;
-    performedBy: string;
-    action: string;
-    targetName: string;
-    details: string;
-    amount: number;
 }
 
 const ROUTES = [
@@ -105,11 +94,11 @@ const getDefaultExpiryMonth = () => {
 };
 
 interface TabButtonProps {
-    id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'audit';
+    id: 'dashboard' | 'clients' | 'register' | 'nfc';
     icon: React.ElementType;
     label: string;
-    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc' | 'audit';
-    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'audit') => void;
+    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc';
+    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc') => void;
     activeColor?: string;
 }
 
@@ -165,7 +154,7 @@ const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
     const isAdmin = currentUser?.role === 'admin';
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc' | 'audit'>(
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc'>(
         isAdmin ? 'dashboard' : 'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
@@ -190,7 +179,6 @@ const AdminPanel: React.FC = () => {
     const [showTotalRevenue, setShowTotalRevenue] = useState(false);
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
     const [modalMessage, setModalMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
-    const [globalLogs, setGlobalLogs] = useState<GlobalLog[]>([]);
     
     // Duplicate Check State
     const [duplicateCheckClient, setDuplicateCheckClient] = useState<Client | null>(null);
@@ -322,17 +310,11 @@ const AdminPanel: React.FC = () => {
             }
         });
 
-        // 3. Listen for Global Activity Logs
-        const unsubscribeGlobalLogs = onSnapshot(query(collection(db, 'activity_logs')), (snapshot) => {
-            const logs: GlobalLog[] = [];
-            snapshot.forEach(doc => logs.push({ id: doc.id, ...doc.data() } as GlobalLog));
-            setGlobalLogs(logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
-        });
+
 
         return () => {
             unsubscribe();
             actionUnsubscribe();
-            unsubscribeGlobalLogs();
         };
     }, [location.search]);
 
@@ -729,7 +711,6 @@ const AdminPanel: React.FC = () => {
                     <TabButton id="clients" icon={Users} label="КЛИЕНТИ" activeTab={activeTab} setActiveTab={setActiveTab} />
                     {isAdmin && <TabButton id="dashboard" icon={BarChart} label="ТАБЛО" activeTab={activeTab} setActiveTab={setActiveTab} />}
                     {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />}
-                    {isAdmin && <TabButton id="audit" icon={HistoryIcon} label="ОДИТ" activeTab={activeTab} setActiveTab={setActiveTab} />}
                 </div>
             </div>
 
@@ -1644,74 +1625,7 @@ const AdminPanel: React.FC = () => {
                 </div>
             )}
 
-            {activeTab === 'audit' && isAdmin && (
-                <div style={{ animation: 'fadeIn 0.4s ease' }}>
-                    <Card style={{ padding: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                <HistoryIcon size={20} /> Глобален Одит (Лог на Действията)
-                            </h3>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                {globalLogs.length} записани действия
-                            </div>
-                        </div>
 
-                        <div className="table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Време</th>
-                                        <th>Изпълнител</th>
-                                        <th>Действие</th>
-                                        <th>Обект</th>
-                                        <th>Детайли</th>
-                                        <th style={{ textAlign: 'right' }}>Сума</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {globalLogs.length > 0 ? (
-                                        globalLogs.map((log) => (
-                                            <tr key={log.id} style={{ fontSize: '0.85rem' }}>
-                                                <td style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                                                    {new Date(log.timestamp).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                                </td>
-                                                <td>
-                                                    <span style={{ padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontWeight: 600 }}>
-                                                        {log.performedBy ? log.performedBy.split('@')[0] : 'Система'}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <b style={{ 
-                                                        color: log.action === 'Създаване' ? '#00c853' : 
-                                                               log.action === 'Изтриване на клиент' ? '#ff5252' :
-                                                               log.action === 'Анулиране' ? '#ffab00' : 'var(--primary-color)'
-                                                    }}>
-                                                        {log.action}
-                                                    </b>
-                                                </td>
-                                                <td style={{ fontWeight: 600 }}>{log.targetName}</td>
-                                                <td style={{ color: 'var(--text-secondary)', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={log.details}>
-                                                    {log.details}
-                                                </td>
-                                                <td style={{ textAlign: 'right', fontWeight: 800, color: log.amount > 0 ? '#00e676' : log.amount < 0 ? '#ff5252' : 'inherit' }}>
-                                                    {log.amount !== 0 ? `${log.amount} €` : '-'}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                                                <HistoryIcon size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} /><br />
-                                                Няма записани действия в лога.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </Card>
-                </div>
-            )}
         </div>
     );
 };

@@ -7,6 +7,7 @@ import AdminPanel from './pages/AdminPanel';
 import ClientProfile from './pages/ClientProfile';
 import LoginPage from './pages/LoginPage';
 import UsersPanel from './pages/UsersPanel';
+import AuditLog from './pages/AuditLog';
 import Help from './pages/Help';
 import { useParams } from 'react-router-dom';
 
@@ -38,6 +39,10 @@ function App() {
             {/* Admin only */}
             <Route path="admin/users" element={
               <ProtectedRoute requiredRole="admin"><UsersPanel /></ProtectedRoute>
+            } />
+
+            <Route path="admin/audit" element={
+              <ProtectedRoute requiredRole="admin"><AuditLog /></ProtectedRoute>
             } />
 
             <Route path="help" element={
