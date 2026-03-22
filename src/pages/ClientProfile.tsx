@@ -287,16 +287,12 @@ const ClientProfile: React.FC = () => {
 
     // Idle Detection Logic (30 seconds)
     useEffect(() => {
-        if (loading || isRegistering || showPhotoModal || showRenewConfirm) {
-            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-            setIsIdle(false);
-            return;
-        }
-
         const resetIdleTimer = () => {
-            setIsIdle(false);
             if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-            
+            setIsIdle(false);
+
+            if (loading || isRegistering || showPhotoModal || showRenewConfirm) return;
+
             idleTimerRef.current = setTimeout(() => {
                 if (document.visibilityState === 'visible') {
                     setIsIdle(true);
@@ -305,11 +301,20 @@ const ClientProfile: React.FC = () => {
         };
 
         const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-        events.forEach(event => document.addEventListener(event, resetIdleTimer));
-        resetIdleTimer();
+        const handler = () => resetIdleTimer();
+        events.forEach(event => document.addEventListener(event, handler));
+        
+        // Start initial timer if allowed
+        if (!loading && !isRegistering && !showPhotoModal && !showRenewConfirm) {
+            idleTimerRef.current = setTimeout(() => {
+                if (document.visibilityState === 'visible') {
+                    setIsIdle(true);
+                }
+            }, 30000);
+        }
 
         return () => {
-            events.forEach(event => document.removeEventListener(event, resetIdleTimer));
+            events.forEach(event => document.removeEventListener(event, handler));
             if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
         };
     }, [loading, isRegistering, showPhotoModal, showRenewConfirm, id]);
@@ -521,7 +526,9 @@ const ClientProfile: React.FC = () => {
             </div>
 
             {/* Ad Slideshow Overlay */}
-            {isIdle && <AdSlideshow onClose={() => setIsIdle(false)} />}
+            {isIdle && !loading && !isRegistering && !showPhotoModal && !showRenewConfirm && (
+                <AdSlideshow onClose={() => setIsIdle(false)} />
+            )}
 
             {/* Confirmation Overlay */}
             {showRenewConfirm && (
