@@ -48,14 +48,25 @@ const generateClientId = () => Math.random().toString(36).substr(2, 9).toUpperCa
 
 const sanitizeId = (id: string | null | undefined): string => {
     if (!id) return '';
-    const trimmed = id.trim();
+    let trimmed = id.trim();
+    
+    // Remove query parameters or hashes
+    trimmed = trimmed.split('?')[0].split('#')[0];
+    
+    // Remove trailing slash
+    if (trimmed.endsWith('/')) {
+        trimmed = trimmed.slice(0, -1);
+    }
+    
     if (!trimmed.includes('/')) return trimmed.toUpperCase();
     
     // Handle URLs like https://site.com/#/client/ABC123 or https://site.com/ABC123
     const parts = trimmed.split('/');
-    // Filter out empty parts in case of trailing slashes
+    // Filter out empty parts
     const cleanParts = parts.filter(p => p.length > 0);
     const lastPart = cleanParts[cleanParts.length - 1];
+    
+    // Handle potential double slashes or other weirdness in URLs
     return (lastPart || '').toUpperCase();
 };
 
@@ -314,7 +325,8 @@ const AdminPanel: React.FC = () => {
         }
 
         // Duplicate Name Check
-        const existingClient = clients.find(c => c.name.toLowerCase().trim() === clientName.toLowerCase().trim());
+        const normalize = (n: string) => n.toLowerCase().replace(/\s+/g, ' ').trim();
+        const existingClient = clients.find(c => normalize(c.name) === normalize(clientName));
         if (existingClient && !showDuplicateWarning) {
             setDuplicateCheckClient(existingClient);
             setShowDuplicateWarning(true);
@@ -322,6 +334,17 @@ const AdminPanel: React.FC = () => {
         }
 
         const sanitizedNfcId = nfcLinkId ? sanitizeId(nfcLinkId) : '';
+        
+        // Card ID Occupied Check - Hard stop if ID exists
+        const idOccupied = clients.find(c => c.id === sanitizedNfcId);
+        if (idOccupied) {
+            setMessage({ 
+                text: `Тази карта (ID: ${sanitizedNfcId}) вече е присвоена на ${idOccupied.name}. Моля, използвайте друга карта или първо изтрийте стария профил.`, 
+                type: 'error' 
+            });
+            return;
+        }
+
         const generatedId = sanitizedNfcId || generateClientId();
         const newClient: Client = {
             id: generatedId,
@@ -1195,13 +1218,20 @@ const AdminPanel: React.FC = () => {
                                     <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
                                         <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Свързване на Карта (NFC/Link)</label>
                                         <div className="nfc-connect-container" style={{ display: 'flex', gap: '0.75rem' }}>
-                                            <input 
-                                                type="text" 
-                                                placeholder="ID от Карта (напр. ABC123)" 
-                                                style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--surface-border)', color: 'var(--primary-color)', fontWeight: 700, fontFamily: 'monospace', minWidth: '0' }} 
-                                                value={nfcLinkId} 
-                                                onChange={e => setNfcLinkId(e.target.value.toUpperCase())} 
-                                            />
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="ID от Карта (напр. ABC123)" 
+                                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--surface-border)', color: 'var(--primary-color)', fontWeight: 700, fontFamily: 'monospace' }} 
+                                                    value={nfcLinkId} 
+                                                    onChange={e => setNfcLinkId(e.target.value.toUpperCase())} 
+                                                />
+                                                {nfcLinkId && nfcLinkId.includes('/') && (
+                                                    <div style={{ fontSize: '0.65rem', color: 'var(--success-color)', padding: '2px 4px' }}>
+                                                        Разпознат ID: <b>{sanitizeId(nfcLinkId)}</b>
+                                                    </div>
+                                                )}
+                                            </div>
                                             <button 
                                                 type="button"
                                                 onClick={toggleWaitingForScan}
