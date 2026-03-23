@@ -138,6 +138,10 @@ body {
     }
 }
 
+.full-screen-main {
+    padding: 0 !important;
+}
+
 @media (max-width: 480px) {
     .main-header {
         padding: 0.6rem 1rem !important;
