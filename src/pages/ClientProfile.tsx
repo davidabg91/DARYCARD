@@ -473,17 +473,131 @@ const ClientProfile: React.FC = () => {
     const StatusIcon = isActive ? CheckCircle : XCircle;
 
     return (
-        <div style={{ minHeight: '100vh', background: '#000', display: 'flex', flexDirection: 'column', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
-            <div style={{ background: themeColor, padding: '2rem 1rem', textAlign: 'center', boxShadow: `0 0 40px ${themeColor}44`, position: 'relative', zIndex: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', animation: isActive ? 'pulse 2s infinite' : 'none' }}>
-                    <StatusIcon size={40} color="#000" /><h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, color: '#ffffff', letterSpacing: '2px' }}>{statusText}</h1>
+        <div style={{ 
+            minHeight: '100vh', 
+            background: `radial-gradient(circle at top, ${themeColor}15 0%, #000 70%)`, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            color: '#fff', 
+            fontFamily: 'Inter, sans-serif',
+            overflowX: 'hidden',
+            position: 'relative'
+        }}>
+            {/* Atmospheric Background Glow */}
+            <div style={{ 
+                position: 'absolute', 
+                top: '-100px', 
+                left: '50%', 
+                transform: 'translateX(-50%)', 
+                width: '600px', 
+                height: '400px', 
+                background: `radial-gradient(circle, ${themeColor}22 0%, transparent 70%)`, 
+                filter: 'blur(80px)', 
+                zIndex: 0,
+                pointerEvents: 'none'
+            }} />
+
+            {/* Modern Floating Status Badge */}
+            <div style={{ 
+                padding: '2.5rem 1rem 1rem 1rem', 
+                textAlign: 'center', 
+                position: 'relative', 
+                zIndex: 10,
+                display: 'flex',
+                justifyContent: 'center'
+            }}>
+                <div style={{ 
+                    background: `linear-gradient(135deg, ${themeColor}33 0%, rgba(255,255,255,0.05) 100%)`,
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    padding: '0.75rem 2rem',
+                    borderRadius: '50px',
+                    border: `1px solid ${themeColor}66`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    boxShadow: `0 10px 40px ${themeColor}22, inset 0 0 20px ${themeColor}11`,
+                    animation: isActive ? 'pulseGlow 3s infinite ease-in-out' : 'none',
+                    transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}>
+                    <div style={{
+                        background: themeColor,
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: `0 0 20px ${themeColor}aa`
+                    }}>
+                        <StatusIcon size={20} color="#000" />
+                    </div>
+                    <h1 style={{ 
+                        margin: 0, 
+                        fontSize: '1.25rem', 
+                        fontWeight: 900, 
+                        color: '#ffffff', 
+                        letterSpacing: '1px',
+                        textShadow: `0 0 20px ${themeColor}88`
+                    }}>
+                        {statusText}
+                    </h1>
                 </div>
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 1rem', gap: '2rem' }}>
-                <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowPhotoModal(true)}>
-                    <div style={{ position: 'absolute', inset: '-10px', background: themeColor, borderRadius: '32px', opacity: 0.2, filter: 'blur(20px)' }} />
-                    <img src={client.photo} style={{ width: '240px', height: '240px', borderRadius: '24px', objectFit: 'cover', border: `4px solid ${themeColor}`, position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'} alt="Client" />
-                    <div style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.7rem', color: '#fff', backdropFilter: 'blur(4px)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>КЛИКНИ ЗА УВЕЛИЧЕНИЕ</div>
+                <div style={{ position: 'relative', cursor: 'pointer', zIndex: 1 }} onClick={() => setShowPhotoModal(true)}>
+                    <div style={{ 
+                        position: 'absolute', 
+                        inset: '-15px', 
+                        background: `radial-gradient(circle, ${themeColor}44 0%, transparent 70%)`, 
+                        borderRadius: '40px', 
+                        opacity: 0.6, 
+                        filter: 'blur(30px)',
+                        animation: isActive ? 'float 6s infinite ease-in-out' : 'none'
+                    }} />
+                    <img 
+                        src={client.photo} 
+                        style={{ 
+                            width: '260px', 
+                            height: '260px', 
+                            borderRadius: '32px', 
+                            objectFit: 'cover', 
+                            border: `2px solid ${themeColor}aa`, 
+                            position: 'relative', 
+                            boxShadow: `0 30px 60px rgba(0,0,0,0.8), 0 0 40px ${themeColor}22`,
+                            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                            zIndex: 2
+                        }} 
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)';
+                            e.currentTarget.style.borderColor = themeColor;
+                        }} 
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1) translateY(0)';
+                            e.currentTarget.style.borderColor = `${themeColor}aa`;
+                        }} 
+                        alt="Client" 
+                    />
+                    <div style={{ 
+                        position: 'absolute', 
+                        bottom: '-10px', 
+                        left: '50%', 
+                        transform: 'translateX(-50%)', 
+                        background: 'rgba(0,0,0,0.7)', 
+                        padding: '6px 16px', 
+                        borderRadius: '20px', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 700,
+                        color: '#fff', 
+                        backdropFilter: 'blur(10px)', 
+                        WebkitBackdropFilter: 'blur(10px)',
+                        whiteSpace: 'nowrap', 
+                        pointerEvents: 'none',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        zIndex: 3
+                    }}>
+                        УВЕЛИЧИ СНИМКАТА
+                    </div>
                 </div>
                 <div style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', padding: '2.5rem 2rem', width: '100%', maxWidth: '440px', textAlign: 'center', boxShadow: '0 40px 100px rgba(0,0,0,0.5)' }}>
                     <h2 style={{ fontSize: '2.4rem', margin: '0 0 1.5rem 0', fontWeight: 900, color: '#fff' }}>{client.name}</h2>
@@ -561,14 +675,19 @@ const ClientProfile: React.FC = () => {
             )}
 
             <style>{`
-                @keyframes pulse {
-                    0% { transform: scale(1); }
-                    50% { transform: scale(1.02); }
-                    100% { transform: scale(1); }
+                @keyframes pulseGlow {
+                    0% { box-shadow: 0 10px 40px ${themeColor}22, inset 0 0 20px ${themeColor}11; border-color: ${themeColor}66; }
+                    50% { box-shadow: 0 10px 60px ${themeColor}44, inset 0 0 30px ${themeColor}22; border-color: ${themeColor}aa; }
+                    100% { box-shadow: 0 10px 40px ${themeColor}22, inset 0 0 20px ${themeColor}11; border-color: ${themeColor}66; }
+                }
+                @keyframes float {
+                    0% { transform: scale(1); opacity: 0.6; }
+                    50% { transform: scale(1.1); opacity: 0.8; }
+                    100% { transform: scale(1); opacity: 0.6; }
                 }
                 @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
             `}</style>
         </div>
