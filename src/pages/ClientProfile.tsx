@@ -370,7 +370,7 @@ const ClientProfile: React.FC = () => {
                             <div style={{  width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                                 <Settings size={48} color={currentUser ? "var(--primary-color)" : "rgba(255,255,255,0.2)"} />
                             </div>
-                            <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem' }}>{currentUser ? 'НОВА КАРТА' : 'НЕАКТИВНА КАРТА'}</h2>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem' }}>{currentUser ? 'НОВА КАРТА' : 'НЕВАЛИДЕН АБОНАМЕНТ'}</h2>
                             <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem', lineHeight: '1.6' }}>
                                 {currentUser ? 'Тази карта все още не е регистрирана в системата. Можете да я активирате сега.' : 'Тази NFC карта все още не е свързана с клиентски профил. Моля, свържете се с администратор.'}
                             </p>
@@ -467,9 +467,9 @@ const ClientProfile: React.FC = () => {
     const hasPaidCurrentMonth = (client.renewalHistory || []).some(rh => rh.month === currentMonthStr);
     const isActive = !isCanceled && hasPaidCurrentMonth;
     const themeColor = isActive ? '#00e676' : '#ff1744';
-    let statusText = isCanceled ? 'АНУЛИРАН' : 'НЕАКТИВЕН';
+    let statusText = isCanceled ? 'АНУЛИРАН' : 'НЕВАЛИДЕН АБОНАМЕНТ';
     if (!isCanceled && !hasPaidCurrentMonth) { statusText = `БЕЗ ТАКСА ЗА ${getFormattedMonth(currentMonthStr).split(' ')[0]}`; } 
-    else if (isActive) { statusText = 'АКТИВЕН'; }
+    else if (isActive) { statusText = 'ВАЛИДЕН АБОНАМЕНТ'; }
     const StatusIcon = isActive ? CheckCircle : XCircle;
 
     return (

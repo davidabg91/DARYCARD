@@ -619,7 +619,7 @@ const AdminPanel: React.FC = () => {
         if (client.isCanceled) return 'Анулиран';
         
         const hasPaymentForMonth = (client.renewalHistory || []).some(rh => rh.month === month);
-        return hasPaymentForMonth ? 'Активен' : 'Неактивен';
+        return hasPaymentForMonth ? 'Валиден' : 'Невалиден';
     };
 
     const getMonthPayment = (client: Client, month: string) => {
@@ -679,7 +679,7 @@ const AdminPanel: React.FC = () => {
         const statusA = getClientStatusForMonth(a, filterMonth);
         const statusB = getClientStatusForMonth(b, filterMonth);
         
-        const weights: Record<string, number> = { 'Неактивен': 0, 'Активен': 1, 'Анулиран': 2 };
+        const weights: Record<string, number> = { 'Невалиден': 0, 'Валиден': 1, 'Анулиран': 2 };
         return weights[statusA] - weights[statusB];
     });
 
@@ -1018,8 +1018,8 @@ const AdminPanel: React.FC = () => {
                                                     <td>
                                                         <span style={{
                                                             padding: '0.25rem 0.75rem', borderRadius: '50px', fontSize: '0.75rem',
-                                                            background: status === 'Анулиран' || status === 'Неактивен' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
-                                                            color: status === 'Анулиран' || status === 'Неактивен' ? '#ff4040' : 'var(--success-color)',
+                                                            background: status === 'Анулиран' || status === 'Невалиден' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
+                                                            color: status === 'Анулиран' || status === 'Невалиден' ? '#ff4040' : 'var(--success-color)',
                                                             fontWeight: 700
                                                         }}>
                                                             {status}
@@ -1095,8 +1095,8 @@ const AdminPanel: React.FC = () => {
                                             </div>
                                             <span style={{
                                                 padding: '0.2rem 0.6rem', borderRadius: '50px', fontSize: '0.7rem', fontWeight: 700,
-                                                background: status === 'Анулиран' || status === 'Неактивен' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
-                                                color: status === 'Анулиран' || status === 'Неактивен' ? '#ff4040' : 'var(--success-color)'
+                                                background: status === 'Анулиран' || status === 'Невалиден' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
+                                                color: status === 'Анулиран' || status === 'Невалиден' ? '#ff4040' : 'var(--success-color)'
                                             }}>
                                                 {status}
                                             </span>
