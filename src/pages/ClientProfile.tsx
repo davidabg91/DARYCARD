@@ -77,6 +77,7 @@ const ClientProfile: React.FC = () => {
     const [renewError, setRenewError] = useState<string | null>(null);
     const [renewAmount, setRenewAmount] = useState<number>(50);
     const [renewMonth, setRenewMonth] = useState<string>(''); 
+    const [renewRoute, setRenewRoute] = useState<string>(''); 
     const [showPhotoModal, setShowPhotoModal] = useState(false);
     const [isRegistering, setIsRegistering] = useState(false);
     const [isIdle, setIsIdle] = useState(false);
@@ -419,9 +420,11 @@ const ClientProfile: React.FC = () => {
     };
 
     const initiationRenew = () => {
+        if (!client) return;
         const { targetMonth, defaultAmount } = getQuickRenewSummary();
         setRenewAmount(defaultAmount);
         setRenewMonth(targetMonth);
+        setRenewRoute(client.route);
         setShowRenewConfirm(true);
     };
 
@@ -433,10 +436,15 @@ const ClientProfile: React.FC = () => {
             const targetMonth = renewMonth;
             if (isNaN(amount) || amount <= 0) { setRenewError('Моля, въведете валидна сума.'); return; }
             if (!targetMonth) { setRenewError('Моля, изберете месец.'); return; }
+            if (!renewRoute) { setRenewError('Моля, изберете курс.'); return; }
+
             const history = client.history || [];
             const renewalHistory = client.renewalHistory || [];
+            const routeChanged = renewRoute !== client.route;
+
             const updatedClient = {
                 ...client,
+                route: renewRoute,
                 expiryDate: targetMonth,
                 amountPaid: (client.amountPaid || 0) + amount,
                 isCanceled: false,
@@ -445,7 +453,7 @@ const ClientProfile: React.FC = () => {
                 history: [...history, {
                     date: new Date().toISOString(),
                     action: 'Бързо Подновяване (Профил)',
-                    details: `Месец: ${targetMonth}`,
+                    details: `Месец: ${targetMonth}${routeChanged ? ` | Променен курс: ${client.route} -> ${renewRoute}` : ''}`,
                     amount,
                     performedBy: currentUser?.username || 'Модератор'
                 }]
@@ -652,7 +660,16 @@ const ClientProfile: React.FC = () => {
                         <h2 style={{ fontSize: '1.8rem', margin: '0 0 0.5rem 0' }}>Подновяване</h2>
                         <div style={{ color: 'var(--primary-color)', fontWeight: 700, fontSize: '1.2rem', marginBottom: '1.5rem' }}>{client.name}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
-                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Курс</div><div style={{ fontWeight: 700 }}>{client.route}</div></div>
+                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+                                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Курс (Маршрут)</div>
+                                <select 
+                                    value={renewRoute} 
+                                    onChange={(e) => setRenewRoute(e.target.value)}
+                                    style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '1rem', fontWeight: 700, padding: '0.5rem 1rem', borderRadius: '12px', width: '100%', outline: 'none' }}
+                                >
+                                    {ROUTES.map(r => <option key={r} value={r} style={{ background: '#222' }}>{r}</option>)}
+                                </select>
+                            </div>
                             <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}><div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Месец за подновяване</div><input type="month" value={renewMonth} onChange={(e) => setRenewMonth(e.target.value)} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '1.2rem', fontWeight: 700, padding: '0.5rem 1rem', borderRadius: '12px', width: '100%', outline: 'none', colorScheme: 'dark' }} /></div>
                             <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '16px' }}><div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Сума (EUR)</div><div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><input type="number" value={renewAmount} onChange={(e) => setRenewAmount(Number(e.target.value))} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '2rem', fontWeight: 900, padding: '0.5rem 1rem', borderRadius: '12px', width: '140px', textAlign: 'center', outline: 'none' }} /><span style={{ marginLeft: '0.5rem', fontSize: '1.5rem', fontWeight: 800 }}>€</span></div></div>
                         </div>
