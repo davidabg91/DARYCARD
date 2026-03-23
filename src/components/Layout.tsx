@@ -8,6 +8,7 @@ const Layout: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const isAdminPath = location.pathname.startsWith('/admin');
+    const isClientProfilePath = location.pathname.startsWith('/client/');
     const { currentUser, logout } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
@@ -268,7 +269,13 @@ const Layout: React.FC = () => {
                 </div>
             </header>
 
-            <main style={{ flex: 1, padding: '2rem', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.4s ease' }}>
+            <main style={{ 
+                flex: 1, 
+                padding: isClientProfilePath ? '0' : '2rem', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                animation: 'fadeIn 0.4s ease' 
+            }}>
                 <Outlet />
             </main>
 
