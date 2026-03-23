@@ -175,6 +175,7 @@ const AdminPanel: React.FC = () => {
     const [cancelReason, setCancelReason] = useState('');
     const [newMonth, setNewMonth] = useState('');
     const [newAmount, setNewAmount] = useState('');
+    const [newRoute, setNewRoute] = useState('');
 
     const [showTotalRevenue, setShowTotalRevenue] = useState(false);
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
@@ -286,6 +287,7 @@ const AdminPanel: React.FC = () => {
                 const clientToEdit = clientList.find((c: Client) => c.id === editId);
                 if (clientToEdit) {
                     setSelectedClient(clientToEdit as Client);
+                    setNewRoute(clientToEdit.route);
                     setShowActionModal(true);
                     setActiveTab('clients');
                 }
@@ -420,16 +422,18 @@ const AdminPanel: React.FC = () => {
     const renewClient = async () => {
         if (!selectedClient) return;
         
-        if (!newMonth || !newAmount || Number(newAmount) <= 0) {
-            alert('Моля, въведете валиден месец и сума.');
+        if (!newMonth || !newAmount || Number(newAmount) <= 0 || !newRoute) {
+            alert('Моля, въведете валиден месец, сума и курс.');
             return;
         }
 
         const history = selectedClient.history || [];
         const renewalHistory = selectedClient.renewalHistory || [];
+        const routeChanged = newRoute !== selectedClient.route;
         
         const updatedClient: Client = {
             ...selectedClient,
+            route: newRoute,
             expiryDate: newMonth,
             amountPaid: selectedClient.amountPaid + Number(newAmount),
             isCanceled: false,
@@ -441,16 +445,16 @@ const AdminPanel: React.FC = () => {
             history: [...history, {
                 date: new Date().toISOString(),
                 action: 'Подновяване',
-                details: `Нов месец: ${newMonth}`,
+                details: `Нов месец: ${newMonth}${routeChanged ? ` | Променен курс: ${selectedClient.route} -> ${newRoute}` : ''}`,
                 amount: Number(newAmount),
                 performedBy: currentUser?.username || 'Админ'
             }]
         };
 
         await saveClient(updatedClient, false);
-        await logGlobalActivity('Подновяване', selectedClient.name, `Месец: ${newMonth}. Сума: ${newAmount} €.`, Number(newAmount));
+        await logGlobalActivity('Подновяване', selectedClient.name, `Месец: ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курс: ${newRoute}` : ''}`, Number(newAmount));
         setModalMessage({ 
-            text: `Успешно подновен абонамент за ${newMonth}. Сума: ${newAmount} €.`, 
+            text: `Успешно подновен абонамент за ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курсът е сменен на ${newRoute}.` : ''}`, 
             type: 'success' 
         });
         setNewMonth('');
@@ -1027,7 +1031,7 @@ const AdminPanel: React.FC = () => {
                                                     </td>
                                                     <td style={{ display: 'flex', gap: '0.5rem' }}>
                                                         <button
-                                                            onClick={() => { setSelectedClient(client); setShowActionModal(true); }}
+                                                            onClick={() => { setSelectedClient(client); setNewRoute(client.route); setShowActionModal(true); }}
                                                             style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.75rem', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', color: '#fff' }}
                                                         >
                                                             Управление
@@ -1104,7 +1108,7 @@ const AdminPanel: React.FC = () => {
 
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.5rem' }}>
                                             <button
-                                                onClick={() => { setSelectedClient(client); setShowActionModal(true); }}
+                                                onClick={() => { setSelectedClient(client); setNewRoute(client.route); setShowActionModal(true); }}
                                                 style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--surface-border)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', background: 'var(--primary-color)', color: '#fff' }}
                                             >
                                                 Управление
@@ -1514,6 +1518,16 @@ const AdminPanel: React.FC = () => {
                                                 <div>
                                                     <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Сума (€)</label>
                                                     <input type="number" placeholder="0.00" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff' }} value={newAmount} onChange={e => setNewAmount(e.target.value)} />
+                                                </div>
+                                                <div style={{ gridColumn: 'span 2' }}>
+                                                    <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Курс (Маршрут)</label>
+                                                    <select 
+                                                        style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff', colorScheme: 'dark' }} 
+                                                        value={newRoute} 
+                                                        onChange={e => setNewRoute(e.target.value)}
+                                                    >
+                                                        {ROUTES.map(r => <option key={r} value={r} style={{ background: '#222' }}>{r}</option>)}
+                                                    </select>
                                                 </div>
                                             </div>
                                             <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
