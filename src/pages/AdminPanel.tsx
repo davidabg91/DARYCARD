@@ -93,11 +93,11 @@ const getDefaultExpiryMonth = () => {
 };
 
 interface TabButtonProps {
-    id: 'dashboard' | 'clients' | 'register' | 'nfc';
+    id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances';
     icon: React.ElementType;
     label: string;
-    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc';
-    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc') => void;
+    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances';
+    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances') => void;
     activeColor?: string;
 }
 
@@ -153,7 +153,7 @@ const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
     const isAdmin = currentUser?.role === 'admin';
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc'>(
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc' | 'finances'>(
         isAdmin ? 'dashboard' : 'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
@@ -198,6 +198,7 @@ const AdminPanel: React.FC = () => {
         const now = new Date();
         return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
     });
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
     const handleResetAllScans = async () => {
         if (!isAdmin || !window.confirm('Сигурни ли сте, че искате да нулирате статистиката за сканиранията за ВСИЧКИ клиенти?')) return;
@@ -685,6 +686,38 @@ const AdminPanel: React.FC = () => {
         const weights: Record<string, number> = { 'Неплатен': 0, 'Платен': 1, 'Анулиран': 2 };
         return weights[statusA] - weights[statusB];
     });
+    
+    // Financial Calculations for Accountant
+    const todayIso = new Date().toISOString().split('T')[0];
+    const registrationsToday = clients.filter(c => c.createdAt?.startsWith(todayIso)).length;
+    const revenueToday = clients.reduce((acc, c) => {
+        const todayPayments = (c.renewalHistory || []).filter(r => r.date?.startsWith(todayIso));
+        return acc + todayPayments.reduce((sum, p) => sum + p.amount, 0);
+    }, 0);
+
+    const registrationsSelectedDay = clients.filter(c => c.createdAt?.startsWith(selectedDate)).length;
+    const revenueSelectedDay = clients.reduce((acc, c) => {
+        const payments = (c.renewalHistory || []).filter(r => r.date?.startsWith(selectedDate));
+        return acc + payments.reduce((sum, p) => sum + p.amount, 0);
+    }, 0);
+
+    const currentMonthIso = todayIso.substring(0, 7);
+    const revenueMonthCurrent = clients.reduce((acc, c) => {
+        const monthPayments = (c.renewalHistory || []).filter(r => r.month === currentMonthIso);
+        return acc + monthPayments.reduce((sum, p) => sum + p.amount, 0);
+    }, 0);
+
+    const last7Days = [...Array(7)].map((_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const iso = d.toISOString().split('T')[0];
+        const rev = clients.reduce((acc, c) => {
+            const dayPayments = (c.renewalHistory || []).filter(r => r.date?.startsWith(iso));
+            return acc + dayPayments.reduce((sum, p) => sum + p.amount, 0);
+        }, 0);
+        const curRegs = clients.filter(c => c.createdAt?.startsWith(iso)).length;
+        return { date: iso, revenue: rev, regs: curRegs };
+    });
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease' }}>
@@ -713,6 +746,7 @@ const AdminPanel: React.FC = () => {
                     <TabButton id="register" icon={PlusCircle} label="ДОБАВИ КАРТИ" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="clients" icon={Users} label="КЛИЕНТИ" activeTab={activeTab} setActiveTab={setActiveTab} />
                     {isAdmin && <TabButton id="dashboard" icon={BarChart} label="ТАБЛО" activeTab={activeTab} setActiveTab={setActiveTab} />}
+                    {isAdmin && <TabButton id="finances" icon={PiggyBank} label="ФИНАНСИ" activeColor="#ff9800" activeTab={activeTab} setActiveTab={setActiveTab} />}
                     {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />}
                 </div>
             </div>
@@ -941,6 +975,104 @@ const AdminPanel: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {activeTab === 'finances' && (
+                <div style={{ animation: 'fadeIn 0.4s ease', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    {/* Summary Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                        <Card style={{ borderLeft: '4px solid #00c853' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><DollarSign size={18} /> ПРИХОД ДНЕС</div>
+                                <div style={{ background: 'rgba(0, 200, 83, 0.1)', color: '#00c853', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>ДНЕС</div>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#fff' }}>{revenueToday.toFixed(2)} €</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Регистрирани днес: <b>{registrationsToday}</b></div>
+                        </Card>
+
+                        <Card style={{ borderLeft: '4px solid var(--primary-color)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={18} /> ПРИХОД ЗА МЕСЕЦА</div>
+                                <div style={{ background: 'rgba(0, 173, 181, 0.1)', color: 'var(--primary-color)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>{currentMonthIso}</div>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#fff' }}>{revenueMonthCurrent.toFixed(2)} €</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Общо активни този месец</div>
+                        </Card>
+                    </div>
+
+                    {/* Historical Lookup */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                        <Card>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#ff9800' }}>
+                                <Clock size={20} /> Справка по Дати
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.25rem', borderRadius: '16px', border: '1px solid var(--surface-border)' }}>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>ИЗБЕРИ ДАТА ЗА ОТЧЕТ</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <input 
+                                            type="date" 
+                                            value={selectedDate}
+                                            onChange={(e) => setSelectedDate(e.target.value)}
+                                            style={{ 
+                                                flex: 1,
+                                                background: 'rgba(0,0,0,0.2)', 
+                                                color: '#fff', 
+                                                border: '1px solid var(--surface-border)', 
+                                                padding: '0.75rem', 
+                                                borderRadius: '8px',
+                                                outline: 'none',
+                                                colorScheme: 'dark'
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,152,0,0.05)', borderRadius: '12px', border: '1px solid rgba(255,152,0,0.1)' }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Оборот</div>
+                                            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ff9800' }}>{revenueSelectedDay.toFixed(2)} €</div>
+                                        </div>
+                                        <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Нови Карти</div>
+                                            <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{registrationsSelectedDay}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+
+                        <Card>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <List size={20} /> Последни 7 Дни
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                {last7Days.map((day, idx) => (
+                                    <div key={idx} style={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        padding: '0.8rem 1.25rem', 
+                                        background: idx === 0 ? 'rgba(0, 173, 181, 0.05)' : 'rgba(255,255,255,0.02)',
+                                        border: `1px solid ${idx === 0 ? 'rgba(0, 173, 181, 0.2)' : 'var(--surface-border)'}`,
+                                        borderRadius: '12px'
+                                    }}>
+                                        <div style={{ fontWeight: 600 }}>{new Date(day.date).toLocaleDateString('bg-BG', { day: '2-digit', month: 'short' })}</div>
+                                        <div style={{ display: 'flex', gap: '1.5rem' }}>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}><PlusCircle size={10} /> {day.regs}</div>
+                                            <div style={{ fontWeight: 800, color: day.revenue > 0 ? '#00e676' : 'var(--text-secondary)' }}>{day.revenue.toFixed(2)} €</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    </div>
+
+                    <div style={{ padding: '1.5rem', background: 'rgba(255,152,0,0.05)', borderRadius: '16px', border: '1px solid rgba(255,152,0,0.2)', color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', lineHeight: '1.6' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', color: '#ff9800', fontWeight: 800 }}>
+                            <AlertTriangle size={18} /> ИНФОРМАЦИЯ ЗА СЧЕТОВОДИТЕЛЯ
+                        </div>
+                        Тези данни включват всички плащания и регистрирани карти за избраните периоди. Оборотът се калкулира въз основа на реално постъпилите суми, записани в историята на всяка карта. За детайлни справки по месеци използвайте селектора в главното Табло.
+                    </div>
+                </div>
+            )}
+
 
             {activeTab === 'clients' && (
                 <div style={{ animation: 'fadeIn 0.4s ease' }}>
