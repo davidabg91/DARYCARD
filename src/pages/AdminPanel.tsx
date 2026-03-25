@@ -59,24 +59,23 @@ const sanitizeId = (id: string | null | undefined): string => {
     if (!id) return '';
     let trimmed = id.trim();
     
-    // Remove query parameters or hashes
-    trimmed = trimmed.split('?')[0].split('#')[0];
+    // Remove query parameters
+    trimmed = trimmed.split('?')[0];
     
-    // Remove trailing slash
-    if (trimmed.endsWith('/')) {
-        trimmed = trimmed.slice(0, -1);
-    }
+    // Split by both / and # to get all path segments
+    const parts = trimmed.split(/[/#]/);
     
-    if (!trimmed.includes('/')) return trimmed.toUpperCase();
+    // Filter out empty parts and known URL segments that aren't IDs
+    const cleanParts = parts.filter(p => 
+        p.length > 0 && 
+        !['http:', 'https:', 'davidabg91.github.io', 'darycard', 'client'].includes(p.toLowerCase())
+    );
     
-    // Handle URLs like https://site.com/#/client/ABC123 or https://site.com/ABC123
-    const parts = trimmed.split('/');
-    // Filter out empty parts
-    const cleanParts = parts.filter(p => p.length > 0);
+    if (cleanParts.length === 0) return trimmed.toUpperCase();
+    
+    // The last part is our ID
     const lastPart = cleanParts[cleanParts.length - 1];
-    
-    // Handle potential double slashes or other weirdness in URLs
-    return (lastPart || '').toUpperCase();
+    return lastPart.toUpperCase();
 };
 
 const getDefaultExpiryMonth = () => {
