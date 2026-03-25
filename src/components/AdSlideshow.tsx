@@ -125,13 +125,13 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
                             
                             {/* Main Ad Image */}
                             <img 
+                                className="main-ad-image"
                                 src={ad.url} 
                                 alt={ad.title}
                                 style={{ 
                                     position: 'relative',
                                     width: '100%', 
                                     height: '100%', 
-                                    objectFit: 'cover',
                                     zIndex: 1,
                                     boxShadow: '0 0 80px rgba(0,0,0,0.8)',
                                     transform: 'translate3d(0,0,0)',
@@ -147,6 +147,11 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
                 @keyframes fadeIn {
                     from { opacity: 0; }
                     to { opacity: 1; }
+                }
+                .main-ad-image {
+                    object-fit: contain;
+                    max-width: 100%;
+                    max-height: 100%;
                 }
             `}</style>
         </div>
