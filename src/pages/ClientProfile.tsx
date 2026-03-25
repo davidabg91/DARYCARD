@@ -534,7 +534,7 @@ const ClientProfile: React.FC = () => {
                 }} />
 
                 {/* Card Header */}
-                <div style={{
+                <div className="card-header" style={{
                     padding: '1.2rem 1.5rem 0.8rem',
                     borderBottom: '1px solid rgba(255,255,255,0.06)',
                     display: 'flex',
@@ -544,7 +544,7 @@ const ClientProfile: React.FC = () => {
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontSize: '0.65rem', fontWeight: 800, color: themeColor, letterSpacing: '2px', textTransform: 'uppercase' }}>DARY CARD</span>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>УДОСТОВЕРЕНИЕ ЗА ПЪТУВАНЕ</span>
+                        <span className="card-subtitle" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>УДОСТОВЕРЕНИЕ ЗА ПЪТУВАНЕ</span>
                     </div>
                     <div style={{
                         background: `${themeColor}22`,
@@ -795,6 +795,20 @@ const ClientProfile: React.FC = () => {
                     opacity: 0.3;
                     mix-blend-mode: soft-light;
                     transform: rotate(45deg);
+                }
+                @media (max-width: 600px) {
+                    .card-header {
+                        padding: 0.8rem 1rem 0.6rem !important;
+                    }
+                    .card-subtitle {
+                        font-size: 0.65rem !important;
+                    }
+                    .id-card-body {
+                        flex-direction: column;
+                        align-items: center;
+                        text-align: center;
+                        gap: 1.5rem !important;
+                    }
                 }
                 @media (max-width: 480px) {
                     .id-card-body {
