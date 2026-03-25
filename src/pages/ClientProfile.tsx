@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, XCircle, MapPin, Ban, Clock, User, Settings, RefreshCw, Camera } from 'lucide-react';
+import { CheckCircle, XCircle, Ban, Clock, Settings, RefreshCw, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AdSlideshow from '../components/AdSlideshow';
 import { db } from '../firebase';
@@ -465,246 +465,326 @@ const ClientProfile: React.FC = () => {
 
     const now = new Date();
     const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+    
     const getFormattedMonth = (dateStr: string) => {
         if (!dateStr) return '';
         const [year, month] = dateStr.split('-');
         const bgMonths = ["ЯНУАРИ", "ФЕВРУАРИ", "МАРТ", "АПРИЛ", "МАЙ", "ЮНИ", "ЮЛИ", "АВГУСТ", "СЕПТЕМВРИ", "ОКТОМВРИ", "НОЕМВРИ", "ДЕКЕМВРИ"];
         return `${bgMonths[parseInt(month) - 1]} ${year}`;
     };
-    const isCanceled = client.isCanceled;
-    const hasPaidCurrentMonth = (client.renewalHistory || []).some(rh => rh.month === currentMonthStr);
+
+    const isCanceled = client?.isCanceled;
+    const hasPaidCurrentMonth = (client?.renewalHistory || []).some(rh => rh.month === currentMonthStr);
     const isActive = !isCanceled && hasPaidCurrentMonth;
     const themeColor = isActive ? '#00e676' : '#ff1744';
-    let statusText = isCanceled ? 'АНУЛИРАН' : 'НЕВАЛИДЕН АБОНАМЕНТ';
-    if (!isCanceled && !hasPaidCurrentMonth) { statusText = `БЕЗ ТАКСА ЗА ${getFormattedMonth(currentMonthStr).split(' ')[0]}`; } 
-    else if (isActive) { statusText = 'ВАЛИДЕН АБОНАМЕНТ'; }
     const StatusIcon = isActive ? CheckCircle : XCircle;
+    
+    let statusText = isCanceled ? 'АНУЛИРАН' : 'НЕВАЛИДЕН АБОНАМЕНТ';
+    if (!isCanceled && !hasPaidCurrentMonth) { 
+        statusText = `БЕЗ ТАКСА ЗА ${getFormattedMonth(currentMonthStr).split(' ')[0]}`; 
+    } else if (isActive) { 
+        statusText = 'ВАЛИДЕН АБОНАМЕНТ'; 
+    }
 
     return (
         <div style={{ 
             minHeight: '100vh', 
-            background: `radial-gradient(circle at top, ${themeColor}15 0%, #000 70%)`, 
+            background: '#09090b', 
             display: 'flex', 
             flexDirection: 'column', 
+            alignItems: 'center',
+            justifyContent: 'center',
             color: '#fff', 
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: '"Outfit", "Inter", sans-serif',
             overflowX: 'hidden',
+            padding: '2rem 1rem',
             position: 'relative'
         }}>
-            {/* Atmospheric Background Glow */}
-            <div style={{ 
-                position: 'absolute', 
-                top: '-100px', 
-                left: '50%', 
-                transform: 'translateX(-50%)', 
-                width: '600px', 
-                height: '400px', 
-                background: `radial-gradient(circle, ${themeColor}22 0%, transparent 70%)`, 
-                filter: 'blur(80px)', 
-                zIndex: 0,
-                pointerEvents: 'none'
-            }} />
+            {/* Background Decor */}
+            <div style={{ position: 'fixed', top: '-10%', left: '-10%', width: '40%', height: '40%', background: `${themeColor}10`, filter: 'blur(120px)', borderRadius: '50%', pointerEvents: 'none' }} />
+            <div style={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, filter: 'blur(120px)', borderRadius: '50%', pointerEvents: 'none' }} />
 
-            {/* Modern Floating Status Badge */}
-            <div style={{ 
-                padding: '2.5rem 1rem 1rem 1rem', 
-                textAlign: 'center', 
-                position: 'relative', 
-                zIndex: 10,
+            {/* THE ID CARD */}
+            <div className="id-card-container" style={{
+                width: '100%',
+                maxWidth: '480px',
+                aspectRatio: '1.58 / 1',
+                background: 'rgba(255, 255, 255, 0.02)',
+                backdropFilter: 'blur(30px)',
+                WebkitBackdropFilter: 'blur(30px)',
+                borderRadius: '32px',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                boxShadow: '0 40px 100px rgba(0,0,0,0.6), inset 0 0 40px rgba(255,255,255,0.02)',
+                position: 'relative',
+                overflow: 'hidden',
                 display: 'flex',
-                justifyContent: 'center'
+                flexDirection: 'column',
+                animation: 'cardEnter 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+                zIndex: 10
             }}>
-                <div style={{ 
-                    background: `linear-gradient(135deg, ${themeColor}33 0%, rgba(255,255,255,0.05) 100%)`,
-                    backdropFilter: 'blur(20px)',
-                    WebkitBackdropFilter: 'blur(20px)',
-                    padding: '0.75rem 2rem',
-                    borderRadius: '50px',
-                    border: `1px solid ${themeColor}66`,
+                {/* Holographic Overlay */}
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: `linear-gradient(135deg, transparent 0%, ${themeColor}11 50%, transparent 100%)`,
+                    backgroundSize: '200% 200%',
+                    animation: 'hologram 8s linear infinite',
+                    pointerEvents: 'none',
+                    zIndex: 5
+                }} />
+
+                {/* Card Header */}
+                <div style={{
+                    padding: '1.5rem 2rem 1rem',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
                     display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    gap: '1rem',
-                    boxShadow: `0 10px 40px ${themeColor}22, inset 0 0 20px ${themeColor}11`,
-                    animation: isActive ? 'pulseGlow 3s infinite ease-in-out' : 'none',
-                    transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                    background: 'rgba(255,255,255,0.03)'
                 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: themeColor, letterSpacing: '3px', textTransform: 'uppercase' }}>DARY CARD</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', letterSpacing: '1px' }}>IDENTITY DOCUMENT</span>
+                    </div>
                     <div style={{
-                        background: themeColor,
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
+                        background: `${themeColor}22`,
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        border: `1px solid ${themeColor}44`,
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        color: themeColor,
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: `0 0 20px ${themeColor}aa`
+                        gap: '6px'
                     }}>
-                        <StatusIcon size={20} color="#000" />
-                    </div>
-                    <h1 style={{ 
-                        margin: 0, 
-                        fontSize: '1.25rem', 
-                        fontWeight: 900, 
-                        color: '#ffffff', 
-                        letterSpacing: '1px',
-                        textShadow: `0 0 20px ${themeColor}88`
-                    }}>
-                        {statusText}
-                    </h1>
-                </div>
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 1rem', gap: '2rem' }}>
-                <div style={{ position: 'relative', cursor: 'pointer', zIndex: 1 }} onClick={() => setShowPhotoModal(true)}>
-                    <div style={{ 
-                        position: 'absolute', 
-                        inset: '-15px', 
-                        background: `radial-gradient(circle, ${themeColor}44 0%, transparent 70%)`, 
-                        borderRadius: '40px', 
-                        opacity: 0.6, 
-                        filter: 'blur(30px)',
-                        animation: isActive ? 'float 6s infinite ease-in-out' : 'none'
-                    }} />
-                    <img 
-                        src={client.photo} 
-                        style={{ 
-                            width: '260px', 
-                            height: '260px', 
-                            borderRadius: '32px', 
-                            objectFit: 'cover', 
-                            border: `2px solid ${themeColor}aa`, 
-                            position: 'relative', 
-                            boxShadow: `0 30px 60px rgba(0,0,0,0.8), 0 0 40px ${themeColor}22`,
-                            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                            zIndex: 2
-                        }} 
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)';
-                            e.currentTarget.style.borderColor = themeColor;
-                        }} 
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1) translateY(0)';
-                            e.currentTarget.style.borderColor = `${themeColor}aa`;
-                        }} 
-                        alt="Client" 
-                    />
-                    <div style={{ 
-                        position: 'absolute', 
-                        bottom: '-10px', 
-                        left: '50%', 
-                        transform: 'translateX(-50%)', 
-                        background: 'rgba(0,0,0,0.7)', 
-                        padding: '6px 16px', 
-                        borderRadius: '20px', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 700,
-                        color: '#fff', 
-                        backdropFilter: 'blur(10px)', 
-                        WebkitBackdropFilter: 'blur(10px)',
-                        whiteSpace: 'nowrap', 
-                        pointerEvents: 'none',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        zIndex: 3
-                    }}>
-                        УВЕЛИЧИ СНИМКАТА
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: themeColor, boxShadow: `0 0 10px ${themeColor}` }} />
+                        SECURED
                     </div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', padding: '2.5rem 2rem', width: '100%', maxWidth: '440px', textAlign: 'center', boxShadow: '0 40px 100px rgba(0,0,0,0.5)' }}>
-                    <h2 style={{ fontSize: '2.4rem', margin: '0 0 1.5rem 0', fontWeight: 900, color: '#fff' }}>{client.name}</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', color: 'rgba(255,255,255,0.6)', fontSize: '1.1rem' }}>
-                            <MapPin size={22} color={themeColor} /><span>КУРС: <strong style={{ color: '#fff' }}>{client.route}</strong></span>
+
+                {/* Card Body */}
+                <div style={{ flex: 1, display: 'flex', padding: '1.5rem 2rem 2rem', gap: '2rem', position: 'relative' }}>
+                    {/* Photo Area */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{
+                            width: '140px',
+                            height: '160px',
+                            borderRadius: '16px',
+                            overflow: 'hidden',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            position: 'relative',
+                            boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                            background: '#111'
+                        }} onClick={() => setShowPhotoModal(true)}>
+                            {client && client.photo && <img src={client.photo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Client" />}
+                            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }} />
+                            <div style={{ position: 'absolute', inset: 0, border: `1px solid ${themeColor}33`, borderRadius: '16px', pointerEvents: 'none' }} />
                         </div>
-                        <div style={{ background: `${themeColor}15`, padding: '1.5rem', borderRadius: '20px', border: `1px solid ${themeColor}33`, marginTop: '0.5rem' }}>
-                            <div style={{ color: themeColor, fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '1px' }}>Картата е валидна за</div>
-                            <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff' }}>{getFormattedMonth(client.expiryDate)}</div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '4px' }}>DOCUMENT ID</div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)', fontFamily: 'monospace' }}>{client?.id.substring(0, 10).toUpperCase()}</div>
                         </div>
-                        {client.renewalHistory && client.renewalHistory.length > 0 && (
-                            <div style={{ textAlign: 'left', marginTop: '1rem' }}>
-                                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.8rem', letterSpacing: '1px' }}>Активни Плащания</div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {[...client.renewalHistory].filter(rh => { const now = new Date(); const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`; return rh.month >= currentMonthStr; }).sort((a, b) => a.month.localeCompare(b.month)).slice(0, 3).map((rh, index) => (
-                                        <div key={index} style={{ background: 'rgba(255,255,255,0.05)', padding: '0.8rem 1rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div style={{ fontWeight: 700, color: '#fff' }}>{getFormattedMonth(rh.month)}</div>
-                                            <div style={{ fontSize: '0.9rem', color: themeColor, fontWeight: 800 }}>{rh.amount} €</div>
-                                        </div>
-                                    ))}
-                                    {[...client.renewalHistory].filter(rh => { const now = new Date(); const currentStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`; return rh.month >= currentStr; }).length === 0 && (
-                                        <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.875rem', fontStyle: 'italic' }}>Няма активни бъдещи плащания.</div>
-                                    )}
-                                </div>
+                    </div>
+
+                    {/* Data Area */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div>
+                            <div style={{ fontSize: '0.65rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '4px' }}>HOLDER NAME</div>
+                            <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px', color: '#fff' }}>{client?.name.toUpperCase()}</h2>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                            <div>
+                                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>ROUTE / COURSE</div>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{client?.route}</div>
                             </div>
-                        )}
-                    </div>
-                    {currentUser && (
-                        <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <button onClick={initiationRenew} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', background: '#00e676', color: '#ffffff', padding: '1.2rem 2rem', border: 'none', borderRadius: '50px', fontWeight: 900, fontSize: '1.4rem', cursor: 'pointer', boxShadow: '0 0 20px rgba(0, 230, 118, 0.4)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}><RefreshCw size={24} /> ПОДНОВИ</button>
-                            <Link to={`/admin?edit=${client.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '0.8rem 2rem', borderRadius: '50px', textDecoration: 'none', fontWeight: 600, fontSize: '1rem', border: '1px solid rgba(255,255,255,0.2)' }}><Settings size={18} /> Управление</Link>
+                            <div>
+                                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>ISSUED AT</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>{client && new Date(client.createdAt).toLocaleDateString('bg-BG')}</div>
+                            </div>
                         </div>
-                    )}
+
+                        {/* Validity Badge */}
+                        <div style={{ 
+                            marginTop: '1.5rem',
+                            background: `${themeColor}15`,
+                            border: `1px solid ${themeColor}33`,
+                            borderRadius: '16px',
+                            padding: '1rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px'
+                        }}>
+                            <div style={{ fontSize: '0.6rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>VALID UNTIL END OF</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff' }}>{getFormattedMonth(currentMonthStr)}</div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: themeColor, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <StatusIcon size={12} />
+                                {statusText}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div style={{ marginTop: 'auto', padding: '1.5rem', background: 'rgba(255,255,255,0.03)', width: '100%', borderRadius: '24px 24px 0 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' }}><Clock size={16} /> Сканирано на: {scanTime}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: themeColor, fontSize: '0.8rem', fontWeight: 600 }}><User size={14} /> ID: {client.id}</div>
+
+                {/* Bottom Signature / Security */}
+                <div style={{
+                    padding: '0.8rem 2rem',
+                    background: 'rgba(0,0,0,0.2)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderTop: '1px solid rgba(255,255,255,0.04)'
+                }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', opacity: 0.5 }}>
+                        <div style={{ width: '20px', height: '2px', background: '#fff' }} />
+                        <div style={{ width: '40px', height: '2px', background: '#fff' }} />
+                        <div style={{ width: '10px', height: '2px', background: '#fff' }} />
+                        <span style={{ fontSize: '0.55rem', fontWeight: 700, marginLeft: '4px' }}>DIGITAL SIGNATURE SECURED</span>
+                    </div>
+                    <div style={{ opacity: 0.3, filter: 'grayscale(1)' }}>
+                         {/* Placeholder for Logo Watermark */}
+                         <div style={{ height: '24px', width: '24px', borderRadius: '50%', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 900 }}>D</div>
+                    </div>
                 </div>
             </div>
 
-            {/* Ad Slideshow Overlay */}
+            {/* Action Area (Outside Card) */}
+            <div style={{ marginTop: '2.5rem', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {currentUser && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+                        <button onClick={initiationRenew} style={{ 
+                            background: '#00e676', 
+                            color: '#000', 
+                            padding: '1.2rem', 
+                            borderRadius: '20px', 
+                            border: 'none', 
+                            fontWeight: 900, 
+                            fontSize: '1.1rem', 
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '10px',
+                            boxShadow: '0 10px 30px rgba(0, 230, 118, 0.3)',
+                            transition: 'all 0.3s'
+                        }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                            <RefreshCw size={20} /> ПОДНОВИ
+                        </button>
+                        <Link to={`/admin?edit=${client?.id}`} style={{ 
+                            background: 'rgba(255,255,255,0.05)', 
+                            color: '#fff', 
+                            padding: '1.2rem', 
+                            borderRadius: '20px', 
+                            textDecoration: 'none', 
+                            fontWeight: 700, 
+                            fontSize: '0.9rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            transition: 'all 0.3s'
+                        }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>
+                            <Settings size={18} /> УПРАВЛЕНИЕ
+                        </Link>
+                    </div>
+                )}
+                
+                {/* Secondary Info Area */}
+                <div style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    borderRadius: '24px',
+                    padding: '1.5rem',
+                    border: '1px solid rgba(255,255,255,0.06)'
+                }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Clock size={14} /> ИСТОРИЯ НА ПЛАЩАНИЯТА
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {[...(client?.renewalHistory || [])].sort((a, b) => b.month.localeCompare(a.month)).slice(0, 3).map((rh, index) => (
+                            <div key={index} style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                padding: '0.75rem 1rem',
+                                background: 'rgba(255,255,255,0.02)',
+                                borderRadius: '12px',
+                                border: '1px solid rgba(255,255,255,0.03)'
+                            }}>
+                                <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>{getFormattedMonth(rh.month)}</span>
+                                <span style={{ fontWeight: 800, color: themeColor }}>{rh.amount} €</span>
+                            </div>
+                        ))}
+                        {(client?.renewalHistory || []).length === 0 && (
+                            <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.85rem', fontStyle: 'italic', textAlign: 'center' }}>НЯМА ИСТОРИЯ</div>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{ textAlign: 'center', opacity: 0.3, padding: '1rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '1px' }}>
+                    LAST SCANNED: {scanTime} • SYSTEM REF: {client?.id.toUpperCase()}
+                </div>
+            </div>
+
+            {/* Overlays */}
             {isIdle && !loading && !isRegistering && !showPhotoModal && !showRenewConfirm && (
                 <AdSlideshow onClose={() => setIsIdle(false)} />
             )}
 
-            {/* Confirmation Overlay */}
-            {showRenewConfirm && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
-                    <div style={{ background: '#1a1a1a', padding: '2.5rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: '400px', boxShadow: '0 40px 100px rgba(0,0,0,1)' }}>
-                        <div style={{ background: '#00e676', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: '0 0 30px rgba(0,230,118,0.3)' }}><RefreshCw size={40} color="#000" /></div>
-                        <h2 style={{ fontSize: '1.8rem', margin: '0 0 0.5rem 0' }}>Подновяване</h2>
-                        <div style={{ color: 'var(--primary-color)', fontWeight: 700, fontSize: '1.2rem', marginBottom: '1.5rem' }}>{client.name}</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
-                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
-                                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Курс (Маршрут)</div>
-                                <select 
-                                    value={renewRoute} 
-                                    onChange={(e) => setRenewRoute(e.target.value)}
-                                    style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '1rem', fontWeight: 700, padding: '0.5rem 1rem', borderRadius: '12px', width: '100%', outline: 'none' }}
-                                >
+            {showRenewConfirm && client && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div style={{ background: '#111', padding: '2rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: '400px', boxShadow: '0 40px 100px rgba(0,0,0,1)' }}>
+                        <h2 style={{ fontSize: '1.5rem', margin: '0 0 1.5rem 0', textAlign: 'center' }}>ПОДНОВЯВАНЕ</h2>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+                             <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px' }}>
+                                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>МАРШРУТ</div>
+                                <select value={renewRoute} onChange={(e) => setRenewRoute(e.target.value)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '1rem', fontWeight: 700, padding: '0.5rem', borderRadius: '8px', width: '100%' }}>
                                     {ROUTES.map(r => <option key={r} value={r} style={{ background: '#222' }}>{r}</option>)}
                                 </select>
                             </div>
-                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}><div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Месец за подновяване</div><input type="month" value={renewMonth} onChange={(e) => setRenewMonth(e.target.value)} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '1.2rem', fontWeight: 700, padding: '0.5rem 1rem', borderRadius: '12px', width: '100%', outline: 'none', colorScheme: 'dark' }} /></div>
-                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '16px' }}><div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Сума (EUR)</div><div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><input type="number" value={renewAmount} onChange={(e) => setRenewAmount(Number(e.target.value))} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '2rem', fontWeight: 900, padding: '0.5rem 1rem', borderRadius: '12px', width: '140px', textAlign: 'center', outline: 'none' }} /><span style={{ marginLeft: '0.5rem', fontSize: '1.5rem', fontWeight: 800 }}>€</span></div></div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px' }}>
+                                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>МЕСЕЦ</div>
+                                <input type="month" value={renewMonth} onChange={(e) => setRenewMonth(e.target.value)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '1rem', fontWeight: 700, width: '100%', colorScheme: 'dark' }} />
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px' }}>
+                                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>СУМА (EUR)</div>
+                                <input type="number" value={renewAmount} onChange={(e) => setRenewAmount(Number(e.target.value))} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', fontWeight: 900, width: '100%', textAlign: 'center', outline: 'none' }} />
+                            </div>
                         </div>
-                        {renewError && <div style={{ color: '#ff4444', marginBottom: '1rem', fontSize: '0.9rem' }}>{renewError}</div>}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <button onClick={handleConfirmRenew} style={{ background: '#00e676', color: '#ffffff', border: 'none', padding: '1.2rem', borderRadius: '16px', fontWeight: 800, fontSize: '1.2rem', cursor: 'pointer' }}>Потвърди Плащането</button>
-                            <button onClick={() => setShowRenewConfirm(false)} style={{ background: 'transparent', color: 'rgba(255,255,255,0.5)', border: 'none', padding: '1rem', fontSize: '1rem', cursor: 'pointer' }}>Отказ</button>
-                        </div>
+                        {renewError && <div style={{ color: '#ff1744', textAlign: 'center', marginBottom: '1rem', fontSize: '0.8rem' }}>{renewError}</div>}
+                        <button onClick={handleConfirmRenew} style={{ width: '100%', background: '#00e676', color: '#000', padding: '1.2rem', borderRadius: '16px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}>ПОТВЪРДИ</button>
+                        <button onClick={() => setShowRenewConfirm(false)} style={{ width: '100%', background: 'transparent', color: 'rgba(255,255,255,0.4)', padding: '1rem', border: 'none', fontSize: '0.9rem', cursor: 'pointer', marginTop: '0.5rem' }}>ОТКАЗ</button>
                     </div>
                 </div>
             )}
 
-            {showPhotoModal && (
-                <div onClick={() => setShowPhotoModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(15px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'zoom-out', animation: 'fadeIn 0.2s ease' }}>
-                    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <img src={client.photo} style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: '24px', boxShadow: '0 0 50px rgba(0,0,0,1)', border: `2px solid ${themeColor}` }} alt="Zoomed Client" />
-                        <div style={{ position: 'absolute', top: '2rem', right: '2rem', color: '#fff', background: 'rgba(255,255,255,0.1)', padding: '0.6rem 1.2rem', borderRadius: '50px', fontWeight: 600 }}>Затвори</div>
-                    </div>
+            {showPhotoModal && client && (
+                <div onClick={() => setShowPhotoModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(30px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'zoom-out' }}>
+                    <img src={client.photo} style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: '24px', boxShadow: '0 0 100px rgba(0,0,0,1)', border: `1px solid ${themeColor}` }} alt="Zoomed" />
                 </div>
             )}
 
             <style>{`
-                @keyframes pulseGlow {
-                    0% { box-shadow: 0 10px 40px ${themeColor}22, inset 0 0 20px ${themeColor}11; border-color: ${themeColor}66; }
-                    50% { box-shadow: 0 10px 60px ${themeColor}44, inset 0 0 30px ${themeColor}22; border-color: ${themeColor}aa; }
-                    100% { box-shadow: 0 10px 40px ${themeColor}22, inset 0 0 20px ${themeColor}11; border-color: ${themeColor}66; }
+                @keyframes cardEnter {
+                    from { opacity: 0; transform: translateY(30px) scale(0.95); rotate: 1deg; }
+                    to { opacity: 1; transform: translateY(0) scale(1); rotate: 0deg; }
                 }
-                @keyframes float {
-                    0% { transform: scale(1); opacity: 0.6; }
-                    50% { transform: scale(1.1); opacity: 0.8; }
-                    100% { transform: scale(1); opacity: 0.6; }
+                @keyframes hologram {
+                    0% { background-position: 0% 0%; }
+                    100% { background-position: 200% 200%; }
                 }
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
+                .id-card-container::after {
+                    content: '';
+                    position: absolute;
+                    top: -50%;
+                    left: -50%;
+                    width: 200%;
+                    height: 200%;
+                    background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 40%);
+                    pointer-events: none;
+                    opacity: 0.3;
+                    mix-blend-mode: soft-light;
+                    transform: rotate(45deg);
                 }
             `}</style>
         </div>
