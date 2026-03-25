@@ -623,7 +623,7 @@ const AdminPanel: React.FC = () => {
         if (client.isCanceled) return 'Анулиран';
         
         const hasPaymentForMonth = (client.renewalHistory || []).some(rh => rh.month === month);
-        return hasPaymentForMonth ? 'Валиден' : 'Невалиден';
+        return hasPaymentForMonth ? 'Платен' : 'Неплатен';
     };
 
     const getMonthPayment = (client: Client, month: string) => {
@@ -683,7 +683,7 @@ const AdminPanel: React.FC = () => {
         const statusA = getClientStatusForMonth(a, filterMonth);
         const statusB = getClientStatusForMonth(b, filterMonth);
         
-        const weights: Record<string, number> = { 'Невалиден': 0, 'Валиден': 1, 'Анулиран': 2 };
+        const weights: Record<string, number> = { 'Неплатен': 0, 'Платен': 1, 'Анулиран': 2 };
         return weights[statusA] - weights[statusB];
     });
 
@@ -1022,8 +1022,8 @@ const AdminPanel: React.FC = () => {
                                                     <td>
                                                         <span style={{
                                                             padding: '0.25rem 0.75rem', borderRadius: '50px', fontSize: '0.75rem',
-                                                            background: status === 'Анулиран' || status === 'Невалиден' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
-                                                            color: status === 'Анулиран' || status === 'Невалиден' ? '#ff4040' : 'var(--success-color)',
+                                                            background: status === 'Анулиран' || status === 'Неплатен' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
+                                                            color: status === 'Анулиран' || status === 'Неплатен' ? '#ff4040' : 'var(--success-color)',
                                                             fontWeight: 700
                                                         }}>
                                                             {status}
@@ -1099,8 +1099,8 @@ const AdminPanel: React.FC = () => {
                                             </div>
                                             <span style={{
                                                 padding: '0.2rem 0.6rem', borderRadius: '50px', fontSize: '0.7rem', fontWeight: 700,
-                                                background: status === 'Анулиран' || status === 'Невалиден' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
-                                                color: status === 'Анулиран' || status === 'Невалиден' ? '#ff4040' : 'var(--success-color)'
+                                                background: status === 'Анулиран' || status === 'Неплатен' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
+                                                color: status === 'Анулиран' || status === 'Неплатен' ? '#ff4040' : 'var(--success-color)'
                                             }}>
                                                 {status}
                                             </span>
@@ -1482,7 +1482,7 @@ const AdminPanel: React.FC = () => {
                                         <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Статус</div>
                                             <div style={{ fontWeight: 700, color: selectedClient.isCanceled || isExpired(selectedClient.expiryDate, selectedClient) ? 'var(--error-color)' : 'var(--success-color)' }}>
-                                                {selectedClient.isCanceled ? 'Анулиран' : isExpired(selectedClient.expiryDate, selectedClient) ? 'Невалиден' : 'Активен'}
+                                                {selectedClient.isCanceled ? 'Анулиран' : isExpired(selectedClient.expiryDate, selectedClient) ? 'Неплатен' : 'Платен'}
                                             </div>
                                         </div>
                                         <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
