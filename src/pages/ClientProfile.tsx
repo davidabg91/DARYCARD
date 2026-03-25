@@ -689,7 +689,7 @@ const ClientProfile: React.FC = () => {
 
             {/* Action Area (Outside Card) */}
             <div className="action-area" style={{ marginTop: '2.5rem', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <BusSchedule route={client?.route || ''} />
+
                 {currentUser && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <button onClick={initiationRenew} style={{ 
@@ -764,6 +764,8 @@ const ClientProfile: React.FC = () => {
                 <div style={{ textAlign: 'center', opacity: 0.3, padding: '1rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '1px' }}>
                     ПОСЛЕДНО СКАНЕ: {scanTime} • СИСТЕМЕН РЕФ: {client?.id.toUpperCase()}
                 </div>
+                
+                <BusSchedule route={client?.route || ''} />
             </div>
 
             {/* Overlays */}
