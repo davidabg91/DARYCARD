@@ -17,6 +17,9 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
 
     if (!scheduleData) return null;
 
+    const isSunday = currentTime.getDay() === 0;
+    const activeSchedule = (isSunday && scheduleData.sunday) ? scheduleData.sunday : scheduleData;
+
     const getMinutes = (timeStr: string) => {
         const [hours, minutes] = timeStr.split(':').map(Number);
         return hours * 60 + minutes;
@@ -35,18 +38,25 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
             color: '#fff',
             marginTop: '1.5rem'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#00e676', marginBottom: '1.5rem', justifyContent: 'center' }}>
-                <Bus size={20} />
-                <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '1px' }}>РАЗПИСАНИЕ АВТОБУСИ</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#00e676' }}>
+                    <Bus size={20} />
+                    <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '1px' }}>РАЗПИСАНИЕ АВТОБУСИ</span>
+                </div>
+                {route === 'Тръстеник' && (
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                        ({isSunday ? 'неделя' : 'понеделник-събота'})
+                    </div>
+                )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 {/* From Pleven */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginBottom: '4px' }}>ОТ ПЛЕВЕН</div>
-                    {scheduleData.fromPleven.map(time => {
+                    {activeSchedule.fromPleven.map(time => {
                         const isPast = getMinutes(time) < currentMinutes;
-                        const isNext = !isPast && scheduleData.fromPleven.find(t => getMinutes(t) >= currentMinutes) === time;
+                        const isNext = !isPast && activeSchedule.fromPleven.find(t => getMinutes(t) >= currentMinutes) === time;
                         return (
                             <div key={time} style={{
                                 background: isNext ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255,255,255,0.03)',
@@ -67,9 +77,9 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                 {/* To Pleven */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginBottom: '4px' }}>ОТ {route.toUpperCase()}</div>
-                    {scheduleData.fromDestination.map(time => {
+                    {activeSchedule.fromDestination.map(time => {
                         const isPast = getMinutes(time) < currentMinutes;
-                        const isNext = !isPast && scheduleData.fromDestination.find(t => getMinutes(t) >= currentMinutes) === time;
+                        const isNext = !isPast && activeSchedule.fromDestination.find(t => getMinutes(t) >= currentMinutes) === time;
                         return (
                             <div key={time} style={{
                                 background: isNext ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255,255,255,0.03)',
