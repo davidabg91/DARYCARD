@@ -624,8 +624,12 @@ const ClientProfile: React.FC = () => {
                             boxShadow: `0 10px 30px ${themeColor}10`
                         }}>
                             <div className="validity-content" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <div style={{ fontSize: '0.6rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>ВАЛИДНА ДО КРАЯ НА</div>
-                                <div className="valid-month" style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>{getFormattedMonth(currentMonthStr)}</div>
+                                {hasPaidCurrentMonth && (
+                                    <>
+                                        <div style={{ fontSize: '0.6rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>ВАЛИДНА ДО КРАЯ НА</div>
+                                        <div className="valid-month" style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>{getFormattedMonth(currentMonthStr)}</div>
+                                    </>
+                                )}
                                 <div className="status-badge" style={{ fontSize: '0.75rem', fontWeight: 800, color: themeColor, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <StatusIcon size={14} />
                                     {statusText}
