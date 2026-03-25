@@ -4,7 +4,7 @@ import { CheckCircle, XCircle, Ban, Clock, Settings, RefreshCw, Camera } from 'l
 import { useAuth } from '../context/AuthContext';
 import AdSlideshow from '../components/AdSlideshow';
 import { db } from '../firebase';
-import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc, addDoc, collection } from 'firebase/firestore';
 
 interface Client {
     id: string;
@@ -167,6 +167,20 @@ const ClientProfile: React.FC = () => {
         try {
             setLoading(true);
             await setDoc(doc(db, 'clients', id), newClient);
+            
+            try {
+                await addDoc(collection(db, 'activity_logs'), {
+                    timestamp: now.toISOString(),
+                    performedBy: currentUser?.username || 'Система (Линк)',
+                    action: 'Създаване',
+                    targetName: regName,
+                    details: `Нова карта (NFC): ${id}. Сума: ${regAmount} €. Регион: ${regRoute}`,
+                    amount: Number(regAmount)
+                });
+            } catch (logErr) {
+                console.error("Error logging activity:", logErr);
+            }
+
             setIsRegistering(false);
             hasPlayedSound.current = false;
         } catch (err) {
