@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import AdSlideshow from '../components/AdSlideshow';
 import BusSchedule from '../components/BusSchedule';
 import { db } from '../firebase';
+import logo from '../assets/logo_main.png';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc, addDoc, collection } from 'firebase/firestore';
 
 interface Client {
@@ -680,6 +681,7 @@ const ClientProfile: React.FC = () => {
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                          <span style={{ fontSize: '0.55rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>ИДЕНТИФИКАТОР:</span>
                          <span style={{ fontSize: '0.75rem', fontWeight: 900, color: themeColor, fontFamily: 'monospace', letterSpacing: '1px' }}>{client?.id.substring(0, 12).toUpperCase()}</span>
+                         <img src={logo} style={{ height: '18px', opacity: 0.1, marginLeft: '4px', filter: 'grayscale(1) brightness(3)', pointerEvents: 'none' }} alt="watermark" />
                     </div>
                     <div style={{ opacity: 0.3 }}>
                          <div style={{ height: '24px', width: '24px', borderRadius: '50%', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 900 }}>D</div>
