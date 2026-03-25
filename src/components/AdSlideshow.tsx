@@ -29,7 +29,6 @@ const AD_IMAGES = [
 
 const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [isPaused, setIsPaused] = useState(false);
     const [imagesLoaded, setImagesLoaded] = useState(false);
 
     useEffect(() => {
@@ -55,14 +54,14 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
     }, []);
 
     useEffect(() => {
-        if (isPaused || !imagesLoaded) return;
+        if (!imagesLoaded) return;
 
         const interval = setInterval(() => {
             setCurrentIndex((prev) => (prev + 1) % AD_IMAGES.length);
         }, 5000);
 
         return () => clearInterval(interval);
-    }, [isPaused, imagesLoaded]);
+    }, [imagesLoaded]);
 
     if (!imagesLoaded) return null;
 
@@ -83,8 +82,6 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
             {/* Ad Content */}
             <div 
                 style={{ position: 'relative', flex: 1, overflow: 'hidden', background: '#000' }}
-                onMouseEnter={() => setIsPaused(true)}
-                onMouseLeave={() => setIsPaused(false)}
             >
                 {AD_IMAGES.map((ad, index) => {
                     const isActive = index === currentIndex;
