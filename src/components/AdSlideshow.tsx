@@ -19,6 +19,11 @@ const AD_IMAGES = [
         url: '/DARYCARD/assets/ads/ad_paris.png',
         title: 'Магията на Париж',
         description: 'Градът на светлините'
+    },
+    {
+        url: '/DARYCARD/assets/ads/ad_kitai.png',
+        title: 'Мистичният Китай',
+        description: 'Великата китайска стена и забраненият град'
     }
 ];
 
