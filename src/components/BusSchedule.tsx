@@ -32,13 +32,19 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
 
     const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
     
-    // Day relative progress: From 05:00 to 22:00 for calculation scale
-    const startDayMins = getMinutes(schedule[0]) - 60; // 1 hour before first bus
-    const endDayMins = getMinutes(schedule[schedule.length - 1]) + 60; // 1 hour after last bus
-    const totalDayRange = endDayMins - startDayMins;
-    const dayProgress = Math.max(0, Math.min(100, ((currentMinutes - startDayMins) / totalDayRange) * 100));
+    // Zoomed window: From current time - 30 mins to current time + 180 mins (3 hours)
+    const windowStart = currentMinutes - 30;
+    const windowEnd = currentMinutes + 180;
+    const windowRange = windowEnd - windowStart;
+    
+    // Calculate progress (fixed at start for the "now" bus icon)
+    const dayProgress = Math.max(0, Math.min(100, ((currentMinutes - windowStart) / windowRange) * 100));
 
-
+    // Visible dots: Only next 4 buses that fit in the 3-hour window
+    const visibleBuses = schedule.filter(time => {
+        const mins = getMinutes(time);
+        return mins > currentMinutes && mins <= windowEnd;
+    }).slice(0, 4);
 
     const themeColor = '#00e676';
 
@@ -112,12 +118,9 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                 }} />
                 
                 {/* Schedule Dots */}
-                {schedule.map((time) => {
+                {visibleBuses.map((time) => {
                     const mins = getMinutes(time);
-                    const isUpcoming = mins > currentMinutes;
-                    if (!isUpcoming) return null;
-                    
-                    const pos = Math.max(0, Math.min(100, ((mins - startDayMins) / totalDayRange) * 100));
+                    const pos = Math.max(0, Math.min(100, ((mins - windowStart) / windowRange) * 100));
                     
                     return (
                         <div key={time} style={{
