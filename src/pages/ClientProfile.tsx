@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, Ban, Clock, Settings, RefreshCw, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AdSlideshow from '../components/AdSlideshow';
+import BusSchedule from '../components/BusSchedule';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc, addDoc, collection } from 'firebase/firestore';
 
@@ -688,6 +689,7 @@ const ClientProfile: React.FC = () => {
 
             {/* Action Area (Outside Card) */}
             <div className="action-area" style={{ marginTop: '2.5rem', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <BusSchedule route={client?.route || ''} />
                 {currentUser && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <button onClick={initiationRenew} style={{ 
