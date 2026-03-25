@@ -124,9 +124,9 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
                                 alt={ad.title}
                                 style={{ 
                                     position: 'relative',
-                                    maxWidth: '100%', 
-                                    maxHeight: '100%', 
-                                    objectFit: 'contain',
+                                    width: '100%', 
+                                    height: '100%', 
+                                    objectFit: 'cover',
                                     zIndex: 1,
                                     boxShadow: '0 0 80px rgba(0,0,0,0.8)',
                                     transform: 'translate3d(0,0,0)',
