@@ -659,7 +659,7 @@ const ClientProfile: React.FC = () => {
             </div>
 
             {/* Action Area (Outside Card) */}
-            <div style={{ marginTop: '2.5rem', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="action-area" style={{ marginTop: '2.5rem', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {currentUser && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <button onClick={initiationRenew} style={{ 
@@ -775,6 +775,25 @@ const ClientProfile: React.FC = () => {
             )}
 
             <style>{`
+                @media (min-width: 1024px) {
+                    .id-card-container, .action-area {
+                        max-width: 700px !important;
+                        padding: 1rem !important;
+                    }
+                    .photo-frame {
+                        width: 190px !important;
+                        height: 230px !important;
+                    }
+                    .holder-name {
+                        font-size: 2.5rem !important;
+                    }
+                    .route-text {
+                        font-size: 1.6rem !important;
+                    }
+                    .valid-month {
+                        font-size: 2.2rem !important;
+                    }
+                }
                 @keyframes cardEnter {
                     from { opacity: 0; transform: translateY(30px) scale(0.95); rotate: 1deg; }
                     to { opacity: 1; transform: translateY(0) scale(1); rotate: 0deg; }
