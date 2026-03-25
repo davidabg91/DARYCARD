@@ -38,7 +38,7 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
     const totalDayRange = endDayMins - startDayMins;
     const dayProgress = Math.max(0, Math.min(100, ((currentMinutes - startDayMins) / totalDayRange) * 100));
 
-    const upcomingBuses = schedule.filter(time => getMinutes(time) > currentMinutes).slice(0, 4);
+
 
     const themeColor = '#00e676';
 
@@ -94,70 +94,83 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                 </div>
             </div>
 
-            {/* Timeline with Labels */}
-            <div style={{ position: 'relative', height: '60px', marginBottom: '1.5rem' }}>
+            {/* Timeline with Labels and Dots */}
+            <div style={{ position: 'relative', height: '80px', marginBottom: '1rem' }}>
                 {/* Labels at ends */}
-                <div style={{ position: 'absolute', left: 0, top: '100%', transform: 'translateY(-5px)', fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)' }}>
+                <div style={{ position: 'absolute', left: 0, top: '70%', fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)' }}>
                     {origin}
                 </div>
-                <div style={{ position: 'absolute', right: 0, top: '100%', transform: 'translateY(-5px)', fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)' }}>
+                <div style={{ position: 'absolute', right: 0, top: '70%', fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)' }}>
                     {destination}
                 </div>
 
                 {/* Main Line */}
                 <div style={{ 
                     position: 'absolute', top: '50%', left: 0, right: 0, height: '2px', 
-                    background: 'linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.2), rgba(255,255,255,0.05))', 
+                    background: 'rgba(255,255,255,0.1)', 
                     borderRadius: '1px', transform: 'translateY(-50%)' 
                 }} />
                 
-                {/* The Bus Icon */}
+                {/* Schedule Dots */}
+                {schedule.map((time) => {
+                    const mins = getMinutes(time);
+                    const isUpcoming = mins > currentMinutes;
+                    if (!isUpcoming) return null;
+                    
+                    const pos = Math.max(0, Math.min(100, ((mins - startDayMins) / totalDayRange) * 100));
+                    
+                    return (
+                        <div key={time} style={{
+                            position: 'absolute',
+                            left: `${pos}%`,
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            zIndex: 1
+                        }}>
+                            <div style={{ 
+                                width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(255,255,255,0.4)', 
+                                border: '2px solid #111'
+                            }} />
+                            <div style={{ 
+                                marginTop: '12px', fontSize: '0.75rem', fontWeight: 800, 
+                                color: 'rgba(255,255,255,0.5)', background: 'rgba(0,0,0,0.3)',
+                                padding: '2px 4px', borderRadius: '4px'
+                            }}>
+                                {time}
+                            </div>
+                        </div>
+                    );
+                })}
+
+                {/* The Bus Icon (Live Indicator) */}
                 <div style={{
                     position: 'absolute',
                     top: '50%',
                     left: `${dayProgress}%`,
                     transform: 'translate(-50%, -50%)',
-                    width: '36px',
-                    height: '36px',
+                    width: '38px',
+                    height: '38px',
                     background: '#111',
                     borderRadius: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     border: `1px solid ${themeColor}`,
-                    boxShadow: `0 0 15px ${themeColor}33`,
+                    boxShadow: `0 0 20px ${themeColor}44`,
                     zIndex: 2,
                     transition: 'left 1s ease-in-out'
                 }}>
-                    <Bus size={18} color={themeColor} />
-                    <div style={{ position: 'absolute', top: '-18px', fontSize: '0.7rem', fontWeight: 900, color: themeColor }}>
+                    <Bus size={20} color={themeColor} />
+                    <div style={{ 
+                        position: 'absolute', bottom: '-22px', fontSize: '0.8rem', fontWeight: 900, 
+                        color: themeColor, whiteSpace: 'nowrap', background: 'rgba(0,230,118,0.1)',
+                        padding: '1px 6px', borderRadius: '6px'
+                    }}>
                         {currentTime.getHours().toString().padStart(2, '0')}:{currentTime.getMinutes().toString().padStart(2, '0')}
                     </div>
-                </div>
-            </div>
-
-            {/* Upcoming Departures - "Simple hours below the line" */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                    {upcomingBuses.length > 0 ? 'СЛЕДВАЩИ АВТОБУСИ:' : 'НЯМА ПОВЕЧЕ ЗА ДНЕС'}
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {upcomingBuses.map((time, idx) => (
-                        <div key={time} style={{
-                            background: idx === 0 ? `${themeColor}22` : 'rgba(255,255,255,0.05)',
-                            color: idx === 0 ? themeColor : '#fff',
-                            padding: '10px 14px',
-                            borderRadius: '12px',
-                            fontSize: '0.9rem',
-                            fontWeight: 900,
-                            border: `1px solid ${idx === 0 ? themeColor : 'rgba(255,255,255,0.1)'}`,
-                            flex: 1,
-                            textAlign: 'center',
-                            minWidth: '70px'
-                        }}>
-                            {time}
-                        </div>
-                    ))}
                 </div>
             </div>
 
