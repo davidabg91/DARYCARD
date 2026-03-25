@@ -519,7 +519,8 @@ const ClientProfile: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 animation: 'cardEnter 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
-                zIndex: 10
+                zIndex: 10,
+                willChange: 'transform, opacity, backdrop-filter'
             }}>
                 {/* Holographic Overlay */}
                 <div style={{
@@ -622,11 +623,13 @@ const ClientProfile: React.FC = () => {
                             gap: '4px',
                             boxShadow: `0 10px 30px ${themeColor}10`
                         }}>
-                            <div style={{ fontSize: '0.6rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>ВАЛИДНА ДО КРАЯ НА</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>{getFormattedMonth(currentMonthStr)}</div>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: themeColor, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <StatusIcon size={14} />
-                                {statusText}
+                            <div className="validity-content" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div style={{ fontSize: '0.6rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>ВАЛИДНА ДО КРАЯ НА</div>
+                                <div className="valid-month" style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>{getFormattedMonth(currentMonthStr)}</div>
+                                <div className="status-badge" style={{ fontSize: '0.75rem', fontWeight: 800, color: themeColor, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <StatusIcon size={14} />
+                                    {statusText}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -809,6 +812,21 @@ const ClientProfile: React.FC = () => {
                     }
                     .date-text {
                         font-size: 1.1rem !important;
+                    }
+                    .validity-content {
+                        align-items: center;
+                    }
+                    .valid-month {
+                        font-size: 1.8rem !important;
+                    }
+                    .status-badge {
+                        font-size: 1rem !important;
+                        margin-top: 4px !important;
+                    }
+                    .id-card-container {
+                        backdrop-filter: none !important;
+                        -webkit-backdrop-filter: none !important;
+                        background: rgba(30,30,35,0.8) !important;
                     }
                 }
             `}</style>

@@ -45,7 +45,8 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
                 background: '#000',
                 display: 'flex',
                 flexDirection: 'column',
-                animation: 'fadeIn 0.5s ease'
+                animation: 'fadeIn 0.5s ease',
+                willChange: 'opacity'
             }}
             onClick={onClose}
         >
