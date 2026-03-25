@@ -508,7 +508,6 @@ const ClientProfile: React.FC = () => {
             <div className="id-card-container" style={{
                 width: '100%',
                 maxWidth: '480px',
-                aspectRatio: '1.58 / 1',
                 background: 'rgba(255, 255, 255, 0.02)',
                 backdropFilter: 'blur(30px)',
                 WebkitBackdropFilter: 'blur(30px)',
@@ -520,7 +519,8 @@ const ClientProfile: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 animation: 'cardEnter 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
-                zIndex: 10
+                zIndex: 10,
+                // Removed fixed aspectRatio for better mobile fit
             }}>
                 {/* Holographic Overlay */}
                 <div style={{
@@ -535,7 +535,7 @@ const ClientProfile: React.FC = () => {
 
                 {/* Card Header */}
                 <div style={{
-                    padding: '1.5rem 2rem 1rem',
+                    padding: '1.2rem 1.5rem 0.8rem',
                     borderBottom: '1px solid rgba(255,255,255,0.06)',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -543,83 +543,94 @@ const ClientProfile: React.FC = () => {
                     background: 'rgba(255,255,255,0.03)'
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: themeColor, letterSpacing: '3px', textTransform: 'uppercase' }}>DARY CARD</span>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', letterSpacing: '1px' }}>IDENTITY DOCUMENT</span>
+                        <span style={{ fontSize: '0.6rem', fontWeight: 800, color: themeColor, letterSpacing: '2px', textTransform: 'uppercase' }}>DARY CARD</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', letterSpacing: '1px' }}>IDENTITY DOCUMENT</span>
                     </div>
                     <div style={{
                         background: `${themeColor}22`,
-                        padding: '4px 12px',
-                        borderRadius: '12px',
+                        padding: '4px 10px',
+                        borderRadius: '10px',
                         border: `1px solid ${themeColor}44`,
-                        fontSize: '0.7rem',
+                        fontSize: '0.6rem',
                         fontWeight: 800,
                         color: themeColor,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px'
+                        gap: '4px'
                     }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: themeColor, boxShadow: `0 0 10px ${themeColor}` }} />
+                        <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: themeColor, boxShadow: `0 0 8px ${themeColor}` }} />
                         SECURED
                     </div>
                 </div>
 
                 {/* Card Body */}
-                <div style={{ flex: 1, display: 'flex', padding: '1.5rem 2rem 2rem', gap: '2rem', position: 'relative' }}>
+                <div className="id-card-body" style={{ 
+                    flex: 1, 
+                    display: 'flex', 
+                    padding: '1.5rem', 
+                    gap: '1.5rem', 
+                    position: 'relative',
+                    flexWrap: 'wrap' // Allows wrapping on small screens
+                }}>
                     {/* Photo Area */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div className="id-photo-area" style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '0.75rem',
+                        alignItems: 'center'
+                    }}>
                         <div style={{
-                            width: '140px',
-                            height: '160px',
-                            borderRadius: '16px',
+                            width: '130px',
+                            height: '150px',
+                            borderRadius: '14px',
                             overflow: 'hidden',
                             border: '1px solid rgba(255,255,255,0.1)',
                             position: 'relative',
-                            boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                            boxShadow: '0 15px 35px rgba(0,0,0,0.4)',
                             background: '#111'
                         }} onClick={() => setShowPhotoModal(true)}>
                             {client && client.photo && <img src={client.photo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Client" />}
                             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }} />
-                            <div style={{ position: 'absolute', inset: 0, border: `1px solid ${themeColor}33`, borderRadius: '16px', pointerEvents: 'none' }} />
+                            <div style={{ position: 'absolute', inset: 0, border: `1px solid ${themeColor}33`, borderRadius: '14px', pointerEvents: 'none' }} />
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '4px' }}>DOCUMENT ID</div>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)', fontFamily: 'monospace' }}>{client?.id.substring(0, 10).toUpperCase()}</div>
+                            <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '2px' }}>DOCUMENT ID</div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace' }}>{client?.id.substring(0, 10).toUpperCase()}</div>
                         </div>
                     </div>
 
                     {/* Data Area */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1rem' }}>
                         <div>
-                            <div style={{ fontSize: '0.65rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '4px' }}>HOLDER NAME</div>
-                            <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px', color: '#fff' }}>{client?.name.toUpperCase()}</h2>
+                            <div style={{ fontSize: '0.6rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px' }}>HOLDER NAME</div>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px', color: '#fff', wordBreak: 'break-word' }}>{client?.name.toUpperCase()}</h2>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
                             <div>
-                                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>ROUTE / COURSE</div>
-                                <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{client?.route}</div>
+                                <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>ROUTE / COURSE</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{client?.route}</div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>ISSUED AT</div>
-                                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>{client && new Date(client.createdAt).toLocaleDateString('bg-BG')}</div>
+                                <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>ISSUED AT</div>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>{client && new Date(client.createdAt).toLocaleDateString('bg-BG')}</div>
                             </div>
                         </div>
 
                         {/* Validity Badge */}
                         <div style={{ 
-                            marginTop: '1.5rem',
                             background: `${themeColor}15`,
                             border: `1px solid ${themeColor}33`,
-                            borderRadius: '16px',
-                            padding: '1rem',
+                            borderRadius: '14px',
+                            padding: '0.8rem 1rem',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '4px'
+                            gap: '2px'
                         }}>
-                            <div style={{ fontSize: '0.6rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>VALID UNTIL END OF</div>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff' }}>{getFormattedMonth(currentMonthStr)}</div>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: themeColor, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <StatusIcon size={12} />
+                            <div style={{ fontSize: '0.55rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>VALID UNTIL END OF</div>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff' }}>{getFormattedMonth(currentMonthStr)}</div>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: themeColor, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <StatusIcon size={10} />
                                 {statusText}
                             </div>
                         </div>
@@ -628,64 +639,63 @@ const ClientProfile: React.FC = () => {
 
                 {/* Bottom Signature / Security */}
                 <div style={{
-                    padding: '0.8rem 2rem',
+                    padding: '0.6rem 1.5rem',
                     background: 'rgba(0,0,0,0.2)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     borderTop: '1px solid rgba(255,255,255,0.04)'
                 }}>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', opacity: 0.5 }}>
-                        <div style={{ width: '20px', height: '2px', background: '#fff' }} />
-                        <div style={{ width: '40px', height: '2px', background: '#fff' }} />
-                        <div style={{ width: '10px', height: '2px', background: '#fff' }} />
-                        <span style={{ fontSize: '0.55rem', fontWeight: 700, marginLeft: '4px' }}>DIGITAL SIGNATURE SECURED</span>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', opacity: 0.4 }}>
+                        <div style={{ width: '15px', height: '1.5px', background: '#fff' }} />
+                        <div style={{ width: '30px', height: '1.5px', background: '#fff' }} />
+                        <div style={{ width: '8px', height: '1.5px', background: '#fff' }} />
+                        <span style={{ fontSize: '0.5rem', fontWeight: 700, marginLeft: '4px' }}>DIGITAL SIGNATURE SECURED</span>
                     </div>
-                    <div style={{ opacity: 0.3, filter: 'grayscale(1)' }}>
-                         {/* Placeholder for Logo Watermark */}
-                         <div style={{ height: '24px', width: '24px', borderRadius: '50%', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 900 }}>D</div>
+                    <div style={{ opacity: 0.2, filter: 'grayscale(1)' }}>
+                         <div style={{ height: '20px', width: '20px', borderRadius: '50%', border: '1.5px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 900 }}>D</div>
                     </div>
                 </div>
             </div>
 
             {/* Action Area (Outside Card) */}
-            <div style={{ marginTop: '2.5rem', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ marginTop: '2rem', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 {currentUser && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
                         <button onClick={initiationRenew} style={{ 
                             background: '#00e676', 
                             color: '#000', 
-                            padding: '1.2rem', 
-                            borderRadius: '20px', 
+                            padding: '1rem', 
+                            borderRadius: '16px', 
                             border: 'none', 
                             fontWeight: 900, 
-                            fontSize: '1.1rem', 
+                            fontSize: '1rem', 
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '10px',
-                            boxShadow: '0 10px 30px rgba(0, 230, 118, 0.3)',
+                            gap: '8px',
+                            boxShadow: '0 8px 20px rgba(0, 230, 118, 0.2)',
                             transition: 'all 0.3s'
                         }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-                            <RefreshCw size={20} /> ПОДНОВИ
+                            <RefreshCw size={18} /> ПОДНОВИ
                         </button>
                         <Link to={`/admin?edit=${client?.id}`} style={{ 
                             background: 'rgba(255,255,255,0.05)', 
                             color: '#fff', 
-                            padding: '1.2rem', 
-                            borderRadius: '20px', 
+                            padding: '1rem', 
+                            borderRadius: '16px', 
                             textDecoration: 'none', 
                             fontWeight: 700, 
-                            fontSize: '0.9rem',
+                            fontSize: '0.85rem',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '8px',
+                            gap: '6px',
                             border: '1px solid rgba(255,255,255,0.1)',
                             transition: 'all 0.3s'
                         }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>
-                            <Settings size={18} /> УПРАВЛЕНИЕ
+                            <Settings size={16} /> УПРАВЛЕНИЕ
                         </Link>
                     </div>
                 )}
@@ -693,35 +703,35 @@ const ClientProfile: React.FC = () => {
                 {/* Secondary Info Area */}
                 <div style={{
                     background: 'rgba(255,255,255,0.03)',
-                    borderRadius: '24px',
-                    padding: '1.5rem',
+                    borderRadius: '20px',
+                    padding: '1.2rem',
                     border: '1px solid rgba(255,255,255,0.06)'
                 }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Clock size={14} /> ИСТОРИЯ НА ПЛАЩАНИЯТА
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Clock size={12} /> ИСТОРИЯ НА ПЛАЩАНИЯТА
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                         {[...(client?.renewalHistory || [])].sort((a, b) => b.month.localeCompare(a.month)).slice(0, 3).map((rh, index) => (
                             <div key={index} style={{ 
                                 display: 'flex', 
                                 justifyContent: 'space-between', 
                                 alignItems: 'center',
-                                padding: '0.75rem 1rem',
+                                padding: '0.6rem 0.8rem',
                                 background: 'rgba(255,255,255,0.02)',
-                                borderRadius: '12px',
+                                borderRadius: '10px',
                                 border: '1px solid rgba(255,255,255,0.03)'
                             }}>
-                                <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>{getFormattedMonth(rh.month)}</span>
-                                <span style={{ fontWeight: 800, color: themeColor }}>{rh.amount} €</span>
+                                <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>{getFormattedMonth(rh.month)}</span>
+                                <span style={{ fontWeight: 800, color: themeColor, fontSize: '0.9rem' }}>{rh.amount} €</span>
                             </div>
                         ))}
                         {(client?.renewalHistory || []).length === 0 && (
-                            <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.85rem', fontStyle: 'italic', textAlign: 'center' }}>НЯМА ИСТОРИЯ</div>
+                            <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'center' }}>НЯМА ИСТОРИЯ</div>
                         )}
                     </div>
                 </div>
 
-                <div style={{ textAlign: 'center', opacity: 0.3, padding: '1rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '1px' }}>
+                <div style={{ textAlign: 'center', opacity: 0.3, padding: '0.8rem', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '1px' }}>
                     LAST SCANNED: {scanTime} • SYSTEM REF: {client?.id.toUpperCase()}
                 </div>
             </div>
@@ -786,8 +796,23 @@ const ClientProfile: React.FC = () => {
                     mix-blend-mode: soft-light;
                     transform: rotate(45deg);
                 }
+                @media (max-width: 480px) {
+                    .id-card-body {
+                        flex-direction: column;
+                        align-items: center;
+                        text-align: center;
+                        gap: 1rem !important;
+                    }
+                    .id-photo-area {
+                        margin-bottom: 0.5rem;
+                    }
+                    h2 {
+                        font-size: 1.3rem !important;
+                    }
+                }
             `}</style>
         </div>
+
     );
 };
 
