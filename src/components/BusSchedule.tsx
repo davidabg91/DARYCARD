@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bus, Clock, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bus, ChevronDown, ChevronUp } from 'lucide-react';
 import { SCHEDULES } from '../data/schedules';
 
 interface BusScheduleProps {
@@ -31,46 +31,16 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
     };
 
     const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
-
-    let lastBusIndex = -1;
-    let nextBusIndex = -1;
-
-    for (let i = 0; i < schedule.length; i++) {
-        const busMins = getMinutes(schedule[i]);
-        if (busMins <= currentMinutes) {
-            lastBusIndex = i;
-        } else if (busMins > currentMinutes && nextBusIndex === -1) {
-            nextBusIndex = i;
-        }
-    }
-
-    let progressPercentage = 0;
-    let statusText = '';
-    let statusColor = 'var(--text-secondary)';
     
-    // Status text formatting
-    if (nextBusIndex === -1 && lastBusIndex !== -1) {
-        statusText = 'НЯМА ПОВЕЧЕ АВТОБУСИ ЗА ДНЕС';
-        statusColor = 'rgba(255,255,255,0.4)';
-        progressPercentage = 100;
-    } else if (lastBusIndex === -1 && nextBusIndex !== -1) {
-        statusText = `ПЪРВИ АВТОБУС В ${schedule[nextBusIndex]}`;
-        statusColor = '#00c853';
-        progressPercentage = 0;
-    } else if (lastBusIndex !== -1 && nextBusIndex !== -1) {
-        const lastMins = getMinutes(schedule[lastBusIndex]);
-        const nextMins = getMinutes(schedule[nextBusIndex]);
-        const totalGap = nextMins - lastMins;
-        const elapsed = currentMinutes - lastMins;
-        progressPercentage = Math.max(5, Math.min(95, (elapsed / totalGap) * 100));
-        
-        const minsLeft = nextMins - currentMinutes;
-        statusText = `СЛЕДВАЩ АВТОБУС СЛЕД ${minsLeft} МИН`;
-        statusColor = minsLeft <= 15 ? '#ffab00' : '#00e676';
-    }
+    // Day relative progress: From 05:00 to 22:00 for calculation scale
+    const startDayMins = getMinutes(schedule[0]) - 60; // 1 hour before first bus
+    const endDayMins = getMinutes(schedule[schedule.length - 1]) + 60; // 1 hour after last bus
+    const totalDayRange = endDayMins - startDayMins;
+    const dayProgress = Math.max(0, Math.min(100, ((currentMinutes - startDayMins) / totalDayRange) * 100));
 
-    // Colors derived from context
-    const themeColor = '#00e676'; // Primary Dary Accent
+    const upcomingBuses = schedule.filter(time => getMinutes(time) > currentMinutes).slice(0, 4);
+
+    const themeColor = '#00e676';
 
     return (
         <div style={{
@@ -80,16 +50,14 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
             padding: '1.5rem',
             width: '100%',
             fontFamily: '"Outfit", "Inter", sans-serif',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-            animation: 'fadeIn 0.5s ease',
             color: '#fff',
             marginTop: '1rem'
         }}>
             {/* Header / Direction Toggle */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: themeColor }}>
                     <Bus size={20} />
-                    <span style={{ fontWeight: 800, fontSize: '0.9rem', letterSpacing: '1px' }}>ГРАФИК АВТОБУСИ</span>
+                    <span style={{ fontWeight: 800, fontSize: '0.9rem', letterSpacing: '1px' }}>ГРАФИК</span>
                 </div>
                 
                 <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '12px', padding: '4px', display: 'flex', gap: '4px' }}>
@@ -102,9 +70,8 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                             padding: '6px 12px',
                             borderRadius: '8px',
                             fontWeight: 700,
-                            fontSize: '0.75rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s'
+                            fontSize: '0.7rem',
+                            cursor: 'pointer'
                         }}
                     >
                         ОТ ПЛЕВЕН
@@ -118,9 +85,8 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                             padding: '6px 12px',
                             borderRadius: '8px',
                             fontWeight: 700,
-                            fontSize: '0.75rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s'
+                            fontSize: '0.7rem',
+                            cursor: 'pointer'
                         }}
                     >
                         ОТ {route.toUpperCase()}
@@ -128,104 +94,94 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                 </div>
             </div>
 
-            {/* Title */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-                <span style={{ fontWeight: 800, color: 'rgba(255,255,255,0.6)' }}>{origin}</span>
-                <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)', position: 'relative' }}>
-                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: '#111', padding: '0 8px' }}>
-                        <MapPin size={14} color={themeColor} />
-                    </div>
+            {/* Timeline with Labels */}
+            <div style={{ position: 'relative', height: '60px', marginBottom: '1.5rem' }}>
+                {/* Labels at ends */}
+                <div style={{ position: 'absolute', left: 0, top: '100%', transform: 'translateY(-5px)', fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)' }}>
+                    {origin}
                 </div>
-                <span style={{ fontWeight: 800, color: 'rgba(255,255,255,0.6)' }}>{destination}</span>
-            </div>
-
-            {/* Current Status Badge */}
-            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                <div style={{ 
-                    display: 'inline-block', 
-                    padding: '6px 16px', 
-                    background: `${statusColor}22`, 
-                    color: statusColor, 
-                    borderRadius: '50px',
-                    fontWeight: 900,
-                    fontSize: '0.8rem',
-                    border: `1px solid ${statusColor}44`
-                }}>
-                    {statusText}
+                <div style={{ position: 'absolute', right: 0, top: '100%', transform: 'translateY(-5px)', fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)' }}>
+                    {destination}
                 </div>
-            </div>
 
-            {/* Live Timeline Component */}
-            <div style={{ position: 'relative', height: '60px', marginBottom: '1rem', padding: '0 20px' }}>
-                {/* Background Line */}
-                <div style={{ position: 'absolute', top: '50%', left: '20px', right: '20px', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', transform: 'translateY(-50%)' }} />
-                
-                {/* Active Progress Line */}
+                {/* Main Line */}
                 <div style={{ 
-                    position: 'absolute', top: '50%', left: '20px', height: '4px', 
-                    background: themeColor, borderRadius: '2px', transform: 'translateY(-50%)',
-                    width: `calc(${progressPercentage}% - 20px)`,
-                    transition: 'width 1s ease-in-out'
+                    position: 'absolute', top: '50%', left: 0, right: 0, height: '2px', 
+                    background: 'linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.2), rgba(255,255,255,0.05))', 
+                    borderRadius: '1px', transform: 'translateY(-50%)' 
                 }} />
-
+                
                 {/* The Bus Icon */}
                 <div style={{
                     position: 'absolute',
                     top: '50%',
-                    left: `calc(20px + (100% - 40px) * ${progressPercentage / 100})`,
+                    left: `${dayProgress}%`,
                     transform: 'translate(-50%, -50%)',
-                    width: '32px',
-                    height: '32px',
+                    width: '36px',
+                    height: '36px',
                     background: '#111',
-                    borderRadius: '50%',
+                    borderRadius: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    border: `2px solid ${themeColor}`,
-                    boxShadow: `0 0 15px ${themeColor}66`,
-                    transition: 'left 1s ease-in-out',
-                    zIndex: 2
+                    border: `1px solid ${themeColor}`,
+                    boxShadow: `0 0 15px ${themeColor}33`,
+                    zIndex: 2,
+                    transition: 'left 1s ease-in-out'
                 }}>
-                    <Bus size={16} color={themeColor} />
+                    <Bus size={18} color={themeColor} />
+                    <div style={{ position: 'absolute', top: '-18px', fontSize: '0.7rem', fontWeight: 900, color: themeColor }}>
+                        {currentTime.getHours().toString().padStart(2, '0')}:{currentTime.getMinutes().toString().padStart(2, '0')}
+                    </div>
                 </div>
+            </div>
 
-                {/* Nodes on Timeline */}
-                {lastBusIndex !== -1 && (
-                    <div style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translate(-50%, 15px)', color: 'rgba(255,255,255,0.5)', fontSize: '0.7rem', fontWeight: 800 }}>
-                        {schedule[lastBusIndex]}
-                    </div>
-                )}
-                {nextBusIndex !== -1 && (
-                    <div style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translate(50%, 15px)', color: '#fff', fontSize: '0.85rem', fontWeight: 900 }}>
-                        {schedule[nextBusIndex]}
-                    </div>
-                )}
+            {/* Upcoming Departures - "Simple hours below the line" */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                    {upcomingBuses.length > 0 ? 'СЛЕДВАЩИ АВТОБУСИ:' : 'НЯМА ПОВЕЧЕ ЗА ДНЕС'}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {upcomingBuses.map((time, idx) => (
+                        <div key={time} style={{
+                            background: idx === 0 ? `${themeColor}22` : 'rgba(255,255,255,0.05)',
+                            color: idx === 0 ? themeColor : '#fff',
+                            padding: '10px 14px',
+                            borderRadius: '12px',
+                            fontSize: '0.9rem',
+                            fontWeight: 900,
+                            border: `1px solid ${idx === 0 ? themeColor : 'rgba(255,255,255,0.1)'}`,
+                            flex: 1,
+                            textAlign: 'center',
+                            minWidth: '70px'
+                        }}>
+                            {time}
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {/* Expandable Full Schedule */}
-            <div style={{ marginTop: '2rem' }}>
+            <div style={{ marginTop: '1.5rem' }}>
                 <button 
                     onClick={() => setIsExpanded(!isExpanded)}
                     style={{
                         width: '100%',
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.05)',
-                        padding: '12px',
-                        borderRadius: '16px',
-                        color: 'rgba(255,255,255,0.7)',
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '8px',
+                        color: 'rgba(255,255,255,0.3)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '8px',
+                        gap: '6px',
                         fontWeight: 700,
-                        fontSize: '0.85rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s'
+                        fontSize: '0.75rem',
+                        cursor: 'pointer'
                     }}
                 >
-                    <Clock size={16} /> 
-                    {isExpanded ? 'СКРИЙ ГРАФИКА' : 'ВИЖ ЦЕЛИЯ ГРАФИК'}
-                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    {isExpanded ? 'СКРИЙ ВСИЧКИ' : 'ВИЖ ПЪЛНИЯ ГРАФИК'}
+                    {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
 
                 {isExpanded && (
@@ -233,24 +189,20 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                         marginTop: '1rem', 
                         display: 'grid', 
                         gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', 
-                        gap: '8px',
+                        gap: '6px',
                         animation: 'fadeIn 0.3s ease'
                     }}>
-                        {schedule.map((time, index) => {
+                        {schedule.map((time) => {
                             const isPast = getMinutes(time) < currentMinutes;
-                            const isNext = index === nextBusIndex;
-                            
                             return (
                                 <div key={time} style={{
-                                    background: isNext ? `${themeColor}22` : (isPast ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.05)'),
-                                    color: isNext ? themeColor : (isPast ? 'rgba(255,255,255,0.3)' : '#fff'),
-                                    border: `1px solid ${isNext ? themeColor : 'rgba(255,255,255,0.05)'}`,
-                                    padding: '8px 4px',
-                                    borderRadius: '8px',
+                                    background: isPast ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.03)',
+                                    color: isPast ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.8)',
+                                    padding: '6px',
+                                    borderRadius: '6px',
                                     textAlign: 'center',
-                                    fontSize: '0.85rem',
-                                    fontWeight: isNext ? 900 : 700,
-                                    position: 'relative'
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700
                                 }}>
                                     {time}
                                 </div>
