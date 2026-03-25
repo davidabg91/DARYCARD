@@ -25,16 +25,41 @@ const AD_IMAGES = [
 const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
+    const [imagesLoaded, setImagesLoaded] = useState(false);
 
     useEffect(() => {
-        if (isPaused) return;
+        // Preload all images
+        const preloadImages = async () => {
+            const promises = AD_IMAGES.map(ad => {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.src = ad.url;
+                    img.onload = resolve;
+                    img.onerror = reject;
+                });
+            });
+            try {
+                await Promise.all(promises);
+                setImagesLoaded(true);
+            } catch (err) {
+                console.error("Failed to preload some images", err);
+                setImagesLoaded(true); // Proceed anyway after attempt
+            }
+        };
+        preloadImages();
+    }, []);
+
+    useEffect(() => {
+        if (isPaused || !imagesLoaded) return;
 
         const interval = setInterval(() => {
             setCurrentIndex((prev) => (prev + 1) % AD_IMAGES.length);
-        }, 5000); // Change every 5 seconds
+        }, 5000);
 
         return () => clearInterval(interval);
-    }, [isPaused]);
+    }, [isPaused, imagesLoaded]);
+
+    if (!imagesLoaded) return null;
 
     return (
         <div 
@@ -52,53 +77,65 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
         >
             {/* Ad Content */}
             <div 
-                style={{ position: 'relative', flex: 1, overflow: 'hidden' }}
+                style={{ position: 'relative', flex: 1, overflow: 'hidden', background: '#000' }}
                 onMouseEnter={() => setIsPaused(true)}
                 onMouseLeave={() => setIsPaused(false)}
             >
-                {AD_IMAGES.map((ad, index) => (
-                    <div
-                        key={index}
-                        style={{
-                            position: 'absolute',
-                            inset: 0,
-                            opacity: index === currentIndex ? 1 : 0,
-                            transition: 'opacity 1s ease-in-out',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}
-                    >
-                        {/* Blurred Background */}
-                        <img 
-                            src={ad.url} 
-                            alt="" 
-                            style={{ 
+                {AD_IMAGES.map((ad, index) => {
+                    const isActive = index === currentIndex;
+                    return (
+                        <div
+                            key={index}
+                            style={{
                                 position: 'absolute',
                                 inset: 0,
-                                width: '100%', 
-                                height: '100%', 
-                                objectFit: 'cover',
-                                filter: 'blur(30px) brightness(0.3)',
-                                transform: 'scale(1.1)'
-                            }} 
-                        />
-                        
-                        {/* Main Ad Image */}
-                        <img 
-                            src={ad.url} 
-                            alt={ad.title}
-                            style={{ 
-                                position: 'relative',
-                                maxWidth: '100%', 
-                                maxHeight: '100%', 
-                                objectFit: 'contain',
-                                zIndex: 1,
-                                boxShadow: '0 0 100px rgba(0,0,0,0.5)'
-                            }} 
-                        />
-                    </div>
-                ))}
+                                opacity: isActive ? 1 : 0,
+                                visibility: isActive ? 'visible' : 'hidden',
+                                transition: 'opacity 1s cubic-bezier(0.4, 0, 0.2, 1), visibility 1s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                pointerEvents: isActive ? 'auto' : 'none',
+                                backfaceVisibility: 'hidden',
+                                WebkitBackfaceVisibility: 'hidden',
+                                transform: 'translate3d(0,0,0)',
+                                WebkitTransform: 'translate3d(0,0,0)'
+                            }}
+                        >
+                            {/* Blurred Background - Simplified for mobile performance */}
+                            <img 
+                                src={ad.url} 
+                                alt="" 
+                                style={{ 
+                                    position: 'absolute',
+                                    inset: 0,
+                                    width: '100%', 
+                                    height: '100%', 
+                                    objectFit: 'cover',
+                                    filter: 'blur(20px) brightness(0.2)',
+                                    transform: 'scale(1.05)',
+                                    opacity: 0.6
+                                }} 
+                            />
+                            
+                            {/* Main Ad Image */}
+                            <img 
+                                src={ad.url} 
+                                alt={ad.title}
+                                style={{ 
+                                    position: 'relative',
+                                    maxWidth: '90%', 
+                                    maxHeight: '85%', 
+                                    objectFit: 'contain',
+                                    zIndex: 1,
+                                    boxShadow: '0 0 80px rgba(0,0,0,0.8)',
+                                    transform: 'translate3d(0,0,0)',
+                                    WebkitTransform: 'translate3d(0,0,0)'
+                                }} 
+                            />
+                        </div>
+                    );
+                })}
             </div>
 
             <style>{`
