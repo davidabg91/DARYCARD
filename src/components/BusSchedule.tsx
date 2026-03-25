@@ -43,7 +43,7 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                     <Bus size={20} />
                     <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '1px' }}>РАЗПИСАНИЕ АВТОБУСИ</span>
                 </div>
-                {['Тръстеник', 'Рибен', 'Долни Дъбник'].includes(route) && (
+                {['Тръстеник', 'Рибен', 'Долни Дъбник', 'Садовец'].includes(route) && (
                     <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
                         ({isSunday ? 'неделя' : 'понеделник-събота'})
                     </div>
