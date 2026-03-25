@@ -473,6 +473,20 @@ const ClientProfile: React.FC = () => {
                 }]
             };
             await setDoc(doc(db, 'clients', client.id), updatedClient);
+            
+            try {
+                await addDoc(collection(db, 'activity_logs'), {
+                    timestamp: new Date().toISOString(),
+                    performedBy: currentUser?.username || 'Модератор',
+                    action: 'Подновяване',
+                    targetName: client.name,
+                    details: `Бързо подновяване (Профил). Месец: ${targetMonth}${routeChanged ? ` | Променен курс: ${client.route} -> ${renewRoute}` : ''}`,
+                    amount: amount
+                });
+            } catch (logErr) {
+                console.error("Error logging activity:", logErr);
+            }
+
             setShowRenewConfirm(false);
         } catch (err) { console.error(err); setRenewError('Грешка при записване. Моля, опитайте пак.'); }
     };
