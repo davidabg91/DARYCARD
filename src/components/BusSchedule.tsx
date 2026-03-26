@@ -82,7 +82,7 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
 
                 {/* To Pleven */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginBottom: '4px' }}>ОТ {route.toUpperCase()}</div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginBottom: '4px' }}>ОТ {isBarkachRoute ? 'БЪРКАЧ' : route.toUpperCase()}</div>
                     {activeSchedule.fromDestination.map(time => {
                         const isPast = getMinutes(time) < currentMinutes;
                         const isNext = !isPast && activeSchedule.fromDestination.find(t => getMinutes(t) >= currentMinutes) === time;
