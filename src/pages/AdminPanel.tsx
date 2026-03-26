@@ -31,6 +31,7 @@ interface ClientLog {
 
 interface Client {
     id: string;
+    rfid?: string;
     name: string;
     route: string;
     amountPaid: number;
@@ -44,6 +45,7 @@ interface Client {
     scanCount?: number;
     lastScanAt?: string;
     scanHistory?: string[];
+    cardType?: string;
 }
 
 const ROUTES = [
@@ -162,6 +164,7 @@ const AdminPanel: React.FC = () => {
 
     // Registration Form State
     const [clientName, setClientName] = useState('');
+    const [cardType, setCardType] = useState('Нормална карта');
     const [selectedRoute, setSelectedRoute] = useState('');
     const [amountPaid, setAmountPaid] = useState('');
     const [expiryDate, setExpiryDate] = useState(getDefaultExpiryMonth());
@@ -224,6 +227,9 @@ const AdminPanel: React.FC = () => {
         }
     };
     const [filterRoute, setFilterRoute] = useState<string>('all');
+    const [reportMonth, setReportMonth] = useState<string>('all');
+    const [reportCardType, setReportCardType] = useState<string>('all');
+    const [reportRoute, setReportRoute] = useState<string>('all');
 
     const [photoError, setPhotoError] = useState<string | null>(null);
     
@@ -379,6 +385,7 @@ const AdminPanel: React.FC = () => {
             id: generatedId,
             name: clientName,
             route: selectedRoute,
+            cardType: cardType,
             amountPaid: Number(amountPaid),
             expiryDate: expiryDate,
             photo: photoDataURL || '',
@@ -403,7 +410,7 @@ const AdminPanel: React.FC = () => {
             
             if (isNew) {
                 setRegistrationSuccess(client);
-                setClientName(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
+                setClientName(''); setCardType('Нормална карта'); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
                 setShowActionModal(false);
                 setSelectedClient(null);
             } else {
@@ -771,6 +778,14 @@ const AdminPanel: React.FC = () => {
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th, td { padding: 1rem; border-bottom: 1px solid var(--surface-border); }
         th { color: var(--text-secondary); font-weight: 500; }
+        @media print {
+            body * { visibility: hidden; }
+            #printable-report, #printable-report * { visibility: visible !important; color: #000 !important; }
+            #printable-report { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; background: white; }
+            #printable-report .no-print { display: none !important; }
+            #printable-report table, #printable-report th, #printable-report td { border: 1px solid #ddd !important; border-collapse: collapse; padding: 8px; }
+            #printable-report th { background: #f5f5f5 !important; }
+        }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
         .modal-content { background: var(--bg-color); border: 1px solid var(--surface-border); border-radius: 20px; width: 100%; maxWidth: 500px; padding: 2rem; position: relative; }
         .route-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.05); overflow: hidden; }
@@ -1065,6 +1080,108 @@ const AdminPanel: React.FC = () => {
                         </Card>
                     </div>
 
+                    {/* --- DETAILS REPORT EXPORT SECTION --- */}
+                    <div style={{ marginTop: '1rem' }} id="printable-report">
+                        <Card>
+                            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--primary-color)' }}>
+                                    <List size={20} /> Подробни Отчети и Експорт
+                                </h3>
+                                <button 
+                                    onClick={() => window.print()} 
+                                    style={{ padding: '0.6rem 1.2rem', background: 'var(--primary-color)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                >
+                                    🖨️ Принтирай Отчета
+                                </button>
+                            </div>
+
+                            <div className="no-print" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Месец</label>
+                                    <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                        <option value="all">Всички Месеци</option>
+                                        {allMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Вид Карта</label>
+                                    <select value={reportCardType} onChange={e => setReportCardType(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                        <option value="all">Всички Видове</option>
+                                        <option value="Нормална карта">Нормална карта</option>
+                                        <option value="Детска карта">Детска карта</option>
+                                        <option value="Пенсионерска карта">Пенсионерска карта</option>
+                                    </select>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Маршрут</label>
+                                    <select value={reportRoute} onChange={e => setReportRoute(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                        <option value="all">Всички Маршрути</option>
+                                        {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Render Report Table Inline */}
+                            {(() => {
+                                const filteredReportClients = clients.filter(c => {
+                                    let match = true;
+                                    if (reportCardType !== 'all') {
+                                        const cType = c.cardType || 'Нормална карта';
+                                        if (cType !== reportCardType) match = false;
+                                    }
+                                    if (reportRoute !== 'all' && c.route !== reportRoute) match = false;
+                                    if (reportMonth !== 'all' && getMonthPayment(c, reportMonth) <= 0) match = false;
+                                    return match;
+                                });
+                                
+                                const totalReportRevenue = filteredReportClients.reduce((sum, c) => sum + (reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)), 0);
+                                
+                                return (
+                                    <>
+                                        <div style={{ display: 'none' }} className="print-only-header">
+                                            <h2 style={{ marginBottom: '1rem', color: 'black' }}>Финансов Отчет DARY COMMERCE</h2>
+                                            <p style={{ marginBottom: '1.5rem', fontSize: '14px', color: '#555' }}>
+                                                <strong>Месец:</strong> {reportMonth === 'all' ? 'Всички' : reportMonth} | 
+                                                <strong> Вид Карта:</strong> {reportCardType === 'all' ? 'Всички' : reportCardType} | 
+                                                <strong> Маршрут:</strong> {reportRoute === 'all' ? 'Всички' : reportRoute}
+                                            </p>
+                                        </div>
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Име на Клиент</th>
+                                                        <th>Вид Карта</th>
+                                                        <th>Курс</th>
+                                                        <th>Платена Сума</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {filteredReportClients.length > 0 ? filteredReportClients.map(c => (
+                                                        <tr key={c.id}>
+                                                            <td style={{ fontWeight: 600 }}>{c.name}</td>
+                                                            <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>{c.cardType || 'Нормална карта'}</span></td>
+                                                            <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
+                                                            <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €</td>
+                                                        </tr>
+                                                    )) : (
+                                                        <tr>
+                                                            <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма данни за избраните филтри</td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '2px solid rgba(255,255,255,0.1)' }}>
+                                            <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>
+                                                Общо: <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#00e676', marginLeft: '1rem' }}>{totalReportRevenue.toFixed(2)} €</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </Card>
+                    </div>
 
                 </div>
             )}
@@ -1361,6 +1478,14 @@ const AdminPanel: React.FC = () => {
                                     <div>
                                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Име</label>
                                         <input type="text" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} value={clientName} onChange={e => setClientName(e.target.value)} required />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Вид Карта</label>
+                                        <select style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }} value={cardType} onChange={e => setCardType(e.target.value)} required>
+                                            <option value="Нормална карта">Нормална карта</option>
+                                            <option value="Детска карта">Детска карта</option>
+                                            <option value="Пенсионерска карта">Пенсионерска карта</option>
+                                        </select>
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Курс (Маршрут)</label>

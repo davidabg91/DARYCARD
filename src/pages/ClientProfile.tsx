@@ -20,6 +20,7 @@ interface Client {
     cancelReason?: string;
     renewalHistory?: { date: string, amount: number, month: string }[];
     history?: { date: string; action: string; details?: string; amount?: number; performedBy?: string; }[];
+    cardType?: string;
 }
 
 const ROUTES = [
@@ -87,6 +88,7 @@ const ClientProfile: React.FC = () => {
     const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     
     const [regName, setRegName] = useState('');
+    const [regCardType, setRegCardType] = useState('Нормална карта');
     const [regRoute, setRegRoute] = useState('');
     const [regAmount, setRegAmount] = useState('50');
     const [regPhoto, setRegPhoto] = useState<string | null>(null);
@@ -160,6 +162,7 @@ const ClientProfile: React.FC = () => {
             id,
             name: regName,
             route: regRoute,
+            cardType: regCardType,
             expiryDate: expiryMonth,
             photo: regPhoto,
             createdAt: now.toISOString(),
@@ -414,6 +417,7 @@ const ClientProfile: React.FC = () => {
                                     <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handlePhotoUpload} style={{ display: 'none' }} />
                                 </div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>ИМЕ НА КЛИЕНТА</label><input value={regName} onChange={e => setRegName(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} placeholder="Име Фамилия..." /></div>
+                                <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>ВИД КАРТА</label><select value={regCardType} onChange={e => setRegCardType(e.target.value)} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}><option value="Нормална карта">Нормална карта</option><option value="Детска карта">Детска карта</option><option value="Пенсионерска карта">Пенсионерска карта</option></select></div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МАРШРУТ (КУРС)</label><select value={regRoute} onChange={e => setRegRoute(e.target.value)} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}><option value="">Избери маршрут...</option>{ROUTES.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>СУМА (€)</label><input type="number" value={regAmount} onChange={e => setRegAmount(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} /></div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МЕСЕЦ</label><input type="month" value={regMonth} onChange={e => setRegMonth(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none', colorScheme: 'dark' }} /></div>
@@ -581,7 +585,7 @@ const ClientProfile: React.FC = () => {
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontSize: '0.65rem', fontWeight: 800, color: themeColor, letterSpacing: '2px', textTransform: 'uppercase' }}>DARY CARD</span>
-                        <span className="card-subtitle" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>УДОСТОВЕРЕНИЕ ЗА ПЪТУВАНЕ</span>
+                        <span className="card-subtitle" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>{client?.cardType ? client.cardType.toUpperCase() : 'УДОСТОВЕРЕНИЕ ЗА ПЪТУВАНЕ'}</span>
                     </div>
                     <div style={{
                         background: `${themeColor}22`,
