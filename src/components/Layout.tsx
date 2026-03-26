@@ -208,8 +208,8 @@ const Layout: React.FC = () => {
                             fontWeight: 900,
                             letterSpacing: '0.05em',
                             textTransform: 'uppercase',
-                            color: '#ff5252',
-                        }}>CARD</span>
+                            color: location.pathname === '/' ? 'var(--primary-color)' : '#ff5252',
+                        }}>{location.pathname === '/' ? 'TRANSPORT' : 'CARD'}</span>
                         <span style={{
                             fontSize: '0.55rem',
                             fontWeight: 700,

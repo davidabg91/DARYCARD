@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { 
   Bus, Clock, MapPin, Search, 
-  CreditCard, LogIn, Navigation,
+  CreditCard, 
   ArrowRight, Phone, MessageCircle
 } from 'lucide-react';
 import { SCHEDULES } from '../data/schedules';
@@ -104,75 +103,12 @@ const Landing: React.FC = () => {
 
             <div className="hero-bg" />
 
-            {/* Navigation / Logo Header */}
-            <header style={{ 
-                padding: '1.5rem 2rem', 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                position: 'relative',
-                zIndex: 10,
-                maxWidth: '1400px',
-                margin: '0 auto'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ 
-                        width: '45px', height: '45px', 
-                        background: 'linear-gradient(135deg, var(--primary-color), #007a7e)',
-                        borderRadius: '12px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 8px 16px rgba(0,173,181,0.3)'
-                    }}>
-                        <Bus color="#fff" size={24} />
-                    </div>
-                    <div style={{ lineHeight: 1 }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '1px' }}>DARY COMMERCE</div>
-                        <div style={{ fontSize: '0.65rem', color: 'var(--primary-color)', fontWeight: 800, letterSpacing: '2px' }}>TRANSPORT SYSTEM</div>
-                    </div>
-                </div>
-                
-                <Link to="/portal" className="premium-button" style={{ 
-                    padding: '0.8rem 2.2rem', 
-                    borderRadius: '100px', 
-                    fontSize: '0.9rem', 
-                    fontWeight: 900,
-                    color: '#fff',
-                    textDecoration: 'none',
-                    display: 'flex', alignItems: 'center', gap: '0.7rem',
-                    background: 'linear-gradient(135deg, var(--primary-color), rgba(0, 173, 181, 0.4))',
-                    boxShadow: '0 10px 25px rgba(0, 173, 181, 0.3)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    transition: '0.3s',
-                    textTransform: 'uppercase',
-                    letterSpacing: '2px'
-                }}>
-                    <LogIn size={18} /> ВХОД
-                </Link>
-            </header>
-
             {/* Main Content */}
             <main style={{ position: 'relative', zIndex: 1, maxWidth: '1200px', margin: '0 auto', padding: '4rem 1.5rem' }}>
                 
                 {/* Hero Text */}
                 <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-                    <div className="glass" style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.8rem',
-                        padding: '0.8rem 1.8rem',
-                        borderRadius: '100px',
-                        fontSize: '0.85rem',
-                        fontWeight: 900,
-                        color: 'var(--primary-color)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '4px',
-                        marginBottom: '2.5rem',
-                        border: '1px solid rgba(0, 173, 181, 0.4)',
-                        background: 'rgba(0, 173, 181, 0.08)',
-                        backdropFilter: 'blur(10px)'
-                    }}>
-                        <Navigation size={20} /> TRANSPORT SYSTEM • ПЛЕВЕН
-                    </div>
+
 
                     <h1 style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: 900, marginBottom: '1.5rem', letterSpacing: '-2px' }}>
                         Вашите Пътувания, <br/>
@@ -251,13 +187,25 @@ const Landing: React.FC = () => {
 
                                 {/* Visual Path */}
                                 {meta && (
-                                    <div style={{ padding: '0.5rem 0' }}>
+                                    <div style={{ padding: '0.5rem 0 1.5rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
                                             {meta.stops.map((stop, i) => (
                                                 <React.Fragment key={i}>
-                                                    <div className="stop-dot" title={stop}>
-                                                        {i === 0 && <span style={{ position: 'absolute', top: '15px', left: '0', fontSize: '0.65rem', whiteSpace: 'nowrap', opacity: 0.5 }}>{stop}</span>}
-                                                        {i === meta.stops.length - 1 && <span style={{ position: 'absolute', top: '15px', right: '0', fontSize: '0.65rem', whiteSpace: 'nowrap', opacity: 0.5 }}>{line}</span>}
+                                                    <div className="stop-dot" title={stop} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                        <span style={{ 
+                                                            position: 'absolute', 
+                                                            top: '15px', 
+                                                            fontSize: '0.6rem', 
+                                                            whiteSpace: 'nowrap', 
+                                                            opacity: 0.7,
+                                                            fontWeight: 600,
+                                                            textAlign: 'center',
+                                                            maxWidth: '60px',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis'
+                                                        }}>
+                                                            {stop}
+                                                        </span>
                                                     </div>
                                                     {i < meta.stops.length - 1 && <div className="stop-line" />}
                                                 </React.Fragment>
