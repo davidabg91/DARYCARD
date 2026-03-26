@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
+import StaffPortal from './pages/StaffPortal';
 import AdminPanel from './pages/AdminPanel';
 import ClientProfile from './pages/ClientProfile';
 import LoginPage from './pages/LoginPage';
@@ -30,6 +31,7 @@ function App() {
           {/* App shell */}
           <Route path="/" element={<Layout />}>
             <Route index element={<Landing />} />
+            <Route path="portal" element={<StaffPortal />} />
 
             {/* Moderator + Admin */}
             <Route path="admin" element={

@@ -1,222 +1,381 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Zap, Users, BarChart3, CreditCard } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-
-// Import assets
-import stepRegistration from '../assets/step_registration.png';
-import stepScan from '../assets/step_scan.png';
-import stepVerify from '../assets/step_verify.png';
+import { 
+  Bus, Clock, MapPin, Search, 
+  CreditCard, LogIn, 
+  ArrowRight, Phone, MessageCircle
+} from 'lucide-react';
+import { SCHEDULES } from '../data/schedules';
+import { ROUTE_METADATA } from '../data/routeMetadata';
 
 const Landing: React.FC = () => {
-    const { currentUser } = useAuth();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 10000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const routes = Object.keys(SCHEDULES);
+    const filteredRoutes = routes.filter(r => 
+        r.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const getNextBus = (line: string) => {
+        const sched = SCHEDULES[line];
+        const now = currentTime.getHours() * 60 + currentTime.getMinutes();
+        
+        const allTimes = sched.fromPleven.concat(sched.fromDestination);
+        const soonest = allTimes
+            .map(t => {
+                const [h, m] = t.split(':').map(Number);
+                const total = h * 60 + m;
+                return total > now ? total - now : (24 * 60 - now) + total;
+            })
+            .sort((a, b) => a - b)[0];
+
+        if (soonest === undefined) return null;
+        return soonest;
+    };
+
+    const formatCountdown = (mins: number | null) => {
+        if (mins === null) return '--';
+        if (mins > 60) {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return `${h}ч ${m}м`;
+        }
+        return `${mins} мин`;
+    };
+
     return (
         <div style={{ 
-            minHeight: 'calc(100vh - 80px)', 
-            display: 'flex', 
-            flexDirection: 'column',
+            minHeight: '100vh', 
+            background: 'var(--bg-color)',
+            color: '#fff',
             fontFamily: 'var(--font-family)',
-            animation: 'fadeIn 0.8s ease-out',
-            position: 'relative',
-            overflow: 'hidden'
+            paddingBottom: '5rem'
         }}>
-            {/* Background Nebula Orbs */}
-            <div style={{
-                position: 'absolute',
-                top: '-20%',
-                left: '20%',
-                width: '60vw',
-                height: '60vw',
-                background: 'radial-gradient(circle, rgba(0, 173, 181, 0.12) 0%, transparent 70%)',
-                filter: 'blur(100px)',
-                zIndex: 0,
-                pointerEvents: 'none'
-            }} />
-            <div style={{
-                position: 'absolute',
-                top: '40%',
-                right: '10%',
-                width: '50vw',
-                height: '50vw',
-                background: 'radial-gradient(circle, rgba(255, 82, 82, 0.06) 0%, transparent 70%)',
-                filter: 'blur(120px)',
-                zIndex: 0,
-                pointerEvents: 'none'
-            }} />
-
             <style>{`
-                @media (max-width: 900px) {
-                    .hero-section {
-                        padding: 6rem 1.25rem !important;
-                    }
-                    .hero-text h1 {
-                        font-size: clamp(2rem, 10vw, 3.5rem) !important;
-                        letter-spacing: -1.5px !important;
-                        line-height: 1.1 !important;
-                    }
-                    .hero-text p {
-                        font-size: 1.1rem !important;
-                        max-width: 100% !important;
-                        margin-bottom: 2.5rem !important;
-                    }
-                    .premium-button-lg {
-                        padding: 1.25rem 2.5rem !important;
-                        font-size: 1.1rem !important;
-                        width: 100% !important;
-                        max-width: 400px !important;
-                    }
-                    .features-grid {
-                        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
-                        gap: 2rem !important;
-                    }
+                .hero-bg {
+                    position: absolute;
+                    top: 0; left: 0; width: 100%; height: 600px;
+                    background: radial-gradient(circle at 50% -20%, rgba(0,173,181,0.15) 0%, transparent 70%);
+                    z-index: 0;
                 }
-                .premium-button-lg {
+                .search-container:focus-within {
+                    border-color: var(--primary-color) !important;
+                    box-shadow: 0 0 20px rgba(0,173,181,0.2);
+                }
+                .route-card {
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    border: 1px solid rgba(255,255,255,0.05) !important;
+                }
+                .route-card:hover {
+                    transform: translateY(-5px);
+                    border-color: rgba(0,173,181,0.3) !important;
+                    background: rgba(255,255,255,0.03) !important;
+                }
+                .stop-dot {
+                    width: 8px; height: 8px; border-radius: 50%;
+                    background: var(--primary-color);
                     position: relative;
-                    overflow: hidden;
-                    transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
-                    text-transform: uppercase;
-                    letter-spacing: 2px;
                 }
-                .premium-button-lg:hover {
-                    transform: translateY(-8px) scale(1.05);
-                    box-shadow: 0 25px 50px rgba(0, 173, 181, 0.4), 0 0 30px rgba(0, 255, 245, 0.3);
+                .stop-line {
+                    height: 2px; flex: 1;
+                    background: rgba(255,255,255,0.1);
+                    margin: 0 4px;
+                }
+                @keyframes float {
+                    0% { transform: translateY(0px); }
+                    50% { transform: translateY(-10px); }
+                    100% { transform: translateY(0px); }
                 }
             `}</style>
 
-            {/* Hero Section - Typographic Focus */}
-            <section className="hero-section" style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                padding: '10rem 2rem',
-                maxWidth: '1200px',
-                margin: '0 auto',
-                width: '100%',
-                position: 'relative',
-                zIndex: 1
-            }}>
-                <div className="hero-text" style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center',
-                    maxWidth: '900px'
-                }}>
-                    <div className="glass" style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.8rem',
-                        padding: '0.8rem 1.5rem',
-                        borderRadius: '100px',
-                        fontSize: '0.85rem',
-                        fontWeight: 900,
-                        color: 'var(--primary-color)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '4px',
-                        marginBottom: '2.5rem',
-                        border: '1px solid rgba(0, 173, 181, 0.4)',
-                        background: 'rgba(0, 173, 181, 0.08)',
-                        backdropFilter: 'blur(10px)'
-                    }}>
-                        <CreditCard size={20} /> DARY CARD • ПЛЕВЕН
-                    </div>
-                    
-                    <h1 style={{
-                        fontSize: 'clamp(3rem, 8vw, 5rem)',
-                        fontWeight: 900,
-                        lineHeight: 1,
-                        margin: '0 0 2rem 0',
-                        letterSpacing: '-3px',
-                        color: '#ffffff'
-                    }}>
-                        Система за Контрол <br/>
-                        <span className="gradient-text" style={{ 
-                            padding: '0 10px',
-                            filter: 'drop-shadow(0 0 30px rgba(0, 173, 181, 0.4))' 
-                        }}>на DARY COMMERCE</span>
-                    </h1>
+            <div className="hero-bg" />
 
-                    <p style={{
-                        fontSize: '1.4rem',
-                        color: 'rgba(255,255,255,0.6)',
-                        maxWidth: '700px',
-                        lineHeight: 1.4,
-                        marginBottom: '4rem',
-                        fontWeight: 500,
-                        letterSpacing: '-0.3px'
+            {/* Navigation / Logo Header */}
+            <header style={{ 
+                padding: '1.5rem 2rem', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                position: 'relative',
+                zIndex: 10,
+                maxWidth: '1400px',
+                margin: '0 auto'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ 
+                        width: '45px', height: '45px', 
+                        background: 'linear-gradient(135deg, var(--primary-color), #007a7e)',
+                        borderRadius: '12px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 8px 16px rgba(0,173,181,0.3)'
                     }}>
-                        Интелигентна екосистема за издаване, подновяване и <br/>
-                        анализи на транспортни документи в реално време.
+                        <Bus color="#fff" size={24} />
+                    </div>
+                    <div style={{ lineHeight: 1 }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '1px' }}>DARY COMMERCE</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--primary-color)', fontWeight: 800, letterSpacing: '2px' }}>TRANSPORT SYSTEM</div>
+                    </div>
+                </div>
+                
+                <Link to="/portal" style={{ 
+                    padding: '0.6rem 1.2rem', 
+                    background: 'rgba(255,255,255,0.05)', 
+                    borderRadius: '100px', 
+                    fontSize: '0.85rem', 
+                    fontWeight: 700,
+                    color: 'rgba(255,255,255,0.7)',
+                    textDecoration: 'none',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    transition: '0.3s'
+                }}>
+                    <LogIn size={16} /> Вход за Служители
+                </Link>
+            </header>
+
+            {/* Main Content */}
+            <main style={{ position: 'relative', zIndex: 1, maxWidth: '1200px', margin: '0 auto', padding: '4rem 1.5rem' }}>
+                
+                {/* Hero Text */}
+                <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+                    <h1 style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: 900, marginBottom: '1.5rem', letterSpacing: '-2px' }}>
+                        Вашите Пътувания, <br/>
+                        <span style={{ color: 'var(--primary-color)' }}>По-Умни и По-Бързи</span>
+                    </h1>
+                    <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.5)', maxWidth: '600px', margin: '0 auto 3rem' }}>
+                        Следете разписанията в реално време, проверете следващия автобус и планирайте пътуването си с лекота.
                     </p>
 
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <Link to={currentUser ? "/admin" : "/login"} className="premium-button-lg glass neon-border" style={{
-                            padding: '1.5rem 4.5rem',
-                            borderRadius: '24px',
-                            fontWeight: 900,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '1.2rem',
-                            fontSize: '1.3rem',
-                            background: 'linear-gradient(135deg, rgba(0, 173, 181, 0.7), rgba(0, 173, 181, 0.3))',
-                            color: '#ffffff',
-                            boxShadow: '0 15px 40px rgba(0,0,0,0.5)'
-                        }}>
-                             <ShieldCheck size={30} /> Влез в Системата
-                        </Link>
+                    {/* Search Bar */}
+                    <div className="search-container" style={{ 
+                        maxWidth: '600px', 
+                        margin: '0 auto',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '20px',
+                        padding: '0.5rem 1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1rem',
+                        backdropFilter: 'blur(10px)',
+                        transition: '0.3s'
+                    }}>
+                        <Search size={24} color="rgba(255,255,255,0.3)" />
+                        <input 
+                            placeholder="Намери своята линия (напр. Тръстеник, Садовец...)"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            style={{ 
+                                width: '100%', 
+                                background: 'none', 
+                                border: 'none', 
+                                color: '#fff', 
+                                fontSize: '1.1rem',
+                                padding: '0.8rem 0',
+                                outline: 'none'
+                            }}
+                        />
                     </div>
                 </div>
-            </section>
 
-            {/* Features Section */}
-            <section style={{ 
-                padding: '6rem 2rem', 
-                background: 'linear-gradient(to bottom, transparent, rgba(0, 173, 181, 0.05), transparent)'
-            }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-                        <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '1rem', color: '#ffffff' }}>Експертно Управление</h2>
-                        <div style={{ width: '60px', height: '4px', background: 'var(--primary-color)', margin: '0 auto', borderRadius: '2px' }} />
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
-                        {[
-                            { icon: <Zap color="var(--success-color)" />, title: 'Бърза Регистрация', desc: 'Сканиране и въвеждане на данни за секунди чрез вградената AI камера.', img: stepRegistration },
-                            { icon: <Users color="var(--primary-color)" />, title: 'Умна Верификация', desc: 'Моментална визуална проверка на пътника и статуса на картата.', img: stepScan },
-                            { icon: <BarChart3 color="var(--neon-purple)" />, title: 'Дълбок Анализ', desc: 'Следене на потоци, приходи и нарушения в реално време.', img: stepVerify }
-                        ].map((f, i) => (
-                            <div key={i} className="glass" style={{
-                                padding: '2rem',
+                {/* Schedules Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem' }}>
+                    {filteredRoutes.map(line => {
+                        const nextBus = getNextBus(line);
+                        const meta = ROUTE_METADATA[line];
+                        
+                        return (
+                            <div key={line} className="route-card" style={{ 
+                                background: 'rgba(255,255,255,0.02)',
                                 borderRadius: '24px',
+                                padding: '1.5rem',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '1.5rem',
-                                transition: 'transform 0.3s ease',
-                                cursor: 'default'
+                                gap: '1.2rem'
                             }}>
-                                <img src={f.img} style={{ width: '100%', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }} alt={f.title} />
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    {f.icon}
-                                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>{f.title}</h3>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '0.3rem' }}>ЛИНИЯ</div>
+                                        <h3 style={{ fontSize: '1.6rem', fontWeight: 900 }}>{line}</h3>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, marginBottom: '0.3rem' }}>СЛЕДВАЩ АВТОБУС</div>
+                                        <div style={{ 
+                                            fontSize: '1.1rem', 
+                                            fontWeight: 900, 
+                                            color: nextBus && nextBus <= 15 ? 'var(--success-color)' : '#fff',
+                                            display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end'
+                                        }}>
+                                            <Clock size={18} /> {formatCountdown(nextBus)}
+                                        </div>
+                                    </div>
                                 </div>
-                                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem', lineHeight: 1.6 }}>{f.desc}</p>
+
+                                {/* Visual Path */}
+                                {meta && (
+                                    <div style={{ padding: '0.5rem 0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            {meta.stops.map((stop, i) => (
+                                                <React.Fragment key={i}>
+                                                    <div className="stop-dot" title={stop}>
+                                                        {i === 0 && <span style={{ position: 'absolute', top: '15px', left: '0', fontSize: '0.65rem', whiteSpace: 'nowrap', opacity: 0.5 }}>{stop}</span>}
+                                                        {i === meta.stops.length - 1 && <span style={{ position: 'absolute', top: '15px', right: '0', fontSize: '0.65rem', whiteSpace: 'nowrap', opacity: 0.5 }}>{line}</span>}
+                                                    </div>
+                                                    {i < meta.stops.length - 1 && <div className="stop-line" />}
+                                                </React.Fragment>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div style={{ 
+                                    display: 'flex', 
+                                    gap: '1rem', 
+                                    background: 'rgba(255,255,255,0.03)', 
+                                    padding: '1rem', 
+                                    borderRadius: '16px' 
+                                }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>БИЛЕТ</div>
+                                        <div style={{ fontWeight: 800 }}>{meta?.priceSingle || '---'}</div>
+                                    </div>
+                                    <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>КАРТА (Месец)</div>
+                                        <div style={{ fontWeight: 800 }}>{meta?.priceCard || '---'}</div>
+                                    </div>
+                                </div>
+
+                                <button style={{ 
+                                    marginTop: 'auto',
+                                    width: '100%', 
+                                    padding: '1rem', 
+                                    background: 'rgba(0,173,181,0.1)',
+                                    border: '1px solid rgba(0,173,181,0.2)',
+                                    borderRadius: '16px',
+                                    color: 'var(--primary-color)',
+                                    fontWeight: 700,
+                                    fontSize: '0.9rem',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                                    cursor: 'pointer',
+                                    transition: '0.3s'
+                                }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,173,181,0.2)')} onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,173,181,0.1)')}>
+                                    Виж Пълно Разписание <ArrowRight size={16} />
+                                </button>
                             </div>
-                        ))}
+                        );
+                    })}
+                </div>
+
+                {/* Info Section */}
+                <section style={{ marginTop: '6rem' }}>
+                    <div style={{ 
+                        background: 'linear-gradient(135deg, rgba(0,173,181,0.1), rgba(0,173,181,0.05))',
+                        borderRadius: '32px',
+                        padding: '3rem',
+                        border: '1px solid rgba(0,173,181,0.1)',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '3rem',
+                        alignItems: 'center'
+                    }}>
+                        <div style={{ flex: '1', minWidth: '300px' }}>
+                            <div style={{ 
+                                display: 'inline-flex', padding: '0.6rem 1.2rem', 
+                                background: 'rgba(0,173,181,0.2)', borderRadius: '100px',
+                                fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary-color)',
+                                marginBottom: '1.5rem', letterSpacing: '2px'
+                            }}>
+                                ВАЖНА ИНФОРМАЦИЯ
+                            </div>
+                            <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '1.5rem' }}>Как да извадите абонаментна карта?</h2>
+                            <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: '2rem' }}>
+                                Абонаментните карти за всички линии се издават на нашето специализирано гише. Процесът отнема по-малко от 5 минути и картата е готова веднага.
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MapPin size={20} color="var(--primary-color)" /></div>
+                                    <div>
+                                        <div style={{ fontWeight: 800 }}>Автогара Плевен</div>
+                                        <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>Гише DARY COMMERCE</div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CreditCard size={20} color="var(--primary-color)" /></div>
+                                    <div>
+                                        <div style={{ fontWeight: 800 }}>Електронна Карта</div>
+                                        <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>Валидна за всички курсове по избраната линия</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ flex: '1', minWidth: '300px', position: 'relative' }}>
+                             <div className="glass" style={{ 
+                                 padding: '2rem', borderRadius: '24px', 
+                                 border: '1px solid rgba(255,255,255,0.1)',
+                                 background: 'rgba(255,255,255,0.02)',
+                                 textAlign: 'center'
+                             }}>
+                                 <h4 style={{ marginBottom: '1rem' }}>Работно Време</h4>
+                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                     <span>Понеделник - Петък</span>
+                                     <span style={{ fontWeight: 800 }}>07:30 - 18:30</span>
+                                 </div>
+                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                     <span>Събота</span>
+                                     <span style={{ fontWeight: 800 }}>08:00 - 13:00</span>
+                                 </div>
+                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', color: 'rgba(255,255,255,0.3)' }}>
+                                     <span>Неделя</span>
+                                     <span style={{ fontWeight: 800 }}>Почивен ден</span>
+                                 </div>
+                             </div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+
+            {/* Footer */}
+            <footer style={{ 
+                borderTop: '1px solid rgba(255,255,255,0.05)', 
+                padding: '4rem 2rem 2rem',
+                marginTop: '4rem'
+            }}>
+                <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '4rem', justifyContent: 'space-between' }}>
+                    <div style={{ maxWidth: '300px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1.5rem' }}>
+                             <Bus color="var(--primary-color)" size={28} />
+                             <span style={{ fontSize: '1.5rem', fontWeight: 900 }}>DARY COMMERCE</span>
+                        </div>
+                        <p style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
+                            Вашият доверен партньор в пътническия транспорт в област Плевен. Сигурност, точност и комфорт.
+                        </p>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '4rem' }}>
+                        <div>
+                            <h5 style={{ marginBottom: '1.2rem', fontWeight: 800 }}>КОНТАКТИ</h5>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Phone size={14} /> +359 888 123 456</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MessageCircle size={14} /> dary.commerce@gmail.com</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </section>
-
-            {/* Footer Quick Info */}
-            <footer style={{ 
-                padding: '3rem 2rem', 
-                textAlign: 'center',
-                borderTop: '1px solid rgba(255,255,255,0.05)',
-                color: 'rgba(255,255,255,0.3)',
-                fontSize: '0.8rem',
-                letterSpacing: '1px',
-                textTransform: 'uppercase'
-            }}>
-                &copy; {new Date().getFullYear()} DARY COMMERCE &bull; SMART TRANSIT INTERFACE &bull; ПЛЕВЕН
+                <div style={{ 
+                    textAlign: 'center', marginTop: '4rem', 
+                    paddingTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)',
+                    fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)', letterSpacing: '1px'
+                }}>
+                    © {new Date().getFullYear()} DARY COMMERCE. ВСИЧКИ ПРАВА ЗАПАЗЕНИ.
+                </div>
             </footer>
         </div>
     );
