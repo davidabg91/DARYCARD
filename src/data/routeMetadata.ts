@@ -5,6 +5,14 @@ export interface RouteMetadata {
   description?: string;
 }
 
+export const abbreviate = (name: string) => {
+  return name
+    .replace("Долни Дъбник", "Д. Дъбник")
+    .replace("Горни Дъбник", "Г. Дъбник")
+    .replace("Долна Митрополия", "Д.М")
+    .replace("Горна Митрополия", "Г.М");
+};
+
 export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Тръстеник": {
     stops: ["Плевен", "Опанец", "Д.М", "Тръстеник"],
@@ -17,7 +25,7 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
     priceSingle: "2.10 €",
     priceCard: "42.00 €"
   },
-  "Д. Дъбник": {
+  "Долни Дъбник": {
     stops: ["Плевен", "Ясен", "Д. Дъбник"],
     priceSingle: "1.55 €",
     priceCard: "31.00 €"
@@ -47,7 +55,7 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
     priceSingle: "2.80 €",
     priceCard: "56.00 €"
   },
-  "Г.М": {
+  "Горна Митрополия": {
     stops: ["Плевен", "Опанец", "Д.М", "Г.М"],
     priceSingle: "1.55 €",
     priceCard: "31.00 €"
@@ -57,7 +65,7 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
     priceSingle: "1.05 €",
     priceCard: "21.00 €"
   },
-  "Д.М": {
+  "Долна Митрополия": {
     stops: ["Плевен", "Опанец", "Д.М"],
     priceSingle: "1.30 €",
     priceCard: "26.00 €"
@@ -82,42 +90,17 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
     priceSingle: "2.50 €",
     priceCard: "50.00 €"
   },
-  "Градина": {
-    stops: ["Плевен", "Ясен", "Търнене", "Дисевица", "Градина"],
-    priceSingle: "1.80 €",
-    priceCard: "36.00 €"
-  },
-  "Телиш": {
-    stops: ["Плевен", "Ясен", "Д. Дъбник", "Г. Дъбник", "Телиш"],
-    priceSingle: "2.10 €",
-    priceCard: "42.00 €"
-  },
-  "Ракита": {
-    stops: ["Плевен", "Ясен", "Д. Дъбник", "Г. Дъбник", "Телиш", "Ракита"],
-    priceSingle: "2.30 €",
-    priceCard: "46.00 €"
-  },
-  "Радомирци": {
-    stops: ["Плевен", "Ясен", "Д. Дъбник", "Г. Дъбник", "Телиш", "Радомирци"],
-    priceSingle: "2.50 €",
-    priceCard: "50.00 €"
-  },
-  "Г. Дъбник": {
-    stops: ["Плевен", "Ясен", "Д. Дъбник", "Г. Дъбник"],
-    priceSingle: "1.80 €",
-    priceCard: "36.00 €"
-  },
-  "Д. Дъбник - Садовец": {
+  "Долни Дъбник - Садовец": {
     stops: ["Д. Дъбник", "Г. Дъбник", "Телиш", "Ракита", "Садовец"],
     priceSingle: "1.50 €",
     priceCard: "30.00 €"
   },
-  "Д.М - Тръстеник": {
+  "Долна Митрополия - Тръстеник": {
     stops: ["Д.М", "Тръстеник"],
     priceSingle: "0.80 €",
     priceCard: "16.00 €"
   },
-  "Д.М - Славовица": {
+  "Долна Митрополия - Славовица": {
     stops: ["Д.М", "Тръстеник", "Славовица"],
     priceSingle: "1.80 €",
     priceCard: "36.00 €"

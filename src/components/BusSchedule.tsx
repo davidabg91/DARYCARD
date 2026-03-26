@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bus } from 'lucide-react';
 import { SCHEDULES } from '../data/schedules';
+import { abbreviate } from '../data/routeMetadata';
 
 interface BusScheduleProps {
     route: string;
@@ -58,7 +59,7 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                 </div>
                 {isBarkachRoute && (
                     <div style={{ fontSize: '0.75rem', color: '#ffb74d', fontWeight: 600, textAlign: 'center', marginTop: '6px', maxWidth: '90%' }}>
-                        * Посочените часове са за курса до Бъркач. Автобусът обслужва и Вашето населено място.
+                        * Посочените часове са за курса до Бъркач. Автобусът обслужва и {abbreviate(route)}.
                     </div>
                 )}
             </div>

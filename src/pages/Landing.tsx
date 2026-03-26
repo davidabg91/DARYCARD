@@ -5,7 +5,7 @@ import {
   ArrowRight, Phone, MessageCircle
 } from 'lucide-react';
 import { SCHEDULES } from '../data/schedules';
-import { ROUTE_METADATA } from '../data/routeMetadata';
+import { ROUTE_METADATA, abbreviate } from '../data/routeMetadata';
 
 const Landing: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -235,7 +235,7 @@ const Landing: React.FC = () => {
                                                                 textAlign: 'center',
                                                                 color: i === 0 || i === meta.stops.length -1 ? 'var(--primary-color)' : '#fff'
                                                             }}>
-                                                                {stop}
+                                                                {abbreviate(stop)}
                                                             </span>
                                                         </div>
                                                         {i < meta.stops.length - 1 && (
