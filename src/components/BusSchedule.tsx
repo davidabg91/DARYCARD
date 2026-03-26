@@ -7,7 +7,7 @@ interface BusScheduleProps {
 }
 
 const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
-    const isBarkachRoute = ['Дисевица', 'Търнене', 'Градина', 'Петърница'].includes(route);
+    const isBarkachRoute = ['Дисевица', 'Търнене', 'Градина', 'Петърница', 'Телиш', 'Ракита', 'Радомирци'].includes(route);
     const scheduleData = isBarkachRoute ? SCHEDULES['Бъркач'] : SCHEDULES[route];
     const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -28,6 +28,15 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
 
     const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 
+    // Determine labels based on route name
+    let fromLabel = 'ПЛЕВЕН';
+    let toLabel = route.toUpperCase();
+    if (route.includes(' - ')) {
+        const parts = route.split(' - ');
+        fromLabel = parts[0].toUpperCase();
+        toLabel = parts[1].toUpperCase();
+    }
+
     return (
         <div style={{
             background: 'rgba(255,255,255,0.02)',
@@ -44,11 +53,9 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                     <Bus size={20} />
                     <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '1px' }}>РАЗПИСАНИЕ АВТОБУСИ</span>
                 </div>
-                {['Тръстеник', 'Рибен', 'Долни Дъбник', 'Садовец', 'Славовица', 'Байкал', 'Гиген', 'Бъркач', 'Градина', 'Дисевица', 'Търнене', 'Петърница', 'Горна Митрополия', 'Опанец', 'Долна Митрополия', 'Ясен'].includes(route) && (
-                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
-                        ({isSunday ? 'неделя' : (route === 'Тръстеник' ? 'понеделник-събота' : 'делнични дни')})
-                    </div>
-                )}
+                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                    ({isSunday ? 'неделя' : (route === 'Тръстеник' ? 'понеделник-събота' : 'делнични дни')})
+                </div>
                 {isBarkachRoute && (
                     <div style={{ fontSize: '0.75rem', color: '#ffb74d', fontWeight: 600, textAlign: 'center', marginTop: '6px', maxWidth: '90%' }}>
                         * Посочените часове са за курса до Бъркач. Автобусът обслужва и Вашето населено място.
@@ -57,9 +64,9 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                {/* From Pleven */}
+                {/* Outward */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginBottom: '4px' }}>ОТ ПЛЕВЕН</div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginBottom: '4px' }}>ОТ {fromLabel}</div>
                     {activeSchedule.fromPleven.map(time => {
                         const isPast = getMinutes(time) < currentMinutes;
                         const isNext = !isPast && activeSchedule.fromPleven.find(t => getMinutes(t) >= currentMinutes) === time;
@@ -80,9 +87,9 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                     })}
                 </div>
 
-                {/* To Pleven */}
+                {/* Return */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginBottom: '4px' }}>ОТ {isBarkachRoute ? 'БЪРКАЧ' : route.toUpperCase()}</div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginBottom: '4px' }}>ОТ {toLabel === 'ПЛЕВЕН' ? 'ДЕСТИНАЦИЯ' : toLabel}</div>
                     {activeSchedule.fromDestination.map(time => {
                         const isPast = getMinutes(time) < currentMinutes;
                         const isNext = !isPast && activeSchedule.fromDestination.find(t => getMinutes(t) >= currentMinutes) === time;
