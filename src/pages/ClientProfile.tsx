@@ -739,22 +739,40 @@ const ClientProfile: React.FC = () => {
                 
                 {!currentUser && !client?.isCanceled && (
                     <button onClick={() => setShowOnlinePayment(true)} style={{ 
-                        background: 'linear-gradient(135deg, #00c6ff, #0072ff)', 
+                        background: 'linear-gradient(135deg, #111, #222)', 
                         color: '#fff', 
-                        padding: '1.2rem', 
-                        borderRadius: '20px', 
-                        border: 'none', 
+                        padding: '1.5rem', 
+                        borderRadius: '24px', 
+                        border: '1px solid rgba(255,255,255,0.1)', 
                         fontWeight: 900, 
-                        fontSize: '1.1rem', 
+                        fontSize: '1.2rem', 
                         cursor: 'pointer',
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '10px',
-                        boxShadow: '0 10px 30px rgba(0, 114, 255, 0.3)',
-                        transition: 'all 0.3s'
-                    }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-                        <CreditCard size={20} /> ПЛАТИ ОНЛАЙН
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                        transition: 'all 0.3s',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        width: '100%'
+                    }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 30px 60px rgba(0, 114, 255, 0.2)'; e.currentTarget.style.borderColor = 'rgba(0, 114, 255, 0.4)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.4)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
+                        <div style={{ position: 'absolute', top: '-50%', right: '-20%', width: '150px', height: '150px', background: 'radial-gradient(circle, rgba(0, 114, 255, 0.2) 0%, transparent 70%)', borderRadius: '50%' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ background: 'rgba(0, 114, 255, 0.2)', padding: '10px', borderRadius: '12px', color: '#00c6ff' }}>
+                                    <CreditCard size={24} />
+                                </div>
+                                <span style={{ letterSpacing: '1px' }}>ПЛАТИ С КАРТА</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                <div style={{ width: '24px', height: '16px', borderRadius: '4px', background: '#ff5f00', opacity: 0.8 }} />
+                                <div style={{ width: '24px', height: '16px', borderRadius: '4px', background: '#eb001b', opacity: 0.8 }} />
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, position: 'relative', zIndex: 1 }}>
+                            Онлайн подновяване на абонамента
+                        </div>
                     </button>
                 )}
 
@@ -835,10 +853,14 @@ const ClientProfile: React.FC = () => {
                         
                         {!paymentComplete ? (
                             <>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                                     <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px' }}>
                                         <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>За Месец</div>
                                         <input type="month" value={paymentMonth} onChange={(e) => setPaymentMonth(e.target.value)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '1rem', fontWeight: 700, width: '100%', colorScheme: 'dark' }} />
+                                    </div>
+                                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px' }}>
+                                        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>Имена на картодържател</div>
+                                        <input type="text" placeholder="Име Фамилия" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', fontWeight: 700, width: '100%', outline: 'none' }} />
                                     </div>
                                     <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px' }}>
                                         <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>Номер на Карта</div>
@@ -846,7 +868,7 @@ const ClientProfile: React.FC = () => {
                                     </div>
                                     <div style={{ display: 'flex', gap: '1rem' }}>
                                         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px', flex: 1 }}>
-                                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>Срок</div>
+                                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>Вал. до:</div>
                                             <input type="text" placeholder="MM/YY" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', fontWeight: 700, width: '100%', outline: 'none' }} />
                                         </div>
                                         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px', flex: 1 }}>
@@ -854,6 +876,10 @@ const ClientProfile: React.FC = () => {
                                             <input type="password" placeholder="***" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', fontWeight: 700, width: '100%', outline: 'none' }} />
                                         </div>
                                     </div>
+                                </div>
+                                
+                                <div style={{ fontSize: '0.8rem', color: '#ffb74d', textAlign: 'center', marginBottom: '1.5rem', fontWeight: 600 }}>
+                                    * Прилага се банкова такса от 0.80 € за плащането.
                                 </div>
                                 
                                 <button 
@@ -867,7 +893,7 @@ const ClientProfile: React.FC = () => {
                                     disabled={isPaying}
                                     style={{ width: '100%', background: 'linear-gradient(135deg, #00c6ff, #0072ff)', color: '#fff', padding: '1.2rem', borderRadius: '16px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: isPaying ? 'not-allowed' : 'pointer', opacity: isPaying ? 0.7 : 1 }}
                                 >
-                                    {isPaying ? 'ОБРАБОТКА...' : 'ПЛАТИ (50 €)'}
+                                    {isPaying ? 'ОБРАБОТКА...' : 'ПЛАТИ (50.80 €)'}
                                 </button>
                                 <button onClick={() => setShowOnlinePayment(false)} style={{ width: '100%', background: 'transparent', color: 'rgba(255,255,255,0.4)', padding: '1rem', border: 'none', fontSize: '0.9rem', cursor: 'pointer', marginTop: '0.5rem' }}>ОТКАЗ</button>
                             </>
