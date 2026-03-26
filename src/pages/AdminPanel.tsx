@@ -5,7 +5,7 @@ import {
     Trash2, XCircle, Clock, DollarSign, Camera, 
     RefreshCw, List, Zap, Save, Eye, EyeOff, 
     ShieldCheck, Shield, TrendingUp, Percent, 
-    PiggyBank, AlertTriangle, UserCheck
+    PiggyBank, AlertTriangle, UserCheck, Share2
 } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
@@ -1082,61 +1082,90 @@ const AdminPanel: React.FC = () => {
 
                     {/* --- DETAILS REPORT EXPORT SECTION --- */}
                     <div style={{ marginTop: '1rem' }} id="printable-report">
-                        <Card>
-                            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--primary-color)' }}>
-                                    <List size={20} /> Подробни Отчети и Експорт
-                                </h3>
-                                <button 
-                                    onClick={() => window.print()} 
-                                    style={{ padding: '0.6rem 1.2rem', background: 'var(--primary-color)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                                >
-                                    🖨️ Принтирай Отчета
-                                </button>
-                            </div>
+                        {(() => {
+                            const filteredReportClients = clients.filter(c => {
+                                let match = true;
+                                if (reportCardType !== 'all') {
+                                    const cType = c.cardType || 'Нормална карта';
+                                    if (cType !== reportCardType) match = false;
+                                }
+                                if (reportRoute !== 'all' && c.route !== reportRoute) match = false;
+                                if (reportMonth !== 'all' && getMonthPayment(c, reportMonth) <= 0) match = false;
+                                return match;
+                            });
+                            
+                            const totalReportRevenue = filteredReportClients.reduce((sum, c) => sum + (reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)), 0);
+                            
+                            const handleShareReport = async () => {
+                                const header = `Финансов Отчет DARY COMMERCE\nМесец: ${reportMonth === 'all' ? 'Всички' : reportMonth} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute}\n---\n`;
+                                const rows = filteredReportClients.map(c => `${c.name} - ${c.cardType || 'Нормална карта'} - ${c.route} - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`).join('\n');
+                                const footer = `\n---\nОбщо: ${totalReportRevenue.toFixed(2)} €`;
+                                const shareText = header + rows + footer;
 
-                            <div className="no-print" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Месец</label>
-                                    <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
-                                        <option value="all">Всички Месеци</option>
-                                        {allMonths.map(m => <option key={m} value={m}>{m}</option>)}
-                                    </select>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Вид Карта</label>
-                                    <select value={reportCardType} onChange={e => setReportCardType(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
-                                        <option value="all">Всички Видове</option>
-                                        <option value="Нормална карта">Нормална карта</option>
-                                        <option value="Детска карта">Детска карта</option>
-                                        <option value="Пенсионерска карта">Пенсионерска карта</option>
-                                    </select>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Маршрут</label>
-                                    <select value={reportRoute} onChange={e => setReportRoute(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
-                                        <option value="all">Всички Маршрути</option>
-                                        {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Render Report Table Inline */}
-                            {(() => {
-                                const filteredReportClients = clients.filter(c => {
-                                    let match = true;
-                                    if (reportCardType !== 'all') {
-                                        const cType = c.cardType || 'Нормална карта';
-                                        if (cType !== reportCardType) match = false;
+                                if (navigator.share) {
+                                    try {
+                                        await navigator.share({
+                                            title: 'Финансов Отчет DARY COMMERCE',
+                                            text: shareText
+                                        });
+                                    } catch (err) {
+                                        console.log('Споделянето отменено.', err);
                                     }
-                                    if (reportRoute !== 'all' && c.route !== reportRoute) match = false;
-                                    if (reportMonth !== 'all' && getMonthPayment(c, reportMonth) <= 0) match = false;
-                                    return match;
-                                });
-                                
-                                const totalReportRevenue = filteredReportClients.reduce((sum, c) => sum + (reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)), 0);
-                                
-                                return (
+                                } else {
+                                    navigator.clipboard.writeText(shareText);
+                                    alert('Данните са копирани в клипборда! Можете да ги поставите в имейл или съобщение.');
+                                }
+                            };
+
+                            return (
+                                <Card>
+                                    <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--primary-color)' }}>
+                                            <List size={20} /> Подробни Отчети и Експорт
+                                        </h3>
+                                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                            <button 
+                                                onClick={handleShareReport}
+                                                style={{ padding: '0.6rem 1.2rem', background: 'rgba(0, 173, 181, 0.1)', border: '1px solid var(--primary-color)', color: 'var(--primary-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                                title="Сподели данните по Имейл / Съобщение"
+                                            >
+                                                <Share2 size={16} /> Сподели Данни
+                                            </button>
+                                            <button 
+                                                onClick={() => window.print()} 
+                                                style={{ padding: '0.6rem 1.2rem', background: 'var(--primary-color)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                            >
+                                                🖨️ Принтирай Отчета
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="no-print" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Месец</label>
+                                            <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                                <option value="all">Всички Месеци</option>
+                                                {allMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                                            </select>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Вид Карта</label>
+                                            <select value={reportCardType} onChange={e => setReportCardType(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                                <option value="all">Всички Видове</option>
+                                                <option value="Нормална карта">Нормална карта</option>
+                                                <option value="Детска карта">Детска карта</option>
+                                                <option value="Пенсионерска карта">Пенсионерска карта</option>
+                                            </select>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Маршрут</label>
+                                            <select value={reportRoute} onChange={e => setReportRoute(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                                <option value="all">Всички Маршрути</option>
+                                                {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
                                     <>
                                         <div style={{ display: 'none' }} className="print-only-header">
                                             <h2 style={{ marginBottom: '1rem', color: 'black' }}>Финансов Отчет DARY COMMERCE</h2>
@@ -1178,9 +1207,9 @@ const AdminPanel: React.FC = () => {
                                             </div>
                                         </div>
                                     </>
-                                );
-                            })()}
-                        </Card>
+                                </Card>
+                            );
+                        })()}
                     </div>
 
                 </div>
