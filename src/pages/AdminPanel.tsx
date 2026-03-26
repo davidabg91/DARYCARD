@@ -1064,12 +1064,7 @@ const AdminPanel: React.FC = () => {
                         </Card>
                     </div>
 
-                    <div style={{ padding: '1.5rem', background: 'rgba(255,152,0,0.05)', borderRadius: '16px', border: '1px solid rgba(255,152,0,0.2)', color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', lineHeight: '1.6' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', color: '#ff9800', fontWeight: 800 }}>
-                            <AlertTriangle size={18} /> ИНФОРМАЦИЯ ЗА СЧЕТОВОДИТЕЛЯ
-                        </div>
-                        Тези данни включват всички плащания и регистрирани карти за избраните периоди. Оборотът се калкулира въз основа на реално постъпилите суми, записани в историята на всяка карта. За детайлни справки по месеци използвайте селектора в главното Табло.
-                    </div>
+
                 </div>
             )}
 
