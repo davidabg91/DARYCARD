@@ -858,9 +858,11 @@ const ClientProfile: React.FC = () => {
                             <button onClick={() => setShowOnlinePayment(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
                                 <XCircle size={24} />
                             </button>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff', letterSpacing: '3px', marginBottom: '1rem', textAlign: 'center' }}>DARY CARD <span style={{ color: '#00e676' }}>SYSTEM</span></div>
-                            <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <ShieldCheck size={16} /> СИГУРНО ПЛАЩАНЕ
+                            <div style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '3px', marginBottom: '1rem', textAlign: 'center' }}>
+                                <span style={{ color: '#ff1744' }}>DARY</span> <span style={{ color: '#fff' }}>CARD</span> <span style={{ color: '#ff1744' }}>SYSTEM</span>
+                            </div>
+                            <div style={{ fontSize: '0.85rem', color: '#00e676', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <ShieldCheck size={18} /> СИГУРНО ПЛАЩАНЕ
                             </div>
                         </div>
 
