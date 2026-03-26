@@ -851,10 +851,10 @@ const ClientProfile: React.FC = () => {
 
             {showOnlinePayment && client && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(24px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-                    <div style={{ background: '#fff', color: '#000', padding: '0', borderRadius: '24px', width: '100%', maxWidth: '440px', boxShadow: '0 40px 100px rgba(0,0,0,0.5)', overflow: 'hidden', animation: 'cardEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+                    <div className="payment-modal" style={{ background: '#fff', color: '#000', padding: '0', borderRadius: '24px', width: '100%', maxWidth: '440px', boxShadow: '0 40px 100px rgba(0,0,0,0.5)', overflow: 'hidden', animation: 'cardEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
                         
                         {/* Header */}
-                        <div style={{ background: '#09090b', padding: '2.5rem 2rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div className="payment-header" style={{ background: '#09090b', padding: '2.5rem 2rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                             <button onClick={() => setShowOnlinePayment(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
                                 <XCircle size={24} />
                             </button>
@@ -867,7 +867,7 @@ const ClientProfile: React.FC = () => {
                         </div>
 
                         {/* Body */}
-                        <div style={{ padding: '2rem' }}>
+                        <div className="payment-body" style={{ padding: '2rem' }}>
                             {!paymentComplete ? (
                                 <>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -875,7 +875,7 @@ const ClientProfile: React.FC = () => {
                                         <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0072ff' }}>50.80 €</div>
                                     </div>
 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginBottom: '2rem' }}>
+                                    <div className="payment-fields" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginBottom: '2rem' }}>
                                         {/* Month */}
                                         <div>
                                             <div style={{ color: '#666', fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 700 }}>Дължим Месец</div>
@@ -970,6 +970,30 @@ const ClientProfile: React.FC = () => {
             )}
 
             <style>{`
+                @media (max-width: 480px) {
+                    .payment-modal {
+                        max-height: 90vh;
+                        overflow-y: auto;
+                        border-radius: 20px !important;
+                    }
+                    .payment-header {
+                        padding: 1.5rem 1rem 1rem !important;
+                    }
+                    .payment-header > div:nth-of-type(1) {
+                        font-size: 1.2rem !important;
+                    }
+                    .payment-body {
+                        padding: 1.2rem !important;
+                    }
+                    .payment-fields {
+                        gap: 0.8rem !important;
+                        margin-bottom: 1.2rem !important;
+                    }
+                    .payment-body input {
+                        font-size: 1rem !important;
+                        padding: 10px 12px !important;
+                    }
+                }
                 @media (min-width: 1024px) {
                     .id-card-container, .action-area {
                         max-width: 700px !important;
