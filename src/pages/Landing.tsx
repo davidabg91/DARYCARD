@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Bus, Clock, MapPin, Search, 
-  CreditCard, LogIn, 
+  CreditCard, LogIn, Navigation,
   ArrowRight, Phone, MessageCircle
 } from 'lucide-react';
 import { SCHEDULES } from '../data/schedules';
@@ -11,6 +11,7 @@ import { ROUTE_METADATA } from '../data/routeMetadata';
 const Landing: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [expandedRoute, setExpandedRoute] = useState<string | null>(null);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 10000);
@@ -87,10 +88,17 @@ const Landing: React.FC = () => {
                     background: rgba(255,255,255,0.1);
                     margin: 0 4px;
                 }
-                @keyframes float {
-                    0% { transform: translateY(0px); }
-                    50% { transform: translateY(-10px); }
-                    100% { transform: translateY(0px); }
+                .schedule-tag {
+                    padding: 0.3rem 0.6rem;
+                    background: rgba(255,255,255,0.05);
+                    border-radius: 8px;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    border: 1px solid rgba(255,255,255,0.1);
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
             `}</style>
 
@@ -123,19 +131,22 @@ const Landing: React.FC = () => {
                     </div>
                 </div>
                 
-                <Link to="/portal" style={{ 
-                    padding: '0.6rem 1.2rem', 
-                    background: 'rgba(255,255,255,0.05)', 
+                <Link to="/portal" className="premium-button" style={{ 
+                    padding: '0.8rem 2.2rem', 
                     borderRadius: '100px', 
-                    fontSize: '0.85rem', 
-                    fontWeight: 700,
-                    color: 'rgba(255,255,255,0.7)',
+                    fontSize: '0.9rem', 
+                    fontWeight: 900,
+                    color: '#fff',
                     textDecoration: 'none',
-                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    display: 'flex', alignItems: 'center', gap: '0.7rem',
+                    background: 'linear-gradient(135deg, var(--primary-color), rgba(0, 173, 181, 0.4))',
+                    boxShadow: '0 10px 25px rgba(0, 173, 181, 0.3)',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    transition: '0.3s'
+                    transition: '0.3s',
+                    textTransform: 'uppercase',
+                    letterSpacing: '2px'
                 }}>
-                    <LogIn size={16} /> Вход за Служители
+                    <LogIn size={18} /> ВХОД
                 </Link>
             </header>
 
@@ -144,6 +155,25 @@ const Landing: React.FC = () => {
                 
                 {/* Hero Text */}
                 <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+                    <div className="glass" style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.8rem',
+                        padding: '0.8rem 1.8rem',
+                        borderRadius: '100px',
+                        fontSize: '0.85rem',
+                        fontWeight: 900,
+                        color: 'var(--primary-color)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '4px',
+                        marginBottom: '2.5rem',
+                        border: '1px solid rgba(0, 173, 181, 0.4)',
+                        background: 'rgba(0, 173, 181, 0.08)',
+                        backdropFilter: 'blur(10px)'
+                    }}>
+                        <Navigation size={20} /> TRANSPORT SYSTEM • ПЛЕВЕН
+                    </div>
+
                     <h1 style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: 900, marginBottom: '1.5rem', letterSpacing: '-2px' }}>
                         Вашите Пътувания, <br/>
                         <span style={{ color: 'var(--primary-color)' }}>По-Умни и По-Бързи</span>
@@ -189,6 +219,8 @@ const Landing: React.FC = () => {
                     {filteredRoutes.map(line => {
                         const nextBus = getNextBus(line);
                         const meta = ROUTE_METADATA[line];
+                        const sched = SCHEDULES[line];
+                        const isExpanded = expandedRoute === line;
                         
                         return (
                             <div key={line} className="route-card" style={{ 
@@ -252,21 +284,50 @@ const Landing: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <button style={{ 
-                                    marginTop: 'auto',
-                                    width: '100%', 
-                                    padding: '1rem', 
-                                    background: 'rgba(0,173,181,0.1)',
-                                    border: '1px solid rgba(0,173,181,0.2)',
-                                    borderRadius: '16px',
-                                    color: 'var(--primary-color)',
-                                    fontWeight: 700,
-                                    fontSize: '0.9rem',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                                    cursor: 'pointer',
-                                    transition: '0.3s'
-                                }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,173,181,0.2)')} onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,173,181,0.1)')}>
-                                    Виж Пълно Разписание <ArrowRight size={16} />
+                                {/* Expanded Schedule */}
+                                {isExpanded && (
+                                    <div style={{ 
+                                        padding: '1rem', 
+                                        background: 'rgba(255,255,255,0.02)', 
+                                        borderRadius: '16px',
+                                        animation: 'fadeIn 0.3s ease-out'
+                                    }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                    {sched.fromPleven.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {line.toUpperCase()}</div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                    {sched.fromDestination.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <button 
+                                    onClick={() => setExpandedRoute(isExpanded ? null : line)}
+                                    style={{ 
+                                        marginTop: 'auto',
+                                        width: '100%', 
+                                        padding: '1rem', 
+                                        background: isExpanded ? 'rgba(255,255,255,0.05)' : 'rgba(0,173,181,0.1)',
+                                        border: '1px solid rgba(0,173,181,0.2)',
+                                        borderRadius: '16px',
+                                        color: isExpanded ? '#fff' : 'var(--primary-color)',
+                                        fontWeight: 700,
+                                        fontSize: '0.9rem',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                                        cursor: 'pointer',
+                                        transition: '0.3s'
+                                    }}
+                                >
+                                    {isExpanded ? 'Затвори Разписание' : 'Виж Пълно Разписание'} 
+                                    {isExpanded ? <Clock size={16} /> : <ArrowRight size={16} />}
                                 </button>
                             </div>
                         );

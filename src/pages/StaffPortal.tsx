@@ -118,7 +118,7 @@ const StaffPortal: React.FC = () => {
                         background: 'rgba(0, 173, 181, 0.08)',
                         backdropFilter: 'blur(10px)'
                     }}>
-                        <CreditCard size={20} /> DARY CARD • ПЛЕВЕН
+                        <CreditCard size={20} /> CARD SYSTEM • ПЛЕВЕН
                     </div>
                     
                     <h1 style={{

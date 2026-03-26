@@ -8,63 +8,63 @@ export interface RouteMetadata {
 export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Тръстеник": {
     stops: ["Плевен", "Опанец", "Долна Митрополия", "Тръстеник"],
-    priceSingle: "3.50 лв",
-    priceCard: "70.00 лв",
+    priceSingle: "1.80 €",
+    priceCard: "36.00 €",
     description: "Ежедневна линия свързваща Плевен с град Тръстеник."
   },
   "Рибен": {
     stops: ["Плевен", "Опанец", "Долна Митрополия", "Победа", "Рибен"],
-    priceSingle: "4.00 лв",
-    priceCard: "80.00 лв"
+    priceSingle: "2.10 €",
+    priceCard: "42.00 €"
   },
   "Долни Дъбник": {
     stops: ["Плевен", "Ясен", "Долни Дъбник"],
-    priceSingle: "3.00 лв",
-    priceCard: "60.00 лв"
+    priceSingle: "1.55 €",
+    priceCard: "31.00 €"
   },
   "Садовец": {
     stops: ["Плевен", "Ясен", "Долни Дъбник", "Горни Дъбник", "Садовец"],
-    priceSingle: "5.00 лв",
-    priceCard: "100.00 лв"
+    priceSingle: "2.55 €",
+    priceCard: "51.00 €"
   },
   "Славовица": {
     stops: ["Плевен", "Опанец", "Долна Митрополия", "Тръстеник", "Славовица"],
-    priceSingle: "5.50 лв",
-    priceCard: "110.00 лв"
+    priceSingle: "2.80 €",
+    priceCard: "56.00 €"
   },
   "Байкал": {
     stops: ["Плевен", "Опанец", "Долна Митрополия", "Тръстеник", "Славовица", "Байкал"],
-    priceSingle: "6.00 лв",
-    priceCard: "120.00 лв"
+    priceSingle: "3.10 €",
+    priceCard: "62.00 €"
   },
   "Гиген": {
     stops: ["Плевен", "Опанец", "Долна Митрополия", "Тръстеник", "Славовица", "Гиген"],
-    priceSingle: "6.00 лв",
-    priceCard: "120.00 лв"
+    priceSingle: "3.10 €",
+    priceCard: "62.00 €"
   },
   "Бъркач": {
     stops: ["Плевен", "Ясен", "Долни Дъбник", "Горни Дъбник", "Телиш", "Бъркач"],
-    priceSingle: "5.50 лв",
-    priceCard: "110.00 лв"
+    priceSingle: "2.80 €",
+    priceCard: "56.00 €"
   },
   "Горна Митрополия": {
     stops: ["Плевен", "Опанец", "Долна Митрополия", "Горна Митрополия"],
-    priceSingle: "3.00 лв",
-    priceCard: "60.00 лв"
+    priceSingle: "1.55 €",
+    priceCard: "31.00 €"
   },
   "Опанец": {
     stops: ["Плевен", "Опанец"],
-    priceSingle: "2.00 лв",
-    priceCard: "40.00 лв"
+    priceSingle: "1.05 €",
+    priceCard: "21.00 €"
   },
   "Долна Митрополия": {
     stops: ["Плевен", "Опанец", "Долна Митрополия"],
-    priceSingle: "2.50 лв",
-    priceCard: "50.00 лв"
+    priceSingle: "1.30 €",
+    priceCard: "26.00 €"
   },
   "Ясен": {
     stops: ["Плевен", "Ясен"],
-    priceSingle: "2.50 лв",
-    priceCard: "50.00 лв"
+    priceSingle: "1.30 €",
+    priceCard: "26.00 €"
   }
 };
