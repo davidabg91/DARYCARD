@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Bus, Clock, MapPin, Search, 
   CreditCard, 
-  ArrowRight, ArrowLeft, Phone, MessageCircle
+  ArrowRight, Phone, MessageCircle
 } from 'lucide-react';
 import { SCHEDULES } from '../data/schedules';
 import { ROUTE_METADATA } from '../data/routeMetadata';
@@ -232,42 +232,6 @@ const Landing: React.FC = () => {
                                                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', position: 'relative' }}>
                                                                 <div className="stop-line" style={{ background: 'linear-gradient(90deg, var(--primary-color), rgba(255,255,255,0.1))', height: '2px', width: '100%' }} />
                                                                 <ArrowRight size={10} color="var(--primary-color)" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', opacity: 0.5 }} />
-                                                            </div>
-                                                        )}
-                                                    </React.Fragment>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Destination -> Pleven */}
-                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem' }}>
-                                                <div style={{ width: '8px', height: '8px', border: '1.5px solid rgba(255,255,255,0.4)', borderRadius: '50%' }} />
-                                                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                                     ОТ {line.toUpperCase()} → ПЛЕВЕН
-                                                </div>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem' }}>
-                                                {[...meta.stops].reverse().map((stop, i) => (
-                                                    <React.Fragment key={i}>
-                                                        <div className="stop-dot" title={stop} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
-                                                            <div style={{ width: '10px', height: '10px', border: '2px solid rgba(255,255,255,0.4)', background: 'transparent', borderRadius: '50%' }} />
-                                                            <span style={{ 
-                                                                position: 'absolute', 
-                                                                top: '16px', 
-                                                                fontSize: '0.55rem', 
-                                                                whiteSpace: 'nowrap', 
-                                                                opacity: 0.7,
-                                                                fontWeight: 600,
-                                                                textAlign: 'center'
-                                                            }}>
-                                                                {stop}
-                                                            </span>
-                                                        </div>
-                                                        {i < meta.stops.length - 1 && (
-                                                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                                                <div className="stop-line" style={{ background: 'linear-gradient(270deg, var(--primary-color), rgba(255,255,255,0.1))', height: '2px', width: '100%', opacity: 0.3 }} />
-                                                                <ArrowLeft size={10} color="rgba(255,255,255,0.3)" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }} />
                                                             </div>
                                                         )}
                                                     </React.Fragment>
