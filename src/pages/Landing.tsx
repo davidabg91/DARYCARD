@@ -22,12 +22,13 @@ const Landing: React.FC = () => {
         r.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const getNextBus = (line: string) => {
+    const getNextBus = (line: string, direction: 'fromPleven' | 'fromDestination') => {
         const sched = SCHEDULES[line];
-        const now = currentTime.getHours() * 60 + currentTime.getMinutes();
+        const times = sched[direction];
+        if (!times) return null;
         
-        const allTimes = sched.fromPleven.concat(sched.fromDestination);
-        const soonest = allTimes
+        const now = currentTime.getHours() * 60 + currentTime.getMinutes();
+        const soonest = times
             .map(t => {
                 const [h, m] = t.split(':').map(Number);
                 const total = h * 60 + m;
@@ -35,8 +36,7 @@ const Landing: React.FC = () => {
             })
             .sort((a, b) => a - b)[0];
 
-        if (soonest === undefined) return null;
-        return soonest;
+        return soonest === undefined ? null : soonest;
     };
 
     const formatCountdown = (mins: number | null) => {
@@ -153,7 +153,8 @@ const Landing: React.FC = () => {
                 {/* Schedules Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem' }}>
                     {filteredRoutes.map(line => {
-                        const nextBus = getNextBus(line);
+                        const nextFromPleven = getNextBus(line, 'fromPleven');
+                        const nextFromDest = getNextBus(line, 'fromDestination');
                         const meta = ROUTE_METADATA[line];
                         const sched = SCHEDULES[line];
                         const isExpanded = expandedRoute === line;
@@ -172,44 +173,83 @@ const Landing: React.FC = () => {
                                         <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '0.3rem' }}>ЛИНИЯ</div>
                                         <h3 style={{ fontSize: '1.6rem', fontWeight: 900 }}>{line}</h3>
                                     </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, marginBottom: '0.3rem' }}>СЛЕДВАЩ АВТОБУС</div>
-                                        <div style={{ 
-                                            fontSize: '1.1rem', 
-                                            fontWeight: 900, 
-                                            color: nextBus && nextBus <= 15 ? 'var(--success-color)' : '#fff',
-                                            display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end'
-                                        }}>
-                                            <Clock size={18} /> {formatCountdown(nextBus)}
+                                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ОТ ПЛЕВЕН</div>
+                                            <div style={{ 
+                                                fontSize: '1rem', 
+                                                fontWeight: 900, 
+                                                color: nextFromPleven && nextFromPleven <= 15 ? 'var(--success-color)' : '#fff',
+                                                display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end'
+                                            }}>
+                                                <Clock size={16} /> {formatCountdown(nextFromPleven)}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ОТ {line.toUpperCase()}</div>
+                                            <div style={{ 
+                                                fontSize: '1rem', 
+                                                fontWeight: 900, 
+                                                color: nextFromDest && nextFromDest <= 15 ? 'var(--success-color)' : '#fff',
+                                                display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end'
+                                            }}>
+                                                <Clock size={16} /> {formatCountdown(nextFromDest)}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Visual Path */}
+                                {/* Visual Paths */}
                                 {meta && (
-                                    <div style={{ padding: '0.5rem 0 1.5rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                            {meta.stops.map((stop, i) => (
-                                                <React.Fragment key={i}>
-                                                    <div className="stop-dot" title={stop} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                        <span style={{ 
-                                                            position: 'absolute', 
-                                                            top: '15px', 
-                                                            fontSize: '0.6rem', 
-                                                            whiteSpace: 'nowrap', 
-                                                            opacity: 0.7,
-                                                            fontWeight: 600,
-                                                            textAlign: 'center',
-                                                            maxWidth: '60px',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis'
-                                                        }}>
-                                                            {stop}
-                                                        </span>
-                                                    </div>
-                                                    {i < meta.stops.length - 1 && <div className="stop-line" />}
-                                                </React.Fragment>
-                                            ))}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', padding: '0.5rem 0 1rem' }}>
+                                        {/* Pleven -> Destination */}
+                                        <div>
+                                            <div style={{ fontSize: '0.6rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem', opacity: 0.5 }}>ПОСОКА: {line.toUpperCase()}</div>
+                                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                {meta.stops.map((stop, i) => (
+                                                    <React.Fragment key={i}>
+                                                        <div className="stop-dot" title={stop} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                            <span style={{ 
+                                                                position: 'absolute', 
+                                                                top: '12px', 
+                                                                fontSize: '0.55rem', 
+                                                                whiteSpace: 'nowrap', 
+                                                                opacity: 0.7,
+                                                                fontWeight: 600,
+                                                                textAlign: 'center'
+                                                            }}>
+                                                                {stop}
+                                                            </span>
+                                                        </div>
+                                                        {i < meta.stops.length - 1 && <div className="stop-line" style={{ background: 'linear-gradient(90deg, var(--primary-color), rgba(255,255,255,0.1))' }} />}
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Destination -> Pleven */}
+                                        <div>
+                                            <div style={{ fontSize: '0.6rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem', opacity: 0.5 }}>ПОСОКА: ПЛЕВЕН</div>
+                                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                {[...meta.stops].reverse().map((stop, i) => (
+                                                    <React.Fragment key={i}>
+                                                        <div className="stop-dot" title={stop} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                            <span style={{ 
+                                                                position: 'absolute', 
+                                                                top: '12px', 
+                                                                fontSize: '0.55rem', 
+                                                                whiteSpace: 'nowrap', 
+                                                                opacity: 0.7,
+                                                                fontWeight: 600,
+                                                                textAlign: 'center'
+                                                            }}>
+                                                                {stop}
+                                                            </span>
+                                                        </div>
+                                                        {i < meta.stops.length - 1 && <div className="stop-line" style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.1), var(--primary-color))' }} />}
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
