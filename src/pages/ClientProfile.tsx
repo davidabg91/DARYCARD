@@ -739,11 +739,11 @@ const ClientProfile: React.FC = () => {
                 
                 {!currentUser && !client?.isCanceled && (
                     <button onClick={() => setShowOnlinePayment(true)} style={{ 
-                        background: 'linear-gradient(135deg, #111, #222)', 
+                        background: 'linear-gradient(135deg, #635bff 0%, #4a154b 100%)', 
                         color: '#fff', 
                         padding: '1.5rem', 
                         borderRadius: '24px', 
-                        border: '1px solid rgba(255,255,255,0.1)', 
+                        border: 'none', 
                         fontWeight: 900, 
                         fontSize: '1.2rem', 
                         cursor: 'pointer',
@@ -751,26 +751,29 @@ const ClientProfile: React.FC = () => {
                         flexDirection: 'column',
                         alignItems: 'flex-start',
                         gap: '12px',
-                        boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                        boxShadow: '0 15px 35px rgba(99, 91, 255, 0.4)',
                         transition: 'all 0.3s',
                         position: 'relative',
                         overflow: 'hidden',
                         width: '100%'
-                    }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 30px 60px rgba(0, 114, 255, 0.2)'; e.currentTarget.style.borderColor = 'rgba(0, 114, 255, 0.4)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.4)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
-                        <div style={{ position: 'absolute', top: '-50%', right: '-20%', width: '150px', height: '150px', background: 'radial-gradient(circle, rgba(0, 114, 255, 0.2) 0%, transparent 70%)', borderRadius: '50%' }} />
+                    }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 25px 45px rgba(99, 91, 255, 0.6)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 15px 35px rgba(99, 91, 255, 0.4)'; }}>
+                        <div style={{ position: 'absolute', top: '-50%', right: '-20%', width: '150px', height: '150px', background: 'radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%)', borderRadius: '50%' }} />
                         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', position: 'relative', zIndex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <div style={{ background: 'rgba(0, 114, 255, 0.2)', padding: '10px', borderRadius: '12px', color: '#00c6ff' }}>
+                                <div style={{ background: 'rgba(255, 255, 255, 0.2)', padding: '10px', borderRadius: '12px', color: '#fff' }}>
                                     <CreditCard size={24} />
                                 </div>
                                 <span style={{ letterSpacing: '1px' }}>ПЛАТИ С КАРТА</span>
                             </div>
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                                <div style={{ width: '24px', height: '16px', borderRadius: '4px', background: '#ff5f00', opacity: 0.8 }} />
-                                <div style={{ width: '24px', height: '16px', borderRadius: '4px', background: '#eb001b', opacity: 0.8 }} />
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                <div style={{ fontStyle: 'italic', fontWeight: 900, color: '#fff', fontSize: '1.1rem', letterSpacing: '-0.5px' }}>VISA</div>
+                                <div style={{ display: 'flex', position: 'relative', width: '28px', height: '18px', alignItems: 'center' }}>
+                                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#eb001b', position: 'absolute', left: 0 }} />
+                                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#f79e1b', position: 'absolute', left: '10px', mixBlendMode: 'screen' }} />
+                                </div>
                             </div>
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, position: 'relative', zIndex: 1 }}>
+                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600, position: 'relative', zIndex: 1 }}>
                             Онлайн подновяване на абонамента
                         </div>
                     </button>
@@ -851,12 +854,12 @@ const ClientProfile: React.FC = () => {
                     <div style={{ background: '#fff', color: '#000', padding: '0', borderRadius: '24px', width: '100%', maxWidth: '440px', boxShadow: '0 40px 100px rgba(0,0,0,0.5)', overflow: 'hidden', animation: 'cardEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
                         
                         {/* Header */}
-                        <div style={{ background: '#09090b', padding: '2rem 2rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div style={{ background: '#09090b', padding: '2.5rem 2rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                             <button onClick={() => setShowOnlinePayment(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
                                 <XCircle size={24} />
                             </button>
-                            <img src={logo} alt="DARY CARD" style={{ height: '42px', width: 'auto', marginBottom: '1rem', filter: 'brightness(1.2)' }} />
-                            <div style={{ fontSize: '0.8rem', color: '#00e676', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff', letterSpacing: '3px', marginBottom: '1rem', textAlign: 'center' }}>DARY CARD <span style={{ color: '#00e676' }}>SYSTEM</span></div>
+                            <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <ShieldCheck size={16} /> СИГУРНО ПЛАЩАНЕ
                             </div>
                         </div>
