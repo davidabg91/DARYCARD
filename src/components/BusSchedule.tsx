@@ -7,7 +7,8 @@ interface BusScheduleProps {
 }
 
 const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
-    const scheduleData = SCHEDULES[route];
+    const isBarkachRoute = ['Дисевица', 'Търнене', 'Градина', 'Петърница'].includes(route);
+    const scheduleData = isBarkachRoute ? SCHEDULES['Бъркач'] : SCHEDULES[route];
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
@@ -43,9 +44,14 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                     <Bus size={20} />
                     <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '1px' }}>РАЗПИСАНИЕ АВТОБУСИ</span>
                 </div>
-                {['Тръстеник', 'Рибен', 'Долни Дъбник', 'Садовец', 'Славовица', 'Байкал', 'Гиген', 'Бъркач', 'Горна Митрополия', 'Опанец', 'Долна Митрополия', 'Ясен'].includes(route) && (
+                {['Тръстеник', 'Рибен', 'Долни Дъбник', 'Садовец', 'Славовица', 'Байкал', 'Гиген', 'Бъркач', 'Градина', 'Дисевица', 'Търнене', 'Петърница', 'Горна Митрополия', 'Опанец', 'Долна Митрополия', 'Ясен'].includes(route) && (
                     <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
                         ({isSunday ? 'неделя' : (route === 'Тръстеник' ? 'понеделник-събота' : 'делнични дни')})
+                    </div>
+                )}
+                {isBarkachRoute && (
+                    <div style={{ fontSize: '0.75rem', color: '#ffb74d', fontWeight: 600, textAlign: 'center', marginTop: '6px', maxWidth: '90%' }}>
+                        * Посочените часове са за курса до Бъркач. Автобусът обслужва и Вашето населено място.
                     </div>
                 )}
             </div>

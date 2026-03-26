@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, XCircle, Ban, Clock, Settings, RefreshCw, Camera } from 'lucide-react';
+import { CheckCircle, XCircle, Ban, Clock, Settings, RefreshCw, Camera, CreditCard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AdSlideshow from '../components/AdSlideshow';
 import BusSchedule from '../components/BusSchedule';
@@ -25,7 +25,7 @@ interface Client {
 const ROUTES = [
     "Бъркач", "Тръстеник", "Биволаре", "Горна Митрополия", "Долни Дъбник",
     "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
-    "Долна Митрополия", "Ясен", "Крушовица", "Дисевица", "Градина",
+    "Долна Митрополия", "Ясен", "Крушовица", "Дисевица", "Търнене", "Градина",
     "Петърница", "Опанец", "Победа", "Подем", "Божурица"
 ];
 
@@ -101,6 +101,12 @@ const ClientProfile: React.FC = () => {
         return `${targetYear}-${targetMonth.toString().padStart(2, '0')}`;
     });
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Online Payment Mock State
+    const [showOnlinePayment, setShowOnlinePayment] = useState(false);
+    const [paymentMonth, setPaymentMonth] = useState<string>('');
+    const [isPaying, setIsPaying] = useState(false);
+    const [paymentComplete, setPaymentComplete] = useState(false);
 
     const [error, setError] = useState<string | null>(null);
     const hasPlayedSound = useRef(false);
@@ -731,6 +737,27 @@ const ClientProfile: React.FC = () => {
                     </div>
                 )}
                 
+                {!currentUser && !client?.isCanceled && (
+                    <button onClick={() => setShowOnlinePayment(true)} style={{ 
+                        background: 'linear-gradient(135deg, #00c6ff, #0072ff)', 
+                        color: '#fff', 
+                        padding: '1.2rem', 
+                        borderRadius: '20px', 
+                        border: 'none', 
+                        fontWeight: 900, 
+                        fontSize: '1.1rem', 
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '10px',
+                        boxShadow: '0 10px 30px rgba(0, 114, 255, 0.3)',
+                        transition: 'all 0.3s'
+                    }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                        <CreditCard size={20} /> ПЛАТИ ОНЛАЙН
+                    </button>
+                )}
+
                 {/* Secondary Info Area */}
                 <div style={{
                     background: 'rgba(255,255,255,0.03)',
@@ -770,7 +797,7 @@ const ClientProfile: React.FC = () => {
             </div>
 
             {/* Overlays */}
-            {isIdle && !loading && !isRegistering && !showPhotoModal && !showRenewConfirm && (
+            {isIdle && !loading && !isRegistering && !showPhotoModal && !showRenewConfirm && !showOnlinePayment && (
                 <AdSlideshow onClose={() => setIsIdle(false)} />
             )}
 
@@ -797,6 +824,65 @@ const ClientProfile: React.FC = () => {
                         {renewError && <div style={{ color: '#ff1744', textAlign: 'center', marginBottom: '1rem', fontSize: '0.8rem' }}>{renewError}</div>}
                         <button onClick={handleConfirmRenew} style={{ width: '100%', background: '#00e676', color: '#000', padding: '1.2rem', borderRadius: '16px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}>ПОТВЪРДИ</button>
                         <button onClick={() => setShowRenewConfirm(false)} style={{ width: '100%', background: 'transparent', color: 'rgba(255,255,255,0.4)', padding: '1rem', border: 'none', fontSize: '0.9rem', cursor: 'pointer', marginTop: '0.5rem' }}>ОТКАЗ</button>
+                    </div>
+                </div>
+            )}
+
+            {showOnlinePayment && client && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div style={{ background: '#111', padding: '2rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: '400px', boxShadow: '0 40px 100px rgba(0,0,0,1)' }}>
+                        <h2 style={{ fontSize: '1.5rem', margin: '0 0 1.5rem 0', textAlign: 'center' }}>ПЛАЩАНЕ ОНЛАЙН</h2>
+                        
+                        {!paymentComplete ? (
+                            <>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+                                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px' }}>
+                                        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>За Месец</div>
+                                        <input type="month" value={paymentMonth} onChange={(e) => setPaymentMonth(e.target.value)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '1rem', fontWeight: 700, width: '100%', colorScheme: 'dark' }} />
+                                    </div>
+                                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px' }}>
+                                        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>Номер на Карта</div>
+                                        <input type="text" placeholder="**** **** **** ****" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem', fontWeight: 700, width: '100%', letterSpacing: '2px', outline: 'none' }} />
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px', flex: 1 }}>
+                                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>Срок</div>
+                                            <input type="text" placeholder="MM/YY" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', fontWeight: 700, width: '100%', outline: 'none' }} />
+                                        </div>
+                                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px', flex: 1 }}>
+                                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '8px' }}>CVC</div>
+                                            <input type="password" placeholder="***" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', fontWeight: 700, width: '100%', outline: 'none' }} />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button 
+                                    onClick={() => {
+                                        setIsPaying(true);
+                                        setTimeout(() => {
+                                            setIsPaying(false);
+                                            setPaymentComplete(true);
+                                        }, 1500);
+                                    }} 
+                                    disabled={isPaying}
+                                    style={{ width: '100%', background: 'linear-gradient(135deg, #00c6ff, #0072ff)', color: '#fff', padding: '1.2rem', borderRadius: '16px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: isPaying ? 'not-allowed' : 'pointer', opacity: isPaying ? 0.7 : 1 }}
+                                >
+                                    {isPaying ? 'ОБРАБОТКА...' : 'ПЛАТИ (50 €)'}
+                                </button>
+                                <button onClick={() => setShowOnlinePayment(false)} style={{ width: '100%', background: 'transparent', color: 'rgba(255,255,255,0.4)', padding: '1rem', border: 'none', fontSize: '0.9rem', cursor: 'pointer', marginTop: '0.5rem' }}>ОТКАЗ</button>
+                            </>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '2rem 0' }}>
+                                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(0, 230, 118, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <CheckCircle size={40} color="#00e676" />
+                                </div>
+                                <h3 style={{ margin: 0, color: '#00e676' }}>ОДОБРЕНО</h3>
+                                <p style={{ color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                                    Успешно плащане. В момента подновяването е в тестов период и картата ви не е таксувана реално.
+                                </p>
+                                <button onClick={() => { setShowOnlinePayment(false); setPaymentComplete(false); setPaymentMonth(''); }} style={{ marginTop: '1rem', width: '100%', background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '1rem', borderRadius: '16px', border: 'none', fontWeight: 700, cursor: 'pointer' }}>ЗАТВОРИ</button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
