@@ -222,7 +222,7 @@ const Landing: React.FC = () => {
                                             <div style={{ 
                                                 display: 'flex', 
                                                 alignItems: 'center', 
-                                                padding: '0 0.5rem 2.5rem',
+                                                padding: '0 2.5rem 3rem',
                                                 overflowX: 'auto',
                                                 WebkitOverflowScrolling: 'touch',
                                                 msOverflowStyle: 'none',
@@ -247,7 +247,7 @@ const Landing: React.FC = () => {
                                                             </span>
                                                         </div>
                                                         {i < meta.stops.length - 1 && (
-                                                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                                            <div style={{ flex: 1, minWidth: '80px', display: 'flex', alignItems: 'center', position: 'relative' }}>
                                                                 <div className="stop-line" style={{ background: 'linear-gradient(90deg, var(--primary-color), rgba(255,255,255,0.1))', height: '2px', width: '100%' }} />
                                                                 <ArrowRight size={10} color="var(--primary-color)" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', opacity: 0.5 }} />
                                                             </div>
@@ -407,7 +407,7 @@ const Landing: React.FC = () => {
                 <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '4rem', justifyContent: 'space-between' }}>
                     <div style={{ maxWidth: '300px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '1.5rem' }}>
-                             <img src={logo} alt="Dary Commerce" style={{ height: '80px', width: 'auto', display: 'block' }} />
+                             <img src={logo} alt="Dary Commerce" style={{ height: '100px', width: 'auto', display: 'block', imageRendering: 'auto' }} />
                         </div>
                         <p style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
                             Вашият доверен партньор в пътническия транспорт в област Плевен. Сигурност, точност и комфорт.
