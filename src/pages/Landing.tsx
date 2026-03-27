@@ -24,7 +24,6 @@ const Landing: React.FC = () => {
         r.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const availableLetters = Array.from(new Set(filteredRoutes.map(r => r[0].toUpperCase()))).sort((a,b) => a.localeCompare(b, 'bg'));
 
     const getNextBus = (line: string, direction: 'fromPleven' | 'fromDestination') => {
         const sched = SCHEDULES[line];
@@ -104,60 +103,6 @@ const Landing: React.FC = () => {
                     from { opacity: 0; transform: translateY(10px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
-                .alphabet-btn {
-                    padding: 0.6rem;
-                    background: rgba(255,255,255,0.03);
-                    border: 1px solid rgba(255,255,255,0.08);
-                    border-radius: 12px;
-                    color: rgba(255,255,255,0.5);
-                    font-weight: 800;
-                    font-size: 0.9rem;
-                    cursor: pointer;
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    display: flex;
-                    alignItems: center;
-                    justifyContent: center;
-                    minWidth: 40px;
-                }
-                .alphabet-btn:hover {
-                    background: rgba(0, 173, 181, 0.15);
-                    border-color: var(--primary-color);
-                    color: var(--primary-color);
-                    transform: scale(1.1);
-                    box-shadow: 0 0 15px rgba(0, 173, 181, 0.2);
-                }
-                .alphabet-sidebar {
-                    position: sticky;
-                    top: 100px;
-                    height: fit-content;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.5rem;
-                    padding-right: 1.5rem;
-                    border-right: 1px solid rgba(255,255,255,0.05);
-                }
-                .alphabet-strip {
-                    display: none;
-                    gap: 0.5rem;
-                    overflow-x: auto;
-                    padding: 1rem 0;
-                    margin-bottom: 1.5rem;
-                    scrollbar-width: none;
-                    -ms-overflow-style: none;
-                    position: sticky;
-                    top: 60px;
-                    background: var(--bg-color);
-                    z-index: 50;
-                    border-bottom: 1px solid rgba(255,255,255,0.05);
-                }
-                .alphabet-strip::-webkit-scrollbar {
-                    display: none;
-                }
-                @media (max-width: 900px) {
-                    .alphabet-sidebar { display: none; }
-                    .alphabet-strip { display: flex; }
-                    .main-layout { flex-direction: column !important; }
-                }
             `}</style>
 
             <div className="hero-bg" />
@@ -222,42 +167,13 @@ const Landing: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="main-layout" style={{ display: 'flex', gap: '0', position: 'relative' }}>
-                    {/* Alphabet Sidebar (Desktop) */}
-                    <aside className="alphabet-sidebar">
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', marginBottom: '0.5rem', letterSpacing: '1px' }}>НАВИГАЦИЯ</div>
-                        {availableLetters.map(letter => (
-                            <button 
-                                key={letter}
-                                className="alphabet-btn"
-                                onClick={() => document.getElementById(`letter-${letter}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                            >
-                                {letter}
-                            </button>
-                        ))}
-                    </aside>
-
-                    <div style={{ flex: 1 }}>
-                        {/* Alphabet Strip (Mobile) */}
-                        <div className="alphabet-strip">
-                            {availableLetters.map(letter => (
-                                <button 
-                                    key={letter}
-                                    className="alphabet-btn"
-                                    onClick={() => document.getElementById(`letter-${letter}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                                >
-                                    {letter}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Schedules Grid */}
+                {/* Schedules Grid */}
                         <div style={{ 
                             display: 'grid', 
                             gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', 
                             gap: '1.5rem' 
                         }}>
-                            {filteredRoutes.map((line, index) => {
+                            {filteredRoutes.map((line) => {
                                 const nextFromPleven = getNextBus(line, 'fromPleven');
                                 const nextFromDest = getNextBus(line, 'fromDestination');
                                 const meta = ROUTE_METADATA[line];
@@ -285,14 +201,9 @@ const Landing: React.FC = () => {
                                     toLabel = parts[1].toUpperCase();
                                 }
                                 
-                                // Check if this is the first route of its letter group
-                                const firstLetter = line[0].toUpperCase();
-                                const isFirstOfLetter = index === 0 || filteredRoutes[index - 1][0].toUpperCase() !== firstLetter;
-
                                 return (
                                     <div 
                                         key={line} 
-                                        id={isFirstOfLetter ? `letter-${firstLetter}` : undefined} 
                                         className="route-card" 
                                         style={{ 
                                             background: 'rgba(255,255,255,0.02)',
@@ -427,7 +338,7 @@ const Landing: React.FC = () => {
                                                         onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
                                                         title="Повече информация за карти"
                                                     >
-                                                        <Info size={12} />
+                                                        <Info size={18} />
                                                     </button>
                                                 </div>
                                                 <div style={{ fontWeight: 800 }}>{meta?.priceCard || '---'}</div>
@@ -500,8 +411,6 @@ const Landing: React.FC = () => {
                                 );
                             })}
                         </div>
-                    </div>
-                </div>
 
                 {/* Info Section */}
                 <section id="info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1rem' }}>
