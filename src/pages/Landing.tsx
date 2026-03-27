@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Clock, MapPin, Search, 
   CreditCard, ExternalLink,
-  ArrowRight, Phone, MessageCircle, AlertTriangle, Info
+  ArrowRight, Phone, MessageCircle, AlertTriangle, Info, Ticket
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SCHEDULES } from '../data/schedules';
@@ -455,7 +455,7 @@ const Landing: React.FC = () => {
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Clock size={20} color="var(--primary-color)" /></div>
+                                    <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ticket size={20} color="var(--primary-color)" /></div>
                                     <div>
                                         <div style={{ fontWeight: 800 }}>Еднократен Билет</div>
                                         <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>От гишето на автогарата или от шофьора на място</div>
