@@ -181,7 +181,19 @@ const Landing: React.FC = () => {
                         // Parse labels for "From - To" routes
                         let fromLabel = 'ПЛЕВЕН';
                         let toLabel = line.toUpperCase();
-                        if (line.includes(' - ')) {
+                        
+                        // Special origin mappings for sub-routes
+                        const originMapping: Record<string, string> = {
+                            "Божурица": "РИБЕН",
+                            "Победа": "РИБЕН",
+                            "Биволаре": "РИБЕН",
+                            "Градина": "БЪРКАЧ",
+                            "Крушовица": "САДОВЕЦ"
+                        };
+
+                        if (originMapping[line]) {
+                            toLabel = originMapping[line];
+                        } else if (line.includes(' - ')) {
                             const parts = line.split(' - ');
                             fromLabel = parts[0].toUpperCase();
                             toLabel = parts[1].toUpperCase();
