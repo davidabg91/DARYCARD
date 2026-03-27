@@ -183,12 +183,10 @@ const Layout: React.FC = () => {
                             src={logo}
                             alt="Dary Travel"
                             style={{
-                                height: '48px',
+                                height: '54px',
                                 width: 'auto',
                                 objectFit: 'contain',
-                                display: 'block',
-                                transform: 'scale(1.2)',
-                                transformOrigin: 'left center'
+                                display: 'block'
                             }}
                         />
                     </div>
@@ -196,7 +194,7 @@ const Layout: React.FC = () => {
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'flex-start',
-                        marginLeft: '10px',
+                        marginLeft: '5px',
                         alignSelf: 'center',
                         borderLeft: '2px solid #e53935',
                         paddingLeft: '8px',
