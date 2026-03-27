@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
     Users, PlusCircle, BarChart, ExternalLink, 
     Trash2, XCircle, Clock, DollarSign, Camera, 
     RefreshCw, List, Zap, Save, Eye, EyeOff, 
     ShieldCheck, Shield, TrendingUp, Percent, 
-    PiggyBank, AlertTriangle, UserCheck, Share2
+    PiggyBank, AlertTriangle, UserCheck, Share2,
+    AlertCircle
 } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
@@ -46,6 +47,17 @@ interface Client {
     lastScanAt?: string;
     scanHistory?: string[];
     cardType?: string;
+}
+
+interface Signal {
+    id: string;
+    type: 'complaint' | 'suggestion';
+    name: string;
+    phone: string;
+    email: string;
+    message: string;
+    timestamp: string;
+    status: 'new' | 'read' | 'resolved';
 }
 
 const ROUTES = [
@@ -97,11 +109,11 @@ const getDefaultExpiryMonth = () => {
 };
 
 interface TabButtonProps {
-    id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances';
+    id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals';
     icon: React.ElementType;
     label: string;
-    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances';
-    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances') => void;
+    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals';
+    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals') => void;
     activeColor?: string;
 }
 
@@ -157,10 +169,11 @@ const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
     const isAdmin = currentUser?.role === 'admin';
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc' | 'finances'>(
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals'>(
         isAdmin ? 'dashboard' : 'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
+    const [signals, setSignals] = useState<Signal[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
 
     // Registration Form State
@@ -306,24 +319,32 @@ const AdminPanel: React.FC = () => {
             setIsSyncing(false);
         });
 
-        // 2. Listen for Admin Actions (Cloud Scan)
+        // 2. Listen for Signals in Real-time
+        const signalsQ = query(collection(db, 'signals'));
+        const unsubscribeSignals = onSnapshot(signalsQ, (snapshot) => {
+            const signalList: Signal[] = [];
+            snapshot.forEach((doc) => {
+                signalList.push({ id: doc.id, ...doc.data() } as Signal);
+            });
+            // Sort by latest first
+            setSignals(signalList.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+        });
+
+        // 3. Listen for Admin Actions (Cloud Scan)
         const actionUnsubscribe = onSnapshot(doc(db, 'admin_actions', 'current'), (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.data();
                 if (data.action === 'id_received' && data.cardId) {
-                    // Standard registration scan
                     setNfcLinkId(sanitizeId(data.cardId));
                     setIsWaitingForScan(false);
-                    // Clear the action so it doesn't trigger again
                     updateDoc(doc(db, 'admin_actions', 'current'), { action: 'idle' });
                 }
             }
         });
 
-
-
         return () => {
             unsubscribe();
+            unsubscribeSignals();
             actionUnsubscribe();
         };
     }, [location.search]);
@@ -756,6 +777,7 @@ const AdminPanel: React.FC = () => {
                     <TabButton id="clients" icon={Users} label="КЛИЕНТИ" activeTab={activeTab} setActiveTab={setActiveTab} />
                     {isAdmin && <TabButton id="dashboard" icon={BarChart} label="ТАБЛО" activeTab={activeTab} setActiveTab={setActiveTab} />}
                     <TabButton id="finances" icon={PiggyBank} label="ФИНАНСИ" activeColor="#ff9800" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton id="signals" icon={AlertCircle} label="СИГНАЛИ" activeColor="#e53935" activeTab={activeTab} setActiveTab={setActiveTab} />
                     {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />}
                 </div>
             </div>
@@ -1697,6 +1719,100 @@ const AdminPanel: React.FC = () => {
                     </div>
                 )}
 
+                {activeTab === 'signals' && (
+                    <div style={{ animation: 'fadeIn 0.4s ease' }}>
+                        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#e53935', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <AlertCircle size={24} /> СИГНАЛИ И ПРЕПОРЪКИ
+                        </h2>
+                        
+                        <Card style={{ padding: '0', overflow: 'hidden' }}>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--surface-border)' }}>
+                                            <th style={{ padding: '1.25rem', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>ДАТА</th>
+                                            <th style={{ padding: '1.25rem', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>ТИП</th>
+                                            <th style={{ padding: '1.25rem', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>КОНТАКТ</th>
+                                            <th style={{ padding: '1.25rem', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>СЪОБЩЕНИЕ</th>
+                                            <th style={{ padding: '1.25rem', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>СТАТУС</th>
+                                            <th style={{ padding: '1.25rem', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', textAlign: 'center' }}>ДЕЙСТВИЕ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {signals.length > 0 ? (
+                                            signals.map((signal) => (
+                                                <tr key={signal.id} style={{ borderBottom: '1px solid var(--surface-border)', transition: 'background 0.2s' }}>
+                                                    <td style={{ padding: '1.25rem', fontSize: '0.9rem' }}>
+                                                        {new Date(signal.timestamp).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                    </td>
+                                                    <td style={{ padding: '1.25rem' }}>
+                                                        <span style={{ 
+                                                            padding: '0.25rem 0.75rem', borderRadius: '50px', fontSize: '0.75rem', fontWeight: 800,
+                                                            background: signal.type === 'complaint' ? 'rgba(229,57,53,0.1)' : 'rgba(0,145,234,0.1)',
+                                                            color: signal.type === 'complaint' ? '#ff5252' : '#0091ea',
+                                                            border: `1px solid ${signal.type === 'complaint' ? 'rgba(229,57,53,0.2)' : 'rgba(0,145,234,0.2)'}`
+                                                        }}>
+                                                            {signal.type === 'complaint' ? 'ОПЛАКВАНЕ' : 'СЪВЕТ'}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '1.25rem', fontSize: '0.9rem' }}>
+                                                        <div style={{ fontWeight: 600 }}>{signal.name}</div>
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{signal.phone !== 'N/A' ? signal.phone : signal.email}</div>
+                                                    </td>
+                                                    <td style={{ padding: '1.25rem', fontSize: '0.9rem', maxWidth: '300px' }}>
+                                                        <div style={{ 
+                                                            maxHeight: '60px', overflowY: 'auto', lineHeight: 1.4, color: 'var(--text-primary)',
+                                                            paddingRight: '0.5rem'
+                                                        }}>
+                                                            {signal.message}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '1.25rem' }}>
+                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                            {['new', 'read', 'resolved'].map((s) => (
+                                                                <button
+                                                                    key={s}
+                                                                    onClick={() => {
+                                                                        const ref = doc(db, 'signals', signal.id);
+                                                                        updateDoc(ref, { status: s });
+                                                                    }}
+                                                                    style={{
+                                                                        padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer',
+                                                                        background: signal.status === s ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
+                                                                        color: signal.status === s ? '#fff' : 'var(--text-secondary)',
+                                                                        border: 'none', transition: 'all 0.2s'
+                                                                    }}
+                                                                >
+                                                                    {s.toUpperCase()}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '1.25rem', textAlign: 'center' }}>
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (window.confirm('Изтриване на този сигнал?')) {
+                                                                    await deleteDoc(doc(db, 'signals', signal.id));
+                                                                }
+                                                            }}
+                                                            style={{ background: 'rgba(229,57,53,0.1)', color: '#ff5252', border: 'none', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Няма постъпили сигнали.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    </div>
+                )}
 
 
                 {/* Action Modal */}

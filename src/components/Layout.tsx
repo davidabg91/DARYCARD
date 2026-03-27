@@ -36,6 +36,19 @@ const Layout: React.FC = () => {
                 }}
             >Начало</Link>
 
+            <Link
+                to="/signal"
+                onClick={closeMenu}
+                style={{
+                    color: location.pathname === '/signal' ? '#ff5252' : '#fff',
+                    fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
+                    borderBottom: location.pathname === '/signal' ? '2px solid #ff5252' : '2px solid transparent',
+                    paddingBottom: '2px',
+                    display: 'flex',
+                    alignItems: 'center'
+                }}
+            >Сигнал</Link>
+
             {currentUser && (
                 <>
                     <Link
@@ -199,6 +212,7 @@ const Layout: React.FC = () => {
                         borderLeft: '2px solid #e53935',
                         paddingLeft: '8px',
                         lineHeight: 1.1,
+                        marginTop: '-3px'
                     }}>
                         <span style={{
                             fontSize: '1.1rem',
