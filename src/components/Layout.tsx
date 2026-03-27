@@ -36,18 +36,20 @@ const Layout: React.FC = () => {
                 }}
             >Начало</Link>
 
-            <Link
-                to="/signal"
-                onClick={closeMenu}
-                style={{
-                    color: location.pathname === '/signal' ? '#ff5252' : '#fff',
-                    fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
-                    borderBottom: location.pathname === '/signal' ? '2px solid #ff5252' : '2px solid transparent',
-                    paddingBottom: '2px',
-                    display: 'flex',
-                    alignItems: 'center'
-                }}
-            >Сигнал</Link>
+            {(!currentUser || currentUser.role === 'admin') && (
+                <Link
+                    to="/signal"
+                    onClick={closeMenu}
+                    style={{
+                        color: location.pathname === '/signal' ? '#ff5252' : '#fff',
+                        fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
+                        borderBottom: location.pathname === '/signal' ? '2px solid #ff5252' : '2px solid transparent',
+                        paddingBottom: '2px',
+                        display: 'flex',
+                        alignItems: 'center'
+                    }}
+                >Сигнал</Link>
+            )}
 
             {currentUser && (
                 <>
@@ -62,28 +64,30 @@ const Layout: React.FC = () => {
                         }}
                     >Карти</Link>
 
-                        <>
-                            <Link
-                                to="/admin/users"
-                                onClick={closeMenu}
-                                style={{
-                                    color: location.pathname === '/admin/users' ? '#ff5252' : '#fff',
-                                    fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
-                                    borderBottom: location.pathname === '/admin/users' ? '2px solid #ff5252' : '2px solid transparent',
-                                    paddingBottom: '2px',
-                                }}
-                            >Потребители</Link>
-                            <Link
-                                to="/admin/audit"
-                                onClick={closeMenu}
-                                style={{
-                                    color: location.pathname === '/admin/audit' ? '#ff5252' : '#fff',
-                                    fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
-                                    borderBottom: location.pathname === '/admin/audit' ? '2px solid #ff5252' : '2px solid transparent',
-                                    paddingBottom: '2px',
-                                }}
-                            >Одит</Link>
-                        </>
+                        {currentUser.role === 'admin' && (
+                            <>
+                                <Link
+                                    to="/admin/users"
+                                    onClick={closeMenu}
+                                    style={{
+                                        color: location.pathname === '/admin/users' ? '#ff5252' : '#fff',
+                                        fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
+                                        borderBottom: location.pathname === '/admin/users' ? '2px solid #ff5252' : '2px solid transparent',
+                                        paddingBottom: '2px',
+                                    }}
+                                >Потребители</Link>
+                                <Link
+                                    to="/admin/audit"
+                                    onClick={closeMenu}
+                                    style={{
+                                        color: location.pathname === '/admin/audit' ? '#ff5252' : '#fff',
+                                        fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
+                                        borderBottom: location.pathname === '/admin/audit' ? '2px solid #ff5252' : '2px solid transparent',
+                                        paddingBottom: '2px',
+                                    }}
+                                >Одит</Link>
+                            </>
+                        )}
 
                     <Link
                         to="/help"
@@ -145,7 +149,9 @@ const Layout: React.FC = () => {
     const mobileNavLinks = (
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <Link to="/" onClick={closeMenu} className="mobile-nav-link">Начало</Link>
-            <Link to="/signal" onClick={closeMenu} className="mobile-nav-link">Сигнал</Link>
+            {(!currentUser || currentUser.role === 'admin') && (
+                <Link to="/signal" onClick={closeMenu} className="mobile-nav-link">Сигнал</Link>
+            )}
             {currentUser && (
                 <>
                     <Link to="/admin" onClick={closeMenu} className="mobile-nav-link">Карти</Link>
