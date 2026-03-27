@@ -219,12 +219,6 @@ const Landing: React.FC = () => {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', padding: '0.8rem 0 1.2rem' }}>
                                         {/* Pleven -> Destination */}
                                         <div style={{ background: 'rgba(0,173,181,0.03)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(0,173,181,0.1)' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem' }}>
-                                                <div style={{ width: '8px', height: '8px', background: 'var(--primary-color)', borderRadius: '50%' }} />
-                                                <div style={{ fontSize: '0.65rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                                     ОТ ПЛЕВЕН → {line.toUpperCase()}
-                                                </div>
-                                            </div>
                                             <div style={{ 
                                                 display: 'flex', 
                                                 alignItems: 'center', 
@@ -413,7 +407,7 @@ const Landing: React.FC = () => {
                 <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '4rem', justifyContent: 'space-between' }}>
                     <div style={{ maxWidth: '300px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '1.5rem' }}>
-                             <img src={logo} alt="Dary Commerce" style={{ height: '60px', width: 'auto', display: 'block' }} />
+                             <img src={logo} alt="Dary Commerce" style={{ height: '80px', width: 'auto', display: 'block' }} />
                         </div>
                         <p style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
                             Вашият доверен партньор в пътническия транспорт в област Плевен. Сигурност, точност и комфорт.
