@@ -1,7 +1,7 @@
 import logo from '../assets/logo_main.png';
 import React, { useState, useEffect } from 'react';
 import { 
-  Bus, Clock, MapPin, Search, 
+  Clock, MapPin, Search, 
   CreditCard, ExternalLink,
   ArrowRight, Phone, MessageCircle
 } from 'lucide-react';
@@ -153,7 +153,11 @@ const Landing: React.FC = () => {
                 </div>
 
                 {/* Schedules Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem' }}>
+                <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+                    gap: '1.5rem' 
+                }}>
                     {filteredRoutes.map(line => {
                         const nextFromPleven = getNextBus(line, 'fromPleven');
                         const nextFromDest = getNextBus(line, 'fromDestination');
@@ -221,7 +225,16 @@ const Landing: React.FC = () => {
                                                      ОТ ПЛЕВЕН → {line.toUpperCase()}
                                                 </div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem' }}>
+                                            <div style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                padding: '0 0.5rem 2.5rem',
+                                                overflowX: 'auto',
+                                                WebkitOverflowScrolling: 'touch',
+                                                msOverflowStyle: 'none',
+                                                scrollbarWidth: 'none',
+                                                gap: '0'
+                                            }}>
                                                 {meta.stops.map((stop, i) => (
                                                     <React.Fragment key={i}>
                                                         <div className="stop-dot" title={stop} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
@@ -321,18 +334,18 @@ const Landing: React.FC = () => {
                 </div>
 
                 {/* Info Section */}
-                <section style={{ marginTop: '6rem' }}>
+                <section style={{ marginTop: '4rem' }}>
                     <div style={{ 
                         background: 'linear-gradient(135deg, rgba(0,173,181,0.1), rgba(0,173,181,0.05))',
                         borderRadius: '32px',
-                        padding: '3rem',
+                        padding: '1.5rem',
                         border: '1px solid rgba(0,173,181,0.1)',
                         display: 'flex',
                         flexWrap: 'wrap',
-                        gap: '3rem',
+                        gap: '2rem',
                         alignItems: 'center'
                     }}>
-                        <div style={{ flex: '1', minWidth: '300px' }}>
+                        <div style={{ flex: '1', minWidth: '280px' }}>
                             <div style={{ 
                                 display: 'inline-flex', padding: '0.6rem 1.2rem', 
                                 background: 'rgba(0,173,181,0.2)', borderRadius: '100px',
@@ -364,7 +377,7 @@ const Landing: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div style={{ flex: '1', minWidth: '300px', position: 'relative' }}>
+                        <div style={{ flex: '1', minWidth: '280px', position: 'relative' }}>
                              <div className="glass" style={{ 
                                  padding: '2rem', borderRadius: '24px', 
                                  border: '1px solid rgba(255,255,255,0.1)',
