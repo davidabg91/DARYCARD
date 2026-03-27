@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Bus, Clock, MapPin, Search, 
-  CreditCard, 
+  CreditCard, ExternalLink,
   ArrowRight, Phone, MessageCircle
 } from 'lucide-react';
 import { SCHEDULES } from '../data/schedules';
@@ -345,13 +345,15 @@ const Landing: React.FC = () => {
                                 Абонаментните карти за всички линии се издават на нашето специализирано гише. Процесът отнема по-малко от 5 минути и картата е готова веднага.
                             </p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MapPin size={20} color="var(--primary-color)" /></div>
+                                <a href="https://share.google/ElVTTGsi6ivVOx7PW" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '1rem', textDecoration: 'none', color: 'inherit', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(5px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}>
+                                    <div style={{ width: '40px', height: '40px', background: 'rgba(0,173,181,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,173,181,0.3)' }}><MapPin size={20} color="var(--primary-color)" /></div>
                                     <div>
-                                        <div style={{ fontWeight: 800 }}>Автогара Плевен</div>
+                                        <div style={{ fontWeight: 800, color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            Автогара Плевен <ExternalLink size={12} />
+                                        </div>
                                         <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>Гише DARY COMMERCE</div>
                                     </div>
-                                </div>
+                                </a>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                     <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CreditCard size={20} color="var(--primary-color)" /></div>
                                     <div>
@@ -373,9 +375,9 @@ const Landing: React.FC = () => {
                                      <span>Понеделник - Петък</span>
                                      <span style={{ fontWeight: 800 }}>07:30 - 18:30</span>
                                  </div>
-                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.8rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)' }}>
                                      <span>Събота</span>
-                                     <span style={{ fontWeight: 800 }}>08:00 - 13:00</span>
+                                     <span style={{ fontWeight: 800 }}>Почивен ден</span>
                                  </div>
                                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', color: 'rgba(255,255,255,0.3)' }}>
                                      <span>Неделя</span>
