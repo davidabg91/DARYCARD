@@ -189,6 +189,18 @@ const AdminPanel: React.FC = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [signals, setSignals] = useState<Signal[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     // Registration Form State
     const [clientName, setClientName] = useState('');
@@ -806,12 +818,12 @@ const AdminPanel: React.FC = () => {
                         <div style={{ 
                             display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', 
                             padding: '2px 8px', borderRadius: '50px', 
-                            background: syncError ? 'rgba(255,82,82,0.1)' : 'rgba(0,173,181,0.1)',
-                            color: syncError ? '#ff5252' : 'var(--primary-color)',
-                            border: `1px solid ${syncError ? 'rgba(255,82,82,0.2)' : 'rgba(0,173,181,0.2)'}`
+                            background: isOnline ? 'rgba(0,230,118,0.1)' : 'rgba(255,152,0,0.1)',
+                            color: isOnline ? '#00e676' : '#ff9800',
+                            border: `1px solid ${isOnline ? 'rgba(0,230,118,0.2)' : 'rgba(255,152,0,0.2)'}`
                         }}>
-                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: syncError ? '#ff5252' : 'var(--primary-color)', animation: isSyncing ? 'pulse 1.5s infinite' : 'none' }} />
-                            {isSyncing ? 'Синхронизиране...' : syncError ? 'Грешка в Облака' : 'Облак: Свързан'}
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#00e676' : '#ff9800', boxShadow: isOnline ? '0 0 8px #00e676' : 'none' }} />
+                            {isOnline ? 'ОНЛАЙН' : 'ОФЛАЙН'}
                         </div>
                     </div>
                 </div>

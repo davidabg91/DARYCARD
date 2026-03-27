@@ -110,6 +110,18 @@ const ClientProfile: React.FC = () => {
     const [paymentMonth, setPaymentMonth] = useState<string>('');
     const [isPaying, setIsPaying] = useState(false);
     const [paymentComplete, setPaymentComplete] = useState(false);
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     const [error, setError] = useState<string | null>(null);
     const hasPlayedSound = useRef(false);
@@ -581,8 +593,26 @@ const ClientProfile: React.FC = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    background: 'rgba(255,255,255,0.03)'
+                    background: 'rgba(255,255,255,0.03)',
+                    position: 'relative'
                 }}>
+                    {!isOnline && (
+                        <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            background: '#f79e1b',
+                            color: '#000',
+                            fontSize: '0.6rem',
+                            fontWeight: 900,
+                            textAlign: 'center',
+                            padding: '2px 0',
+                            zIndex: 20
+                        }}>
+                            РАБОТА В ОФЛАЙН РЕЖИМ (КЕШИРАНИ ДАННИ)
+                        </div>
+                    )}
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontSize: '0.65rem', fontWeight: 800, color: themeColor, letterSpacing: '2px', textTransform: 'uppercase' }}>DARY CARD</span>
                         <span className="card-subtitle" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px' }}>{client?.cardType ? client.cardType.toUpperCase() : 'УДОСТОВЕРЕНИЕ ЗА ПЪТУВАНЕ'}</span>
@@ -599,8 +629,8 @@ const ClientProfile: React.FC = () => {
                         alignItems: 'center',
                         gap: '4px'
                     }}>
-                        <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: themeColor, boxShadow: `0 0 8px ${themeColor}` }} />
-                        ЗАЩИТЕНО
+                        <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: isOnline ? themeColor : '#f79e1b', boxShadow: `0 0 8px ${isOnline ? themeColor : '#f79e1b'}` }} />
+                        {isOnline ? 'СИНХРОНИЗИРАНО' : 'ОФЛАЙН'}
                     </div>
                 </div>
 
