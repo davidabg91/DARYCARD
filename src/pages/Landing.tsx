@@ -200,6 +200,18 @@ const Landing: React.FC = () => {
                                     <div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '0.3rem' }}>ЛИНИЯ</div>
                                         <h3 style={{ fontSize: '1.6rem', fontWeight: 900 }}>{line}</h3>
+                                        {meta?.description && (
+                                            <div style={{ 
+                                                fontSize: '0.75rem', 
+                                                color: 'var(--accent-color)', 
+                                                fontWeight: 600,
+                                                maxWidth: '200px',
+                                                lineHeight: 1.3,
+                                                marginTop: '0.4rem'
+                                            }}>
+                                                {meta.description}
+                                            </div>
+                                        )}
                                     </div>
                                     <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         <div>
