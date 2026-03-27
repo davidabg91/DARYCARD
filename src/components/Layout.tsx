@@ -145,6 +145,7 @@ const Layout: React.FC = () => {
     const mobileNavLinks = (
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <Link to="/" onClick={closeMenu} className="mobile-nav-link">Начало</Link>
+            <Link to="/signal" onClick={closeMenu} className="mobile-nav-link">Сигнал</Link>
             {currentUser && (
                 <>
                     <Link to="/admin" onClick={closeMenu} className="mobile-nav-link">Карти</Link>

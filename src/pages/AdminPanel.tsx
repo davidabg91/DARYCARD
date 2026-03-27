@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
     Users, PlusCircle, BarChart, ExternalLink, 
@@ -115,9 +115,10 @@ interface TabButtonProps {
     activeTab: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals';
     setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals') => void;
     activeColor?: string;
+    badge?: number;
 }
 
-const TabButton = ({ id, icon: Icon, label, activeTab, setActiveTab, activeColor = 'var(--primary-color)' }: TabButtonProps) => (
+const TabButton = ({ id, icon: Icon, label, activeTab, setActiveTab, activeColor = 'var(--primary-color)', badge }: TabButtonProps) => (
     <button
         onClick={() => setActiveTab(id)}
         style={{
@@ -128,10 +129,23 @@ const TabButton = ({ id, icon: Icon, label, activeTab, setActiveTab, activeColor
             border: `2px solid ${activeTab === id ? activeColor : (id === 'register' ? '#00c853' : 'var(--surface-border)')}`,
             boxShadow: id === 'register' ? '0 0 15px rgba(0, 200, 83, 0.2)' : 'none',
             transition: 'all 0.3s ease',
-            fontSize: 'var(--tab-font-size, 0.9rem)'
+            fontSize: 'var(--tab-font-size, 0.9rem)',
+            position: 'relative'
         }}
     >
         <Icon size={18} /> <span className="tab-label">{label}</span>
+        {badge && badge > 0 ? (
+            <span style={{
+                position: 'absolute', top: '-5px', right: '-5px',
+                background: '#ff5252', color: '#fff', fontSize: '0.7rem',
+                minWidth: '18px', height: '18px', borderRadius: '10px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 4px', border: '2px solid var(--bg-color)', fontWeight: 900,
+                boxShadow: '0 2px 5px rgba(0,0,0,0.3)', animation: 'pulse 2s infinite'
+            }}>
+                {badge}
+            </span>
+        ) : null}
     </button>
 );
 
@@ -737,6 +751,8 @@ const AdminPanel: React.FC = () => {
         return acc + monthPayments.reduce((sum, p) => sum + p.amount, 0);
     }, 0);
 
+    const unreadSignalsCount = signals.filter(s => s.status === 'new').length;
+
     const last7Days = [...Array(7)].map((_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - i);
@@ -777,7 +793,7 @@ const AdminPanel: React.FC = () => {
                     <TabButton id="clients" icon={Users} label="КЛИЕНТИ" activeTab={activeTab} setActiveTab={setActiveTab} />
                     {isAdmin && <TabButton id="dashboard" icon={BarChart} label="ТАБЛО" activeTab={activeTab} setActiveTab={setActiveTab} />}
                     <TabButton id="finances" icon={PiggyBank} label="ФИНАНСИ" activeColor="#ff9800" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton id="signals" icon={AlertCircle} label="СИГНАЛИ" activeColor="#e53935" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton id="signals" icon={AlertCircle} label="СИГНАЛИ" activeColor="#e53935" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadSignalsCount} />
                     {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />}
                 </div>
             </div>
@@ -1726,7 +1742,8 @@ const AdminPanel: React.FC = () => {
                         </h2>
                         
                         <Card style={{ padding: '0', overflow: 'hidden' }}>
-                            <div style={{ overflowX: 'auto' }}>
+                            {/* Desktop View */}
+                            <div className="table-container desktop-table">
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
                                         <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--surface-border)' }}>
@@ -1741,7 +1758,7 @@ const AdminPanel: React.FC = () => {
                                     <tbody>
                                         {signals.length > 0 ? (
                                             signals.map((signal) => (
-                                                <tr key={signal.id} style={{ borderBottom: '1px solid var(--surface-border)', transition: 'background 0.2s' }}>
+                                                <tr key={signal.id} style={{ borderBottom: '1px solid var(--surface-border)', transition: 'background 0.2s', background: signal.status === 'new' ? 'rgba(229,57,53,0.03)' : 'transparent' }}>
                                                     <td style={{ padding: '1.25rem', fontSize: '0.9rem' }}>
                                                         {new Date(signal.timestamp).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                                     </td>
@@ -1809,6 +1826,76 @@ const AdminPanel: React.FC = () => {
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+
+                            {/* Mobile View */}
+                            <div className="mobile-cards" style={{ padding: '1rem' }}>
+                                {signals.length > 0 ? (
+                                    signals.map((signal) => (
+                                        <div key={signal.id} style={{ 
+                                            background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', 
+                                            borderRadius: '16px', padding: '1.25rem', display: 'flex', flexDirection: 'column', 
+                                            gap: '1rem', position: 'relative', borderLeft: signal.status === 'new' ? '4px solid #ff5252' : '1px solid var(--surface-border)'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                <div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                                                        {new Date(signal.timestamp).toLocaleString('bg-BG')}
+                                                    </div>
+                                                    <span style={{ 
+                                                        padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800,
+                                                        background: signal.type === 'complaint' ? 'rgba(229,57,53,0.1)' : 'rgba(0,145,234,0.1)',
+                                                        color: signal.type === 'complaint' ? '#ff5252' : '#0091ea'
+                                                    }}>
+                                                        {signal.type === 'complaint' ? 'ОПЛАКВАНЕ' : 'СЪВЕТ'}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (window.confirm('Изтриване?')) await deleteDoc(doc(db, 'signals', signal.id));
+                                                    }}
+                                                    style={{ background: 'rgba(229,57,53,0.1)', color: '#ff5252', border: 'none', padding: '0.4rem', borderRadius: '6px' }}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+
+                                            <div>
+                                                <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{signal.name}</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                    {signal.phone !== 'N/A' && <span>📞 {signal.phone} </span>}
+                                                    {signal.email !== 'N/A' && <span>📧 {signal.email}</span>}
+                                                </div>
+                                            </div>
+
+                                            <div style={{ 
+                                                padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', 
+                                                fontSize: '0.9rem', lineHeight: 1.5, color: '#fff' 
+                                            }}>
+                                                {signal.message}
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                {['new', 'read', 'resolved'].map((s) => (
+                                                    <button
+                                                        key={s}
+                                                        onClick={() => updateDoc(doc(db, 'signals', signal.id), { status: s })}
+                                                        style={{
+                                                            flex: 1, padding: '0.5rem', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 800,
+                                                            background: signal.status === s ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
+                                                            color: signal.status === s ? '#fff' : 'var(--text-secondary)',
+                                                            border: 'none'
+                                                        }}
+                                                    >
+                                                        {s.toUpperCase()}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма сигнали.</div>
+                                )}
                             </div>
                         </Card>
                     </div>
