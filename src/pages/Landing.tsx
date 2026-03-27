@@ -112,11 +112,23 @@ const Landing: React.FC = () => {
                 <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
 
 
-                    <h1 style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: 900, marginBottom: '1.5rem', letterSpacing: '-2px' }}>
+                    <h1 style={{ 
+                        fontSize: 'clamp(2rem, 8vw, 4.5rem)', 
+                        fontWeight: 900, 
+                        marginBottom: '1rem', 
+                        letterSpacing: '-2px',
+                        lineHeight: 1.1
+                    }}>
                         Вашите Пътувания, <br/>
                         <span style={{ color: 'var(--primary-color)' }}>По-Умни и По-Бързи</span>
                     </h1>
-                    <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.5)', maxWidth: '600px', margin: '0 auto 3rem' }}>
+                    <p style={{ 
+                        fontSize: 'clamp(1rem, 4vw, 1.2rem)', 
+                        color: 'rgba(255,255,255,0.5)', 
+                        maxWidth: '600px', 
+                        margin: '0 auto 2rem',
+                        padding: '0 1rem'
+                    }}>
                         Следете разписанията в реално време, проверете следващия автобус и планирайте пътуването си с лекота.
                     </p>
 
@@ -155,7 +167,7 @@ const Landing: React.FC = () => {
                 {/* Schedules Grid */}
                 <div style={{ 
                     display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', 
                     gap: '1.5rem' 
                 }}>
                     {filteredRoutes.map(line => {
@@ -219,16 +231,13 @@ const Landing: React.FC = () => {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', padding: '0.8rem 0 1.2rem' }}>
                                         {/* Pleven -> Destination */}
                                         <div style={{ background: 'rgba(0,173,181,0.03)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(0,173,181,0.1)' }}>
-                                            <div style={{ 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                padding: '0 2.5rem 3rem',
-                                                overflowX: 'auto',
-                                                WebkitOverflowScrolling: 'touch',
-                                                msOverflowStyle: 'none',
-                                                scrollbarWidth: 'none',
-                                                gap: '0'
-                                            }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem' }}>
+                                                <div style={{ width: '8px', height: '8px', background: 'var(--primary-color)', borderRadius: '50%' }} />
+                                                <div style={{ fontSize: '0.65rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                                     ОТ ПЛЕВЕН → {line.toUpperCase()}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem' }}>
                                                 {meta.stops.map((stop, i) => (
                                                     <React.Fragment key={i}>
                                                         <div className="stop-dot" title={stop} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
@@ -247,7 +256,7 @@ const Landing: React.FC = () => {
                                                             </span>
                                                         </div>
                                                         {i < meta.stops.length - 1 && (
-                                                            <div style={{ flex: 1, minWidth: '80px', display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', position: 'relative' }}>
                                                                 <div className="stop-line" style={{ background: 'linear-gradient(90deg, var(--primary-color), rgba(255,255,255,0.1))', height: '2px', width: '100%' }} />
                                                                 <ArrowRight size={10} color="var(--primary-color)" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', opacity: 0.5 }} />
                                                             </div>
@@ -285,7 +294,11 @@ const Landing: React.FC = () => {
                                         borderRadius: '16px',
                                         animation: 'fadeIn 0.3s ease-out'
                                     }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div style={{ 
+                                            display: 'grid', 
+                                            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
+                                            gap: '1rem' 
+                                        }}>
                                             <div>
                                                 <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
@@ -328,18 +341,18 @@ const Landing: React.FC = () => {
                 </div>
 
                 {/* Info Section */}
-                <section style={{ marginTop: '4rem' }}>
+                <section style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1rem' }}>
                     <div style={{ 
                         background: 'linear-gradient(135deg, rgba(0,173,181,0.1), rgba(0,173,181,0.05))',
                         borderRadius: '32px',
-                        padding: '1.5rem',
+                        padding: 'clamp(1.5rem, 5vw, 3rem)',
                         border: '1px solid rgba(0,173,181,0.1)',
                         display: 'flex',
                         flexWrap: 'wrap',
-                        gap: '2rem',
+                        gap: 'clamp(2rem, 5vw, 3rem)',
                         alignItems: 'center'
                     }}>
-                        <div style={{ flex: '1', minWidth: '280px' }}>
+                        <div style={{ flex: '1', minWidth: '300px' }}>
                             <div style={{ 
                                 display: 'inline-flex', padding: '0.6rem 1.2rem', 
                                 background: 'rgba(0,173,181,0.2)', borderRadius: '100px',
@@ -348,8 +361,8 @@ const Landing: React.FC = () => {
                             }}>
                                 ВАЖНА ИНФОРМАЦИЯ
                             </div>
-                            <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '1.5rem' }}>Как да извадите абонаментна карта?</h2>
-                            <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: '2rem' }}>
+                            <h2 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 900, marginBottom: '1.2rem', lineHeight: 1.2 }}>Как да извадите абонаментна карта?</h2>
+                            <p style={{ fontSize: 'clamp(1rem, 3.5vw, 1.1rem)', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: '2rem' }}>
                                 Абонаментните карти за всички линии се издават на нашето специализирано гише. Процесът отнема по-малко от 5 минути и картата е готова веднага.
                             </p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -371,7 +384,7 @@ const Landing: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div style={{ flex: '1', minWidth: '280px', position: 'relative' }}>
+                        <div style={{ flex: '1', minWidth: '300px', position: 'relative' }}>
                              <div className="glass" style={{ 
                                  padding: '2rem', borderRadius: '24px', 
                                  border: '1px solid rgba(255,255,255,0.1)',
@@ -401,13 +414,13 @@ const Landing: React.FC = () => {
             {/* Footer */}
             <footer style={{ 
                 borderTop: '1px solid rgba(255,255,255,0.05)', 
-                padding: '4rem 2rem 2rem',
-                marginTop: '4rem'
+                padding: 'clamp(2rem, 8vw, 4rem) 1.5rem 2rem',
+                marginTop: 'clamp(2rem, 8vw, 4rem)'
             }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '4rem', justifyContent: 'space-between' }}>
+                <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 'clamp(2rem, 5vw, 4rem)', justifyContent: 'space-between' }}>
                     <div style={{ maxWidth: '300px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '1.5rem' }}>
-                             <img src={logo} alt="Dary Commerce" style={{ height: '100px', width: 'auto', display: 'block', imageRendering: 'auto' }} />
+                             <img src={logo} alt="Dary Commerce" style={{ height: '60px', width: 'auto', display: 'block' }} />
                         </div>
                         <p style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
                             Вашият доверен партньор в пътническия транспорт в област Плевен. Сигурност, точност и комфорт.
