@@ -121,16 +121,17 @@ const Landing: React.FC = () => {
                         lineHeight: 1.1
                     }}>
                         Вашите Пътувания, <br/>
-                        <span style={{ color: 'var(--primary-color)' }}>По-Умни и По-Бързи</span>
+                        По-Умни с <span style={{ color: '#ff5252' }}>DARY Commerce</span>
                     </h1>
                     <p style={{ 
-                        fontSize: 'clamp(1rem, 4vw, 1.2rem)', 
-                        color: 'rgba(255,255,255,0.5)', 
-                        maxWidth: '600px', 
+                        fontSize: 'clamp(1.1rem, 4vw, 1.4rem)', 
+                        color: 'rgba(255,255,255,0.7)', 
+                        maxWidth: '800px', 
                         margin: '0 auto 2rem',
-                        padding: '0 1rem'
+                        padding: '0 1rem',
+                        fontWeight: 600
                     }}>
-                        Проверете кога тръгва следващият автобус от началната спирка и планирайте пътуването си с лекота.
+                        Обществен транспорт за град Плевен и региона
                     </p>
 
                     {/* Search Bar */}
