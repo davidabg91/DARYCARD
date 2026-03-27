@@ -331,12 +331,25 @@ const Landing: React.FC = () => {
                                                 </div>
                                             </div>
                                             <div>
-                                                <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {line.toUpperCase()}</div>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                                                     {sched.fromDestination.map(t => <span key={t} className="schedule-tag">{t}</span>)}
                                                 </div>
                                             </div>
                                         </div>
+                                        {originMapping[line] && (
+                                            <div style={{ 
+                                                marginTop: '1rem', 
+                                                fontSize: '0.7rem', 
+                                                color: 'rgba(255,255,255,0.4)', 
+                                                fontWeight: 600,
+                                                fontStyle: 'italic',
+                                                borderTop: '1px solid rgba(255,255,255,0.05)',
+                                                paddingTop: '0.8rem'
+                                            }}>
+                                                * Посочените часове са за преминаването на автобуса през началната точка на линията ({toLabel}).
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

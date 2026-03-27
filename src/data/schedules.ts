@@ -93,7 +93,10 @@ SCHEDULES["Дисевица"] = SCHEDULES["Бъркач"];
 SCHEDULES["Търнене"] = SCHEDULES["Бъркач"];
 SCHEDULES["Петърница"] = SCHEDULES["Бъркач"];
 SCHEDULES["Победа"] = SCHEDULES["Рибен"];
-SCHEDULES["Биволаре"] = SCHEDULES["Тръстеник"];
+SCHEDULES["Биволаре"] = {
+  fromPleven: ["06:30", "18:15"],
+  fromDestination: ["06:00", "06:50"]
+};
 SCHEDULES["Крушовица"] = SCHEDULES["Садовец"];
 SCHEDULES["Божурица"] = SCHEDULES["Рибен"];
 SCHEDULES["Долна Митрополия - Тръстеник"] = SCHEDULES["Тръстеник"];
