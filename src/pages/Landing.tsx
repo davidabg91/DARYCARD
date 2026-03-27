@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Clock, MapPin, Search, 
   CreditCard, ExternalLink,
-  ArrowRight, Phone, MessageCircle, AlertTriangle
+  ArrowRight, Phone, MessageCircle, AlertTriangle, Info
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SCHEDULES } from '../data/schedules';
@@ -307,7 +307,35 @@ const Landing: React.FC = () => {
                                     </div>
                                     <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>КАРТА (Месец)</div>
+                                        <div style={{ 
+                                            fontSize: '0.7rem', 
+                                            color: 'rgba(255,255,255,0.4)', 
+                                            fontWeight: 700,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.4rem'
+                                        }}>
+                                            КАРТА (Месец)
+                                            <button 
+                                                onClick={() => document.getElementById('info-section')?.scrollIntoView({ behavior: 'smooth' })}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    padding: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    cursor: 'pointer',
+                                                    color: 'var(--primary-color)',
+                                                    opacity: 0.8,
+                                                    transition: 'opacity 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+                                                title="Повече информация за карти"
+                                            >
+                                                <Info size={12} />
+                                            </button>
+                                        </div>
                                         <div style={{ fontWeight: 800 }}>{meta?.priceCard || '---'}</div>
                                     </div>
                                 </div>
@@ -380,7 +408,7 @@ const Landing: React.FC = () => {
                 </div>
 
                 {/* Info Section */}
-                <section style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1rem' }}>
+                <section id="info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1rem' }}>
                     <div style={{ 
                         background: 'linear-gradient(135deg, rgba(0,173,181,0.1), rgba(0,173,181,0.05))',
                         borderRadius: '32px',
