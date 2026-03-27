@@ -323,8 +323,6 @@ const AdminPanel: React.FC = () => {
                 clientList.push({ id: doc.id, ...doc.data() } as Client);
             });
             setClients(clientList);
-            setIsSyncing(false);
-            setSyncError(null);
 
             // Check for edit param in URL after clients are loaded
             const params = new URLSearchParams(location.search);
@@ -340,8 +338,6 @@ const AdminPanel: React.FC = () => {
             }
         }, (err) => {
             console.error("Firestore error:", err);
-            setSyncError(err.message);
-            setIsSyncing(false);
         });
 
         // 2. Listen for Signals in Real-time
