@@ -112,6 +112,34 @@ const LoginPage: React.FC = () => {
                     >
                         {loading ? 'Зареждане...' : 'Вход'}
                     </button>
+
+                    <button
+                        type="button"
+                        onClick={() => navigate('/')}
+                        style={{ 
+                            width: '100%', 
+                            padding: '1rem', 
+                            borderRadius: '12px', 
+                            background: 'transparent', 
+                            color: 'var(--text-secondary)', 
+                            border: '1px solid var(--surface-border)', 
+                            fontWeight: 600, 
+                            fontSize: '0.95rem', 
+                            cursor: 'pointer', 
+                            marginTop: '0.5rem',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            e.currentTarget.style.color = '#fff';
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                        }}
+                    >
+                        « Назад към Начало
+                    </button>
                     
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '1rem' }}>
                         Система за сигурност Dary Travel © 2026
