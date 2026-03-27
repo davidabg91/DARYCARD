@@ -435,7 +435,7 @@ const Landing: React.FC = () => {
                             </div>
                             <h2 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 900, marginBottom: '1.2rem', lineHeight: 1.2 }}>Как да извадите абонаментна карта?</h2>
                             <p style={{ fontSize: 'clamp(1rem, 3.5vw, 1.1rem)', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: '2rem' }}>
-                                Абонаментните карти за всички линии се издават на нашето специализирано гише. Процесът отнема по-малко от 5 минути и картата е готова веднага.
+                                Абонаментните карти за всички линии се издават на нашето специализирано гише. Процесът отнема по-малко от 5 минути и картата е готова веднага. Билети за пътуване се продават както на автогарата, така и от шофьора на място.
                             </p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <a href="https://share.google/ElVTTGsi6ivVOx7PW" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '1rem', textDecoration: 'none', color: 'inherit', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(5px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}>
@@ -447,11 +447,18 @@ const Landing: React.FC = () => {
                                         <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>Гише DARY COMMERCE</div>
                                     </div>
                                 </a>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CreditCard size={20} color="var(--primary-color)" /></div>
+                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CreditCard size={20} color="var(--primary-color)" /></div>
                                     <div>
                                         <div style={{ fontWeight: 800 }}>Електронна Карта</div>
                                         <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>Валидна за всички курсове по избраната линия</div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Clock size={20} color="var(--primary-color)" /></div>
+                                    <div>
+                                        <div style={{ fontWeight: 800 }}>Еднократен Билет</div>
+                                        <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>От гишето на автогарата или от шофьора на място</div>
                                     </div>
                                 </div>
                             </div>
