@@ -166,7 +166,7 @@ const Layout: React.FC = () => {
                 background: 'rgba(26, 26, 26, 0.85)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                padding: '0.6rem 1.5rem',
+                padding: '0.3rem 1.5rem',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -175,7 +175,7 @@ const Layout: React.FC = () => {
             }}>
                 <Link to="/" onClick={closeMenu} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', gap: '0', userSelect: 'none' }}>
                     <div style={{
-                        padding: '0 4px',
+                        padding: '0',
                         display: 'flex',
                         alignItems: 'center',
                     }}>
@@ -183,10 +183,12 @@ const Layout: React.FC = () => {
                             src={logo}
                             alt="Dary Travel"
                             style={{
-                                height: '54px',
+                                height: '65px',
                                 width: 'auto',
                                 objectFit: 'contain',
-                                display: 'block'
+                                display: 'block',
+                                transform: 'scale(1.2)',
+                                transformOrigin: 'left center'
                             }}
                         />
                     </div>
