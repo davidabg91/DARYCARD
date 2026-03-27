@@ -538,13 +538,6 @@ const Landing: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                <div style={{ 
-                    textAlign: 'center', marginTop: '4rem', 
-                    paddingTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)',
-                    fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)', letterSpacing: '1px'
-                }}>
-                    © {new Date().getFullYear()} DARY COMMERCE. ВСИЧКИ ПРАВА ЗАПАЗЕНИ.
-                </div>
             </footer>
         </div>
     );
