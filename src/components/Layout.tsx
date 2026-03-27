@@ -175,21 +175,20 @@ const Layout: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
             <header className="main-header" style={{
                 position: 'sticky',
-                top: '12px',
+                top: '8px',
                 zIndex: 1000,
                 background: 'rgba(26, 26, 26, 0.85)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                padding: '0.3rem 1.5rem',
+                padding: '0 1.5rem',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 border: '1px solid rgba(255,255,255,0.08)',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-                maxWidth: '1200px',
-                width: 'calc(100% - 2rem)',
+                width: 'calc(100% - 24px)',
                 margin: '0 auto',
-                borderRadius: '20px',
+                borderRadius: '16px',
             }}>
                 <Link to="/" onClick={closeMenu} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', gap: '0', userSelect: 'none' }}>
                     <div style={{
