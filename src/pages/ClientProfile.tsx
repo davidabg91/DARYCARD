@@ -694,7 +694,7 @@ const ClientProfile: React.FC = () => {
                          <span style={{ fontSize: '0.75rem', fontWeight: 900, color: themeColor, fontFamily: 'monospace', letterSpacing: '1px' }}>{client?.id.substring(0, 12).toUpperCase()}</span>
                     </div>
                     <div style={{ opacity: 0.15 }}>
-                         <img src={logo} style={{ height: '24px', width: 'auto', objectFit: 'contain', filter: 'grayscale(1) brightness(1.5) contrast(0.5)' }} alt="Logo" />
+                         <img src={logo} style={{ height: '36px', width: 'auto', objectFit: 'contain', filter: 'grayscale(1) brightness(1.5) contrast(0.5)' }} alt="Logo" />
                     </div>
                 </div>
             </div>

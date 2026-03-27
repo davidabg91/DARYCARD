@@ -183,11 +183,11 @@ const Layout: React.FC = () => {
                             src={logo}
                             alt="Dary Travel"
                             style={{
-                                height: '44px',
+                                height: '48px',
                                 width: 'auto',
                                 objectFit: 'contain',
                                 display: 'block',
-                                transform: 'scale(1.1)',
+                                transform: 'scale(1.2)',
                                 transformOrigin: 'left center'
                             }}
                         />

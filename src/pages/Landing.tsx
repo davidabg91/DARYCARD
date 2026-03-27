@@ -420,7 +420,7 @@ const Landing: React.FC = () => {
                 <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 'clamp(2rem, 5vw, 4rem)', justifyContent: 'space-between' }}>
                     <div style={{ maxWidth: '300px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '1.5rem' }}>
-                             <img src={logo} alt="Dary Commerce" style={{ height: '60px', width: 'auto', display: 'block' }} />
+                             <img src={logo} alt="Dary Commerce" style={{ height: '90px', width: 'auto', display: 'block' }} />
                         </div>
                         <p style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
                             Вашият доверен партньор в пътническия транспорт в област Плевен. Сигурност, точност и комфорт.
