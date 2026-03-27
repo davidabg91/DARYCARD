@@ -262,7 +262,7 @@ const AdminPanel: React.FC = () => {
     const [photoError, setPhotoError] = useState<string | null>(null);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [chartRoute, setChartRoute] = useState<string>(ROUTES[0]);
+    const [chartRoute, setChartRoute] = useState<string>('all_routes');
 
 
     const toggleWaitingForScan = async () => {
@@ -907,7 +907,7 @@ const AdminPanel: React.FC = () => {
                         </Card>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '2rem' }}>
                         <Card>
                             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><List size={20} /> Статистика по Курсове</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
@@ -979,12 +979,12 @@ const AdminPanel: React.FC = () => {
                                 </select>
                             </div>
 
-                            <div style={{ height: '220px', display: 'flex', alignItems: 'flex-end', gap: '4px', padding: '1rem 0', borderBottom: '1px solid var(--surface-border)', marginBottom: '1rem' }}>
+                            <div style={{ height: '220px', display: 'flex', alignItems: 'flex-end', gap: '4px', padding: '1rem 0', borderBottom: '1px solid var(--surface-border)', marginBottom: '1rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                                 {hourlyDistribution.map((count, hr) => {
                                     const height = (count / maxScans) * 100;
                                     const isPeak = hr === peakHour && count > 0;
                                     return (
-                                        <div key={hr} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', height: '100%', justifyContent: 'flex-end' }}>
+                                        <div key={hr} style={{ flex: '1 0 12px', minWidth: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', height: '100%', justifyContent: 'flex-end' }}>
                                             <div style={{ fontSize: '0.65rem', color: isPeak ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: isPeak ? 900 : 400 }}>{count > 0 ? count : ''}</div>
                                             <div 
                                                 title={`${hr}:00 - ${count} сканирания`}
@@ -1003,7 +1003,13 @@ const AdminPanel: React.FC = () => {
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '0.6rem', padding: '0 2px' }}>
                                 {hourlyDistribution.map((_, hr) => (
-                                    <span key={hr} style={{ flex: 1, textAlign: 'center', opacity: hr % 2 === 0 ? 1 : 0.5 }}>
+                                    <span key={hr} style={{ 
+                                        flex: '1 0 12px', 
+                                        minWidth: '12px',
+                                        textAlign: 'center', 
+                                        opacity: hr % 2 === 0 ? 1 : 0.5,
+                                        display: window.innerWidth < 600 && hr % 4 !== 0 ? 'none' : 'block'
+                                    }}>
                                         {hr.toString().padStart(2, '0')}
                                     </span>
                                 ))}
