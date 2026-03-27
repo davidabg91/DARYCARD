@@ -19,10 +19,12 @@ const Landing: React.FC = () => {
         return () => clearInterval(timer);
     }, []);
 
-    const routes = Object.keys(ROUTE_METADATA);
+    const routes = Object.keys(ROUTE_METADATA).sort((a,b) => a.localeCompare(b, 'bg'));
     const filteredRoutes = routes.filter(r => 
         r.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const availableLetters = Array.from(new Set(filteredRoutes.map(r => r[0].toUpperCase()))).sort((a,b) => a.localeCompare(b, 'bg'));
 
     const getNextBus = (line: string, direction: 'fromPleven' | 'fromDestination') => {
         const sched = SCHEDULES[line];
@@ -102,6 +104,60 @@ const Landing: React.FC = () => {
                     from { opacity: 0; transform: translateY(10px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
+                .alphabet-btn {
+                    padding: 0.6rem;
+                    background: rgba(255,255,255,0.03);
+                    border: 1px solid rgba(255,255,255,0.08);
+                    border-radius: 12px;
+                    color: rgba(255,255,255,0.5);
+                    font-weight: 800;
+                    font-size: 0.9rem;
+                    cursor: pointer;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    display: flex;
+                    alignItems: center;
+                    justifyContent: center;
+                    minWidth: 40px;
+                }
+                .alphabet-btn:hover {
+                    background: rgba(0, 173, 181, 0.15);
+                    border-color: var(--primary-color);
+                    color: var(--primary-color);
+                    transform: scale(1.1);
+                    box-shadow: 0 0 15px rgba(0, 173, 181, 0.2);
+                }
+                .alphabet-sidebar {
+                    position: sticky;
+                    top: 100px;
+                    height: fit-content;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.5rem;
+                    padding-right: 1.5rem;
+                    border-right: 1px solid rgba(255,255,255,0.05);
+                }
+                .alphabet-strip {
+                    display: none;
+                    gap: 0.5rem;
+                    overflow-x: auto;
+                    padding: 1rem 0;
+                    margin-bottom: 1.5rem;
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                    position: sticky;
+                    top: 60px;
+                    background: var(--bg-color);
+                    z-index: 50;
+                    border-bottom: 1px solid rgba(255,255,255,0.05);
+                }
+                .alphabet-strip::-webkit-scrollbar {
+                    display: none;
+                }
+                @media (max-width: 900px) {
+                    .alphabet-sidebar { display: none; }
+                    .alphabet-strip { display: flex; }
+                    .main-layout { flex-direction: column !important; }
+                }
             `}</style>
 
             <div className="hero-bg" />
@@ -166,245 +222,285 @@ const Landing: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Schedules Grid */}
-                <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', 
-                    gap: '1.5rem' 
-                }}>
-                    {filteredRoutes.map(line => {
-                        const nextFromPleven = getNextBus(line, 'fromPleven');
-                        const nextFromDest = getNextBus(line, 'fromDestination');
-                        const meta = ROUTE_METADATA[line];
-                        const sched = SCHEDULES[line];
-                        const isExpanded = expandedRoute === line;
-                        
-                        // Parse labels for "From - To" routes
-                        let fromLabel = 'ПЛЕВЕН';
-                        let toLabel = line.toUpperCase();
-                        
-                        // Special origin mappings for sub-routes
-                        const originMapping: Record<string, string> = {
-                            "Божурица": "РИБЕН",
-                            "Победа": "РИБЕН",
-                            "Биволаре": "РИБЕН",
-                            "Градина": "БЪРКАЧ",
-                            "Крушовица": "САДОВЕЦ"
-                        };
+                <div className="main-layout" style={{ display: 'flex', gap: '0', position: 'relative' }}>
+                    {/* Alphabet Sidebar (Desktop) */}
+                    <aside className="alphabet-sidebar">
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', marginBottom: '0.5rem', letterSpacing: '1px' }}>НАВИГАЦИЯ</div>
+                        {availableLetters.map(letter => (
+                            <button 
+                                key={letter}
+                                className="alphabet-btn"
+                                onClick={() => document.getElementById(`letter-${letter}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                            >
+                                {letter}
+                            </button>
+                        ))}
+                    </aside>
 
-                        if (originMapping[line]) {
-                            toLabel = originMapping[line];
-                        } else if (line.includes(' - ')) {
-                            const parts = line.split(' - ');
-                            fromLabel = parts[0].toUpperCase();
-                            toLabel = parts[1].toUpperCase();
-                        }
-                        
-                        return (
-                            <div key={line} className="route-card" style={{ 
-                                background: 'rgba(255,255,255,0.02)',
-                                borderRadius: '24px',
-                                padding: '1.5rem',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '1.2rem'
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '0.3rem' }}>ЛИНИЯ</div>
-                                        <h3 style={{ fontSize: '1.6rem', fontWeight: 900 }}>{line}</h3>
-                                        {meta?.description && (
-                                            <div style={{ 
-                                                fontSize: '0.75rem', 
-                                                color: 'var(--accent-color)', 
-                                                fontWeight: 600,
-                                                maxWidth: '200px',
-                                                lineHeight: 1.3,
-                                                marginTop: '0.4rem'
-                                            }}>
-                                                {meta.description}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <div>
-                                            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ОТ {fromLabel} СЛЕД:</div>
-                                            <div style={{ 
-                                                fontSize: '1rem', 
-                                                fontWeight: 900, 
-                                                color: nextFromPleven && nextFromPleven <= 15 ? 'var(--success-color)' : '#fff',
-                                                display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end'
-                                            }}>
-                                                <Clock size={16} /> {formatCountdown(nextFromPleven)}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ОТ {toLabel} СЛЕД:</div>
-                                            <div style={{ 
-                                                fontSize: '1rem', 
-                                                fontWeight: 900, 
-                                                color: nextFromDest && nextFromDest <= 15 ? 'var(--success-color)' : '#fff',
-                                                display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end'
-                                            }}>
-                                                <Clock size={16} /> {formatCountdown(nextFromDest)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div style={{ flex: 1 }}>
+                        {/* Alphabet Strip (Mobile) */}
+                        <div className="alphabet-strip">
+                            {availableLetters.map(letter => (
+                                <button 
+                                    key={letter}
+                                    className="alphabet-btn"
+                                    onClick={() => document.getElementById(`letter-${letter}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                                >
+                                    {letter}
+                                </button>
+                            ))}
+                        </div>
 
-                                {/* Visual Paths */}
-                                {meta && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', padding: '0.8rem 0 1.2rem' }}>
-                                        {/* Pleven -> Destination */}
-                                        <div style={{ background: 'rgba(0,173,181,0.03)', padding: '1.2rem 1rem 4.5rem', borderRadius: '16px', border: '1px solid rgba(0,173,181,0.1)' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem' }}>
-                                                <div style={{ width: '8px', height: '8px', background: 'var(--primary-color)', borderRadius: '50%' }} />
-                                                <div style={{ fontSize: '0.65rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                                     ОТ ПЛЕВЕН → {line.toUpperCase()}
+                        {/* Schedules Grid */}
+                        <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', 
+                            gap: '1.5rem' 
+                        }}>
+                            {filteredRoutes.map((line, index) => {
+                                const nextFromPleven = getNextBus(line, 'fromPleven');
+                                const nextFromDest = getNextBus(line, 'fromDestination');
+                                const meta = ROUTE_METADATA[line];
+                                const sched = SCHEDULES[line];
+                                const isExpanded = expandedRoute === line;
+                                
+                                // Parse labels for "From - To" routes
+                                let fromLabel = 'ПЛЕВЕН';
+                                let toLabel = line.toUpperCase();
+                                
+                                // Special origin mappings for sub-routes
+                                const originMapping: Record<string, string> = {
+                                    "Божурица": "РИБЕН",
+                                    "Победа": "РИБЕН",
+                                    "Биволаре": "РИБЕН",
+                                    "Градина": "БЪРКАЧ",
+                                    "Крушовица": "САДОВЕЦ"
+                                };
+
+                                if (originMapping[line]) {
+                                    toLabel = originMapping[line];
+                                } else if (line.includes(' - ')) {
+                                    const parts = line.split(' - ');
+                                    fromLabel = parts[0].toUpperCase();
+                                    toLabel = parts[1].toUpperCase();
+                                }
+                                
+                                // Check if this is the first route of its letter group
+                                const firstLetter = line[0].toUpperCase();
+                                const isFirstOfLetter = index === 0 || filteredRoutes[index - 1][0].toUpperCase() !== firstLetter;
+
+                                return (
+                                    <div 
+                                        key={line} 
+                                        id={isFirstOfLetter ? `letter-${firstLetter}` : undefined} 
+                                        className="route-card" 
+                                        style={{ 
+                                            background: 'rgba(255,255,255,0.02)',
+                                            borderRadius: '24px',
+                                            padding: '1.5rem',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '1.2rem'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '0.3rem' }}>ЛИНИЯ</div>
+                                                <h3 style={{ fontSize: '1.6rem', fontWeight: 900 }}>{line}</h3>
+                                                {meta?.description && (
+                                                    <div style={{ 
+                                                        fontSize: '0.75rem', 
+                                                        color: 'var(--accent-color)', 
+                                                        fontWeight: 600,
+                                                        maxWidth: '200px',
+                                                        lineHeight: 1.3,
+                                                        marginTop: '0.4rem'
+                                                    }}>
+                                                        {meta.description}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                <div>
+                                                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ОТ {fromLabel} СЛЕД:</div>
+                                                    <div style={{ 
+                                                        fontSize: '1rem', 
+                                                        fontWeight: 900, 
+                                                        color: nextFromPleven && nextFromPleven <= 15 ? 'var(--success-color)' : '#fff',
+                                                        display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end'
+                                                    }}>
+                                                        <Clock size={16} /> {formatCountdown(nextFromPleven)}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ОТ {toLabel} СЛЕД:</div>
+                                                    <div style={{ 
+                                                        fontSize: '1rem', 
+                                                        fontWeight: 900, 
+                                                        color: nextFromDest && nextFromDest <= 15 ? 'var(--success-color)' : '#fff',
+                                                        display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end'
+                                                    }}>
+                                                        <Clock size={16} /> {formatCountdown(nextFromDest)}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem' }}>
-                                                {meta.stops.map((stop, i) => (
-                                                    <React.Fragment key={i}>
-                                                        <div className="stop-dot" title={stop} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
-                                                            <div style={{ width: '10px', height: '10px', background: 'var(--primary-color)', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)' }} />
-                                                            <span style={{ 
-                                                                position: 'absolute', 
-                                                                top: '16px', 
-                                                                fontSize: '0.55rem', 
-                                                                whiteSpace: 'nowrap', 
-                                                                opacity: 0.9,
-                                                                fontWeight: 700,
-                                                                textAlign: 'center',
-                                                                color: i === 0 || i === meta.stops.length -1 ? 'var(--primary-color)' : '#fff'
-                                                            }}>
-                                                                {abbreviate(stop)}
-                                                            </span>
-                                                        </div>
-                                                        {i < meta.stops.length - 1 && (
-                                                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                                                <div className="stop-line" style={{ background: 'linear-gradient(90deg, var(--primary-color), rgba(255,255,255,0.1))', height: '2px', width: '100%' }} />
-                                                                <ArrowRight size={10} color="var(--primary-color)" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', opacity: 0.5 }} />
-                                                            </div>
-                                                        )}
-                                                    </React.Fragment>
-                                                ))}
-                                            </div>
                                         </div>
-                                    </div>
-                                )}
 
-                                <div style={{ 
-                                    display: 'flex', 
-                                    gap: '1rem', 
-                                    background: 'rgba(255,255,255,0.03)', 
-                                    padding: '1rem', 
-                                    borderRadius: '16px' 
-                                }}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>БИЛЕТ</div>
-                                        <div style={{ fontWeight: 800 }}>{meta?.priceSingle || '---'}</div>
-                                    </div>
-                                    <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
-                                    <div style={{ flex: 1 }}>
+                                        {/* Visual Paths */}
+                                        {meta && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', padding: '0.8rem 0 1.2rem' }}>
+                                                {/* Pleven -> Destination */}
+                                                <div style={{ background: 'rgba(0,173,181,0.03)', padding: '1.2rem 1rem 4.5rem', borderRadius: '16px', border: '1px solid rgba(0,173,181,0.1)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem' }}>
+                                                        <div style={{ width: '8px', height: '8px', background: 'var(--primary-color)', borderRadius: '50%' }} />
+                                                        <div style={{ fontSize: '0.65rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                                             ОТ ПЛЕВЕН → {line.toUpperCase()}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem' }}>
+                                                        {meta.stops.map((stop, i) => (
+                                                            <React.Fragment key={i}>
+                                                                <div className="stop-dot" title={stop} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
+                                                                    <div style={{ width: '10px', height: '10px', background: 'var(--primary-color)', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)' }} />
+                                                                    <span style={{ 
+                                                                        position: 'absolute', 
+                                                                        top: '16px', 
+                                                                        fontSize: '0.55rem', 
+                                                                        whiteSpace: 'nowrap', 
+                                                                        opacity: 0.9,
+                                                                        fontWeight: 700,
+                                                                        textAlign: 'center',
+                                                                        color: i === 0 || i === meta.stops.length -1 ? 'var(--primary-color)' : '#fff'
+                                                                    }}>
+                                                                        {abbreviate(stop)}
+                                                                    </span>
+                                                                </div>
+                                                                {i < meta.stops.length - 1 && (
+                                                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                                                        <div className="stop-line" style={{ background: 'linear-gradient(90deg, var(--primary-color), rgba(255,255,255,0.1))', height: '2px', width: '100%' }} />
+                                                                        <ArrowRight size={10} color="var(--primary-color)" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', opacity: 0.5 }} />
+                                                                    </div>
+                                                                )}
+                                                            </React.Fragment>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div style={{ 
-                                            fontSize: '0.7rem', 
-                                            color: 'rgba(255,255,255,0.4)', 
-                                            fontWeight: 700,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.4rem'
+                                            display: 'flex', 
+                                            gap: '1rem', 
+                                            background: 'rgba(255,255,255,0.03)', 
+                                            padding: '1rem', 
+                                            borderRadius: '16px' 
                                         }}>
-                                            КАРТА (Месец)
-                                            <button 
-                                                onClick={() => document.getElementById('info-section')?.scrollIntoView({ behavior: 'smooth' })}
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    padding: 0,
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>БИЛЕТ</div>
+                                                <div style={{ fontWeight: 800 }}>{meta?.priceSingle || '---'}</div>
+                                            </div>
+                                            <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ 
+                                                    fontSize: '0.7rem', 
+                                                    color: 'rgba(255,255,255,0.4)', 
+                                                    fontWeight: 700,
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    cursor: 'pointer',
-                                                    color: 'var(--primary-color)',
-                                                    opacity: 0.8,
-                                                    transition: 'opacity 0.2s'
-                                                }}
-                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
-                                                title="Повече информация за карти"
-                                            >
-                                                <Info size={12} />
-                                            </button>
+                                                    gap: '0.4rem'
+                                                }}>
+                                                    КАРТА (Месец)
+                                                    <button 
+                                                        onClick={() => document.getElementById('info-section')?.scrollIntoView({ behavior: 'smooth' })}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            padding: 0,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            cursor: 'pointer',
+                                                            color: 'var(--primary-color)',
+                                                            opacity: 0.8,
+                                                            transition: 'opacity 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+                                                        title="Повече информация за карти"
+                                                    >
+                                                        <Info size={12} />
+                                                    </button>
+                                                </div>
+                                                <div style={{ fontWeight: 800 }}>{meta?.priceCard || '---'}</div>
+                                            </div>
                                         </div>
-                                        <div style={{ fontWeight: 800 }}>{meta?.priceCard || '---'}</div>
-                                    </div>
-                                </div>
 
-                                {/* Expanded Schedule */}
-                                {isExpanded && (
-                                    <div style={{ 
-                                        padding: '1rem', 
-                                        background: 'rgba(255,255,255,0.02)', 
-                                        borderRadius: '16px',
-                                        animation: 'fadeIn 0.3s ease-out'
-                                    }}>
-                                        <div style={{ 
-                                            display: 'grid', 
-                                            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
-                                            gap: '1rem' 
-                                        }}>
-                                            <div>
-                                                <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                    {sched.fromPleven.map(t => <span key={t} className="schedule-tag">{t}</span>)}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                    {sched.fromDestination.map(t => <span key={t} className="schedule-tag">{t}</span>)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {originMapping[line] && (
+                                        {/* Expanded Schedule */}
+                                        {isExpanded && (
                                             <div style={{ 
-                                                marginTop: '1rem', 
-                                                fontSize: '0.7rem', 
-                                                color: 'rgba(255,255,255,0.4)', 
-                                                fontWeight: 600,
-                                                fontStyle: 'italic',
-                                                borderTop: '1px solid rgba(255,255,255,0.05)',
-                                                paddingTop: '0.8rem'
+                                                padding: '1rem', 
+                                                background: 'rgba(255,255,255,0.02)', 
+                                                borderRadius: '16px',
+                                                animation: 'fadeIn 0.3s ease-out'
                                             }}>
-                                                * Посочените часове са за преминаването на автобуса през началната точка на линията ({toLabel}).
+                                                <div style={{ 
+                                                    display: 'grid', 
+                                                    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
+                                                    gap: '1rem' 
+                                                }}>
+                                                    <div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                            {sched.fromPleven.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                            {sched.fromDestination.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {originMapping[line] && (
+                                                    <div style={{ 
+                                                        marginTop: '1rem', 
+                                                        fontSize: '0.7rem', 
+                                                        color: 'rgba(255,255,255,0.4)', 
+                                                        fontWeight: 600,
+                                                        fontStyle: 'italic',
+                                                        borderTop: '1px solid rgba(255,255,255,0.05)',
+                                                        paddingTop: '0.8rem'
+                                                    }}>
+                                                        * Посочените часове са за преминаването на автобуса през началната точка на линията ({toLabel}).
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
-                                    </div>
-                                )}
 
-                                <button 
-                                    onClick={() => setExpandedRoute(isExpanded ? null : line)}
-                                    style={{ 
-                                        marginTop: 'auto',
-                                        width: '100%', 
-                                        padding: '1rem', 
-                                        background: isExpanded ? 'rgba(255,255,255,0.05)' : 'rgba(0,173,181,0.1)',
-                                        border: '1px solid rgba(0,173,181,0.2)',
-                                        borderRadius: '16px',
-                                        color: isExpanded ? '#fff' : 'var(--primary-color)',
-                                        fontWeight: 700,
-                                        fontSize: '0.9rem',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                                        cursor: 'pointer',
-                                        transition: '0.3s'
-                                    }}
-                                >
-                                    {isExpanded ? 'Затвори Разписание' : 'Виж Пълно Разписание'} 
-                                    {isExpanded ? <Clock size={16} /> : <ArrowRight size={16} />}
-                                </button>
-                            </div>
-                        );
-                    })}
+                                        <button 
+                                            onClick={() => setExpandedRoute(isExpanded ? null : line)}
+                                            style={{ 
+                                                marginTop: 'auto',
+                                                width: '100%', 
+                                                padding: '1rem', 
+                                                background: isExpanded ? 'rgba(255,255,255,0.05)' : 'rgba(0,173,181,0.1)',
+                                                border: '1px solid rgba(0,173,181,0.2)',
+                                                borderRadius: '16px',
+                                                color: isExpanded ? '#fff' : 'var(--primary-color)',
+                                                fontWeight: 700,
+                                                fontSize: '0.9rem',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                                                cursor: 'pointer',
+                                                transition: '0.3s'
+                                            }}
+                                        >
+                                            {isExpanded ? 'Затвори Разписание' : 'Виж Пълно Разписание'} 
+                                            {isExpanded ? <Clock size={16} /> : <ArrowRight size={16} />}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Info Section */}
