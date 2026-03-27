@@ -175,7 +175,7 @@ const Layout: React.FC = () => {
             }}>
                 <Link to="/" onClick={closeMenu} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', gap: '0', userSelect: 'none' }}>
                     <div style={{
-                        padding: '2px 4px',
+                        padding: '0 4px',
                         display: 'flex',
                         alignItems: 'center',
                     }}>
@@ -183,10 +183,12 @@ const Layout: React.FC = () => {
                             src={logo}
                             alt="Dary Travel"
                             style={{
-                                height: '36px',
+                                height: '44px',
                                 width: 'auto',
                                 objectFit: 'contain',
                                 display: 'block',
+                                transform: 'scale(1.1)',
+                                transformOrigin: 'left center'
                             }}
                         />
                     </div>

@@ -230,7 +230,7 @@ const Landing: React.FC = () => {
                                 {meta && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', padding: '0.8rem 0 1.2rem' }}>
                                         {/* Pleven -> Destination */}
-                                        <div style={{ background: 'rgba(0,173,181,0.03)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(0,173,181,0.1)' }}>
+                                        <div style={{ background: 'rgba(0,173,181,0.03)', padding: '1.2rem 1rem 4.5rem', borderRadius: '16px', border: '1px solid rgba(0,173,181,0.1)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem' }}>
                                                 <div style={{ width: '8px', height: '8px', background: 'var(--primary-color)', borderRadius: '50%' }} />
                                                 <div style={{ fontSize: '0.65rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
@@ -345,14 +345,14 @@ const Landing: React.FC = () => {
                     <div style={{ 
                         background: 'linear-gradient(135deg, rgba(0,173,181,0.1), rgba(0,173,181,0.05))',
                         borderRadius: '32px',
-                        padding: 'clamp(1.5rem, 5vw, 3rem)',
+                        padding: 'clamp(1rem, 5vw, 3rem)',
                         border: '1px solid rgba(0,173,181,0.1)',
                         display: 'flex',
                         flexWrap: 'wrap',
                         gap: 'clamp(2rem, 5vw, 3rem)',
-                        alignItems: 'center'
+                        alignItems: 'flex-start'
                     }}>
-                        <div style={{ flex: '1', minWidth: '300px' }}>
+                        <div style={{ flex: '1', minWidth: 'min(100%, 250px)' }}>
                             <div style={{ 
                                 display: 'inline-flex', padding: '0.6rem 1.2rem', 
                                 background: 'rgba(0,173,181,0.2)', borderRadius: '100px',
@@ -384,7 +384,7 @@ const Landing: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div style={{ flex: '1', minWidth: '300px', position: 'relative' }}>
+                        <div style={{ flex: '1', minWidth: 'min(100%, 280px)', position: 'relative' }}>
                              <div className="glass" style={{ 
                                  padding: '2rem', borderRadius: '24px', 
                                  border: '1px solid rgba(255,255,255,0.1)',
