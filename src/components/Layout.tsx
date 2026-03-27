@@ -186,6 +186,9 @@ const Layout: React.FC = () => {
                                 width: 'auto',
                                 objectFit: 'contain',
                                 display: 'block',
+                                imageRendering: '-webkit-optimize-contrast',
+                                transform: 'translateZ(0)',
+                                backfaceVisibility: 'hidden'
                             }}
                         />
                     </div>
