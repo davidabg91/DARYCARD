@@ -54,7 +54,10 @@ const LoginPage: React.FC = () => {
                 </div>
 
                 <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem', fontWeight: 800 }}>Добре дошли</h2>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>Влезте в системния панел</p>
+                <div style={{ marginBottom: '2rem' }}>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Влезте в системния панел</p>
+                    <p style={{ color: '#ff5252', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>Само за екипа на компанията</p>
+                </div>
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{ textAlign: 'left' }}>

@@ -1,4 +1,5 @@
 import logo from '../assets/logo_main.png';
+import logoTravel from '../assets/logo_travel.png';
 import React, { useState, useEffect } from 'react';
 import { 
   Clock, MapPin, Search, 
@@ -427,7 +428,16 @@ const Landing: React.FC = () => {
                         </p>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '4rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4rem' }}>
+                        <div>
+                            <h5 style={{ marginBottom: '1.2rem', fontWeight: 800 }}>ПАРТНЬОРИ</h5>
+                            <a href="https://darytravel.com/" target="_blank" rel="noopener noreferrer" style={{ display: 'block', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                                <img src={logoTravel} alt="Dary Travel" style={{ height: '70px', width: 'auto', marginBottom: '0.8rem' }} />
+                            </a>
+                            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', maxWidth: '200px' }}>
+                                Екскурзии навсякъде по света.
+                            </p>
+                        </div>
                         <div>
                             <h5 style={{ marginBottom: '1.2rem', fontWeight: 800 }}>КОНТАКТИ</h5>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
