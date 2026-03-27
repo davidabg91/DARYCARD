@@ -448,11 +448,26 @@ const Landing: React.FC = () => {
                                 Екскурзии навсякъде по света
                             </p>
                         </div>
-                        <div>
-                            <h5 style={{ marginBottom: '1.2rem', fontWeight: 800 }}>КОНТАКТИ</h5>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Phone size={14} /> +359 888 123 456</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MessageCircle size={14} /> dary.commerce@gmail.com</div>
+                        <div style={{ 
+                            background: 'rgba(255,255,255,0.03)', 
+                            backdropFilter: 'blur(10px)', 
+                            padding: '1.5rem', 
+                            borderRadius: '24px', 
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            minWidth: '220px'
+                        }}>
+                            <h5 style={{ marginBottom: '1.2rem', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '1px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>КОНТАКТИ</h5>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem', alignItems: 'center' }}>
+                                <a href="tel:0898481433" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit' }}>
+                                    <Phone size={14} /> 0898481433
+                                </a>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <MessageCircle size={14} /> dary.commerce@gmail.com
+                                </div>
                             </div>
                         </div>
                     </div>
