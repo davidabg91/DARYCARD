@@ -428,13 +428,24 @@ const Landing: React.FC = () => {
                     </div>
                     
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4rem' }}>
-                        <div>
-                            <h5 style={{ marginBottom: '1.2rem', fontWeight: 800 }}>ПАРТНЬОРИ</h5>
-                            <a href="https://darytravel.com/" target="_blank" rel="noopener noreferrer" style={{ display: 'block', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-                                <img src={logoTravel} alt="Dary Travel" style={{ height: '110px', width: 'auto', marginBottom: '0.8rem' }} />
+                        <div style={{ 
+                            background: 'rgba(255,255,255,0.03)', 
+                            backdropFilter: 'blur(10px)', 
+                            padding: '1.5rem', 
+                            borderRadius: '24px', 
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            minWidth: '220px'
+                        }}>
+                            <h5 style={{ marginBottom: '0.8rem', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '1px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>ПАРТНЬОРИ</h5>
+                            <a href="https://darytravel.com/" target="_blank" rel="noopener noreferrer" style={{ display: 'block', transition: 'transform 0.2s', marginBottom: '0.5rem' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                                <img src={logoTravel} alt="Dary Travel" style={{ height: '90px', width: 'auto' }} />
                             </a>
-                            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', maxWidth: '200px' }}>
-                                Екскурзии навсякъде по света.
+                            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', margin: 0 }}>
+                                Екскурзии навсякъде по света
                             </p>
                         </div>
                         <div>
