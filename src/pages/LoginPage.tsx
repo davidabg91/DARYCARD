@@ -41,12 +41,10 @@ const LoginPage: React.FC = () => {
     return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', padding: '1rem', color: '#fff' }}>
             <div style={{ width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-                <div style={{ marginBottom: '2.5rem' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                        <div style={{ padding: '0', display: 'flex', alignItems: 'center' }}>
-                            <img src={logo} alt="Logo" style={{ height: '160px', width: 'auto', objectFit: 'contain' }} />
-                        </div>
-                        <div style={{ textAlign: 'left' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                        <img src={logo} alt="Logo" style={{ height: '160px', width: 'auto', objectFit: 'contain', marginBottom: '-10px' }} />
+                        <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#ff5252' }}>DARY CARD</div>
                             <div style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>SYSTEM</div>
                         </div>

@@ -1,4 +1,3 @@
-import logo from '../assets/logo_main.png';
 import logoTravel from '../assets/logo_travel.png';
 import React, { useState, useEffect } from 'react';
 import { 
@@ -420,8 +419,8 @@ const Landing: React.FC = () => {
             }}>
                 <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 'clamp(2rem, 5vw, 4rem)', justifyContent: 'space-between' }}>
                     <div style={{ maxWidth: '300px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '1.5rem' }}>
-                             <img src={logo} alt="Dary Commerce" style={{ height: '90px', width: 'auto', display: 'block' }} />
+                        <div style={{ marginBottom: '1.2rem' }}>
+                             <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ff5252', letterSpacing: '0.05em' }}>DARY COMMERCE</h3>
                         </div>
                         <p style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
                             Вашият доверен партньор в пътническия транспорт в област Плевен. Сигурност, точност и комфорт.
@@ -432,7 +431,7 @@ const Landing: React.FC = () => {
                         <div>
                             <h5 style={{ marginBottom: '1.2rem', fontWeight: 800 }}>ПАРТНЬОРИ</h5>
                             <a href="https://darytravel.com/" target="_blank" rel="noopener noreferrer" style={{ display: 'block', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-                                <img src={logoTravel} alt="Dary Travel" style={{ height: '70px', width: 'auto', marginBottom: '0.8rem' }} />
+                                <img src={logoTravel} alt="Dary Travel" style={{ height: '110px', width: 'auto', marginBottom: '0.8rem' }} />
                             </a>
                             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', maxWidth: '200px' }}>
                                 Екскурзии навсякъде по света.
