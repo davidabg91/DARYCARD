@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { 
   Clock, MapPin, Search, 
   CreditCard, ExternalLink,
-  ArrowRight, Phone, MessageCircle
+  ArrowRight, Phone, MessageCircle, AlertTriangle
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { SCHEDULES } from '../data/schedules';
 import { ROUTE_METADATA, abbreviate } from '../data/routeMetadata';
 
@@ -148,7 +149,7 @@ const Landing: React.FC = () => {
                     }}>
                         <Search size={24} color="rgba(255,255,255,0.3)" />
                         <input 
-                            placeholder="Намери своята линия (напр. Тръстеник, Садовец...)"
+                            placeholder="Намери своята линия"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             style={{ 
@@ -468,6 +469,34 @@ const Landing: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <MessageCircle size={14} /> dary.commerce@gmail.com
                                 </div>
+                                <Link 
+                                    to="/signal" 
+                                    style={{ 
+                                        marginTop: '0.5rem',
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '0.6rem', 
+                                        textDecoration: 'none', 
+                                        color: '#fff',
+                                        background: 'rgba(229,57,53,0.15)',
+                                        padding: '0.6rem 1.2rem',
+                                        borderRadius: '12px',
+                                        border: '1px solid rgba(229,57,53,0.3)',
+                                        fontWeight: 700,
+                                        fontSize: '0.85rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(229,57,53,0.25)';
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(229,57,53,0.15)';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                    }}
+                                >
+                                    <AlertTriangle size={14} color="#ff5252" /> Изпрати Сигнал
+                                </Link>
                             </div>
                         </div>
                     </div>
