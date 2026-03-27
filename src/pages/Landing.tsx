@@ -202,7 +202,7 @@ const Landing: React.FC = () => {
                                     </div>
                                     <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         <div>
-                                            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ТРЪГВА ОТ {fromLabel} СЛЕД:</div>
+                                            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ОТ {fromLabel} СЛЕД:</div>
                                             <div style={{ 
                                                 fontSize: '1rem', 
                                                 fontWeight: 900, 
@@ -213,7 +213,7 @@ const Landing: React.FC = () => {
                                             </div>
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ТРЪГВА ОТ {toLabel} СЛЕД:</div>
+                                            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ОТ {toLabel} СЛЕД:</div>
                                             <div style={{ 
                                                 fontSize: '1rem', 
                                                 fontWeight: 900, 
