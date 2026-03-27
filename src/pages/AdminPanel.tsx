@@ -1001,12 +1001,12 @@ const AdminPanel: React.FC = () => {
                                     );
                                 })}
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '0.7rem', padding: '0 5px' }}>
-                                <span>00:00</span>
-                                <span>06:00</span>
-                                <span>12:00</span>
-                                <span>18:00</span>
-                                <span>23:00</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '0.6rem', padding: '0 2px' }}>
+                                {hourlyDistribution.map((_, hr) => (
+                                    <span key={hr} style={{ flex: 1, textAlign: 'center', opacity: hr % 2 === 0 ? 1 : 0.5 }}>
+                                        {hr.toString().padStart(2, '0')}
+                                    </span>
+                                ))}
                             </div>
 
                             {maxScans > 1 ? (
