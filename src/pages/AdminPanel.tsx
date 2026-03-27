@@ -295,8 +295,6 @@ const AdminPanel: React.FC = () => {
         }
     };
 
-    const [isSyncing, setIsSyncing] = useState(true);
-    const [syncError, setSyncError] = useState<string | null>(null);
     const [registrationSuccess, setRegistrationSuccess] = useState<Client | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const logGlobalActivity = async (action: string, targetName: string, details: string, amount?: number) => {
