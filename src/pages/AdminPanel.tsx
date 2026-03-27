@@ -262,6 +262,7 @@ const AdminPanel: React.FC = () => {
     const [photoError, setPhotoError] = useState<string | null>(null);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [chartRoute, setChartRoute] = useState<string>(ROUTES[0]);
 
 
     const toggleWaitingForScan = async () => {
@@ -765,6 +766,32 @@ const AdminPanel: React.FC = () => {
         return { date: iso, revenue: rev, regs: curRegs };
     });
 
+    const hourlyDistribution = (() => {
+        const dist = Array(24).fill(0);
+        const now = new Date();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        
+        clients.forEach(client => {
+            if (chartRoute !== 'all_routes' && client.route !== chartRoute) return;
+            
+            (client.scanHistory || []).forEach(ts => {
+                const scanDate = new Date(ts);
+                if (scanDate >= sevenDaysAgo) {
+                    const hour = scanDate.getHours();
+                    dist[hour]++;
+                }
+            });
+        });
+        return dist;
+    })();
+
+    const maxScans = Math.max(...hourlyDistribution, 1);
+    const peakHour = hourlyDistribution.indexOf(Math.max(...hourlyDistribution));
+    const lowHours = hourlyDistribution
+        .map((count, hr) => ({ hr, count }))
+        .filter(item => item.hr >= 8 && item.hr <= 20 && item.count < (maxScans * 0.2))
+        .map(item => `${item.hr}:00`);
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease' }}>
 
@@ -932,6 +959,74 @@ const AdminPanel: React.FC = () => {
                             <div style={{ marginTop: '1rem', padding: '0.75rem', borderRadius: '10px', background: 'rgba(0,173,181,0.05)', fontSize: '0.8rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <Zap size={14} /> <span>{paymentRate > 80 ? 'Отлична събираемост този месец!' : 'Внимание: Има голям брой неплатени карти.'}</span>
                             </div>
+                        </Card>
+
+                        {/* HOURLY DISTRIBUTION CHART */}
+                        <Card style={{ gridColumn: '1 / -1' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--primary-color)' }}>
+                                    <Clock size={20} /> Натовареност по часове (Последна седмица)
+                                </h3>
+                                <select 
+                                    value={chartRoute} 
+                                    onChange={(e) => setChartRoute(e.target.value)}
+                                    style={{ background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', outline: 'none', fontSize: '0.85rem' }}
+                                >
+                                    <option value="all_routes">Всички Линии (Общо)</option>
+                                    {ROUTES.map(r => (
+                                        <option key={r} value={r}>{r}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div style={{ height: '220px', display: 'flex', alignItems: 'flex-end', gap: '4px', padding: '1rem 0', borderBottom: '1px solid var(--surface-border)', marginBottom: '1rem' }}>
+                                {hourlyDistribution.map((count, hr) => {
+                                    const height = (count / maxScans) * 100;
+                                    const isPeak = hr === peakHour && count > 0;
+                                    return (
+                                        <div key={hr} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', height: '100%', justifyContent: 'flex-end' }}>
+                                            <div style={{ fontSize: '0.65rem', color: isPeak ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: isPeak ? 900 : 400 }}>{count > 0 ? count : ''}</div>
+                                            <div 
+                                                title={`${hr}:00 - ${count} сканирания`}
+                                                style={{ 
+                                                    width: '100%', 
+                                                    height: `${height}%`, 
+                                                    background: isPeak ? 'var(--primary-color)' : (count > 0 ? 'rgba(0, 173, 181, 0.3)' : 'rgba(255,255,255,0.02)'),
+                                                    borderRadius: '4px 4px 0 0',
+                                                    transition: 'height 0.3s ease, background 0.3s ease',
+                                                    boxShadow: isPeak ? '0 0 15px rgba(0, 173, 181, 0.4)' : 'none'
+                                                }} 
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '0.7rem', padding: '0 5px' }}>
+                                <span>00:00</span>
+                                <span>06:00</span>
+                                <span>12:00</span>
+                                <span>18:00</span>
+                                <span>23:00</span>
+                            </div>
+
+                            {maxScans > 1 ? (
+                                <div style={{ marginTop: '1.5rem', padding: '1rem', borderRadius: '12px', background: 'rgba(255,152,0,0.05)', border: '1px solid rgba(255,152,0,0.1)', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                                    <AlertTriangle size={18} color="#ff9800" style={{ flexShrink: 0, marginTop: '2px' }} />
+                                    <div>
+                                        <div style={{ fontWeight: 700, color: '#ff9800', marginBottom: '0.25rem', fontSize: '0.9rem' }}>Оптимизация на Автобуси</div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                            Пиков час: <b>{peakHour}:00</b> ({hourlyDistribution[peakHour]} сканирания). 
+                                            {lowHours.length > 0 && (
+                                                <> В часовете {lowHours.slice(0, 3).join(', ')} натовареността е ниска. <b>Препоръка:</b> Обмислете пускането на по-малък автобус за тези курсове.</>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ marginTop: '1.5rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                                    Няма достатъчно данни за седмичен анализ на тази линия.
+                                </div>
+                            )}
                         </Card>
                     </div>
 
