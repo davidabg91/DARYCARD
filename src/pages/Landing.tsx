@@ -1,3 +1,4 @@
+import logo from '../assets/logo_main.png';
 import React, { useState, useEffect } from 'react';
 import { 
   Bus, Clock, MapPin, Search, 
@@ -398,9 +399,8 @@ const Landing: React.FC = () => {
             }}>
                 <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '4rem', justifyContent: 'space-between' }}>
                     <div style={{ maxWidth: '300px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1.5rem' }}>
-                             <Bus color="var(--primary-color)" size={28} />
-                             <span style={{ fontSize: '1.5rem', fontWeight: 900 }}>DARY COMMERCE</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '1.5rem' }}>
+                             <img src={logo} alt="Dary Commerce" style={{ height: '60px', width: 'auto', display: 'block' }} />
                         </div>
                         <p style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
                             Вашият доверен партньор в пътническия транспорт в област Плевен. Сигурност, точност и комфорт.

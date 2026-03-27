@@ -43,19 +43,8 @@ const LoginPage: React.FC = () => {
             <div style={{ width: '100%', maxWidth: '400px', textAlign: 'center' }}>
                 <div style={{ marginBottom: '2.5rem' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <img 
-                                src={logo} 
-                                alt="Logo" 
-                                style={{ 
-                                    height: '64px', 
-                                    width: 'auto', 
-                                    objectFit: 'contain',
-                                    imageRendering: '-webkit-optimize-contrast',
-                                    transform: 'translateZ(0)',
-                                    backfaceVisibility: 'hidden'
-                                }} 
-                            />
+                        <div style={{ padding: '6px 0', display: 'flex', alignItems: 'center' }}>
+                            <img src={logo} alt="Logo" style={{ height: '50px', width: 'auto', objectFit: 'contain' }} />
                         </div>
                         <div style={{ textAlign: 'left' }}>
                             <div style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#ff5252' }}>DARY CARD</div>
