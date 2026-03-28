@@ -286,7 +286,7 @@ const Landing: React.FC = () => {
                         height: 60px !important;
                     }
                     .footer-card .contact-item {
-                        font-size: 0.75rem !important;
+                        font-size: 0.7rem !important;
                         white-space: nowrap !important;
                         overflow: hidden !important;
                         text-overflow: ellipsis !important;
@@ -300,17 +300,17 @@ const Landing: React.FC = () => {
                     .footer-card .contact-item .lucide {
                         display: none !important;
                     }
-                    .footer-card a[to="/signal"], 
-                    .footer-card a[href="/signal"] {
-                        padding: 0.5rem 0.8rem !important;
-                        font-size: 0.75rem !important;
+                    .footer-card .signal-btn {
+                        padding: 0.4rem 0.3rem !important;
+                        font-size: 0.65rem !important;
                         width: 100% !important;
                         justify-content: center !important;
+                        gap: 0.3rem !important;
                     }
                     .footer-card a[to="/signal"] svg,
                     .footer-card a[href="/signal"] svg {
-                        width: 12px !important;
-                        height: 12px !important;
+                        width: 10px !important;
+                        height: 10px !important;
                     }
                 }
                 @media (min-width: 481px) and (max-width: 768px) {
@@ -546,11 +546,11 @@ const Landing: React.FC = () => {
                                                                     <div style={{ width: '10px', height: '10px', background: 'var(--primary-color)', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)' }} />
                                                                     <span style={{ 
                                                                         position: 'absolute', 
-                                                                        top: '16px', 
-                                                                        fontSize: '0.55rem', 
+                                                                        top: '22px', 
+                                                                        fontSize: 'clamp(0.6rem, 1.25vw, 0.85rem)', 
                                                                         whiteSpace: 'nowrap', 
                                                                         opacity: 0.9,
-                                                                        fontWeight: 700,
+                                                                        fontWeight: 800,
                                                                         textAlign: 'center',
                                                                         color: i === 0 || i === meta.stops.length -1 ? 'var(--primary-color)' : '#fff'
                                                                     }}>
