@@ -12,7 +12,7 @@ import { ROUTE_METADATA, abbreviate } from '../data/routeMetadata';
 const Landing: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentTime, setCurrentTime] = useState(new Date());
-    const [expandedRoute, setExpandedRoute] = useState<string | null>(null);
+    const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 10000);
@@ -102,6 +102,42 @@ const Landing: React.FC = () => {
                 @keyframes fadeIn {
                     from { opacity: 0; transform: translateY(10px); }
                     to { opacity: 1; transform: translateY(0); }
+                }
+
+                .selection-card {
+                    background: rgba(255,255,255,0.03);
+                    border: 1px solid rgba(255,255,255,0.05);
+                    border-radius: 20px;
+                    padding: 1.5rem;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 1rem;
+                    cursor: pointer;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    text-align: center;
+                }
+                .selection-card:hover {
+                    background: rgba(0, 173, 181, 0.1);
+                    border-color: var(--primary-color);
+                    transform: translateY(-5px);
+                    box-shadow: 0 10px 30px rgba(0,173,181,0.15);
+                }
+                .selection-icon {
+                    width: 48px;
+                    height: 48px;
+                    background: rgba(0, 173, 181, 0.1);
+                    border-radius: 14px;
+                    display: flex;
+                    align-items: center;
+                    justifyContent: center;
+                    color: var(--primary-color);
+                    transition: 0.3s;
+                }
+                .selection-card:hover .selection-icon {
+                    background: var(--primary-color);
+                    color: #fff;
+                    transform: rotate(5deg) scale(1.1);
                 }
 
                 .info-container {
@@ -226,49 +262,101 @@ const Landing: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Schedules Grid */}
-                <div className="route-grid">
-                    {filteredRoutes.map((line) => {
-                                const nextFromPleven = getNextBus(line, 'fromPleven');
-                                const nextFromDest = getNextBus(line, 'fromDestination');
-                                const meta = ROUTE_METADATA[line];
-                                const sched = SCHEDULES[line];
-                                const isExpanded = expandedRoute === line;
-                                
-                                // Parse labels for "From - To" routes
-                                let fromLabel = 'ПЛЕВЕН';
-                                let toLabel = line.toUpperCase();
-                                
-                                // Special origin mappings for sub-routes
-                                const originMapping: Record<string, string> = {
-                                    "Божурица": "РИБЕН",
-                                    "Победа": "РИБЕН",
-                                    "Биволаре": "РИБЕН",
-                                    "Градина": "БЪРКАЧ",
-                                    "Крушовица": "САДОВЕЦ"
-                                };
+                {/* Back Button for Selected Route */}
+                {selectedRoute && (
+                    <button 
+                        onClick={() => setSelectedRoute(null)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.6rem',
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            padding: '0.8rem 1.5rem',
+                            borderRadius: '14px',
+                            color: 'rgba(255,255,255,0.6)',
+                            fontWeight: 700,
+                            marginBottom: '2rem',
+                            cursor: 'pointer',
+                            transition: '0.3s'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                            e.currentTarget.style.color = '#fff';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            e.currentTarget.style.color = 'rgba(255,255,255,0.6)';
+                        }}
+                    >
+                        <ArrowRight size={18} style={{ transform: 'rotate(180deg)' }} /> Всички Дестинации
+                    </button>
+                )}
 
-                                if (originMapping[line]) {
-                                    toLabel = originMapping[line];
-                                } else if (line.includes(' - ')) {
-                                    const parts = line.split(' - ');
-                                    fromLabel = parts[0].toUpperCase();
-                                    toLabel = parts[1].toUpperCase();
-                                }
-                                
-                                return (
-                                    <div 
-                                        key={line} 
-                                        className="route-card" 
-                                        style={{ 
-                                            background: 'rgba(255,255,255,0.02)',
-                                            borderRadius: '24px',
-                                            padding: '1.5rem',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '1.2rem'
-                                        }}
-                                    >
+                {/* Selection Grid OR Route Detail */}
+                {!selectedRoute ? (
+                    <div className="route-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' }}>
+                        {filteredRoutes.map((line) => (
+                            <div 
+                                key={line} 
+                                className="selection-card"
+                                onClick={() => setSelectedRoute(line)}
+                            >
+                                <div className="selection-icon">
+                                    <MapPin size={24} />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.2rem' }}>{line}</h3>
+                                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Виж разписание</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="route-grid" style={{ gridTemplateColumns: '1fr' }}>
+                        {filteredRoutes.filter(l => l === selectedRoute).map((line) => {
+                            const nextFromPleven = getNextBus(line, 'fromPleven');
+                            const nextFromDest = getNextBus(line, 'fromDestination');
+                            const meta = ROUTE_METADATA[line];
+                            const sched = SCHEDULES[line];
+                            const isExpanded = true; // Use true to show full schedule by default as requested
+                            
+                            // Parse labels for "From - To" routes
+                            let fromLabel = 'ПЛЕВЕН';
+                            let toLabel = line.toUpperCase();
+                            
+                            // Special origin mappings for sub-routes
+                            const originMapping: Record<string, string> = {
+                                "Божурица": "РИБЕН",
+                                "Победа": "РИБЕН",
+                                "Биволаре": "РИБЕН",
+                                "Градина": "БЪРКАЧ",
+                                "Крушовица": "САДОВЕЦ"
+                            };
+
+                            if (originMapping[line]) {
+                                toLabel = originMapping[line];
+                            } else if (line.includes(' - ')) {
+                                const parts = line.split(' - ');
+                                fromLabel = parts[0].toUpperCase();
+                                toLabel = parts[1].toUpperCase();
+                            }
+                            
+                            return (
+                                <div 
+                                    key={line} 
+                                    className="route-card" 
+                                    style={{ 
+                                        maxWidth: '1200px', // Detailed view can be wide but capped
+                                        margin: '0 auto',
+                                        background: 'rgba(255,255,255,0.02)',
+                                        borderRadius: '24px',
+                                        padding: 'clamp(1.2rem, 5vw, 2.5rem)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '2rem'
+                                    }}
+                                >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <div>
                                                 <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '0.3rem' }}>ЛИНИЯ</div>
@@ -442,30 +530,11 @@ const Landing: React.FC = () => {
                                             </div>
                                         )}
 
-                                        <button 
-                                            onClick={() => setExpandedRoute(isExpanded ? null : line)}
-                                            style={{ 
-                                                marginTop: 'auto',
-                                                width: '100%', 
-                                                padding: '1rem', 
-                                                background: isExpanded ? 'rgba(255,255,255,0.05)' : 'rgba(0,173,181,0.1)',
-                                                border: '1px solid rgba(0,173,181,0.2)',
-                                                borderRadius: '16px',
-                                                color: isExpanded ? '#fff' : 'var(--primary-color)',
-                                                fontWeight: 700,
-                                                fontSize: '0.9rem',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                                                cursor: 'pointer',
-                                                transition: '0.3s'
-                                            }}
-                                        >
-                                            {isExpanded ? 'Затвори Разписание' : 'Виж Пълно Разписание'} 
-                                            {isExpanded ? <Clock size={16} /> : <ArrowRight size={16} />}
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {/* Info Section */}
                 <section id="info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1.5rem' }}>
