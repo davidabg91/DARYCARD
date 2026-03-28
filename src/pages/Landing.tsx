@@ -426,7 +426,7 @@ const Landing: React.FC = () => {
                         <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
                             <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '0.4rem', letterSpacing: '-0.5px' }}>Актуални Линии</h2>
                             <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
-                                (Днес е {new Date().toLocaleDateString('bg-BG', { day: 'numeric', month: 'long', year: 'numeric' })})
+                                (към {new Date().toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' })})
                             </p>
                         </div>
                         <div className="route-grid selection-grid">
