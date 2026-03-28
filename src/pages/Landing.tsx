@@ -107,15 +107,15 @@ const Landing: React.FC = () => {
                 .selection-card {
                     background: rgba(255,255,255,0.03);
                     border: 1px solid rgba(255,255,255,0.05);
-                    border-radius: 20px;
-                    padding: 1.5rem;
+                    border-radius: 16px;
+                    padding: 0.8rem 1.2rem;
                     display: flex;
-                    flex-direction: column;
+                    flex-direction: row;
                     align-items: center;
                     gap: 1rem;
                     cursor: pointer;
                     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    text-align: center;
+                    text-align: left;
                 }
                 .selection-card:hover {
                     background: rgba(0, 173, 181, 0.1);
@@ -124,20 +124,21 @@ const Landing: React.FC = () => {
                     box-shadow: 0 10px 30px rgba(0,173,181,0.15);
                 }
                 .selection-icon {
-                    width: 48px;
-                    height: 48px;
+                    width: 36px;
+                    height: 36px;
+                    min-width: 36px;
                     background: rgba(0, 173, 181, 0.1);
-                    border-radius: 14px;
+                    border-radius: 10px;
                     display: flex;
                     align-items: center;
-                    justifyContent: center;
+                    justify-content: center;
                     color: var(--primary-color);
                     transition: 0.3s;
                 }
                 .selection-card:hover .selection-icon {
                     background: var(--primary-color);
                     color: #fff;
-                    transform: rotate(5deg) scale(1.1);
+                    transform: scale(1.1);
                 }
 
                 .info-container {
@@ -295,7 +296,7 @@ const Landing: React.FC = () => {
 
                 {/* Selection Grid OR Route Detail */}
                 {!selectedRoute ? (
-                    <div className="route-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' }}>
+                    <div className="route-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: '0.8rem' }}>
                         {filteredRoutes.map((line) => (
                             <div 
                                 key={line} 
@@ -303,11 +304,11 @@ const Landing: React.FC = () => {
                                 onClick={() => setSelectedRoute(line)}
                             >
                                 <div className="selection-icon">
-                                    <MapPin size={24} />
+                                    <MapPin size={18} />
                                 </div>
-                                <div>
-                                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.2rem' }}>{line}</h3>
-                                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Виж разписание</div>
+                                <div style={{ overflow: 'hidden' }}>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{line}</h3>
+                                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Преглед</div>
                                 </div>
                             </div>
                         ))}
