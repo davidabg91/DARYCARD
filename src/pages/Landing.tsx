@@ -422,13 +422,20 @@ const Landing: React.FC = () => {
 
                 {/* Selection Grid OR Route Detail */}
                 {!selectedRoute ? (
-                    <div className="route-grid selection-grid">
-                        {filteredRoutes.map((line) => (
-                            <div 
-                                key={line} 
-                                className="selection-card"
-                                onClick={() => setSelectedRoute(line)}
-                            >
+                    <>
+                        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+                            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '0.4rem', letterSpacing: '-0.5px' }}>Актуални Линии</h2>
+                            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                                (Днес е {new Date().toLocaleDateString('bg-BG', { day: 'numeric', month: 'long', year: 'numeric' })})
+                            </p>
+                        </div>
+                        <div className="route-grid selection-grid">
+                            {filteredRoutes.map((line) => (
+                                <div 
+                                    key={line} 
+                                    className="selection-card"
+                                    onClick={() => setSelectedRoute(line)}
+                                >
                                 <div className="selection-icon">
                                     <MapPin size={18} />
                                 </div>
@@ -438,7 +445,8 @@ const Landing: React.FC = () => {
                                 </div>
                             </div>
                         ))}
-                    </div>
+                        </div>
+                    </>
                 ) : (
                     <div className="route-grid" style={{ gridTemplateColumns: '1fr' }}>
                         {filteredRoutes.filter(l => l === selectedRoute).map((line) => {
