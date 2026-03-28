@@ -861,20 +861,21 @@ const Landing: React.FC = () => {
                     fontSize: '0.75rem',
                     color: 'rgba(255,255,255,0.3)'
                 }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center' }}>
                             <div><strong>ФИРМА:</strong> ДАРИ КОМЕРС - НА (ООД)</div>
                             <div><strong>АДРЕС:</strong> гр. Плевен, ул. ДАНАИЛ ПОПОВ 12</div>
                             <div><strong>УПРАВИТЕЛ:</strong> ДАРИНКА ЦВЕТАНОВА КРЪСТЕВА</div>
                             <div><strong>ЕИК/ДДС:</strong> BG114601542</div>
                         </div>
                         <div style={{ 
-                            padding: '0.4rem 0.8rem', 
+                            padding: '0.4rem 1.2rem', 
                             background: 'rgba(0,173,181,0.05)', 
-                            borderRadius: '8px', 
+                            borderRadius: '100px', 
                             border: '1px solid rgba(0,173,181,0.1)',
                             color: 'rgba(0,173,181,0.6)',
-                            fontWeight: 600
+                            fontWeight: 700,
+                            fontSize: '0.8rem'
                         }}>
                             Услугата се изпълнява по договор за обществен превоз с Община Плевен
                         </div>
