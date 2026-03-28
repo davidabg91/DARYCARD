@@ -601,19 +601,20 @@ const Landing: React.FC = () => {
                                             padding: '1rem', 
                                             borderRadius: '16px' 
                                         }}>
-                                            <div style={{ flex: 1 }}>
+                                            <div style={{ flex: 1, textAlign: 'center' }}>
                                                 <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>БИЛЕТ</div>
                                                 <div style={{ fontWeight: 800 }}>{meta?.priceSingle || '---'}</div>
                                             </div>
                                             <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
-                                            <div style={{ flex: 1 }}>
+                                            <div style={{ flex: 1, textAlign: 'center' }}>
                                                 <div style={{ 
                                                     fontSize: '0.7rem', 
                                                     color: 'rgba(255,255,255,0.4)', 
                                                     fontWeight: 700,
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    gap: '0.4rem'
+                                                    gap: '0.4rem',
+                                                    justifyContent: 'center'
                                                 }}>
                                                     КАРТА (Месец)
                                                     <button 
