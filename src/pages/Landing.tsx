@@ -136,15 +136,25 @@ const Landing: React.FC = () => {
                         border-radius: 20px;
                     }
                     #info-section {
-                        padding: 0 0.5rem !important;
+                        padding: 0 !important;
                     }
+                    .main-content {
+                        padding: 2rem 0.5rem !important;
+                    }
+                }
+                .main-content {
+                    position: relative;
+                    z-index: 1;
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 4rem 1.5rem;
                 }
             `}</style>
 
             <div className="hero-bg" />
 
             {/* Main Content */}
-            <main style={{ position: 'relative', zIndex: 1, maxWidth: '1200px', margin: '0 auto', padding: '4rem 1.5rem' }}>
+            <main className="main-content">
                 
                 {/* Hero Text */}
                 <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
