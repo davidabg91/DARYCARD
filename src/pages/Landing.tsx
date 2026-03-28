@@ -1,4 +1,5 @@
 import logoTravel from '../assets/logo_travel.png';
+import logoPleven from '../assets/logo_pleven.png';
 import React, { useState, useEffect } from 'react';
 import { 
   Clock, MapPin, Search, 
@@ -874,8 +875,12 @@ const Landing: React.FC = () => {
                             borderRadius: '8px', 
                             border: '1px solid rgba(0,173,181,0.1)',
                             color: 'rgba(0,173,181,0.6)',
-                            fontWeight: 600
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.8rem'
                         }}>
+                            <img src={logoPleven} alt="Община Плевен" style={{ height: '24px', width: 'auto' }} />
                             Услугата се изпълнява по договор за обществен превоз с Община Плевен
                         </div>
                     </div>
