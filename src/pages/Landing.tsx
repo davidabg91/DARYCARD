@@ -212,14 +212,41 @@ const Landing: React.FC = () => {
                 
                 @media (max-width: 768px) {
                     .info-container {
-                        padding: 2rem 1rem !important;
-                        border-radius: 0 !important;
-                        width: 100vw !important;
-                        position: relative;
-                        left: 50%;
-                        right: 50%;
-                        margin-left: -50vw;
-                        margin-right: -50vw;
+                        padding: 1.5rem !important;
+                        flex-direction: column !important;
+                        gap: 2rem !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        border-radius: 20px !important;
+                        margin: 0 !important;
+                        box-sizing: border-box !important;
+                        overflow: hidden !important;
+                    }
+                    .info-container > div {
+                        width: 100% !important;
+                        min-width: 0 !important;
+                    }
+                    .info-container h2 {
+                        font-size: 1.5rem !important;
+                    }
+                    .info-container p {
+                        font-size: 0.9rem !important;
+                        line-height: 1.5 !important;
+                        padding: 0 !important;
+                    }
+                    .info-container .info-list-item {
+                        gap: 0.8rem !important;
+                    }
+                    .info-container .info-list-item div:last-child {
+                        flex: 1 !important;
+                        min-width: 0 !important;
+                    }
+                    .info-container .info-list-item div:last-child div {
+                        font-size: 0.85rem !important;
+                        white-space: normal !important;
+                    }
+                    .info-container .info-list-item div:last-child div:last-child {
+                        font-size: 0.75rem !important;
                     }
                     .footer-content {
                         flex-direction: column !important;
@@ -638,9 +665,9 @@ const Landing: React.FC = () => {
                 )}
 
                 {/* Info Section */}
-                <section id="info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', overflowX: 'hidden' }}>
+                <section id="info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1rem', overflowX: 'hidden' }}>
                     <div className="info-container">
-                        <div style={{ flex: '1', width: '100%' }}>
+                        <div style={{ flex: '1', width: '100%', minWidth: 0 }}>
                             <div style={{ 
                                 display: 'inline-flex', padding: '0.6rem 1.2rem', 
                                 background: 'rgba(0,173,181,0.2)', borderRadius: '100px',
@@ -653,28 +680,28 @@ const Landing: React.FC = () => {
                             <p style={{ fontSize: 'clamp(1rem, 3.5vw, 1.1rem)', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: '2rem' }}>
                                 Абонаментните карти за всички линии се издават на нашето специализирано гише. Процесът отнема по-малко от 5 минути и картата е готова веднага. Билети за пътуване се продават както на автогарата, така и от шофьора на място.
                             </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <a href="https://share.google/ElVTTGsi6ivVOx7PW" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '1rem', textDecoration: 'none', color: 'inherit', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(5px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}>
-                                    <div style={{ width: '40px', height: '40px', background: 'rgba(0,173,181,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,173,181,0.3)' }}><MapPin size={20} color="var(--primary-color)" /></div>
-                                    <div>
-                                        <div style={{ fontWeight: 800, color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                                <a href="https://share.google/ElVTTGsi6ivVOx7PW" className="info-list-item" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '1rem', textDecoration: 'none', color: 'inherit', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(5px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}>
+                                    <div style={{ width: '40px', height: '40px', minWidth: '40px', background: 'rgba(0,173,181,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,173,181,0.3)' }}><MapPin size={20} color="var(--primary-color)" /></div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 800, color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                             Автогара Плевен <ExternalLink size={12} />
                                         </div>
                                         <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>Гише DARY COMMERCE</div>
                                     </div>
                                 </a>
-                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CreditCard size={20} color="var(--primary-color)" /></div>
-                                    <div>
+                                 <div className="info-list-item" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ width: '40px', height: '40px', minWidth: '40px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CreditCard size={20} color="var(--primary-color)" /></div>
+                                    <div style={{ flex: 1 }}>
                                         <div style={{ fontWeight: 800 }}>Електронна Карта</div>
-                                        <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>Валидна за всички курсове по избраната линия</div>
+                                        <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>Валидна за всички линии</div>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ticket size={20} color="var(--primary-color)" /></div>
-                                    <div>
+                                <div className="info-list-item" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ width: '40px', height: '40px', minWidth: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ticket size={20} color="var(--primary-color)" /></div>
+                                    <div style={{ flex: 1 }}>
                                         <div style={{ fontWeight: 800 }}>Еднократен Билет</div>
-                                        <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>От гишето на автогарата или от шофьора на място</div>
+                                        <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)' }}>От гише или шофьор</div>
                                     </div>
                                 </div>
                             </div>
