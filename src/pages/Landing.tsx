@@ -135,12 +135,25 @@ const Landing: React.FC = () => {
                         padding: 1.5rem;
                         border-radius: 20px;
                     }
-                    #info-section {
-                        padding: 0 !important;
-                    }
                     .main-content {
-                        padding: 2rem 0.5rem !important;
+                        padding: 1.5rem 0.4rem !important;
                     }
+                    .info-container {
+                        padding: 1rem !important;
+                        gap: 1.5rem !important;
+                    }
+                    .route-card {
+                        padding: 1.2rem !important;
+                        gap: 1rem !important;
+                    }
+                    .route-grid {
+                        gap: 0.8rem !important;
+                    }
+                }
+                .route-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
+                    gap: 1.5rem;
                 }
                 .main-content {
                     position: relative;
@@ -214,12 +227,8 @@ const Landing: React.FC = () => {
                 </div>
 
                 {/* Schedules Grid */}
-                        <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', 
-                            gap: '1.5rem' 
-                        }}>
-                            {filteredRoutes.map((line) => {
+                <div className="route-grid">
+                    {filteredRoutes.map((line) => {
                                 const nextFromPleven = getNextBus(line, 'fromPleven');
                                 const nextFromDest = getNextBus(line, 'fromDestination');
                                 const meta = ROUTE_METADATA[line];
