@@ -172,25 +172,40 @@ const Landing: React.FC = () => {
                         padding: 1.5rem;
                         border-radius: 20px;
                     }
-                    .main-content {
-                        padding: 1.5rem 0.4rem !important;
-                    }
-                    .info-container {
-                        padding: 1rem !important;
-                        gap: 1.5rem !important;
-                    }
-                    .route-card {
-                        padding: 1.2rem !important;
-                        gap: 1rem !important;
-                    }
                     .route-grid {
-                        gap: 0.8rem !important;
+                        gap: 0.5rem !important;
+                    }
+                    .selection-card {
+                        padding: 0.6rem 0.8rem !important;
+                        border-radius: 12px !important;
+                        gap: 0.4rem !important;
+                    }
+                    .selection-icon {
+                        display: none !important;
+                    }
+                    .selection-card h3 {
+                        font-size: 0.85rem !important;
+                        text-align: center;
+                        width: 100%;
+                    }
+                    .selection-card div > div {
+                        display: none !important;
                     }
                 }
                 .route-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
-                    gap: 1.5rem;
+                    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+                    gap: 1rem;
+                }
+                @media (max-width: 480px) {
+                    .route-grid.selection-grid {
+                        grid-template-columns: repeat(3, 1fr) !important;
+                    }
+                }
+                @media (min-width: 481px) and (max-width: 768px) {
+                    .route-grid.selection-grid {
+                        grid-template-columns: repeat(2, 1fr) !important;
+                    }
                 }
                 .main-content {
                     position: relative;
@@ -296,7 +311,7 @@ const Landing: React.FC = () => {
 
                 {/* Selection Grid OR Route Detail */}
                 {!selectedRoute ? (
-                    <div className="route-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: '0.8rem' }}>
+                    <div className="route-grid selection-grid">
                         {filteredRoutes.map((line) => (
                             <div 
                                 key={line} 
@@ -306,7 +321,7 @@ const Landing: React.FC = () => {
                                 <div className="selection-icon">
                                     <MapPin size={18} />
                                 </div>
-                                <div style={{ overflow: 'hidden' }}>
+                                <div style={{ overflow: 'hidden', width: '100%' }}>
                                     <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{line}</h3>
                                     <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Преглед</div>
                                 </div>
