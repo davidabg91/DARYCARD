@@ -353,11 +353,11 @@ const Landing: React.FC = () => {
                     background-size: contain;
                     background-repeat: no-repeat;
                     background-position: center top;
-                    opacity: 0.15;
+                    filter: brightness(1.5) contrast(200%) grayscale(1);
                     mix-blend-mode: screen;
+                    opacity: 0.12;
                     z-index: 0;
                     pointer-events: none;
-                    filter: brightness(1.2) contrast(1.1);
                     mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%);
                     -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%);
                 }
