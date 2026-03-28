@@ -1,4 +1,5 @@
 import logoTravel from '../assets/logo_travel.png';
+import busWireframe from '../assets/bus_wireframe.png';
 import React, { useState, useEffect } from 'react';
 import { 
   Clock, MapPin, Search, 
@@ -340,6 +341,34 @@ const Landing: React.FC = () => {
                     max-width: 1200px;
                     margin: 0 auto;
                     padding: 4rem 1.5rem;
+                .bus-hero-bg {
+                    position: absolute;
+                    top: -50px;
+                    left: 50%;
+                    transform: translateX(-50%) perspective(1000px) rotateX(10deg);
+                    width: 100%;
+                    max-width: 900px;
+                    height: 600px;
+                    background-image: url(${busWireframe});
+                    background-size: contain;
+                    background-repeat: no-repeat;
+                    background-position: center top;
+                    opacity: 0.15;
+                    mix-blend-mode: screen;
+                    z-index: 0;
+                    pointer-events: none;
+                    filter: brightness(1.2) contrast(1.1);
+                    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%);
+                    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%);
+                }
+                @media (max-width: 768px) {
+                    .bus-hero-bg {
+                        max-width: 100%;
+                        height: 400px;
+                        top: 0;
+                        opacity: 0.1;
+                        transform: translateX(-50%) perspective(1000px) rotateX(5deg) scale(0.9);
+                    }
                 }
             `}</style>
 
@@ -347,6 +376,7 @@ const Landing: React.FC = () => {
 
             {/* Main Content */}
             <main className="main-content">
+                <div className="bus-hero-bg" />
                 
                 {/* Hero Text */}
                 <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
