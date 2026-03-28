@@ -643,11 +643,16 @@ const Landing: React.FC = () => {
                                         {/* Expanded Schedule */}
                                         {isExpanded && (
                                             <div style={{ 
-                                                padding: '1rem', 
+                                                padding: '1.2rem', 
                                                 background: 'rgba(255,255,255,0.02)', 
                                                 borderRadius: '16px',
                                                 animation: 'fadeIn 0.3s ease-out'
                                             }}>
+                                                <div style={{ marginBottom: '1.2rem', paddingBottom: '0.8rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <h4 style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                        <Clock size={16} /> Пълно разписание на курса
+                                                    </h4>
+                                                </div>
                                                 <div style={{ 
                                                     display: 'grid', 
                                                     gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
