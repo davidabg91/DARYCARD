@@ -1,5 +1,4 @@
 import logoTravel from '../assets/logo_travel.png';
-import logoPleven from '../assets/logo_pleven.png';
 import React, { useState, useEffect } from 'react';
 import { 
   Clock, MapPin, Search, 
@@ -875,12 +874,8 @@ const Landing: React.FC = () => {
                             borderRadius: '8px', 
                             border: '1px solid rgba(0,173,181,0.1)',
                             color: 'rgba(0,173,181,0.6)',
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.8rem'
+                            fontWeight: 600
                         }}>
-                            <img src={logoPleven} alt="Община Плевен" style={{ height: '24px', width: 'auto' }} />
                             Услугата се изпълнява по договор за обществен превоз с Община Плевен
                         </div>
                     </div>
@@ -889,7 +884,7 @@ const Landing: React.FC = () => {
                         <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.65rem' }}>Контролни органи:</span>
                         <a href="https://kzp.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>КЗП</a>
                         <span style={{ opacity: 0.3 }}>•</span>
-                        <a href="https://avtoadmin.government.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>ИААА</a>
+                        <a href="https://www.rta.government.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>ИААА</a>
                         <span style={{ opacity: 0.3 }}>•</span>
                         <a href="https://cpdp.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>КЗЛД</a>
                     </div>
