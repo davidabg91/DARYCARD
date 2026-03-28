@@ -237,10 +237,17 @@ const Landing: React.FC = () => {
                         flex-direction: row !important;
                         justify-content: center !important;
                     }
+                    .footer-card .signal-btn {
+                        padding: 0.5rem 0.4rem !important;
+                        font-size: 0.7rem !important;
+                        width: 100% !important;
+                        justify-content: center !important;
+                        gap: 0.3rem !important;
+                    }
                     .footer-card {
                         min-width: 0 !important;
                         flex: 1 !important;
-                        padding: 1rem 0.5rem !important;
+                        padding: 1rem 0.3rem !important;
                     }
                     .footer-card h5 {
                         font-size: 0.65rem !important;
@@ -252,7 +259,31 @@ const Landing: React.FC = () => {
                         height: 60px !important;
                     }
                     .footer-card .contact-item {
-                        font-size: 0.8rem !important;
+                        font-size: 0.75rem !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                        max-width: 100% !important;
+                        display: block !important;
+                    }
+                    .footer-card a[href^="tel"] {
+                        display: flex !important;
+                        justify-content: center !important;
+                    }
+                    .footer-card .contact-item .lucide {
+                        display: none !important;
+                    }
+                    .footer-card a[to="/signal"], 
+                    .footer-card a[href="/signal"] {
+                        padding: 0.5rem 0.8rem !important;
+                        font-size: 0.75rem !important;
+                        width: 100% !important;
+                        justify-content: center !important;
+                    }
+                    .footer-card a[to="/signal"] svg,
+                    .footer-card a[href="/signal"] svg {
+                        width: 12px !important;
+                        height: 12px !important;
                     }
                 }
                 @media (min-width: 481px) and (max-width: 768px) {
@@ -729,6 +760,7 @@ const Landing: React.FC = () => {
                                 </div>
                                 <Link 
                                     to="/signal" 
+                                    className="signal-btn"
                                     style={{ 
                                         marginTop: '0.5rem',
                                         display: 'flex', 
