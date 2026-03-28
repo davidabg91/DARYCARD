@@ -221,10 +221,16 @@ const Landing: React.FC = () => {
                 }
                 
                 @media (max-width: 768px) {
+                    .main-content {
+                        padding: 2rem 0.6rem !important;
+                    }
+                    .mobile-info-section {
+                        padding: 0 !important;
+                    }
                     .info-container {
-                        padding: 1.5rem !important;
+                        padding: 1.2rem 0.8rem !important;
                         flex-direction: column !important;
-                        gap: 2rem !important;
+                        gap: 1.5rem !important;
                         width: 100% !important;
                         max-width: 100% !important;
                         border-radius: 20px !important;
@@ -683,7 +689,7 @@ const Landing: React.FC = () => {
                 )}
 
                 {/* Info Section */}
-                <section id="info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1rem', overflowX: 'hidden' }}>
+                <section id="info-section" className="mobile-info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1rem', overflowX: 'hidden' }}>
                     <div className="info-container">
                         <div style={{ flex: '1', width: '100%', minWidth: 0 }}>
                             <div style={{ 
