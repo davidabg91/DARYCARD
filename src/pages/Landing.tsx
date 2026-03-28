@@ -103,6 +103,42 @@ const Landing: React.FC = () => {
                     from { opacity: 0; transform: translateY(10px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
+
+                .info-container {
+                    background: linear-gradient(135deg, rgba(0,173,181,0.1), rgba(0,173,181,0.05));
+                    border-radius: 32px;
+                    padding: 3rem;
+                    border: 1px solid rgba(0,173,181,0.1);
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 3rem;
+                    align-items: flex-start;
+                    transition: 0.3s;
+                }
+
+                .working-hours-card {
+                    padding: 2.5rem;
+                    border-radius: 24px;
+                    border: 1px solid rgba(255,255,255,0.1);
+                    background: rgba(255,255,255,0.02);
+                    text-align: center;
+                    backdrop-filter: blur(10px);
+                }
+
+                @media (max-width: 768px) {
+                    .info-container {
+                        padding: 1.5rem;
+                        gap: 2rem;
+                        border-radius: 24px;
+                    }
+                    .working-hours-card {
+                        padding: 1.5rem;
+                        border-radius: 20px;
+                    }
+                    #info-section {
+                        padding: 0 0.5rem !important;
+                    }
+                }
             `}</style>
 
             <div className="hero-bg" />
@@ -413,18 +449,9 @@ const Landing: React.FC = () => {
                         </div>
 
                 {/* Info Section */}
-                <section id="info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1rem' }}>
-                    <div style={{ 
-                        background: 'linear-gradient(135deg, rgba(0,173,181,0.1), rgba(0,173,181,0.05))',
-                        borderRadius: '32px',
-                        padding: 'clamp(1rem, 5vw, 3rem)',
-                        border: '1px solid rgba(0,173,181,0.1)',
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 'clamp(2rem, 5vw, 3rem)',
-                        alignItems: 'flex-start'
-                    }}>
-                        <div style={{ flex: '1', minWidth: 'min(100%, 250px)' }}>
+                <section id="info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1.5rem' }}>
+                    <div className="info-container">
+                        <div style={{ flex: '1', minWidth: 'min(100%, 350px)' }}>
                             <div style={{ 
                                 display: 'inline-flex', padding: '0.6rem 1.2rem', 
                                 background: 'rgba(0,173,181,0.2)', borderRadius: '100px',
@@ -463,14 +490,9 @@ const Landing: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div style={{ flex: '1', minWidth: 'min(100%, 280px)', position: 'relative' }}>
-                             <div className="glass" style={{ 
-                                 padding: '2rem', borderRadius: '24px', 
-                                 border: '1px solid rgba(255,255,255,0.1)',
-                                 background: 'rgba(255,255,255,0.02)',
-                                 textAlign: 'center'
-                             }}>
-                                 <h4 style={{ marginBottom: '1rem' }}>Работно Време</h4>
+                        <div style={{ flex: '1', minWidth: 'min(100%, 300px)', position: 'relative', width: '100%' }}>
+                             <div className="working-hours-card glass">
+                                 <h4 style={{ marginBottom: '1.5rem', fontWeight: 900, color: 'var(--primary-color)' }}>Работно Време</h4>
                                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                      <span>Понеделник - Петък</span>
                                      <span style={{ fontWeight: 800 }}>07:30 - 18:30</span>
