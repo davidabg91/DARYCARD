@@ -137,7 +137,6 @@ const Landing: React.FC = () => {
                 }
                 .selection-card h3 {
                     margin: 0;
-                    white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
                 }
@@ -182,18 +181,20 @@ const Landing: React.FC = () => {
                         gap: 0.5rem !important;
                     }
                     .selection-card {
-                        padding: 0.6rem 0.5rem !important;
+                        padding: 0.8rem 1rem !important;
                         border-radius: 12px !important;
-                        gap: 0.4rem !important;
+                        gap: 0.6rem !important;
                         min-width: 0 !important;
                     }
                     .selection-icon {
                         display: none !important;
                     }
                     .selection-card h3 {
-                        font-size: 0.8rem !important;
+                        font-size: 0.95rem !important;
                         text-align: center;
                         width: 100%;
+                        white-space: normal !important;
+                        line-height: 1.2 !important;
                     }
                     .selection-card div > div {
                         display: none !important;
@@ -206,8 +207,21 @@ const Landing: React.FC = () => {
                 }
                 @media (max-width: 480px) {
                     .route-grid.selection-grid {
-                        grid-template-columns: repeat(3, 1fr) !important;
-                        gap: 0.4rem !important;
+                        grid-template-columns: repeat(2, 1fr) !important;
+                        gap: 0.6rem !important;
+                    }
+                }
+                
+                @media (max-width: 768px) {
+                    .info-container {
+                        padding: 2rem 1rem !important;
+                        border-radius: 0 !important;
+                        width: 100vw !important;
+                        position: relative;
+                        left: 50%;
+                        right: 50%;
+                        margin-left: -50vw;
+                        margin-right: -50vw;
                     }
                 }
                 @media (min-width: 481px) and (max-width: 768px) {
@@ -371,7 +385,8 @@ const Landing: React.FC = () => {
                                     key={line} 
                                     className="route-card" 
                                     style={{ 
-                                        maxWidth: '1200px', // Detailed view can be wide but capped
+                                        width: '100%',
+                                        maxWidth: '1200px',
                                         margin: '0 auto',
                                         background: 'rgba(255,255,255,0.02)',
                                         borderRadius: '24px',
@@ -561,9 +576,9 @@ const Landing: React.FC = () => {
                 )}
 
                 {/* Info Section */}
-                <section id="info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1.5rem' }}>
+                <section id="info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', overflowX: 'hidden' }}>
                     <div className="info-container">
-                        <div style={{ flex: '1', minWidth: 'min(100%, 350px)' }}>
+                        <div style={{ flex: '1', width: '100%' }}>
                             <div style={{ 
                                 display: 'inline-flex', padding: '0.6rem 1.2rem', 
                                 background: 'rgba(0,173,181,0.2)', borderRadius: '100px',
@@ -602,7 +617,7 @@ const Landing: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div style={{ flex: '1', minWidth: 'min(100%, 300px)', position: 'relative', width: '100%' }}>
+                        <div style={{ flex: '1', width: '100%', position: 'relative' }}>
                              <div className="working-hours-card glass">
                                  <h4 style={{ marginBottom: '1.5rem', fontWeight: 900, color: 'var(--primary-color)' }}>Работно Време</h4>
                                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
