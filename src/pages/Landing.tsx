@@ -223,6 +223,39 @@ const Landing: React.FC = () => {
                         margin-left: -50vw;
                         margin-right: -50vw;
                     }
+                    .footer-content {
+                        flex-direction: column !important;
+                        align-items: center !important;
+                        text-align: center !important;
+                        gap: 2rem !important;
+                    }
+                    .footer-brand {
+                        max-width: 100% !important;
+                        width: 100% !important;
+                    }
+                    .footer-links {
+                        width: 100% !important;
+                        gap: 0.8rem !important;
+                        flex-direction: row !important;
+                        justify-content: center !important;
+                    }
+                    .footer-card {
+                        min-width: 0 !important;
+                        flex: 1 !important;
+                        padding: 1rem 0.5rem !important;
+                    }
+                    .footer-card h5 {
+                        font-size: 0.65rem !important;
+                    }
+                    .footer-card p {
+                        font-size: 0.7rem !important;
+                    }
+                    .footer-card img {
+                        height: 60px !important;
+                    }
+                    .footer-card .contact-item {
+                        font-size: 0.8rem !important;
+                    }
                 }
                 @media (min-width: 481px) and (max-width: 768px) {
                     .route-grid.selection-grid {
@@ -645,8 +678,8 @@ const Landing: React.FC = () => {
                 padding: 'clamp(2rem, 8vw, 4rem) 1.5rem 2rem',
                 marginTop: 'clamp(2rem, 8vw, 4rem)'
             }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 'clamp(2rem, 5vw, 4rem)', justifyContent: 'space-between' }}>
-                    <div style={{ maxWidth: '300px' }}>
+                <div className="footer-content" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 'clamp(2rem, 5vw, 4rem)', justifyContent: 'space-between' }}>
+                    <div className="footer-brand" style={{ maxWidth: '300px' }}>
                         <div style={{ marginBottom: '1.2rem' }}>
                              <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ff5252', letterSpacing: '0.05em' }}>DARY COMMERCE</h3>
                         </div>
@@ -655,8 +688,8 @@ const Landing: React.FC = () => {
                         </p>
                     </div>
                     
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4rem' }}>
-                        <div style={{ 
+                    <div className="footer-links" style={{ display: 'flex', flexWrap: 'wrap', gap: '4rem' }}>
+                        <div className="footer-card" style={{ 
                             background: 'rgba(255,255,255,0.03)', 
                             backdropFilter: 'blur(10px)', 
                             padding: '1.5rem', 
@@ -676,7 +709,7 @@ const Landing: React.FC = () => {
                                 Екскурзии навсякъде по света
                             </p>
                         </div>
-                        <div style={{ 
+                        <div className="footer-card" style={{ 
                             background: 'rgba(255,255,255,0.03)', 
                             backdropFilter: 'blur(10px)', 
                             padding: '1.5rem', 
@@ -689,11 +722,11 @@ const Landing: React.FC = () => {
                             minWidth: '220px'
                         }}>
                             <h5 style={{ marginBottom: '1.2rem', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '1px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>КОНТАКТИ</h5>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem', alignItems: 'center' }}>
-                                <a href="tel:0898481433" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit' }}>
+                            <div className="footer-contact-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem', alignItems: 'center' }}>
+                                <a href="tel:0898481433" className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit' }}>
                                     <Phone size={14} /> 0898481433
                                 </a>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <MessageCircle size={14} /> dary.commerce@gmail.com
                                 </div>
                                 <Link 
