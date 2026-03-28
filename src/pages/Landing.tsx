@@ -137,8 +137,6 @@ const Landing: React.FC = () => {
                 }
                 .selection-card h3 {
                     margin: 0;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
                 }
                 .selection-card:hover .selection-icon {
                     background: var(--primary-color);
@@ -181,20 +179,20 @@ const Landing: React.FC = () => {
                         gap: 0.5rem !important;
                     }
                     .selection-card {
-                        padding: 0.8rem 1rem !important;
+                        padding: 0.6rem 0.5rem !important;
                         border-radius: 12px !important;
-                        gap: 0.6rem !important;
+                        gap: 0.4rem !important;
                         min-width: 0 !important;
                     }
                     .selection-icon {
                         display: none !important;
                     }
                     .selection-card h3 {
-                        font-size: 0.95rem !important;
+                        font-size: 0.8rem !important;
                         text-align: center;
                         width: 100%;
                         white-space: normal !important;
-                        line-height: 1.2 !important;
+                        word-break: break-word !important;
                     }
                     .selection-card div > div {
                         display: none !important;
@@ -207,8 +205,8 @@ const Landing: React.FC = () => {
                 }
                 @media (max-width: 480px) {
                     .route-grid.selection-grid {
-                        grid-template-columns: repeat(2, 1fr) !important;
-                        gap: 0.6rem !important;
+                        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+                        gap: 0.4rem !important;
                     }
                 }
                 
