@@ -19,7 +19,16 @@ const Landing: React.FC = () => {
         return () => clearInterval(timer);
     }, []);
 
-    const routes = Object.keys(ROUTE_METADATA).sort((a,b) => a.localeCompare(b, 'bg'));
+    const EXCLUDED_ROUTES = [
+        "Долни Дъбник - Садовец",
+        "Долна Митрополия - Славовица",
+        "Долна Митрополия - Тръстеник"
+    ];
+
+    const routes = Object.keys(ROUTE_METADATA)
+        .filter(r => !EXCLUDED_ROUTES.includes(r))
+        .sort((a,b) => a.localeCompare(b, 'bg'));
+    
     const filteredRoutes = routes.filter(r => 
         r.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -191,8 +200,9 @@ const Landing: React.FC = () => {
                         font-size: 0.8rem !important;
                         text-align: center;
                         width: 100%;
-                        white-space: normal !important;
-                        word-break: break-word !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
                     }
                     .selection-card div > div {
                         display: none !important;
@@ -205,7 +215,7 @@ const Landing: React.FC = () => {
                 }
                 @media (max-width: 480px) {
                     .route-grid.selection-grid {
-                        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+                        grid-template-columns: repeat(3, 1fr) !important;
                         gap: 0.4rem !important;
                     }
                 }
