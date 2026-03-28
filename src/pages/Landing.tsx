@@ -853,31 +853,40 @@ const Landing: React.FC = () => {
                 <div style={{ 
                     maxWidth: '1200px', 
                     margin: '3rem auto 0', 
-                    paddingTop: '2rem', 
+                    padding: '2rem 0', 
                     borderTop: '1px solid rgba(255,255,255,0.05)',
                     display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '2rem',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+                    flexDirection: 'column',
+                    gap: '1.5rem',
                     fontSize: '0.75rem',
                     color: 'rgba(255,255,255,0.3)'
                 }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
-                        <div><strong>ФИРМА:</strong> ДАРИ КОМЕРС - НА (ООД)</div>
-                        <div><strong>АДРЕС:</strong> гр. Плевен, ул. ДАНАИЛ ПОПОВ 12</div>
-                        <div><strong>УПРАВИТЕЛ:</strong> ДАРИНКА ЦВЕТАНОВА КРЪСТЕВА</div>
-                        <div><strong>ЕИК/ДДС:</strong> BG114601542</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
+                            <div><strong>ФИРМА:</strong> ДАРИ КОМЕРС - НА (ООД)</div>
+                            <div><strong>АДРЕС:</strong> гр. Плевен, ул. ДАНАИЛ ПОПОВ 12</div>
+                            <div><strong>УПРАВИТЕЛ:</strong> ДАРИНКА ЦВЕТАНОВА КРЪСТЕВА</div>
+                            <div><strong>ЕИК/ДДС:</strong> BG114601542</div>
+                        </div>
+                        <div style={{ 
+                            padding: '0.4rem 0.8rem', 
+                            background: 'rgba(0,173,181,0.05)', 
+                            borderRadius: '8px', 
+                            border: '1px solid rgba(0,173,181,0.1)',
+                            color: 'rgba(0,173,181,0.6)',
+                            fontWeight: 600
+                        }}>
+                            Услугата се изпълнява по договор за обществен превоз с Община Плевен
+                        </div>
                     </div>
-                    <div style={{ 
-                        padding: '0.4rem 0.8rem', 
-                        background: 'rgba(0,173,181,0.05)', 
-                        borderRadius: '8px', 
-                        border: '1px solid rgba(0,173,181,0.1)',
-                        color: 'rgba(0,173,181,0.6)',
-                        fontWeight: 600
-                    }}>
-                        Услугата се изпълнява по договор за обществен превоз с Община Плевен
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid rgba(255,255,255,0.02)', paddingTop: '1rem' }}>
+                        <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.65rem' }}>Контролни органи:</span>
+                        <a href="https://kzp.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>КЗП</a>
+                        <span style={{ opacity: 0.3 }}>•</span>
+                        <a href="https://avtoadmin.government.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>ИААА</a>
+                        <span style={{ opacity: 0.3 }}>•</span>
+                        <a href="https://cpdp.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>КЗЛД</a>
                     </div>
                 </div>
             </footer>
