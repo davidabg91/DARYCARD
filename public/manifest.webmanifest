@@ -1,7 +1,7 @@
 {
   "name": "Dary Commerce - Системен Панел",
-  "short_name": "Dary Card",
-  "description": "Система за управление на карти за градски транспорт Плевен",
+  "short_name": "Dary Commerce",
+  "description": "Официална система за управление на абонаментни карти за градски транспорт Плевен - Dary Commerce.",
   "theme_color": "#1a1a1a",
   "background_color": "#1a1a1a",
   "display": "standalone",
