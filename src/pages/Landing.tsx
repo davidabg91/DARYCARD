@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Clock, MapPin, Search, 
   CreditCard, ExternalLink,
-  ArrowRight, Phone, MessageCircle, AlertTriangle, Info, Ticket
+  ArrowRight, Phone, MessageCircle, AlertTriangle, Info, Ticket, Bus
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SCHEDULES } from '../data/schedules';
@@ -439,11 +439,71 @@ const Landing: React.FC = () => {
                 {/* Selection Grid OR Route Detail */}
                 {!selectedRoute ? (
                     <>
-                        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-                            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '0.4rem', letterSpacing: '-0.5px' }}>Актуални Линии</h2>
-                            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
-                                (към {new Date().toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' })})
-                            </p>
+                        <div style={{ 
+                            marginBottom: '3.5rem', 
+                            textAlign: 'center',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '1.2rem',
+                            animation: 'fadeIn 0.6s ease-out'
+                        }}>
+                            <div style={{
+                                width: '70px',
+                                height: '70px',
+                                background: 'linear-gradient(135deg, rgba(0, 173, 181, 0.15), rgba(0, 173, 181, 0.05))',
+                                borderRadius: '22px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '1px solid rgba(0, 173, 181, 0.2)',
+                                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+                                position: 'relative',
+                                backdropFilter: 'blur(10px)'
+                            }}>
+                                <Bus size={36} color="var(--primary-color)" strokeWidth={1.5} />
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '-2px',
+                                    right: '-2px',
+                                    width: '14px',
+                                    height: '14px',
+                                    background: 'var(--success-color)',
+                                    borderRadius: '50%',
+                                    border: '3px solid var(--bg-color)',
+                                    boxShadow: '0 0 12px var(--success-color)',
+                                    animation: 'pulse 2s infinite'
+                                }} />
+                            </div>
+                            <div>
+                                <h2 style={{ 
+                                    fontSize: 'clamp(2rem, 5vw, 2.8rem)', 
+                                    fontWeight: 950, 
+                                    marginBottom: '0.5rem', 
+                                    letterSpacing: '-1.5px',
+                                    background: 'linear-gradient(to bottom, #fff 30%, rgba(255,255,255,0.7) 100%)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    lineHeight: 1
+                                }}>
+                                    Актуални Линии
+                                </h2>
+                                <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    gap: '0.8rem',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 800,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '2px'
+                                }}>
+                                    <span style={{ width: '30px', height: '1.5px', background: 'linear-gradient(90deg, transparent, rgba(0, 173, 181, 0.3))' }} />
+                                    към {new Date().toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                    <span style={{ width: '30px', height: '1.5px', background: 'linear-gradient(90deg, rgba(0, 173, 181, 0.3), transparent)' }} />
+                                </div>
+                            </div>
                         </div>
                         <div className="route-grid selection-grid">
                             {filteredRoutes.map((line) => (
