@@ -10,12 +10,12 @@
   "start_url": "/DARYCARD/",
   "icons": [
     {
-      "src": "pwa-icon.png",
+      "src": "og-image.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "pwa-icon.png",
+      "src": "og-image.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
