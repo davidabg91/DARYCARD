@@ -267,7 +267,7 @@ const BusRental: React.FC = () => {
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Телефон</label>
-                                    <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08XX XXX XXX" style={{ padding: '1rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '1rem', outline: 'none', maxWidth: '220px' }} />
+                                    <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08XX XXX XXX" style={{ padding: '1rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '1rem', outline: 'none', width: '100%', maxWidth: '300px' }} />
                                 </div>
                             </div>
 
