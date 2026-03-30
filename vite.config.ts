@@ -17,8 +17,8 @@ export default defineConfig({
         background_color: '#1a1a1a',
         display: 'standalone',
         orientation: 'portrait',
-        scope: '/DARYCARD/',
-        start_url: '/DARYCARD/',
+        scope: '/',
+        start_url: '/',
         icons: [
           {
             src: 'pwa-icon.png',
@@ -35,5 +35,5 @@ export default defineConfig({
       }
     })
   ],
-  base: '/DARYCARD/',
+  base: '/',
 })
