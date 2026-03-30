@@ -149,7 +149,7 @@ const Signal: React.FC = () => {
                                     onChange={(e) => setPhone(e.target.value)}
                                     placeholder="08XX XXX XXX"
                                     style={{
-                                        width: '100%', maxWidth: '220px', padding: '0.9rem 1rem 0.9rem 2.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
+                                        width: '100%', maxWidth: '300px', padding: '0.9rem 1rem 0.9rem 2.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
                                         borderRadius: '12px', color: '#fff', fontSize: '1rem', outline: 'none'
                                     }}
                                 />
