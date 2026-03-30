@@ -726,7 +726,7 @@ const AdminPanel: React.FC = () => {
                 padding: isMobile ? '0 0.5rem' : '0'
             }}>
                 <div>
-                    <h2 style={{ fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>Управление на Карти</h2>
+                    <h2 style={{ fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>Мениджър</h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 600 }}>
                             {isAdmin ? <ShieldCheck size={14} color="#ff5252" /> : <Shield size={14} color="var(--primary-color)" />}
@@ -747,22 +747,19 @@ const AdminPanel: React.FC = () => {
                 </div>
                 <div style={{ 
                     display: 'flex', 
-                    gap: isMobile ? '0.5rem' : '0.75rem', 
-                    overflowX: 'auto', 
-                    paddingBottom: isMobile ? '0.75rem' : '0',
-                    width: isMobile ? 'calc(100% + 1rem)' : 'auto',
-                    margin: isMobile ? '0 -0.5rem' : '0',
-                    padding: isMobile ? '0.25rem 0.5rem' : '0',
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                    WebkitOverflowScrolling: 'touch'
+                    gap: isMobile ? '0.4rem' : '0.75rem', 
+                    flexWrap: 'wrap',
+                    justifyContent: isMobile ? 'flex-start' : 'center',
+                    width: '100%',
+                    margin: isMobile ? '0.5rem 0' : '0',
+                    padding: isMobile ? '0' : '0'
                 }}>
-                    <TabButton id="register" icon={PlusCircle} label="ДОБАВИ" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
+                    <TabButton id="register" icon={PlusCircle} label={isMobile ? "ДОБАВИ КАРТА" : "ДОБАВИ КАРТИ"} activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                     <TabButton id="clients" icon={Users} label="КЛИЕНТИ" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                     <TabButton id="finances" icon={PiggyBank} label="ФИНАНСИ" activeColor="#ff9800" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                     <TabButton id="rentals" icon={Bus} label="НАЕМИ" activeColor="#0091ea" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadRentalsCount} isMobile={isMobile} />
                     <TabButton id="signals" icon={AlertCircle} label="СИГНАЛИ" activeColor="#ff5252" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadSignalsCount} isMobile={isMobile} />
-                    {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />}
+                    {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />}
                 </div>
             </div>
 

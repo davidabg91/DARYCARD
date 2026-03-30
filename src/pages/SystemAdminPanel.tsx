@@ -315,7 +315,7 @@ const SystemAdminPanel: React.FC = () => {
                         <StatCard icon={Shield} label="Липсващи" value={pendingTotal} color="#ff5252" isMobile={isMobile} />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(450px, 1fr))', gap: isMobile ? '1rem' : '2rem' }}>
                         {/* Daily Stats & Bar Chart */}
                         <Card>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -385,7 +385,7 @@ const SystemAdminPanel: React.FC = () => {
                         </Card>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(450px, 1fr))', gap: isMobile ? '1rem' : '2rem' }}>
                         {/* Route Performance */}
                         <Card>
                             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#00e676' }}>
