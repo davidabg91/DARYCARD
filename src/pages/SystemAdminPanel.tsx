@@ -12,7 +12,7 @@ import Card from '../components/Card';
 import type { UserRole } from '../types/auth';
 
 // Custom icons since they weren't in common lists or were problematic in older versions
-const Percent = ({ size }: any) => (
+const Percent = ({ size }: { size: number | string }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <line x1="19" y1="5" x2="5" y2="19"></line>
         <circle cx="6.5" cy="6.5" r="2.5"></circle>
@@ -188,8 +188,9 @@ const SystemAdminPanel: React.FC = () => {
             setUserMsg({ text: `Потребител "${newUsername}" е създаден.`, type: 'success' });
             setNewUsername(''); setNewPassword('');
             setTimeout(() => setUserMsg(null), 3000);
-        } catch (err: any) {
-            setUserMsg({ text: err.code === 'auth/email-already-in-use' ? 'Потребителското име съществува.' : 'Грешка!', type: 'error' });
+        } catch (err: unknown) {
+            const error = err as { code?: string };
+            setUserMsg({ text: error.code === 'auth/email-already-in-use' ? 'Потребителското име съществува.' : 'Грешка!', type: 'error' });
             setTimeout(() => setUserMsg(null), 3000);
         } finally { setUserLoading(false); }
     };
@@ -420,7 +421,16 @@ const SystemAdminPanel: React.FC = () => {
 };
 
 // --- Sub-components ---
-const TabButton = ({ icon: Icon, label, active, onClick, color }: any) => (
+interface TabButtonProps {
+    id: string;
+    icon: React.ElementType;
+    label: string;
+    active: boolean;
+    onClick: () => void;
+    color: string;
+}
+
+const TabButton = ({ icon: Icon, label, active, onClick, color }: TabButtonProps) => (
     <button
         onClick={onClick}
         style={{
@@ -437,7 +447,14 @@ const TabButton = ({ icon: Icon, label, active, onClick, color }: any) => (
     </button>
 );
 
-const StatCard = ({ icon: Icon, label, value, color }: any) => (
+interface StatCardProps {
+    icon: React.ElementType;
+    label: string;
+    value: string | number;
+    color: string;
+}
+
+const StatCard = ({ icon: Icon, label, value, color }: StatCardProps) => (
     <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: color }}></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
