@@ -5,7 +5,7 @@ import {
     RefreshCw, Search, Clock, Shield,
     UserPlus, Trash2
 } from 'lucide-react';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
@@ -33,6 +33,7 @@ interface Client {
     lastScanAt?: string;
     scanHistory?: string[];
     createdAt: string;
+    abuseReviewedAt?: string;
 }
 
 interface GlobalLog {
@@ -203,7 +204,15 @@ const SystemAdminPanel: React.FC = () => {
     // Suspicious Activity (Abuse detection)
     const suspiciousClientsData = clients.map(c => {
         if (!c.scanHistory) return null;
-        const byDate = c.scanHistory.reduce((acc, ts) => {
+        
+        // Filter out scans before last review
+        const relevantScans = c.abuseReviewedAt 
+            ? c.scanHistory.filter(ts => ts > c.abuseReviewedAt!)
+            : c.scanHistory;
+
+        if (relevantScans.length === 0) return null;
+
+        const byDate = relevantScans.reduce((acc, ts) => {
             const d = ts.split('T')[0];
             if (!acc[d]) acc[d] = [];
             acc[d].push(ts);
@@ -219,6 +228,16 @@ const SystemAdminPanel: React.FC = () => {
     }).filter(item => item !== null) as (Client & { abuseDays: [string, string[]][] })[];
 
     const suspiciousClients = suspiciousClientsData.slice(0, 5);
+
+    const handleClearAbuse = async (clientId: string) => {
+        try {
+            await updateDoc(doc(db, 'clients', clientId), {
+                abuseReviewedAt: new Date().toISOString()
+            });
+        } catch (err) {
+            console.error("Error clearing abuse:", err);
+        }
+    };
 
     // --- User Handlers ---
     const handleAddUser = async (e: React.FormEvent) => {
@@ -387,23 +406,36 @@ const SystemAdminPanel: React.FC = () => {
                             </div>
                         </Card>
 
-                        {/* Suspicious Activity */}
                         <Card>
                             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff5252' }}>
                                 <Shield size={20} /> Съмнителна Активност (Злоупотреби)
                             </h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {suspiciousClients.length > 0 ? suspiciousClients.map(c => (
-                                    <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,82,82,0.05)', borderRadius: '14px', border: '1px solid rgba(255,82,82,0.1)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                            <div style={{ fontWeight: 700 }}>{c.name}</div>
+                                    <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,82,82,0.05)', borderRadius: '14px', border: '1px solid rgba(255,82,82,0.1)', position: 'relative' }}>
+                                        <button 
+                                            onClick={() => handleClearAbuse(c.id)}
+                                            style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', background: 'rgba(255,82,82,0.1)', border: 'none', color: '#ff5252', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 800 }}
+                                        >
+                                            <Trash2 size={14} /> ИЗЧИСТИ
+                                        </button>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '0.5rem' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '1rem' }}>{c.name}</div>
                                             <div style={{ color: '#ff5252', fontSize: '0.75rem', fontWeight: 900 }}>{c.abuseDays.length} дни с нарушения</div>
                                         </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                            {c.abuseDays.slice(0, 2).map(([date, scans], idx) => (
-                                                <div key={idx} style={{ fontSize: '0.75rem', opacity: 0.7, display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span>{date}</span>
-                                                    <span>{scans.length} пъти</span>
+                                        
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                            {c.abuseDays.slice(0, 3).map(([date, scans], idx) => (
+                                                <div key={idx} style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px' }}>
+                                                    <div style={{ fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '2px' }}>{date}</div>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                        {scans.map((ts, sIdx) => (
+                                                            <span key={sIdx} style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(255,82,82,0.1)', borderRadius: '4px', color: '#ff5252' }}>
+                                                                {new Date(ts).toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo_main.png';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, ShieldCheck, Shield, Menu, X } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 const Layout: React.FC = () => {
     const location = useLocation();
@@ -12,6 +14,29 @@ const Layout: React.FC = () => {
     const isRentPath = location.pathname === '/rent';
     const { currentUser, logout } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+    
+    const [unreadSignals, setUnreadSignals] = useState(0);
+    const [unreadRentals, setUnreadRentals] = useState(0);
+
+    const totalUnread = unreadSignals + unreadRentals;
+
+    useEffect(() => {
+        if (!currentUser) return;
+
+        // Listen for new signals
+        const qSignals = query(collection(db, 'signals'), where('status', '==', 'new'));
+        const unsubSignals = onSnapshot(qSignals, (snap) => {
+            setUnreadSignals(snap.size);
+        });
+
+        // Listen for new rentals
+        const qRentals = query(collection(db, 'rentals'), where('status', '==', 'new'));
+        const unsubRentals = onSnapshot(qRentals, (snap) => {
+            setUnreadRentals(snap.size);
+        });
+
+        return () => { unsubSignals(); unsubRentals(); };
+    }, [currentUser]);
 
     const handleLogout = () => {
         logout();
@@ -76,8 +101,20 @@ const Layout: React.FC = () => {
                             fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
                             borderBottom: isAdminPath && location.pathname === '/admin' ? '2px solid #ff5252' : '2px solid transparent',
                             paddingBottom: '2px',
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem'
                         }}
-                    >Мениджър</Link>
+                    >
+                        Мениджър
+                        {totalUnread > 0 && (
+                            <span style={{
+                                width: '8px', height: '8px', background: '#ff5252', borderRadius: '50%',
+                                display: 'inline-block', boxShadow: '0 0 8px #ff5252'
+                            }}></span>
+                        )}
+                    </Link>
 
                         {currentUser.role === 'admin' && (
                             <Link
@@ -160,7 +197,15 @@ const Layout: React.FC = () => {
             )}
             {currentUser && (
                 <>
-                    <Link to="/admin" onClick={closeMenu} className="mobile-nav-link">Мениджър</Link>
+                    <Link to="/admin" onClick={closeMenu} className="mobile-nav-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        Мениджър
+                        {totalUnread > 0 && (
+                            <span style={{
+                                background: '#e53935', color: '#fff', fontSize: '0.7rem',
+                                padding: '2px 8px', borderRadius: '10px', fontWeight: 900
+                            }}>{totalUnread}</span>
+                        )}
+                    </Link>
                     {currentUser.role === 'admin' && (
                         <Link to="/system-admin" onClick={closeMenu} className="mobile-nav-link">Админ Панел</Link>
                     )}
