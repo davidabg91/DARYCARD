@@ -313,7 +313,7 @@ const Layout: React.FC = () => {
                 gap: '0.75rem',
             }}>
                 <a 
-                    href="https://davidax-elite-it-solutions-898715197082.us-west1.run.app/" 
+                    href="http://davidax.org/" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     style={{ 
