@@ -227,7 +227,7 @@ const BusRental: React.FC = () => {
             </section>
 
             {/* Inquiry Form Section */}
-            <section ref={formRef as any} id="inquiry-form" style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '4rem 1rem' : '8rem 1.5rem' }}>
+            <section ref={formRef} id="inquiry-form" style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '4rem 1rem' : '8rem 1.5rem' }}>
                 <div style={{ 
                     display: 'grid', 
                     gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(350px, 1fr))', 
