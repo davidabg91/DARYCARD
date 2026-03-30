@@ -178,6 +178,48 @@ const SystemAdminPanel: React.FC = () => {
     const maxScans = Math.max(...hourlyDistribution, 1);
     const peakHour = hourlyDistribution.indexOf(Math.max(...hourlyDistribution));
 
+    const scannedToday = clients.filter(c => c.lastScanAt?.startsWith(todayIso)).length;
+
+    // Renewals & Pending
+    const renewedCount = clients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;
+    const pendingTotal = totalNonCanceled - renewedCount;
+
+    // Route Stats
+    const routeStats = ROUTES.map(route => {
+        const routeClients = clients.filter(c => c.route === route);
+        const revenue = isAll
+            ? routeClients.reduce((acc, c) => acc + (c.amountPaid || 0), 0)
+            : routeClients.reduce((acc, c) => {
+                const monthlyRenewal = (c.renewalHistory || []).find(r => r.month === statsMonth);
+                return acc + (monthlyRenewal ? monthlyRenewal.amount : 0);
+              }, 0);
+        const count = isAll 
+            ? routeClients.length 
+            : routeClients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;
+        
+        return { route, count, revenue };
+    }).sort((a, b) => b.revenue - a.revenue);
+
+    // Suspicious Activity (Abuse detection)
+    const suspiciousClientsData = clients.map(c => {
+        if (!c.scanHistory) return null;
+        const byDate = c.scanHistory.reduce((acc, ts) => {
+            const d = ts.split('T')[0];
+            if (!acc[d]) acc[d] = [];
+            acc[d].push(ts);
+            return acc;
+        }, {} as Record<string, string[]>);
+
+        const abuseDays = Object.entries(byDate)
+            .filter(([, scans]) => scans.length > 3)
+            .sort((a, b) => b[0].localeCompare(a[0]));
+
+        if (abuseDays.length === 0) return null;
+        return { ...c, abuseDays };
+    }).filter(item => item !== null) as (Client & { abuseDays: [string, string[]][] })[];
+
+    const suspiciousClients = suspiciousClientsData.slice(0, 5);
+
     // --- User Handlers ---
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -237,11 +279,14 @@ const SystemAdminPanel: React.FC = () => {
                     </div>
 
                     {/* Stats Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
                         <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" />
                         <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" />
+                        <StatCard icon={HistoryIcon} label="Сканирани Днес" value={scannedToday} color="#00ADB5" />
                         <StatCard icon={Percent} label="Степен на Плащане" value={`${paymentRate}%`} color="#ffab00" />
+                        <StatCard icon={RefreshCw} label="Обновени" value={renewedCount} color="#4caf50" />
                         <StatCard icon={RefreshCw} label="Средно на Карта" value={`${avgProfit} €`} color="#e91e63" />
+                        <StatCard icon={Shield} label="Липсващи" value={pendingTotal} color="#ff5252" />
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
@@ -295,7 +340,7 @@ const SystemAdminPanel: React.FC = () => {
                         {/* Top Users */}
                         <Card>
                             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-color)' }}>
-                                <RefreshCw size={20} /> Най-активни Пътници (Общо)
+                                <TrendingUp size={20} /> Най-активни Пътници (Общо)
                             </h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {topScannedClients.length > 0 ? topScannedClients.map((c, i) => (
@@ -310,6 +355,60 @@ const SystemAdminPanel: React.FC = () => {
                                         </div>
                                     </div>
                                 )) : <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.3 }}>Няма данни.</div>}
+                            </div>
+                        </Card>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
+                        {/* Route Performance */}
+                        <Card>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#00e676' }}>
+                                <BarChart size={20} /> Резултати по Линии
+                            </h3>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                                            <th style={{ padding: '0.75rem' }}>ЛИНИЯ</th>
+                                            <th style={{ padding: '0.75rem' }}>АКТИВНИ</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'right' }}>ПРИХОД</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {routeStats.filter(s => s.count > 0 || s.revenue > 0).slice(0, 10).map((s, i) => (
+                                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <td style={{ padding: '0.75rem', fontWeight: 600, fontSize: '0.85rem' }}>{s.route}</td>
+                                                <td style={{ padding: '0.75rem' }}><span style={{ padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem' }}>{s.count}</span></td>
+                                                <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: '#00e676' }}>{s.revenue.toFixed(2)} €</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+
+                        {/* Suspicious Activity */}
+                        <Card>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff5252' }}>
+                                <Shield size={20} /> Съмнителна Активност (Злоупотреби)
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {suspiciousClients.length > 0 ? suspiciousClients.map(c => (
+                                    <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,82,82,0.05)', borderRadius: '14px', border: '1px solid rgba(255,82,82,0.1)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                            <div style={{ fontWeight: 700 }}>{c.name}</div>
+                                            <div style={{ color: '#ff5252', fontSize: '0.75rem', fontWeight: 900 }}>{c.abuseDays.length} дни с нарушения</div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                            {c.abuseDays.slice(0, 2).map(([date, scans], idx) => (
+                                                <div key={idx} style={{ fontSize: '0.75rem', opacity: 0.7, display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span>{date}</span>
+                                                    <span>{scans.length} пъти</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )) : <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.3 }}>Няма засечени нарушения.</div>}
                             </div>
                         </Card>
                     </div>
