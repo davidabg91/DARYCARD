@@ -317,7 +317,7 @@ const SystemAdminPanel: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(450px, 1fr))', gap: isMobile ? '1rem' : '2rem' }}>
                         {/* Daily Stats & Bar Chart */}
-                        <Card>
+                        <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                                 <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <Clock size={20} /> Активност на Линиите
@@ -341,14 +341,30 @@ const SystemAdminPanel: React.FC = () => {
                             </div>
                             
                             {/* Hourly distribution simplified visual */}
-                            <div style={{ height: '220px', display: 'flex', alignItems: 'flex-end', gap: '4px', padding: '1rem 0' }}>
-                                {hourlyDistribution.map((count, hr) => (
-                                    <div key={hr} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '8px', height: '100%', position: 'relative' }}>
-                                        {count > 0 && <span style={{ position: 'absolute', top: '-18px', width: '100%', textAlign: 'center', fontSize: '0.6rem', color: hr === peakHour ? '#ff5252' : 'var(--primary-color)' }}>{count}</span>}
-                                        <div style={{ width: '100%', height: `${(count/maxScans)*100}%`, background: hr === peakHour ? '#ff5252' : 'var(--primary-color)', opacity: count > 0 ? 1 : 0.1, borderRadius: '4px', minHeight: count > 0 ? '4px' : '2px' }}></div>
-                                        <span style={{ fontSize: '0.6rem', textAlign: 'center', opacity: hr % 4 === 0 ? 0.8 : 0.3 }}>{hr}:00</span>
-                                    </div>
-                                ))}
+                            <div style={{ 
+                                width: '100%', 
+                                overflowX: 'auto', 
+                                WebkitOverflowScrolling: 'touch',
+                                paddingBottom: '0.5rem',
+                                scrollbarWidth: 'none',
+                                msOverflowStyle: 'none'
+                            }}>
+                                <div style={{ 
+                                    height: '220px', 
+                                    display: 'flex', 
+                                    alignItems: 'flex-end', 
+                                    gap: isMobile ? '2px' : '4px', 
+                                    padding: '1rem 0',
+                                    minWidth: isMobile ? '400px' : 'auto'
+                                }}>
+                                    {hourlyDistribution.map((count, hr) => (
+                                        <div key={hr} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '8px', height: '100%', position: 'relative' }}>
+                                            {count > 0 && <span style={{ position: 'absolute', top: '-18px', width: '100%', textAlign: 'center', fontSize: '0.6rem', color: hr === peakHour ? '#ff5252' : 'var(--primary-color)' }}>{count}</span>}
+                                            <div style={{ width: '100%', height: `${(count/maxScans)*100}%`, background: hr === peakHour ? '#ff5252' : 'var(--primary-color)', opacity: count > 0 ? 1 : 0.1, borderRadius: '4px', minHeight: count > 0 ? '4px' : '2px' }}></div>
+                                            <span style={{ fontSize: '0.6rem', textAlign: 'center', opacity: hr % 4 === 0 ? 0.8 : 0.3 }}>{hr}:00</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                             <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -364,16 +380,16 @@ const SystemAdminPanel: React.FC = () => {
                         </Card>
 
                         {/* Top Users */}
-                        <Card>
+                        <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
                             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-color)' }}>
                                 <TrendingUp size={20} /> Най-активни Пътници (Общо)
                             </h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {topScannedClients.length > 0 ? topScannedClients.map((c, i) => (
                                     <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem', background: 'rgba(255,255,255,0.02)', borderRadius: '14px', border: '1px solid var(--surface-border)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: i < 3 ? ['gold', 'silver', '#cd7f32'][i] : 'rgba(255,255,255,0.1)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 900 }}>{i + 1}</div>
-                                            <div style={{ fontWeight: 600 }}>{c.name}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', overflow: 'hidden' }}>
+                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: i < 3 ? ['gold', 'silver', '#cd7f32'][i] : 'rgba(255,255,255,0.1)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 900, flexShrink: 0 }}>{i + 1}</div>
+                                            <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ fontWeight: 900, color: 'var(--primary-color)', fontSize: '1.1rem' }}>{c.scanCount}</div>
@@ -387,7 +403,7 @@ const SystemAdminPanel: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(450px, 1fr))', gap: isMobile ? '1rem' : '2rem' }}>
                         {/* Route Performance */}
-                        <Card>
+                        <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
                             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#00e676' }}>
                                 <BarChart size={20} /> Резултати по Линии
                             </h3>
@@ -413,7 +429,7 @@ const SystemAdminPanel: React.FC = () => {
                             </div>
                         </Card>
 
-                        <Card>
+                        <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
                             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff5252' }}>
                                 <Shield size={20} /> Съмнителна Активност (Злоупотреби)
                             </h3>
