@@ -9,6 +9,7 @@ const Layout: React.FC = () => {
     const navigate = useNavigate();
     const isAdminPath = location.pathname.startsWith('/admin');
     const isClientProfilePath = location.pathname.startsWith('/client/');
+    const isRentPath = location.pathname === '/rent';
     const { currentUser, logout } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
@@ -306,10 +307,10 @@ const Layout: React.FC = () => {
             </header>
 
             <main 
-                className={isClientProfilePath ? 'full-screen-main' : ''}
+                className={isClientProfilePath || isRentPath ? 'full-screen-main' : ''}
                 style={{ 
                     flex: 1, 
-                    padding: isClientProfilePath ? '0' : '2rem', 
+                    padding: isClientProfilePath || isRentPath ? '0' : '2rem', 
                     display: 'flex', 
                     flexDirection: 'column', 
                     animation: 'fadeIn 0.4s ease' 

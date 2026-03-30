@@ -6,7 +6,7 @@ import {
     RefreshCw, List, Zap, Save, Eye, EyeOff, 
     ShieldCheck, Shield, TrendingUp, Percent, 
     PiggyBank, AlertTriangle, UserCheck, Share2,
-    AlertCircle
+    AlertCircle, Bus
 } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
@@ -60,6 +60,17 @@ interface Signal {
     status: 'new' | 'read' | 'resolved';
 }
 
+interface Rental {
+    id: string;
+    name: string;
+    phone: string;
+    date: string;
+    passengers: string;
+    destination: string;
+    timestamp: string;
+    status: 'new' | 'read' | 'contacted' | 'completed';
+}
+
 const ROUTES = [
     "Бъркач", "Тръстеник", "Биволаре", "Горна Митрополия", "Долни Дъбник",
     "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
@@ -109,11 +120,11 @@ const getDefaultExpiryMonth = () => {
 };
 
 interface TabButtonProps {
-    id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals';
+    id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals';
     icon: React.ElementType;
     label: string;
-    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals';
-    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals') => void;
+    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals';
+    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals') => void;
     activeColor?: string;
     badge?: number;
 }
@@ -183,11 +194,12 @@ const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
     const isAdmin = currentUser?.role === 'admin';
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals'>(
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals'>(
         isAdmin ? 'dashboard' : 'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
     const [signals, setSignals] = useState<Signal[]>([]);
+    const [rentals, setRentals] = useState<Rental[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -351,7 +363,17 @@ const AdminPanel: React.FC = () => {
             setSignals(signalList.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
         });
 
-        // 3. Listen for Admin Actions (Cloud Scan)
+        // 3. Listen for Rentals in Real-time
+        const rentalsQ = query(collection(db, 'rentals'));
+        const unsubscribeRentals = onSnapshot(rentalsQ, (snapshot) => {
+            const rentalList: Rental[] = [];
+            snapshot.forEach((doc) => {
+                rentalList.push({ id: doc.id, ...doc.data() } as Rental);
+            });
+            setRentals(rentalList.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+        });
+
+        // 4. Listen for Admin Actions (Cloud Scan)
         const actionUnsubscribe = onSnapshot(doc(db, 'admin_actions', 'current'), (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.data();
@@ -366,6 +388,7 @@ const AdminPanel: React.FC = () => {
         return () => {
             unsubscribe();
             unsubscribeSignals();
+            unsubscribeRentals();
             actionUnsubscribe();
         };
     }, [location.search]);
@@ -759,6 +782,7 @@ const AdminPanel: React.FC = () => {
     }, 0);
 
     const unreadSignalsCount = signals.filter(s => s.status === 'new').length;
+    const unreadRentalsCount = rentals.filter(r => r.status === 'new').length;
 
     const last7Days = [...Array(7)].map((_, i) => {
         const d = new Date();
@@ -826,6 +850,7 @@ const AdminPanel: React.FC = () => {
                     <TabButton id="clients" icon={Users} label="КЛИЕНТИ" activeTab={activeTab} setActiveTab={setActiveTab} />
                     {isAdmin && <TabButton id="dashboard" icon={BarChart} label="ТАБЛО" activeTab={activeTab} setActiveTab={setActiveTab} />}
                     <TabButton id="finances" icon={PiggyBank} label="ФИНАНСИ" activeColor="#ff9800" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton id="rentals" icon={Bus} label="НАЕМИ" activeColor="#ff5252" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadRentalsCount} />
                     <TabButton id="signals" icon={AlertCircle} label="СИГНАЛИ" activeColor="#e53935" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadSignalsCount} />
                     {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />}
                 </div>
@@ -2003,6 +2028,162 @@ const AdminPanel: React.FC = () => {
                                 ) : (
                                     <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма сигнали.</div>
                                 )}
+                            </div>
+                        </Card>
+                    </div>
+                )}
+
+                {activeTab === 'rentals' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.4s ease' }}>
+                        <Card style={{ padding: 0, overflow: 'hidden' }}>
+                            <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#ff5252' }}>
+                                    <Bus size={20} /> Запитвания за Наем на Автобус
+                                </h3>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                    Общо: <b>{rentals.length}</b> запитвания
+                                </div>
+                            </div>
+
+                            {/* Desktop Table */}
+                            <div className="desktop-table" style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                                            <th style={{ padding: '1.25rem', textAlign: 'left' }}>Дата/Час</th>
+                                            <th style={{ padding: '1.25rem', textAlign: 'left' }}>Клиент</th>
+                                            <th style={{ padding: '1.25rem', textAlign: 'left' }}>Детайли (Пътници/Дата)</th>
+                                            <th style={{ padding: '1.25rem', textAlign: 'left' }}>Дестинация</th>
+                                            <th style={{ padding: '1.25rem', textAlign: 'left' }}>Статус</th>
+                                            <th style={{ padding: '1.25rem', textAlign: 'center' }}>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {rentals.length > 0 ? (
+                                            rentals.map((rental) => (
+                                                <tr key={rental.id} style={{ 
+                                                    borderBottom: '1px solid var(--surface-border)',
+                                                    background: rental.status === 'new' ? 'rgba(255,82,82,0.03)' : 'transparent',
+                                                    transition: 'background 0.2s'
+                                                }}>
+                                                    <td style={{ padding: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                        {new Date(rental.timestamp).toLocaleString('bg-BG')}
+                                                    </td>
+                                                    <td style={{ padding: '1.25rem' }}>
+                                                        <div style={{ fontWeight: 700 }}>{rental.name}</div>
+                                                        <div style={{ fontSize: '0.85rem', color: 'var(--primary-color)' }}>📞 {rental.phone}</div>
+                                                    </td>
+                                                    <td style={{ padding: '1.25rem' }}>
+                                                        <div style={{ fontSize: '0.9rem' }}>👥 {rental.passengers || 'N/A'} места</div>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>📅 {rental.date ? new Date(rental.date).toLocaleDateString('bg-BG') : 'Непосочена'}</div>
+                                                    </td>
+                                                    <td style={{ padding: '1.25rem', maxWidth: '250px' }}>
+                                                        <div style={{ fontSize: '0.9rem', maxHeight: '60px', overflowY: 'auto' }}>{rental.destination}</div>
+                                                    </td>
+                                                    <td style={{ padding: '1.25rem' }}>
+                                                        <select 
+                                                            value={rental.status} 
+                                                            onChange={(e) => {
+                                                                const ref = doc(db, 'rentals', rental.id);
+                                                                updateDoc(ref, { status: e.target.value });
+                                                            }}
+                                                            style={{ 
+                                                                padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid var(--surface-border)', 
+                                                                background: rental.status === 'new' ? 'rgba(255,82,82,0.1)' : 'rgba(0,0,0,0.2)',
+                                                                color: rental.status === 'new' ? '#ff5252' : '#fff',
+                                                                fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', outline: 'none'
+                                                            }}
+                                                        >
+                                                            <option value="new">НОВО</option>
+                                                            <option value="read">ПРОЧЕТЕНО</option>
+                                                            <option value="contacted">СВЪРЗАНО СЕ</option>
+                                                            <option value="completed">ЗАВЪРШЕНО</option>
+                                                        </select>
+                                                    </td>
+                                                    <td style={{ padding: '1.25rem', textAlign: 'center' }}>
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (window.confirm('Сигурни ли сте, че искате да изтриете това запитване?')) {
+                                                                    await deleteDoc(doc(db, 'rentals', rental.id));
+                                                                }
+                                                            }}
+                                                            style={{ background: 'rgba(255,82,82,0.1)', color: '#ff5252', border: 'none', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={6} style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Все още няма запитвания за наем на автобус.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile View */}
+                            <div className="mobile-cards" style={{ padding: '1rem' }}>
+                                {rentals.length > 0 ? rentals.map((rental) => (
+                                    <div key={rental.id} style={{ 
+                                        background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', 
+                                        borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', 
+                                        gap: '1rem', borderLeft: rental.status === 'new' ? '4px solid #ff5252' : '1px solid var(--surface-border)'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                                                    {new Date(rental.timestamp).toLocaleString('bg-BG')}
+                                                </div>
+                                                <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{rental.name}</div>
+                                                <div style={{ fontSize: '0.9rem', color: 'var(--primary-color)', marginTop: '0.25rem' }}>📞 {rental.phone}</div>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    if (window.confirm('Изтриване?')) await deleteDoc(doc(db, 'rentals', rental.id));
+                                                }}
+                                                style={{ background: 'rgba(255,82,82,0.1)', color: '#ff5252', border: 'none', padding: '0.5rem', borderRadius: '8px' }}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>ПЪТНИЦИ</div>
+                                                <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{rental.passengers || 'N/A'}</div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>ДАТА</div>
+                                                <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{rental.date ? new Date(rental.date).toLocaleDateString('bg-BG') : '---'}</div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>ДЕСТИНАЦИЯ И ДЕТАЙЛИ</div>
+                                            <div style={{ fontSize: '0.95rem', lineHeight: 1.5, background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '10px' }}>
+                                                {rental.destination}
+                                            </div>
+                                        </div>
+
+                                        <select 
+                                            value={rental.status} 
+                                            onChange={(e) => updateDoc(doc(db, 'rentals', rental.id), { status: e.target.value })}
+                                            style={{ 
+                                                padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--surface-border)', 
+                                                background: rental.status === 'new' ? 'rgba(255,82,82,0.1)' : 'rgba(255,255,255,0.05)',
+                                                color: rental.status === 'new' ? '#ff5252' : '#fff',
+                                                fontSize: '0.85rem', fontWeight: 800, cursor: 'pointer', outline: 'none', width: '100%'
+                                            }}
+                                        >
+                                            <option value="new">НОВО ЗАПИТВАНЕ</option>
+                                            <option value="read">ПРОЧЕТЕНО</option>
+                                            <option value="contacted">СВЪРЗАНО СЕ</option>
+                                            <option value="completed">ЗАВЪРШЕНО</option>
+                                        </select>
+                                    </div>
+                                )) : <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Няма запитвания.</div>}
                             </div>
                         </Card>
                     </div>
