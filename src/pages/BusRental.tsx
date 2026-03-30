@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { 
@@ -86,13 +86,7 @@ const BusRental: React.FC = () => {
         );
     }
 
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    const isMobile = window.innerWidth < 768;
 
     return (
         <div style={{ minHeight: '100vh', paddingBottom: '6rem' }}>
@@ -246,19 +240,19 @@ const BusRental: React.FC = () => {
                     overflow: 'hidden', boxShadow: '0 40px 100px rgba(0,0,0,0.4)'
                 }}>
                     {/* Left Side: Info */}
-                    <div style={{ padding: isMobile ? '2.5rem 1.25rem' : '4rem', background: 'linear-gradient(135deg, rgba(229,57,53,0.1) 0%, rgba(26,26,26,0) 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <h2 style={{ fontSize: isMobile ? '1.8rem' : '2.5rem', fontWeight: 900, marginBottom: '1rem', lineHeight: 1.2 }}>Потърсете ни за <span style={{ color: '#ff5252' }}>оферта</span></h2>
-                        <p style={{ color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, fontSize: isMobile ? '0.95rem' : '1.1rem', marginBottom: '2rem' }}>
+                    <div style={{ padding: isMobile ? '2.5rem 1.5rem' : '4rem', background: 'linear-gradient(135deg, rgba(229,57,53,0.1) 0%, rgba(26,26,26,0) 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <h2 style={{ fontSize: isMobile ? '2rem' : '2.5rem', fontWeight: 900, marginBottom: '1.5rem' }}>Потърсете ни за <span style={{ color: '#ff5252' }}>оферта</span></h2>
+                        <p style={{ color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, fontSize: isMobile ? '1rem' : '1.1rem', marginBottom: '2rem' }}>
                             Попълнете формата и ще получите индивидуално ценово предложение, съобразено с вашите нужди, километраж и продължителност на наемане.
                         </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff5252', flexShrink: 0 }}><Info size={16}/></div>
-                                <span style={{ fontWeight: 600, fontSize: isMobile ? '0.85rem' : '1rem' }}>Индивидуален подход за всяко събитие</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff5252' }}><Info size={18}/></div>
+                                <span style={{ fontWeight: 600, fontSize: isMobile ? '0.9rem' : '1rem' }}>Индивидуален подход за всяко събитие</span>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff5252', flexShrink: 0 }}><Clock size={16}/></div>
-                                <span style={{ fontWeight: 600, fontSize: isMobile ? '0.85rem' : '1rem' }}>Бърз отговор до няколко часа</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff5252' }}><Clock size={18}/></div>
+                                <span style={{ fontWeight: 600, fontSize: isMobile ? '0.9rem' : '1rem' }}>Бърз отговор до няколко часа</span>
                             </div>
                         </div>
                     </div>
@@ -266,25 +260,25 @@ const BusRental: React.FC = () => {
                     {/* Right Side: Form */}
                     <div style={{ padding: isMobile ? '2rem 1.25rem' : '4rem', background: 'rgba(255,255,255,0.01)' }}>
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.8rem' : '1rem' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '0.25rem' }}>Вашето Име</label>
-                                    <input required type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Име Фамилия" style={{ padding: '0.9rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s' }} />
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Вашето Име</label>
+                                    <input required type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Име Фамилия" style={{ padding: '1rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '1rem', outline: 'none' }} />
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '0.25rem' }}>Телефон</label>
-                                    <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08XX XXX XXX" style={{ padding: '0.9rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '1rem', outline: 'none', width: '100%', maxWidth: '350px' }} />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Телефон</label>
+                                    <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08XX XXX XXX" style={{ padding: '1rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '1rem', outline: 'none', width: '100%', maxWidth: '300px' }} />
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.8rem' : '1rem' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '0.25rem' }}>Дата</label>
-                                    <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ padding: '0.9rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '1rem', outline: 'none' }} />
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Дата</label>
+                                    <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ padding: '1rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '1rem', outline: 'none' }} />
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '0.25rem' }}>Брой Пътници</label>
-                                    <input type="number" value={passengers} onChange={(e) => setPassengers(e.target.value)} placeholder="напр. 35" style={{ padding: '0.9rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '1rem', outline: 'none' }} />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Брой Пътници</label>
+                                    <input type="number" value={passengers} onChange={(e) => setPassengers(e.target.value)} placeholder="напр. 35" style={{ padding: '1rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '1rem', outline: 'none' }} />
                                 </div>
                             </div>
 

@@ -74,6 +74,13 @@ const SystemAdminPanel: React.FC = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [globalLogs, setGlobalLogs] = useState<GlobalLog[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Dashboard State
     const [statsMonth, setStatsMonth] = useState<string>(() => {
@@ -266,16 +273,16 @@ const SystemAdminPanel: React.FC = () => {
     );
 
     return (
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem', animation: 'fadeIn 0.4s ease' }}>
-            <h1 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem', color: '#ff5252' }}>
-                <Shield size={40} /> АДМИН ПАНЕЛ
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: isMobile ? '0.75rem' : '1.5rem', animation: 'fadeIn 0.4s ease' }}>
+            <h1 style={{ fontSize: isMobile ? '1.75rem' : '2.5rem', fontWeight: 900, marginBottom: isMobile ? '1.5rem' : '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#ff5252' }}>
+                <Shield size={isMobile ? 28 : 40} /> АДМИН ПАНЕЛ
             </h1>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-                <TabButton id="dashboard" icon={BarChart} label="ТАБЛО" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} color="#ff5252" />
-                <TabButton id="users" icon={UsersIcon} label="ПОТРЕБИТЕЛИ" active={activeTab === 'users'} onClick={() => setActiveTab('users')} color="#ff5252" />
-                <TabButton id="audit" icon={HistoryIcon} label="ОДИТ" active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} color="#ff5252" />
+            <div style={{ display: 'flex', gap: isMobile ? '0.5rem' : '1rem', marginBottom: isMobile ? '1.5rem' : '2.5rem', overflowX: 'auto', paddingBottom: '0.5rem', WebkitOverflowScrolling: 'touch' }}>
+                <TabButton id="dashboard" icon={BarChart} label="ТАБЛО" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} color="#ff5252" isMobile={isMobile} />
+                <TabButton id="users" icon={UsersIcon} label="ПОТРЕБИТЕЛИ" active={activeTab === 'users'} onClick={() => setActiveTab('users')} color="#ff5252" isMobile={isMobile} />
+                <TabButton id="audit" icon={HistoryIcon} label="ОДИТ" active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} color="#ff5252" isMobile={isMobile} />
             </div>
 
             {/* Dashboard Tab */}
@@ -298,14 +305,14 @@ const SystemAdminPanel: React.FC = () => {
                     </div>
 
                     {/* Stats Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-                        <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" />
-                        <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" />
-                        <StatCard icon={HistoryIcon} label="Сканирани Днес" value={scannedToday} color="#00ADB5" />
-                        <StatCard icon={Percent} label="Степен на Плащане" value={`${paymentRate}%`} color="#ffab00" />
-                        <StatCard icon={RefreshCw} label="Обновени" value={renewedCount} color="#4caf50" />
-                        <StatCard icon={RefreshCw} label="Средно на Карта" value={`${avgProfit} €`} color="#e91e63" />
-                        <StatCard icon={Shield} label="Липсващи" value={pendingTotal} color="#ff5252" />
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: isMobile ? '0.75rem' : '1.25rem' }}>
+                        <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
+                        <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" isMobile={isMobile} />
+                        <StatCard icon={HistoryIcon} label="Сканирани" value={scannedToday} color="#00ADB5" isMobile={isMobile} />
+                        <StatCard icon={Percent} label="Плащане" value={`${paymentRate}%`} color="#ffab00" isMobile={isMobile} />
+                        <StatCard icon={RefreshCw} label="Обновени" value={renewedCount} color="#4caf50" isMobile={isMobile} />
+                        <StatCard icon={Percent} label="На Карта" value={`${avgProfit} €`} color="#e91e63" isMobile={isMobile} />
+                        <StatCard icon={Shield} label="Липсващи" value={pendingTotal} color="#ff5252" isMobile={isMobile} />
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
@@ -450,56 +457,72 @@ const SystemAdminPanel: React.FC = () => {
             {/* Users Tab */}
             {activeTab === 'users' && (
                 <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.3s ease' }}>
-                    <Card>
-                        <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><UserPlus size={20} color="var(--primary-color)" /> Добави Нов Персонал</h3>
-                        <form onSubmit={handleAddUser} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', alignItems: 'flex-end' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Потребителско Име</label>
-                                <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }} />
+                    <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
+                        <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: isMobile ? '1.2rem' : '1.5rem' }}><UserPlus size={isMobile ? 20 : 24} color="var(--primary-color)" /> Добави Нов Персонал</h3>
+                        <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Потребителско Име</label>
+                                    <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }} />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Парола</label>
+                                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }} />
+                                </div>
+                                {!isMobile && (
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Роля</label>
+                                        <select value={newRole} onChange={e => setNewRole(e.target.value as UserRole)} style={{ width: '100%', padding: '0.8rem', borderRadius: '10px', background: '#333', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }}>
+                                            <option value="moderator">Модератор</option>
+                                            <option value="admin">Администратор</option>
+                                        </select>
+                                    </div>
+                                )}
                             </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Парола</label>
-                                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required style={{ width: '100%', padding: '0.8rem', borderRadius: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }} />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Роля</label>
-                                <select value={newRole} onChange={e => setNewRole(e.target.value as UserRole)} style={{ width: '100%', padding: '0.8rem', borderRadius: '10px', background: '#333', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }}>
-                                    <option value="moderator">Модератор</option>
-                                    <option value="admin">Администратор</option>
-                                </select>
-                            </div>
-                            <button type="submit" disabled={userLoading} style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.8rem', borderRadius: '10px', border: 'none', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>{userLoading ? '...' : 'Добави Персонал'}</button>
+                            
+                            {isMobile && (
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Роля</label>
+                                    <select value={newRole} onChange={e => setNewRole(e.target.value as UserRole)} style={{ width: '100%', padding: '0.8rem', borderRadius: '10px', background: '#333', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }}>
+                                        <option value="moderator">Модератор</option>
+                                        <option value="admin">Администратор</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            <button type="submit" disabled={userLoading} style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.8rem', borderRadius: '10px', border: 'none', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', marginTop: '0.5rem' }}>{userLoading ? '...' : 'Добави Персонал'}</button>
                         </form>
                         {userMsg && <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '10px', background: userMsg.type === 'success' ? 'rgba(0, 200, 83, 0.1)' : 'rgba(255, 82, 82, 0.1)', color: userMsg.type === 'success' ? '#00c853' : '#ff5252', border: `1px solid ${userMsg.type === 'success' ? '#00c85333' : '#ff525233'}` }}>{userMsg.text}</div>}
                     </Card>
 
-                    <Card>
-                        <h3 style={{ marginBottom: '1.5rem' }}>Управление на Персонала</h3>
+                    <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
+                        <h3 style={{ marginBottom: '1.5rem', fontSize: isMobile ? '1.2rem' : '1.5rem' }}>Управление на Персонала</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {users.map(user => (
-                                <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px solid var(--surface-border)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                        <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: ROLE_COLORS[user.role], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.2rem', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>{user.username[0].toUpperCase()}</div>
-                                        <div>
-                                            <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{user.username}</div>
+                                <div key={user.id} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px solid var(--surface-border)', gap: isMobile ? '1rem' : '0' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: isMobile ? '100%' : 'auto' }}>
+                                        <div style={{ width: isMobile ? '40px' : '45px', height: isMobile ? '40px' : '45px', borderRadius: '12px', background: ROLE_COLORS[user.role], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: isMobile ? '1rem' : '1.2rem', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>{user.username[0].toUpperCase()}</div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 700, fontSize: isMobile ? '1rem' : '1.1rem' }}>{user.username}</div>
                                             <div style={{ fontSize: '0.75rem', color: ROLE_COLORS[user.role], fontWeight: 800 }}>{ROLE_LABELS[user.role]}</div>
                                         </div>
+                                        {user.id === currentUser?.id && isMobile && <span style={{ fontSize: '0.6rem', padding: '0.25rem 0.6rem', borderRadius: '50px', background: 'rgba(0,173,181,0.1)', color: 'var(--primary-color)', fontWeight: 800 }}>АЗ</span>}
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
                                         {user.id !== 'default-admin' && user.id !== currentUser?.id && (
                                             <>
                                                 <select
                                                     value={user.role}
                                                     onChange={e => updateUserRole(user.id, e.target.value as UserRole)}
-                                                    style={{ padding: '0.4rem 0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: 'white', fontSize: '0.8rem' }}
+                                                    style={{ padding: '0.45rem 0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: 'white', fontSize: '0.8rem', flex: isMobile ? 1 : 'none' }}
                                                 >
                                                     <option value="moderator">Модератор</option>
                                                     <option value="admin">Администратор</option>
                                                 </select>
-                                                <button onClick={() => window.confirm('Наистина ли искате да изтриете този потребител?') && deleteUser(user.id)} style={{ padding: '0.6rem', color: '#ff5252', background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.2)', borderRadius: '8px', cursor: 'pointer' }}><Trash2 size={18} /></button>
+                                                <button onClick={() => window.confirm('Наистина ли искате да изтриете този потребител?') && deleteUser(user.id)} style={{ padding: '0.65rem', color: '#ff5252', background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.2)', borderRadius: '8px', cursor: 'pointer' }}><Trash2 size={18} /></button>
                                             </>
                                         )}
-                                        {user.id === currentUser?.id && <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.75rem', borderRadius: '50px', background: 'rgba(0,173,181,0.1)', color: 'var(--primary-color)', fontWeight: 800 }}>ВИЕ</span>}
+                                        {user.id === currentUser?.id && !isMobile && <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.75rem', borderRadius: '50px', background: 'rgba(0,173,181,0.1)', color: 'var(--primary-color)', fontWeight: 800 }}>ВИЕ</span>}
                                     </div>
                                 </div>
                             ))}
@@ -518,32 +541,58 @@ const SystemAdminPanel: React.FC = () => {
                         </div>
                     </div>
                     <Card style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--surface-border)' }}>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
-                                <thead style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--surface-border)' }}>
-                                    <tr>
-                                        <th style={{ padding: '1.25rem' }}>Време</th>
-                                        <th style={{ padding: '1.25rem' }}>Изпълнител</th>
-                                        <th style={{ padding: '1.25rem' }}>Действие</th>
-                                        <th style={{ padding: '1.25rem' }}>Обект</th>
-                                        <th style={{ padding: '1.25rem' }}>Детайли</th>
-                                        <th style={{ padding: '1.25rem', textAlign: 'right' }}>Сума</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredLogs.slice(0, 100).map(log => (
-                                        <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
-                                            <td style={{ padding: '1.25rem', fontSize: '0.8rem', opacity: 0.5 }}>{new Date(log.timestamp).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
-                                            <td style={{ padding: '1.25rem' }}><span style={{ padding: '4px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>{log.performedBy.split('@')[0]}</span></td>
-                                            <td style={{ padding: '1.25rem' }}><span style={{ fontWeight: 900, fontSize: '0.85rem', color: log.action === 'Създаване' ? '#00e676' : log.action === 'Изтриване' ? '#ff5252' : '#ffab00' }}>{log.action}</span></td>
-                                            <td style={{ padding: '1.25rem', fontWeight: 600 }}>{log.targetName}</td>
-                                            <td style={{ padding: '1.25rem', fontSize: '0.85rem', opacity: 0.7, maxWidth: '250px' }}>{log.details}</td>
-                                            <td style={{ padding: '1.25rem', textAlign: 'right', fontWeight: 900, color: log.amount > 0 ? '#00e676' : log.amount < 0 ? '#ff5252' : '#fff' }}>{log.amount !== 0 ? `${log.amount} €` : '-'}</td>
+                        {!isMobile ? (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+                                    <thead style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--surface-border)' }}>
+                                        <tr>
+                                            <th style={{ padding: '1.25rem' }}>Време</th>
+                                            <th style={{ padding: '1.25rem' }}>Изпълнител</th>
+                                            <th style={{ padding: '1.25rem' }}>Действие</th>
+                                            <th style={{ padding: '1.25rem' }}>Обект</th>
+                                            <th style={{ padding: '1.25rem' }}>Детайли</th>
+                                            <th style={{ padding: '1.25rem', textAlign: 'right' }}>Сума</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {filteredLogs.slice(0, 100).map(log => (
+                                            <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
+                                                <td style={{ padding: '1.25rem', fontSize: '0.8rem', opacity: 0.5 }}>{new Date(log.timestamp).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                                                <td style={{ padding: '1.25rem' }}><span style={{ padding: '4px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>{log.performedBy.split('@')[0]}</span></td>
+                                                <td style={{ padding: '1.25rem' }}><span style={{ fontWeight: 900, fontSize: '0.85rem', color: log.action === 'Създаване' ? '#00e676' : log.action === 'Изтриване' ? '#ff5252' : '#ffab00' }}>{log.action}</span></td>
+                                                <td style={{ padding: '1.25rem', fontWeight: 600 }}>{log.targetName}</td>
+                                                <td style={{ padding: '1.25rem', fontSize: '0.85rem', opacity: 0.7, maxWidth: '250px' }}>{log.details}</td>
+                                                <td style={{ padding: '1.25rem', textAlign: 'right', fontWeight: 900, color: log.amount > 0 ? '#00e676' : log.amount < 0 ? '#ff5252' : '#fff' }}>{log.amount !== 0 ? `${log.amount} €` : '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'rgba(255,255,255,0.05)' }}>
+                                {filteredLogs.slice(0, 50).map(log => (
+                                    <div key={log.id} style={{ padding: '1rem', background: '#1a1a1a', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>{new Date(log.timestamp).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                                            <span style={{ fontWeight: 900, fontSize: '0.75rem', color: log.action === 'Създаване' ? '#00e676' : log.action === 'Изтриване' ? '#ff5252' : '#ffab00', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px' }}>{log.action}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 700, fontSize: '1rem', color: '#fff' }}>{log.targetName}</div>
+                                                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: '2px' }}>{log.details}</div>
+                                            </div>
+                                            {log.amount !== 0 && (
+                                                <div style={{ fontWeight: 900, color: log.amount > 0 ? '#00e676' : '#ff5252', fontSize: '1.1rem' }}>{log.amount} €</div>
+                                            )}
+                                        </div>
+                                        <div style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.6rem' }}>
+                                            <span style={{ opacity: 0.5 }}>Изпълнител:</span>
+                                            <span style={{ fontWeight: 600 }}>{log.performedBy.split('@')[0]}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </Card>
                 </div>
             )}
@@ -559,22 +608,23 @@ interface TabButtonProps {
     active: boolean;
     onClick: () => void;
     color: string;
+    isMobile?: boolean;
 }
 
-const TabButton = ({ icon: Icon, label, active, onClick, color }: TabButtonProps) => (
+const TabButton = ({ icon: Icon, label, active, onClick, color, isMobile }: TabButtonProps) => (
     <button
         onClick={onClick}
         style={{
-            display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.75rem', borderRadius: '16px',
+            display: 'flex', alignItems: 'center', gap: isMobile ? '0.4rem' : '0.75rem', padding: isMobile ? '0.7rem 1rem' : '1rem 1.75rem', borderRadius: '16px',
             background: active ? color : 'rgba(255,255,255,0.02)',
             color: active ? '#fff' : 'rgba(255,255,255,0.4)',
             border: `1px solid ${active ? color : 'var(--surface-border)'}`,
             fontWeight: 800, cursor: 'pointer', transition: 'all 0.3s ease',
-            whiteSpace: 'nowrap', fontSize: '1rem',
+            whiteSpace: 'nowrap', fontSize: isMobile ? '0.8rem' : '1rem',
             boxShadow: active ? `0 8px 20px -5px ${color}66` : 'none'
         }}
     >
-        <Icon size={20} /> {label}
+        <Icon size={isMobile ? 16 : 20} /> {label}
     </button>
 );
 
@@ -583,15 +633,16 @@ interface StatCardProps {
     label: string;
     value: string | number;
     color: string;
+    isMobile?: boolean;
 }
 
-const StatCard = ({ icon: Icon, label, value, color }: StatCardProps) => (
-    <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', position: 'relative', overflow: 'hidden' }}>
+const StatCard = ({ icon: Icon, label, value, color, isMobile }: StatCardProps) => (
+    <Card style={{ padding: isMobile ? '1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: color }}></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
-            <Icon size={16} color={color} /> {label}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.65rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
+            <Icon size={isMobile ? 13 : 16} color={color} /> {label}
         </div>
-        <div style={{ fontSize: '2.25rem', fontWeight: 900, color: '#fff' }}>{value}</div>
+        <div style={{ fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 900, color: '#fff' }}>{value}</div>
     </Card>
 );
 

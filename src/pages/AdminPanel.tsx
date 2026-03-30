@@ -127,29 +127,32 @@ interface TabButtonProps {
     setActiveTab: (id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals') => void;
     activeColor?: string;
     badge?: number;
+    isMobile?: boolean;
 }
 
-const TabButton = ({ id, icon: Icon, label, activeTab, setActiveTab, activeColor = 'var(--primary-color)', badge }: TabButtonProps) => (
+const TabButton = ({ id, icon: Icon, label, activeTab, setActiveTab, activeColor = 'var(--primary-color)', badge, isMobile }: TabButtonProps) => (
     <button
         onClick={() => setActiveTab(id)}
         style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', borderRadius: '50px',
+            display: 'flex', alignItems: 'center', gap: isMobile ? '0.3rem' : '0.5rem', padding: isMobile ? '0.6rem 0.9rem' : '0.75rem 1.25rem', borderRadius: '50px',
             fontWeight: 700, 
             background: activeTab === id ? activeColor : (id === 'register' ? 'rgba(0, 200, 83, 0.1)' : 'transparent'),
             color: activeTab === id ? '#fff' : (id === 'register' ? '#00c853' : 'var(--text-secondary)'),
             border: `2px solid ${activeTab === id ? activeColor : (id === 'register' ? '#00c853' : 'var(--surface-border)')}`,
             boxShadow: id === 'register' ? '0 0 15px rgba(0, 200, 83, 0.2)' : 'none',
             transition: 'all 0.3s ease',
-            fontSize: 'var(--tab-font-size, 0.9rem)',
-            position: 'relative'
+            fontSize: isMobile ? '0.75rem' : '0.9rem',
+            position: 'relative',
+            whiteSpace: 'nowrap',
+            flexShrink: 0
         }}
     >
-        <Icon size={18} /> <span className="tab-label">{label}</span>
+        <Icon size={isMobile ? 16 : 18} /> <span className="tab-label">{label}</span>
         {badge && badge > 0 ? (
             <span style={{
-                position: 'absolute', top: '-5px', right: '-5px',
-                background: '#ff5252', color: '#fff', fontSize: '0.7rem',
-                minWidth: '18px', height: '18px', borderRadius: '10px',
+                position: 'absolute', top: isMobile ? '-3px' : '-5px', right: isMobile ? '-3px' : '-5px',
+                background: '#ff5252', color: '#fff', fontSize: isMobile ? '0.6rem' : '0.7rem',
+                minWidth: isMobile ? '16px' : '18px', height: isMobile ? '16px' : '18px', borderRadius: '10px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 padding: '0 4px', border: '2px solid var(--bg-color)', fontWeight: 900,
                 boxShadow: '0 2px 5px rgba(0,0,0,0.3)', animation: 'pulse 2s infinite'
@@ -202,6 +205,13 @@ const AdminPanel: React.FC = () => {
     const [rentals, setRentals] = useState<Rental[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         const handleOnline = () => setIsOnline(true);
@@ -706,33 +716,53 @@ const AdminPanel: React.FC = () => {
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease' }}>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between', 
+                alignItems: isMobile ? 'flex-start' : 'center', 
+                marginBottom: isMobile ? '1.5rem' : '2.5rem', 
+                gap: '1.25rem',
+                padding: isMobile ? '0 0.5rem' : '0'
+            }}>
                 <div>
-                    <h2 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Управление на Карти</h2>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                    <h2 style={{ fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>Управление на Карти</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 600 }}>
                             {isAdmin ? <ShieldCheck size={14} color="#ff5252" /> : <Shield size={14} color="var(--primary-color)" />}
                             {isAdmin ? 'Администратор' : 'Модератор'} — {currentUser?.username}
                         </div>
                         <div style={{ 
-                            display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', 
+                            display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem', 
                             padding: '2px 8px', borderRadius: '50px', 
                             background: isOnline ? 'rgba(0,230,118,0.1)' : 'rgba(255,152,0,0.1)',
                             color: isOnline ? '#00e676' : '#ff9800',
-                            border: `1px solid ${isOnline ? 'rgba(0,230,118,0.2)' : 'rgba(255,152,0,0.2)'}`
+                            border: `1px solid ${isOnline ? 'rgba(0,230,118,0.2)' : 'rgba(255,152,0,0.2)'}`,
+                            fontWeight: 800
                         }}>
                             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#00e676' : '#ff9800', boxShadow: isOnline ? '0 0 8px #00e676' : 'none' }} />
                             {isOnline ? 'ОНЛАЙН' : 'ОФЛАЙН'}
                         </div>
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <TabButton id="register" icon={PlusCircle} label="ДОБАВИ КАРТИ" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton id="clients" icon={Users} label="КЛИЕНТИ" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton id="finances" icon={PiggyBank} label="ФИНАНСИ" activeColor="#ff9800" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton id="rentals" icon={Bus} label="НАЕМИ" activeColor="#ff5252" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadRentalsCount} />
-                    <TabButton id="signals" icon={AlertCircle} label="СИГНАЛИ" activeColor="#e53935" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadSignalsCount} />
-                    {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} />}
+                <div style={{ 
+                    display: 'flex', 
+                    gap: isMobile ? '0.5rem' : '0.75rem', 
+                    overflowX: 'auto', 
+                    paddingBottom: isMobile ? '0.75rem' : '0',
+                    width: isMobile ? 'calc(100% + 1rem)' : 'auto',
+                    margin: isMobile ? '0 -0.5rem' : '0',
+                    padding: isMobile ? '0.25rem 0.5rem' : '0',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                    WebkitOverflowScrolling: 'touch'
+                }}>
+                    <TabButton id="register" icon={PlusCircle} label="ДОБАВИ" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
+                    <TabButton id="clients" icon={Users} label="КЛИЕНТИ" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
+                    <TabButton id="finances" icon={PiggyBank} label="ФИНАНСИ" activeColor="#ff9800" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
+                    <TabButton id="rentals" icon={Bus} label="НАЕМИ" activeColor="#0091ea" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadRentalsCount} isMobile={isMobile} />
+                    <TabButton id="signals" icon={AlertCircle} label="СИГНАЛИ" activeColor="#ff5252" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadSignalsCount} isMobile={isMobile} />
+                    {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />}
                 </div>
             </div>
 
@@ -777,8 +807,8 @@ const AdminPanel: React.FC = () => {
             {activeTab === 'finances' && (
                 <div style={{ animation: 'fadeIn 0.4s ease', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     {/* Summary Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                        <Card style={{ borderLeft: '4px solid #00c853' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: isMobile ? '1rem' : '1.5rem' }}>
+                        <Card style={{ borderLeft: '4px solid #00c853', padding: isMobile ? '1.25rem' : '1.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                 <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><DollarSign size={18} /> ПРИХОД ДНЕС</div>
                                 <div style={{ background: 'rgba(0, 200, 83, 0.1)', color: '#00c853', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>ДНЕС</div>
@@ -787,7 +817,7 @@ const AdminPanel: React.FC = () => {
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Регистрирани днес: <b>{registrationsToday}</b></div>
                         </Card>
 
-                        <Card style={{ borderLeft: '4px solid var(--primary-color)' }}>
+                        <Card style={{ borderLeft: '4px solid var(--primary-color)', padding: isMobile ? '1.25rem' : '1.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                 <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={18} /> ПРИХОД ЗА МЕСЕЦА</div>
                                 <div style={{ background: 'rgba(0, 173, 181, 0.1)', color: 'var(--primary-color)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>{currentMonthIso}</div>
@@ -1000,20 +1030,20 @@ const AdminPanel: React.FC = () => {
 
             {activeTab === 'clients' && (
                 <div style={{ animation: 'fadeIn 0.4s ease' }}>
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexDirection: isMobile ? 'column' : 'row' }}>
+                        <div style={{ flex: 1 }}>
                             <input
                                 type="text" placeholder="Търсене по име, ID или курс..."
-                                style={{ width: '100%', padding: '0.75rem 1.5rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: 'var(--text-primary)', outline: 'none' }}
+                                style={{ width: '100%', padding: '0.8rem 1.5rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.9rem' }}
                                 value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
                         
-                        <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
                             <select 
                                 value={filterMonth}
                                 onChange={(e) => setFilterMonth(e.target.value)}
-                                style={{ padding: '0.75rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer' }}
+                                style={{ flex: 1, padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
                             >
                                 {allMonths.map(m => (
                                     <option key={m} value={m} style={{ background: '#222' }}>{m}</option>
@@ -1023,7 +1053,7 @@ const AdminPanel: React.FC = () => {
                             <select 
                                 value={filterRoute}
                                 onChange={(e) => setFilterRoute(e.target.value)}
-                                style={{ padding: '0.75rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer' }}
+                                style={{ flex: 1, padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
                             >
                                 <option value="all" style={{ background: '#222' }}>Всички Курсове</option>
                                 {ROUTES.map(r => (
@@ -1250,8 +1280,8 @@ const AdminPanel: React.FC = () => {
                             </div>
                         </Card>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                            <Card style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(350px, 1fr))', gap: isMobile ? '1rem' : '2rem' }}>
+                            <Card style={{ padding: isMobile ? '1.25rem' : '1.5rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                     <h3 style={{ margin: 0 }}>Снимка на Клиента</h3>
                                 </div>
@@ -1284,7 +1314,7 @@ const AdminPanel: React.FC = () => {
                                 
                                 {photoError && <div style={{ marginTop: '1rem', color: 'var(--error-color)', fontSize: '0.85rem', textAlign: 'center', background: 'rgba(255,0,0,0.1)', padding: '0.5rem', borderRadius: '8px' }}>{photoError}</div>}
                             </Card>
-                            <Card>
+                            <Card style={{ padding: isMobile ? '1.25rem' : '1.5rem' }}>
                                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                                     <div>
                                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Име</label>
@@ -1383,7 +1413,7 @@ const AdminPanel: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%' }}>
+                                            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.8rem', width: '100%' }}>
                                                 <button 
                                                     type="button"
                                                     onClick={() => {
@@ -1392,7 +1422,7 @@ const AdminPanel: React.FC = () => {
                                                         setClientName('');
                                                         alert('Моля, не регистрирайте един и същ човек два пъти. Използвайте менюто "Подновяване" за съществуващи карти.');
                                                     }}
-                                                    style={{ padding: '0.8rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                                                    style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
                                                 >
                                                     Това е същият човек
                                                 </button>
@@ -1403,7 +1433,7 @@ const AdminPanel: React.FC = () => {
                                                         setDuplicateCheckClient(null);
                                                         alert('Моля, добавете презиме на новия клиент, за да ги различаваме.');
                                                     }}
-                                                    style={{ padding: '0.8rem', borderRadius: '8px', background: 'var(--primary-color)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                                                    style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', background: 'var(--primary-color)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
                                                 >
                                                     Това е друг човек (добавете презиме)
                                                 </button>
@@ -1418,7 +1448,7 @@ const AdminPanel: React.FC = () => {
 
                 {activeTab === 'nfc' && isAdmin && (
                     <div style={{ animation: 'fadeIn 0.4s ease' }}>
-                        <Card style={{ padding: '2rem' }}>
+                        <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
                             <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--accent-color)' }}>
                                 <ExternalLink size={24} /> Генериране на NFC Линкове
                             </h2>
@@ -1803,8 +1833,8 @@ const AdminPanel: React.FC = () => {
 
                 {/* Action Modal */}
                 {showActionModal && selectedClient && (
-                    <div className="modal-overlay" onClick={() => setShowActionModal(false)}>
-                        <div className="modal-content" style={{ maxWidth: '600px', padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+                    <div className="modal-overlay" onClick={() => setShowActionModal(false)} style={{ padding: isMobile ? '0.5rem' : '1rem' }}>
+                        <div className="modal-content" style={{ maxWidth: '600px', width: '100%', padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
                             {/* Header */}
                             <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -1818,19 +1848,19 @@ const AdminPanel: React.FC = () => {
                             </div>
 
                             {/* Tabs */}
-                            <div style={{ display: 'flex', padding: '0.5rem', gap: '0.5rem', background: 'rgba(0,0,0,0.2)' }}>
+                            <div style={{ display: 'flex', padding: isMobile ? '0.25rem' : '0.5rem', gap: isMobile ? '0.25rem' : '0.5rem', background: 'rgba(0,0,0,0.2)' }}>
                                 <button 
                                     onClick={() => setModalTab('info')}
-                                    style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'info' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'info' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' }}
-                                >Инфо</button>
+                                    style={{ flex: 1, padding: isMobile ? '0.5rem' : '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'info' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'info' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.85rem' }}
+                                >ИНФО</button>
                                 <button 
                                     onClick={() => setModalTab('actions')}
-                                    style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'actions' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'actions' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' }}
-                                >Действие</button>
+                                    style={{ flex: 1, padding: isMobile ? '0.5rem' : '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'actions' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'actions' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.85rem' }}
+                                >ДЕЙСТВИЯ</button>
                                 <button 
                                     onClick={() => setModalTab('history')}
-                                    style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'history' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'history' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
-                                ><Clock size={14} /> История</button>
+                                    style={{ flex: 1, padding: isMobile ? '0.5rem' : '0.6rem', borderRadius: '8px', border: 'none', color: modalTab === 'history' ? '#fff' : 'var(--text-secondary)', background: modalTab === 'history' ? 'rgba(255,255,255,0.1)' : 'transparent', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                                ><Clock size={isMobile ? 12 : 14} /> ИСТОРИЯ</button>
                             </div>
 
                             {/* Content */}
@@ -1862,7 +1892,7 @@ const AdminPanel: React.FC = () => {
                                 )}
 
                                 {modalTab === 'info' && (
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', animation: 'fadeIn 0.3s ease' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem', animation: 'fadeIn 0.3s ease' }}>
                                         <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Статус</div>
                                             <div style={{ fontWeight: 700, color: selectedClient.isCanceled || isExpired(selectedClient.expiryDate, selectedClient) ? 'var(--error-color)' : 'var(--success-color)' }}>
@@ -1892,9 +1922,9 @@ const AdminPanel: React.FC = () => {
                                 {modalTab === 'actions' && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.3s ease' }}>
                                         {/* Renew */}
-                                        <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(0,255,150,0.03)', border: '1px solid rgba(0,255,150,0.1)' }}>
-                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)', margin: '0 0 1rem 0' }}><RefreshCw size={18} /> Подновяване</h4>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                        <div style={{ padding: isMobile ? '1.25rem' : '1.5rem', borderRadius: '12px', background: 'rgba(0,255,150,0.03)', border: '1px solid rgba(0,255,150,0.1)' }}>
+                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)', margin: '0 0 1rem 0', fontSize: isMobile ? '1rem' : '1.1rem' }}><RefreshCw size={18} /> Подновяване</h4>
+                                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem', marginBottom: '1rem' }}>
                                                 <div>
                                                     <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Месец</label>
                                                     <input type="month" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff', colorScheme: 'dark' }} value={newMonth} onChange={e => setNewMonth(e.target.value)} />
