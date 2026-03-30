@@ -7,8 +7,7 @@ import StaffPortal from './pages/StaffPortal';
 import AdminPanel from './pages/AdminPanel';
 import ClientProfile from './pages/ClientProfile';
 import LoginPage from './pages/LoginPage';
-import UsersPanel from './pages/UsersPanel';
-import AuditLog from './pages/AuditLog';
+import SystemAdminPanel from './pages/SystemAdminPanel';
 import Help from './pages/Help';
 import Signal from './pages/Signal';
 import BusRental from './pages/BusRental';
@@ -43,12 +42,8 @@ function App() {
             } />
 
             {/* Admin only */}
-            <Route path="admin/users" element={
-              <ProtectedRoute requiredRole="admin"><UsersPanel /></ProtectedRoute>
-            } />
-
-            <Route path="admin/audit" element={
-              <ProtectedRoute requiredRole="admin"><AuditLog /></ProtectedRoute>
+            <Route path="system-admin" element={
+              <ProtectedRoute requiredRole="admin"><SystemAdminPanel /></ProtectedRoute>
             } />
 
             <Route path="help" element={

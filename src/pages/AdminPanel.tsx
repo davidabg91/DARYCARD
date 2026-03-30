@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
-    Users, PlusCircle, BarChart, ExternalLink, 
+    Users, PlusCircle, ExternalLink, 
     Trash2, XCircle, Clock, DollarSign, Camera, 
-    RefreshCw, List, Zap, Save, Eye, EyeOff, 
-    ShieldCheck, Shield, TrendingUp, Percent, 
-    PiggyBank, AlertTriangle, UserCheck, Share2,
+    RefreshCw, List, Save, 
+    ShieldCheck, Shield, TrendingUp,
+    PiggyBank, AlertTriangle, Share2,
     AlertCircle, Bus
 } from 'lucide-react';
 import Card from '../components/Card';
@@ -120,11 +120,11 @@ const getDefaultExpiryMonth = () => {
 };
 
 interface TabButtonProps {
-    id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals';
+    id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals';
     icon: React.ElementType;
     label: string;
-    activeTab: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals';
-    setActiveTab: (id: 'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals') => void;
+    activeTab: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals';
+    setActiveTab: (id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals') => void;
     activeColor?: string;
     badge?: number;
 }
@@ -194,8 +194,8 @@ const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
     const isAdmin = currentUser?.role === 'admin';
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals'>(
-        isAdmin ? 'dashboard' : 'clients'
+    const [activeTab, setActiveTab] = useState<'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals'>(
+        'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
     const [signals, setSignals] = useState<Signal[]>([]);
@@ -232,7 +232,6 @@ const AdminPanel: React.FC = () => {
     const [newAmount, setNewAmount] = useState('');
     const [newRoute, setNewRoute] = useState('');
 
-    const [showTotalRevenue, setShowTotalRevenue] = useState(false);
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
     const [modalMessage, setModalMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
     
@@ -244,11 +243,6 @@ const AdminPanel: React.FC = () => {
     const [nfcQuantity, setNfcQuantity] = useState<number>(100);
     const [generatedLinks, setGeneratedLinks] = useState<string[]>([]);
     
-    const [statsLoading, setStatsLoading] = useState(false);
-    const [statsMonth, setStatsMonth] = useState<string>(() => {
-        const now = new Date();
-        return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
-    });
 
     const [filterMonth, setFilterMonth] = useState<string>(() => {
         const now = new Date();
@@ -256,28 +250,6 @@ const AdminPanel: React.FC = () => {
     });
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
-    const handleResetAllScans = async () => {
-        if (!isAdmin || !window.confirm('Сигурни ли сте, че искате да нулирате статистиката за сканиранията за ВСИЧКИ клиенти?')) return;
-        
-        try {
-            setStatsLoading(true);
-            const batchPromises = clients.map(async (c) => {
-                const ref = doc(db, 'clients', c.id);
-                return updateDoc(ref, {
-                    scanCount: 0,
-                    scanHistory: []
-                });
-            });
-            await Promise.all(batchPromises);
-            alert('Статистиката е нулирана успешно.');
-            await logGlobalActivity('Нулиране на сканирания', 'Всички клиенти', 'Нулирани са броячите за сканиране и историята за всички клиенти.');
-        } catch (err) {
-            console.error(err);
-            alert('Грешка при нулиране.');
-        } finally {
-            setStatsLoading(false);
-        }
-    };
     const [filterRoute, setFilterRoute] = useState<string>('all');
     const [reportMonth, setReportMonth] = useState<string>('all');
     const [reportCardType, setReportCardType] = useState<string>('all');
@@ -286,7 +258,7 @@ const AdminPanel: React.FC = () => {
     const [photoError, setPhotoError] = useState<string | null>(null);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [chartRoute, setChartRoute] = useState<string>('all_routes');
+
 
 
     const toggleWaitingForScan = async () => {
@@ -309,6 +281,34 @@ const AdminPanel: React.FC = () => {
 
     const [registrationSuccess, setRegistrationSuccess] = useState<Client | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    // --- Helper Functions ---
+    const getRouteColor = (route: string = '') => {
+        if (!route) return 'var(--text-secondary)';
+        let hash = 0;
+        for (let i = 0; i < route.length; i++) {
+            hash = route.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const h = Math.abs(hash % 360);
+        return `hsl(${h}, 70%, 65%)`;
+    };
+
+    const getClientStatusForMonth = (client: Client, month: string) => {
+        if (client.isCanceled) return 'Анулиран';
+        const hasPaymentForMonth = (client.renewalHistory || []).some(rh => rh.month === month);
+        return hasPaymentForMonth ? 'Платен' : 'Неплатен';
+    };
+
+    const getMonthPayment = (client: Client, month: string) => {
+        const payment = (client.renewalHistory || []).find(rh => rh.month === month);
+        return payment ? payment.amount : 0;
+    };
+
+    // Derived data for reports and filters
+    const allMonths = Array.from(new Set([
+        new Date().toISOString().slice(0, 7),
+        ...clients.flatMap(c => (c.renewalHistory || []).map(r => r.month))
+    ])).sort().reverse();
     const logGlobalActivity = async (action: string, targetName: string, details: string, amount?: number) => {
         try {
             await addDoc(collection(db, 'activity_logs'), {
@@ -645,104 +645,9 @@ const AdminPanel: React.FC = () => {
         return now > expiry;
     };
 
-    // Stats
-    const allMonths = Array.from(new Set([
-        new Date().toISOString().slice(0, 7), // Always include current month
-        ...clients.flatMap(c => (c.renewalHistory || []).map(r => r.month))
-    ])).sort().reverse();
-
-    const isAll = statsMonth === 'all';
     
-    // Route Color Helper
-    const getRouteColor = (route: string = '') => {
-        if (!route) return 'var(--text-secondary)';
-        let hash = 0;
-        for (let i = 0; i < route.length; i++) {
-            hash = route.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const h = Math.abs(hash % 360);
-        return `hsl(${h}, 70%, 60%)`;
-    };
-    
-    const totalRevenue = isAll 
-        ? clients.reduce((acc, c) => acc + (c.amountPaid || 0), 0)
-        : clients.reduce((acc, c) => {
-            const monthlyRenewal = (c.renewalHistory || []).find(r => r.month === statsMonth);
-            return acc + (monthlyRenewal ? monthlyRenewal.amount : 0);
-          }, 0);
 
-    const activeClientsCount = isAll
-        ? clients.filter(c => !c.isCanceled && !isExpired(c.expiryDate, c)).length
-        : clients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;
 
-    const renewedCount = isAll ? 0 : clients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;
-    const nonRenewedCount = isAll ? 0 : clients.filter(c => !c.isCanceled && !(c.renewalHistory || []).some(r => r.month === statsMonth)).length;
-
-    const routeStats = ROUTES.map(route => {
-        const routeClients = clients.filter(c => c.route === route);
-        const revenue = isAll
-            ? routeClients.reduce((acc, c) => acc + (c.amountPaid || 0), 0)
-            : routeClients.reduce((acc, c) => {
-                const monthlyRenewal = (c.renewalHistory || []).find(r => r.month === statsMonth);
-                return acc + (monthlyRenewal ? monthlyRenewal.amount : 0);
-              }, 0);
-        const count = isAll 
-            ? routeClients.length 
-            : routeClients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;
-        
-        return { route, count, revenue };
-    }).sort((a, b) => b.revenue - a.revenue);
-
-    const getClientStatusForMonth = (client: Client, month: string) => {
-        if (client.isCanceled) return 'Анулиран';
-        
-        const hasPaymentForMonth = (client.renewalHistory || []).some(rh => rh.month === month);
-        return hasPaymentForMonth ? 'Платен' : 'Неплатен';
-    };
-
-    const getMonthPayment = (client: Client, month: string) => {
-        const payment = (client.renewalHistory || []).find(rh => rh.month === month);
-        return payment ? payment.amount : 0;
-    };
-
-    // Advanced Stats for Dashboard
-    const totalNonCanceled = clients.filter(c => !c.isCanceled).length;
-    const newClientsMonth = clients.filter(c => c.createdAt?.startsWith(statsMonth)).length;
-    const paymentRate = totalNonCanceled > 0 ? Math.round((activeClientsCount / totalNonCanceled) * 100) : 0;
-    const avgProfit = activeClientsCount > 0 ? Math.round(totalRevenue / activeClientsCount) : 0;
-    const pendingTotal = totalNonCanceled - activeClientsCount;
-
-    const topScannedClients = [...clients]
-        .filter(c => (c.scanCount || 0) > 0)
-        .sort((a, b) => (b.scanCount || 0) - (a.scanCount || 0))
-        .slice(0, 5);
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const scannedToday = clients.filter(c => c.lastScanAt?.startsWith(todayStr)).length;
-    
-    // Group suspicious activity by date and client
-    const suspiciousClientsData = clients.map(c => {
-        if (!c.scanHistory) return null;
-        
-        // Group scans by date
-        const byDate = c.scanHistory.reduce((acc, ts) => {
-            const d = ts.split('T')[0];
-            if (!acc[d]) acc[d] = [];
-            acc[d].push(ts);
-            return acc;
-        }, {} as Record<string, string[]>);
-
-        // Find days with > 3 scans
-        const abuseDays = Object.entries(byDate)
-            .filter(([, scans]) => scans.length > 3)
-            .sort((a, b) => b[0].localeCompare(a[0])); // Recent dates first
-
-        if (abuseDays.length === 0) return null;
-
-        return { ...c, abuseDays };
-    }).filter(item => item !== null) as (Client & { abuseDays: [string, string[]][] })[];
-
-    const suspiciousClients = suspiciousClientsData.slice(0, 5);
 
     const filteredClientsByFilters = clients.filter(c => {
         const matchesSearch = !searchTerm || 
@@ -796,31 +701,7 @@ const AdminPanel: React.FC = () => {
         return { date: iso, revenue: rev, regs: curRegs };
     });
 
-    const hourlyDistribution = (() => {
-        const dist = Array(24).fill(0);
-        const now = new Date();
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        
-        clients.forEach(client => {
-            if (chartRoute !== 'all_routes' && client.route !== chartRoute) return;
-            
-            (client.scanHistory || []).forEach(ts => {
-                const scanDate = new Date(ts);
-                if (scanDate >= sevenDaysAgo) {
-                    const hour = scanDate.getHours();
-                    dist[hour]++;
-                }
-            });
-        });
-        return dist;
-    })();
 
-    const maxScans = Math.max(...hourlyDistribution, 1);
-    const peakHour = hourlyDistribution.indexOf(Math.max(...hourlyDistribution));
-    const lowHours = hourlyDistribution
-        .map((count, hr) => ({ hr, count }))
-        .filter(item => item.hr >= 8 && item.hr <= 20 && item.count < (maxScans * 0.2))
-        .map(item => `${item.hr}:00`);
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease' }}>
@@ -848,7 +729,6 @@ const AdminPanel: React.FC = () => {
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <TabButton id="register" icon={PlusCircle} label="ДОБАВИ КАРТИ" activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="clients" icon={Users} label="КЛИЕНТИ" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    {isAdmin && <TabButton id="dashboard" icon={BarChart} label="ТАБЛО" activeTab={activeTab} setActiveTab={setActiveTab} />}
                     <TabButton id="finances" icon={PiggyBank} label="ФИНАНСИ" activeColor="#ff9800" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="rentals" icon={Bus} label="НАЕМИ" activeColor="#ff5252" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadRentalsCount} />
                     <TabButton id="signals" icon={AlertCircle} label="СИГНАЛИ" activeColor="#e53935" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadSignalsCount} />
@@ -893,275 +773,6 @@ const AdminPanel: React.FC = () => {
             100% { opacity: 1; transform: scale(1); }
         }
       `}</style>
-
-            {activeTab === 'dashboard' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    {/* Period Selector */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-                        <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Период за Статистика:</span>
-                        <select 
-                            value={statsMonth} 
-                            onChange={(e) => setStatsMonth(e.target.value)}
-                            style={{ background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', outline: 'none' }}
-                        >
-                            <option value="all">Всичко до момента (Общо)</option>
-                            {allMonths.map(m => (
-                                <option key={m} value={m}>{m}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                        <Card className="stat-card" style={{ borderLeft: '4px solid var(--primary-color)' }}>
-                            <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><DollarSign size={16} /> Общ Оборот</div>
-                                <button
-                                    onClick={() => setShowTotalRevenue(!showTotalRevenue)}
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
-                                    type="button"
-                                    title={showTotalRevenue ? "Скрий оборота" : "Покажи оборота"}
-                                >
-                                    {showTotalRevenue ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
-                            </div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: 700 }}>
-                                {showTotalRevenue ? `${totalRevenue.toFixed(2)} €` : '••••••'}
-                            </div>
-                        </Card>
-                        <Card className="stat-card" style={{ borderLeft: '4px solid #00e676' }}>
-                            <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}><Users size={16} />{isAll ? 'Всички Профили' : 'Активни Карти'}</div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: 800 }}>{activeClientsCount}</div>
-                        </Card>
-                        <Card className="stat-card" style={{ borderLeft: '4px solid var(--accent-color)' }}>
-                            <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Users size={16} /> Клиенти</div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: 700 }}>{clients.length}</div>
-                        </Card>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '2rem' }}>
-                        <Card>
-                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><List size={20} /> Статистика по Курсове</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                                {routeStats.map(st => (
-                                    <div key={st.route}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                            <span>{st.route}</span>
-                                            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{st.count} карти | <b>{st.revenue} €</b></span>
-                                        </div>
-                                        <div className="route-bar">
-                                            <div className="route-fill" style={{ width: `${totalRevenue ? (st.revenue / totalRevenue) * 100 : 0}%` }} />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
-                        <Card>
-                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={20} color="var(--primary-color)" /> Бизнес Инсайти ({isAll ? 'Всичко' : statsMonth})</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
-                                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
-                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><PlusCircle size={12} /> Нови Клиенти</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-color)' }}>+{newClientsMonth}</div>
-                                </div>
-                                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
-                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Percent size={12} /> Събираемост</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#00e676' }}>{paymentRate}%</div>
-                                </div>
-                                {!isAll && (
-                                    <>
-                                        <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.1)' }}>
-                                            <div style={{ fontSize: '0.65rem', color: 'rgba(0,230,118,0.7)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><UserCheck size={12} /> Активни (Платени)</div>
-                                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#00e676' }}>{renewedCount}</div>
-                                        </div>
-                                        <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(255,82,82,0.05)', border: '1px solid rgba(255,82,82,0.1)' }}>
-                                            <div style={{ fontSize: '0.65rem', color: 'rgba(255,82,82,0.7)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><XCircle size={12} /> Неактивни (Минали)</div>
-                                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ff5252' }}>{nonRenewedCount}</div>
-                                        </div>
-                                    </>
-                                )}
-                                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
-                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><PiggyBank size={12} /> Среден Приход</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{avgProfit} €</div>
-                                </div>
-                                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)' }}>
-                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Clock size={12} /> Остават</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: pendingTotal > 0 ? '#ff5252' : 'var(--text-secondary)' }}>{pendingTotal}</div>
-                                </div>
-                            </div>
-                            <div style={{ marginTop: '1rem', padding: '0.75rem', borderRadius: '10px', background: 'rgba(0,173,181,0.05)', fontSize: '0.8rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Zap size={14} /> <span>{paymentRate > 80 ? 'Отлична събираемост този месец!' : 'Внимание: Има голям брой неплатени карти.'}</span>
-                            </div>
-                        </Card>
-
-                        {/* HOURLY DISTRIBUTION CHART */}
-                        <Card style={{ gridColumn: '1 / -1' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--primary-color)' }}>
-                                    <Clock size={20} /> Натовареност по часове (Последна седмица)
-                                </h3>
-                                <select 
-                                    value={chartRoute} 
-                                    onChange={(e) => setChartRoute(e.target.value)}
-                                    style={{ background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', outline: 'none', fontSize: '0.85rem' }}
-                                >
-                                    <option value="all_routes">Всички Линии (Общо)</option>
-                                    {ROUTES.map(r => (
-                                        <option key={r} value={r}>{r}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div style={{ height: '220px', display: 'flex', alignItems: 'flex-end', gap: '4px', padding: '1rem 0', borderBottom: '1px solid var(--surface-border)', marginBottom: '1rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                                {hourlyDistribution.map((count, hr) => {
-                                    const height = (count / maxScans) * 100;
-                                    const isPeak = hr === peakHour && count > 0;
-                                    return (
-                                        <div key={hr} style={{ flex: '1 0 12px', minWidth: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', height: '100%', justifyContent: 'flex-end' }}>
-                                            <div style={{ fontSize: '0.65rem', color: isPeak ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: isPeak ? 900 : 400 }}>{count > 0 ? count : ''}</div>
-                                            <div 
-                                                title={`${hr}:00 - ${count} сканирания`}
-                                                style={{ 
-                                                    width: '100%', 
-                                                    height: `${height}%`, 
-                                                    background: isPeak ? 'var(--primary-color)' : (count > 0 ? 'rgba(0, 173, 181, 0.3)' : 'rgba(255,255,255,0.02)'),
-                                                    borderRadius: '4px 4px 0 0',
-                                                    transition: 'height 0.3s ease, background 0.3s ease',
-                                                    boxShadow: isPeak ? '0 0 15px rgba(0, 173, 181, 0.4)' : 'none'
-                                                }} 
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '0.6rem', padding: '0 2px' }}>
-                                {hourlyDistribution.map((_, hr) => (
-                                    <span key={hr} style={{ 
-                                        flex: '1 0 12px', 
-                                        minWidth: '12px',
-                                        textAlign: 'center', 
-                                        opacity: hr % 2 === 0 ? 1 : 0.5,
-                                        display: window.innerWidth < 600 && hr % 4 !== 0 ? 'none' : 'block'
-                                    }}>
-                                        {hr.toString().padStart(2, '0')}
-                                    </span>
-                                ))}
-                            </div>
-
-                            {maxScans > 1 ? (
-                                <div style={{ marginTop: '1.5rem', padding: '1rem', borderRadius: '12px', background: 'rgba(255,152,0,0.05)', border: '1px solid rgba(255,152,0,0.1)', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                                    <AlertTriangle size={18} color="#ff9800" style={{ flexShrink: 0, marginTop: '2px' }} />
-                                    <div>
-                                        <div style={{ fontWeight: 700, color: '#ff9800', marginBottom: '0.25rem', fontSize: '0.9rem' }}>Оптимизация на Автобуси</div>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                                            Пиков час: <b>{peakHour}:00</b> ({hourlyDistribution[peakHour]} сканирания). 
-                                            {lowHours.length > 0 && (
-                                                <> В часовете {lowHours.slice(0, 3).join(', ')} натовареността е ниска. <b>Препоръка:</b> Обмислете пускането на по-малък автобус за тези курсове.</>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div style={{ marginTop: '1.5rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                                    Няма достатъчно данни за седмичен анализ на тази линия.
-                                </div>
-                            )}
-                        </Card>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                        {/* Top Active Users */}
-                        <Card>
-                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-color)' }}>
-                                <UserCheck size={20} /> Най-активни Пътници
-                            </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {topScannedClients.length > 0 ? topScannedClients.map((c, idx) => (
-                                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: idx === 0 ? 'gold' : idx === 1 ? 'silver' : '#cd7f32', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 900 }}>{idx + 1}</div>
-                                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.name}</div>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-color)' }}>{c.scanCount}</div>
-                                            <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>пътувания</div>
-                                        </div>
-                                    </div>
-                                )) : <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма данни за сканирания.</div>}
-                            </div>
-                        </Card>
-
-                        {/* Security & Alerts */}
-                        <Card>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff5252' }}>
-                                    <AlertTriangle size={20} /> Сигурност и Нарушения
-                                </h3>
-                                {isAdmin && (
-                                    <button 
-                                        onClick={handleResetAllScans}
-                                        disabled={statsLoading}
-                                        style={{ 
-                                            background: statsLoading ? 'rgba(255,255,255,0.05)' : 'rgba(255,82,82,0.1)', 
-                                            border: '1px solid rgba(255,82,82,0.2)', 
-                                            color: statsLoading ? 'var(--text-secondary)' : '#ff5252', 
-                                            borderRadius: '8px', cursor: statsLoading ? 'not-allowed' : 'pointer', 
-                                            fontSize: '0.75rem', padding: '0.5rem 1rem',
-                                            display: 'flex', alignItems: 'center', gap: '6px',
-                                            fontWeight: 600, transition: 'all 0.2s'
-                                        }}
-                                        title="Нулирай всички броячи за сканиране"
-                                    >
-                                        <RefreshCw size={14} className={statsLoading ? 'spin' : ''} /> 
-                                        {statsLoading ? 'Нулиране...' : 'Нулирай Сканове'}
-                                    </button>
-                                )}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(255,82,82,0.05)', border: '1px solid rgba(255,82,82,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div>
-                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,82,82,0.7)' }}>Сканирани карти днес</div>
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ff5252' }}>{scannedToday}</div>
-                                    </div>
-                                    <Zap size={24} color="#ff5252" opacity={0.5} />
-                                </div>
-                                
-                                {suspiciousClients.length > 0 ? (
-                                    <>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: '0.5rem' }}>Пътници с над 3 сканирания за ден (цяла история):</div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                                            {suspiciousClients.map(c => (
-                                                <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.1)', borderRadius: '12px' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{c.name}</div>
-                                                        <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>ID: {c.id}</div>
-                                                    </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                                        {c.abuseDays.map(([date, times]) => (
-                                                            <div key={date} style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '6px' }}>
-                                                                <div style={{ color: '#ff5252', fontWeight: 700, marginBottom: '0.2rem' }}>📅 {new Date(date).toLocaleDateString('bg-BG')} — {times.length} пъти</div>
-                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                                    {times.map((ts, idx) => (
-                                                                        <span key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.65rem' }}>
-                                                                            {new Date(ts).toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--success-color)', background: 'rgba(0,255,150,0.05)', borderRadius: '12px' }}>
-                                        ✅ Няма засечени нарушения.
-                                    </div>
-                                )}
-                            </div>
-                        </Card>
-                    </div>
-                </div>
-            )}
 
             {activeTab === 'finances' && (
                 <div style={{ animation: 'fadeIn 0.4s ease', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
