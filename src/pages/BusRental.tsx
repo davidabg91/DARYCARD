@@ -36,6 +36,7 @@ const BusRental: React.FC = () => {
                 status: 'new'
             });
             setStatus('success');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             // Reset form
             setName('');
             setPhone('');
@@ -45,6 +46,7 @@ const BusRental: React.FC = () => {
         } catch (error) {
             console.error('Error submitting rental inquiry:', error);
             setStatus('error');
+            alert('Възникна грешка при изпращането. Моля, опитайте отново или се свържете с нас по телефона.');
         }
     };
 
