@@ -289,13 +289,13 @@ const SystemAdminPanel: React.FC = () => {
             {activeTab === 'dashboard' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.3s ease' }}>
                     {/* Month Selector */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: isMobile ? '0.5rem' : '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem' }}>
                             <TrendingUp color="#ff5252" />
                             <select 
                                 value={statsMonth} 
                                 onChange={(e) => setStatsMonth(e.target.value)}
-                                style={{ background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.6rem 1rem', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, outline: 'none' }}
+                                style={{ background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: isMobile ? '0.4rem 0.75rem' : '0.6rem 1rem', borderRadius: '12px', fontSize: isMobile ? '0.85rem' : '1rem', fontWeight: 700, outline: 'none' }}
                             >
                                 {Array.from(new Set([todayIso.slice(0, 7), ...clients.flatMap(c => (c.renewalHistory || []).map(r => r.month))])).sort().reverse().map(m => (
                                     <option key={m} value={m} style={{ background: '#222' }}>{m}</option>
@@ -305,7 +305,7 @@ const SystemAdminPanel: React.FC = () => {
                     </div>
 
                     {/* Stats Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fit, minmax(130px, 1fr))' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: isMobile ? '0.75rem' : '1.25rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fit, minmax(110px, 1fr))' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: isMobile ? '0.5rem' : '1.25rem' }}>
                         <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
                         <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" isMobile={isMobile} />
                         <StatCard icon={HistoryIcon} label="Сканирани" value={scannedToday} color="#00ADB5" isMobile={isMobile} />
@@ -318,21 +318,21 @@ const SystemAdminPanel: React.FC = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(450px, 1fr))', gap: isMobile ? '1rem' : '2rem' }}>
                         {/* Daily Stats & Bar Chart */}
                         <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Clock size={20} /> Активност на Линиите
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '1.5rem', flexDirection: isMobile ? 'column' : 'row', gap: '1rem' }}>
+                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: isMobile ? '1rem' : '1.25rem' }}>
+                                    <Clock size={isMobile ? 18 : 20} /> Активност на Линиите
                                 </h3>
-                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
                                     <input 
                                         type="date" 
                                         value={selectedDate}
                                         onChange={(e) => setSelectedDate(e.target.value)}
-                                        style={{ background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem', borderRadius: '8px', fontSize: '0.85rem' }}
+                                        style={{ flex: isMobile ? 1 : 'none', background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.4rem', borderRadius: '8px', fontSize: '0.75rem' }}
                                     />
                                     <select 
                                         value={chartRoute} 
                                         onChange={(e) => setChartRoute(e.target.value)}
-                                        style={{ background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem', borderRadius: '8px', fontSize: '0.85rem' }}
+                                        style={{ flex: isMobile ? 1 : 'none', background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.4rem', borderRadius: '8px', fontSize: '0.75rem' }}
                                     >
                                         <option value="all_routes">Всички Линии</option>
                                         {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
@@ -381,8 +381,8 @@ const SystemAdminPanel: React.FC = () => {
 
                         {/* Top Users */}
                         <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
-                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-color)' }}>
-                                <TrendingUp size={20} /> Най-активни Пътници (Общо)
+                            <h3 style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-color)', fontSize: isMobile ? '0.95rem' : '1.25rem' }}>
+                                <TrendingUp size={isMobile ? 18 : 20} /> Най-активни Пътници (Общо)
                             </h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {topScannedClients.length > 0 ? topScannedClients.map((c, i) => (
@@ -391,9 +391,9 @@ const SystemAdminPanel: React.FC = () => {
                                             <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: i < 3 ? ['gold', 'silver', '#cd7f32'][i] : 'rgba(255,255,255,0.1)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 900, flexShrink: 0 }}>{i + 1}</div>
                                             <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
                                         </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontWeight: 900, color: 'var(--primary-color)', fontSize: '1.1rem' }}>{c.scanCount}</div>
-                                            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>пътувания</div>
+                                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                            <div style={{ fontWeight: 900, color: 'var(--primary-color)', fontSize: isMobile ? '0.9rem' : '1.1rem' }}>{c.scanCount}</div>
+                                            <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>пътувания</div>
                                         </div>
                                     </div>
                                 )) : <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.3 }}>Няма данни.</div>}
@@ -438,9 +438,9 @@ const SystemAdminPanel: React.FC = () => {
                                     <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,82,82,0.05)', borderRadius: '14px', border: '1px solid rgba(255,82,82,0.1)', position: 'relative' }}>
                                         <button 
                                             onClick={() => handleClearAbuse(c.id)}
-                                            style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', background: 'rgba(255,82,82,0.1)', border: 'none', color: '#ff5252', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 800 }}
+                                            style={{ position: 'absolute', top: isMobile ? '0.5rem' : '0.75rem', right: isMobile ? '0.5rem' : '0.75rem', background: 'rgba(255,82,82,0.1)', border: 'none', color: '#ff5252', padding: isMobile ? '4px 6px' : '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', fontWeight: 800 }}
                                         >
-                                            <Trash2 size={14} /> ИЗЧИСТИ
+                                            <Trash2 size={isMobile ? 12 : 14} /> ИЗЧИСТИ
                                         </button>
 
                                         <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '0.5rem' }}>
@@ -653,12 +653,12 @@ interface StatCardProps {
 }
 
 const StatCard = ({ icon: Icon, label, value, color, isMobile }: StatCardProps) => (
-    <Card style={{ padding: isMobile ? '1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: color }}></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.65rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
-            <Icon size={isMobile ? 13 : 16} color={color} /> {label}
+    <Card style={{ padding: isMobile ? '0.75rem 0.85rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '3px', height: '100%', background: color }}></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.6rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+            <Icon size={isMobile ? 12 : 16} color={color} /> {label}
         </div>
-        <div style={{ fontSize: isMobile ? '1.25rem' : '2.25rem', fontWeight: 900, color: '#fff' }}>{value}</div>
+        <div style={{ fontSize: isMobile ? '1.15rem' : '2.25rem', fontWeight: 900, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
     </Card>
 );
 
