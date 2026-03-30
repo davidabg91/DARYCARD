@@ -14,6 +14,13 @@ const Layout: React.FC = () => {
     const isRentPath = location.pathname === '/rent';
     const { currentUser, logout } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     
     const [unreadSignals, setUnreadSignals] = useState(0);
     const [unreadRentals, setUnreadRentals] = useState(0);
@@ -234,7 +241,7 @@ const Layout: React.FC = () => {
                 background: 'rgba(26, 26, 26, 0.85)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                padding: '0 1.5rem',
+                padding: isMobile ? '0 0.75rem' : '0 1.5rem',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -252,7 +259,7 @@ const Layout: React.FC = () => {
                             src={logo}
                             alt="Dary Travel"
                             style={{
-                                height: '55px',
+                                height: isMobile ? '40px' : '55px',
                                 width: 'auto',
                                 objectFit: 'contain',
                                 display: 'block'
@@ -263,15 +270,15 @@ const Layout: React.FC = () => {
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'flex-start',
-                        marginLeft: '15px',
+                        marginLeft: isMobile ? '8px' : '15px',
                         alignSelf: 'center',
                         borderLeft: '2px solid #e53935',
-                        paddingLeft: '8px',
+                        paddingLeft: isMobile ? '6px' : '8px',
                         lineHeight: 1.1,
                         marginTop: '-3px'
                     }}>
                         <span style={{
-                            fontSize: '1.1rem',
+                            fontSize: isMobile ? '0.85rem' : '1.1rem',
                             fontWeight: 900,
                             letterSpacing: '0.05em',
                             textTransform: 'uppercase',
@@ -340,10 +347,11 @@ const Layout: React.FC = () => {
                 className={isClientProfilePath || isRentPath ? 'full-screen-main' : ''}
                 style={{ 
                     flex: 1, 
-                    padding: isClientProfilePath || isRentPath ? '0' : '2rem', 
+                    padding: isClientProfilePath || isRentPath ? '0' : (isMobile ? '0.75rem' : '2rem'), 
                     display: 'flex', 
                     flexDirection: 'column', 
-                    animation: 'fadeIn 0.4s ease' 
+                    animation: 'fadeIn 0.4s ease',
+                    overflowX: 'hidden'
                 }}
             >
                 <Outlet />

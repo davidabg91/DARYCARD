@@ -721,16 +721,16 @@ const AdminPanel: React.FC = () => {
                 flexDirection: isMobile ? 'column' : 'row',
                 justifyContent: 'space-between', 
                 alignItems: isMobile ? 'flex-start' : 'center', 
-                marginBottom: isMobile ? '1.5rem' : '2.5rem', 
-                gap: '1.25rem',
-                padding: isMobile ? '0 0.5rem' : '0'
+                marginBottom: isMobile ? '1rem' : '2.5rem', 
+                gap: isMobile ? '0.75rem' : '1.25rem',
+                padding: isMobile ? '0' : '0'
             }}>
                 <div>
-                    <h2 style={{ fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>Мениджър</h2>
+                    <h2 style={{ fontSize: isMobile ? '1.35rem' : '2.25rem', fontWeight: 900, marginBottom: '0.25rem', letterSpacing: '-0.02em' }}>Мениджър</h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 600 }}>
-                            {isAdmin ? <ShieldCheck size={14} color="#ff5252" /> : <Shield size={14} color="var(--primary-color)" />}
-                            {isAdmin ? 'Администратор' : 'Модератор'} — {currentUser?.username}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontSize: isMobile ? '0.7rem' : '0.85rem', fontWeight: 600 }}>
+                            {isAdmin ? <ShieldCheck size={12} color="#ff5252" /> : <Shield size={12} color="var(--primary-color)" />}
+                            {isAdmin ? 'Админ' : 'Мод'} — {currentUser?.username}
                         </div>
                         <div style={{ 
                             display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem', 
@@ -747,12 +747,12 @@ const AdminPanel: React.FC = () => {
                 </div>
                 <div style={{ 
                     display: 'flex', 
-                    gap: isMobile ? '0.4rem' : '0.75rem', 
+                    gap: isMobile ? '0.35rem' : '0.75rem', 
                     flexWrap: 'wrap',
-                    justifyContent: isMobile ? 'flex-start' : 'center',
+                    justifyContent: isMobile ? 'center' : 'flex-start',
                     width: '100%',
                     margin: isMobile ? '0.5rem 0' : '0',
-                    padding: isMobile ? '0' : '0'
+                    padding: isMobile ? '0 0.25rem' : '0'
                 }}>
                     <TabButton id="register" icon={PlusCircle} label={isMobile ? "ДОБАВИ КАРТА" : "ДОБАВИ КАРТИ"} activeColor="#00c853" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                     <TabButton id="clients" icon={Users} label="КЛИЕНТИ" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />

@@ -305,7 +305,7 @@ const SystemAdminPanel: React.FC = () => {
                     </div>
 
                     {/* Stats Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: isMobile ? '0.75rem' : '1.25rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fit, minmax(130px, 1fr))' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: isMobile ? '0.75rem' : '1.25rem' }}>
                         <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
                         <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" isMobile={isMobile} />
                         <StatCard icon={HistoryIcon} label="Сканирани" value={scannedToday} color="#00ADB5" isMobile={isMobile} />
@@ -658,7 +658,7 @@ const StatCard = ({ icon: Icon, label, value, color, isMobile }: StatCardProps) 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.65rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
             <Icon size={isMobile ? 13 : 16} color={color} /> {label}
         </div>
-        <div style={{ fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 900, color: '#fff' }}>{value}</div>
+        <div style={{ fontSize: isMobile ? '1.25rem' : '2.25rem', fontWeight: 900, color: '#fff' }}>{value}</div>
     </Card>
 );
 
