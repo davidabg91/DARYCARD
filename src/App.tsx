@@ -11,6 +11,7 @@ import UsersPanel from './pages/UsersPanel';
 import AuditLog from './pages/AuditLog';
 import Help from './pages/Help';
 import Signal from './pages/Signal';
+import BusRental from './pages/BusRental';
 import { useParams } from 'react-router-dom';
 
 function ClientProfileWrapper() {
@@ -33,6 +34,7 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Landing />} />
             <Route path="signal" element={<Signal />} />
+            <Route path="rent" element={<BusRental />} />
             <Route path="portal" element={<StaffPortal />} />
 
             {/* Moderator + Admin */}

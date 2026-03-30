@@ -37,18 +37,32 @@ const Layout: React.FC = () => {
             >Начало</Link>
 
             {(!currentUser || currentUser.role === 'admin') && (
-                <Link
-                    to="/signal"
-                    onClick={closeMenu}
-                    style={{
-                        color: location.pathname === '/signal' ? '#ff5252' : '#fff',
-                        fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
-                        borderBottom: location.pathname === '/signal' ? '2px solid #ff5252' : '2px solid transparent',
-                        paddingBottom: '2px',
-                        display: 'flex',
-                        alignItems: 'center'
-                    }}
-                >Сигнал</Link>
+                <>
+                    <Link
+                        to="/signal"
+                        onClick={closeMenu}
+                        style={{
+                            color: location.pathname === '/signal' ? '#ff5252' : '#fff',
+                            fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
+                            borderBottom: location.pathname === '/signal' ? '2px solid #ff5252' : '2px solid transparent',
+                            paddingBottom: '2px',
+                            display: 'flex',
+                            alignItems: 'center'
+                        }}
+                    >Сигнал</Link>
+                    <Link
+                        to="/rent"
+                        onClick={closeMenu}
+                        style={{
+                            color: location.pathname === '/rent' ? '#ff5252' : '#fff',
+                            fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
+                            borderBottom: location.pathname === '/rent' ? '2px solid #ff5252' : '2px solid transparent',
+                            paddingBottom: '2px',
+                            display: 'flex',
+                            alignItems: 'center'
+                        }}
+                    >Наеми автобус</Link>
+                </>
             )}
 
             {currentUser && (
@@ -150,7 +164,10 @@ const Layout: React.FC = () => {
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <Link to="/" onClick={closeMenu} className="mobile-nav-link">Начало</Link>
             {(!currentUser || currentUser.role === 'admin') && (
-                <Link to="/signal" onClick={closeMenu} className="mobile-nav-link">Сигнал</Link>
+                <>
+                    <Link to="/signal" onClick={closeMenu} className="mobile-nav-link">Сигнал</Link>
+                    <Link to="/rent" onClick={closeMenu} className="mobile-nav-link">Наеми автобус</Link>
+                </>
             )}
             {currentUser && (
                 <>
