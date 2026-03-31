@@ -15,11 +15,11 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.png', 'og-image.png', 'pwa-icon.png', 'sitemap.xml', 'robots.txt'],
+      includeAssets: ['sitemap.xml', 'robots.txt'],
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB to handle larger assets
-        globIgnores: ['**/assets/ads/*.png'], // Don't precache large ads
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        globIgnores: ['**/assets/ads/*.png'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
