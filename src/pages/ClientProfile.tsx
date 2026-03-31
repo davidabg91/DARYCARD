@@ -73,7 +73,7 @@ const compressImage = (dataUrl: string, maxWidth: number, maxHeight: number, qua
 const ClientProfile: React.FC = () => {
     const { id: rawId } = useParams<{ id: string }>();
     const id = sanitizeId(rawId);
-    const { currentUser } = useAuth();
+    const { currentUser, loading: authLoading } = useAuth();
     const [client, setClient] = useState<Client | null>(null);
     const [loading, setLoading] = useState(true);
     const [scanTime] = useState(new Date().toLocaleTimeString('bg-BG'));
@@ -105,7 +105,6 @@ const ClientProfile: React.FC = () => {
     });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Online Payment Mock State
     const [showOnlinePayment, setShowOnlinePayment] = useState(false);
     const [paymentMonth, setPaymentMonth] = useState<string>('');
     const [isPaying, setIsPaying] = useState(false);
@@ -130,25 +129,7 @@ const ClientProfile: React.FC = () => {
     const audioInitializedRef = useRef(false);
     const soundPendingRef = useRef<'success' | 'error' | null>(null);
 
-    const initAudio = () => {
-        if (audioInitializedRef.current) return;
-        try {
-            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-            audioContextRef.current = new AudioContextClass();
-            // Resume context on user interaction if needed
-            if (audioContextRef.current?.state === 'suspended') {
-                audioContextRef.current.resume();
-            }
-            audioInitializedRef.current = true;
-            
-            // Play any pending sound
-            if (soundPendingRef.current === 'success') playSuccessSound();
-            else if (soundPendingRef.current === 'error') playErrorSound();
-            soundPendingRef.current = null;
-        } catch (e) { console.error("Audio init error", e); }
-    };
-
-    const playSuccessSound = () => {
+    const playSuccessSound = React.useCallback(() => {
         const context = audioContextRef.current;
         if (!context) {
             soundPendingRef.current = 'success';
@@ -173,7 +154,54 @@ const ClientProfile: React.FC = () => {
             playTone(880.00, 0.16, 0.6);   
             playTone(1174.66, 0.24, 0.7);  
         } catch (e) { console.error("Audio success error", e); }
-    };
+    }, []);
+
+    const playErrorSound = React.useCallback(() => {
+        const context = audioContextRef.current;
+        if (!context) {
+            soundPendingRef.current = 'error';
+            return;
+        }
+        try {
+            const createBuzz = (startTime: number, duration: number) => {
+                const osc1 = context.createOscillator();
+                const osc2 = context.createOscillator();
+                const gain = context.createGain();
+                osc1.type = 'sawtooth';
+                osc2.type = 'sawtooth';
+                osc1.frequency.setValueAtTime(140, context.currentTime + startTime);
+                osc2.frequency.setValueAtTime(142, context.currentTime + startTime);
+                gain.gain.setValueAtTime(0, context.currentTime + startTime);
+                gain.gain.linearRampToValueAtTime(0.1, context.currentTime + startTime + 0.05);
+                gain.gain.linearRampToValueAtTime(0.08, context.currentTime + startTime + duration - 0.05);
+                gain.gain.linearRampToValueAtTime(0, context.currentTime + startTime + duration);
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(context.destination);
+                osc1.start(context.currentTime + startTime);
+                osc2.start(context.currentTime + startTime);
+                osc1.stop(context.currentTime + startTime + duration);
+                osc2.stop(context.currentTime + startTime + duration);
+            };
+            createBuzz(0, 0.5);
+            createBuzz(0.6, 0.7); 
+        } catch (e) { console.error("Audio error error", e); }
+    }, []);
+
+    const initAudio = React.useCallback(() => {
+        if (audioInitializedRef.current) return;
+        try {
+            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            audioContextRef.current = new AudioContextClass();
+            if (audioContextRef.current?.state === 'suspended') {
+                audioContextRef.current.resume();
+            }
+            audioInitializedRef.current = true;
+            if (soundPendingRef.current === 'success') playSuccessSound();
+            else if (soundPendingRef.current === 'error') playErrorSound();
+            soundPendingRef.current = null;
+        } catch (e) { console.error("Audio init error", e); }
+    }, [playSuccessSound, playErrorSound]);
 
     const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -239,38 +267,6 @@ const ClientProfile: React.FC = () => {
         }
     };
 
-    const playErrorSound = () => {
-        const context = audioContextRef.current;
-        if (!context) {
-            soundPendingRef.current = 'error';
-            return;
-        }
-        try {
-            const createBuzz = (startTime: number, duration: number) => {
-                const osc1 = context.createOscillator();
-                const osc2 = context.createOscillator();
-                const gain = context.createGain();
-                osc1.type = 'sawtooth';
-                osc2.type = 'sawtooth';
-                osc1.frequency.setValueAtTime(140, context.currentTime + startTime);
-                osc2.frequency.setValueAtTime(142, context.currentTime + startTime);
-                gain.gain.setValueAtTime(0, context.currentTime + startTime);
-                gain.gain.linearRampToValueAtTime(0.1, context.currentTime + startTime + 0.05);
-                gain.gain.linearRampToValueAtTime(0.08, context.currentTime + startTime + duration - 0.05);
-                gain.gain.linearRampToValueAtTime(0, context.currentTime + startTime + duration);
-                osc1.connect(gain);
-                osc2.connect(gain);
-                gain.connect(context.destination);
-                osc1.start(context.currentTime + startTime);
-                osc2.start(context.currentTime + startTime);
-                osc1.stop(context.currentTime + startTime + duration);
-                osc2.stop(context.currentTime + startTime + duration);
-            };
-            createBuzz(0, 0.5);
-            createBuzz(0.6, 0.7); 
-        } catch (e) { console.error("Audio error error", e); }
-    };
-
     useEffect(() => {
         if (!id) return;
         const unsubscribe = onSnapshot(doc(db, 'clients', id), (docSnap) => {
@@ -279,7 +275,7 @@ const ClientProfile: React.FC = () => {
                 const clientData: Client = { ...data, id: docSnap.id } as Client;
                 setClient(clientData);
                 if (!hasPlayedSound.current) {
-                    initAudio(); // Try to init immediately on data arrival
+                    initAudio();
                     const now = new Date();
                     const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
                     const hasPaidCurrentMonth = (clientData.renewalHistory || []).some(rh => rh.month === currentMonthStr);
@@ -321,7 +317,7 @@ const ClientProfile: React.FC = () => {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, [id, cloudSyncStatus]);
+    }, [id, cloudSyncStatus, initAudio, playSuccessSound, playErrorSound]);
 
     const scannedRef = useRef<string | null>(null);
     const hasClient = !!client;
@@ -354,7 +350,6 @@ const ClientProfile: React.FC = () => {
         performTrackScan();
     }, [id, currentUser, loading, hasClient]);
 
-    // Idle Detection Logic (30 seconds)
     useEffect(() => {
         const resetIdleTimer = () => {
             if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -376,7 +371,6 @@ const ClientProfile: React.FC = () => {
         };
         events.forEach(event => document.addEventListener(event, handler, { passive: true }));
         
-        // Start initial timer if allowed
         if (!loading && !isRegistering && !showPhotoModal && !showRenewConfirm) {
             idleTimerRef.current = setTimeout(() => {
                 if (document.visibilityState === 'visible') {
@@ -389,9 +383,8 @@ const ClientProfile: React.FC = () => {
             events.forEach(event => document.removeEventListener(event, handler));
             if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
         };
-    }, [loading, isRegistering, showPhotoModal, showRenewConfirm, id]);
+    }, [loading, isRegistering, showPhotoModal, showRenewConfirm, id, initAudio]);
 
-    // Handle visibility change
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.visibilityState !== 'visible') {
@@ -401,9 +394,8 @@ const ClientProfile: React.FC = () => {
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, []);
+    }, [initAudio]);
 
-    // Skeleton UI for the Card - Matches the real card's dimensions for zero layout shift
     const SkeletonCard = () => (
         <div className="id-card-container" style={{
             width: '100%', maxWidth: '480px', border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -440,7 +432,7 @@ const ClientProfile: React.FC = () => {
         </div>
     );
 
-    const isInitializingAuth = !currentUser && useAuth().loading;
+    const isInitializingAuth = !currentUser && authLoading;
 
     if (loading && !client) {
         return (
