@@ -8,11 +8,10 @@ import LoadingScreen from './components/LoadingScreen';
 import ClientProfile from './pages/ClientProfile';
 import LoginPage from './pages/LoginPage';
 
-// Lazy load pages
+import SystemAdminPanel from './pages/SystemAdminPanel';
 const Landing = lazy(() => import('./pages/Landing'));
 const StaffPortal = lazy(() => import('./pages/StaffPortal'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
-const SystemAdminPanel = lazy(() => import('./pages/SystemAdminPanel'));
 const Help = lazy(() => import('./pages/Help'));
 const Signal = lazy(() => import('./pages/Signal'));
 const BusRental = lazy(() => import('./pages/BusRental'));
@@ -20,8 +19,7 @@ const BusRental = lazy(() => import('./pages/BusRental'));
 const PageLoader = () => <LoadingScreen />;
 
 function ClientProfileWrapper() {
-  const { id } = useParams<{ id: string }>();
-  return <ClientProfile key={id} />;
+  return <ClientProfile />;
 }
 
 function App() {
