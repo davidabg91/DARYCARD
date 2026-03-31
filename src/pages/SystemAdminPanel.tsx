@@ -307,7 +307,7 @@ const SystemAdminPanel: React.FC = () => {
                     {/* Stats Grid */}
                     <div style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(220px, 1fr))', 
+                        gridTemplateColumns: isMobile ? 'repeat(auto-fit, minmax(130px, 1fr))' : 'repeat(auto-fit, minmax(220px, 1fr))', 
                         gap: isMobile ? '0.5rem' : '1.25rem' 
                     }}>
                         <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
@@ -359,7 +359,7 @@ const SystemAdminPanel: React.FC = () => {
                                     alignItems: 'flex-end', 
                                     gap: isMobile ? '2px' : '4px', 
                                     padding: '1rem 0',
-                                    minWidth: isMobile ? '450px' : 'auto'
+                                    minWidth: isMobile ? '350px' : 'auto'
                                 }}>
                                     {hourlyDistribution.map((count, hr) => (
                                         <div key={hr} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '8px', height: '100%', position: 'relative' }}>
@@ -440,16 +440,17 @@ const SystemAdminPanel: React.FC = () => {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {suspiciousClients.length > 0 ? suspiciousClients.map(c => (
                                     <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,82,82,0.05)', borderRadius: '14px', border: '1px solid rgba(255,82,82,0.1)', position: 'relative' }}>
-                                        <button 
-                                            onClick={() => handleClearAbuse(c.id)}
-                                            style={{ position: 'absolute', top: isMobile ? '0.5rem' : '0.75rem', right: isMobile ? '0.5rem' : '0.75rem', background: 'rgba(255,82,82,0.1)', border: 'none', color: '#ff5252', padding: isMobile ? '4px 6px' : '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', fontWeight: 800 }}
-                                        >
-                                            <Trash2 size={isMobile ? 12 : 14} /> ИЗЧИСТИ
-                                        </button>
-
-                                        <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '0.5rem' }}>
-                                            <div style={{ fontWeight: 700, fontSize: '1rem' }}>{c.name}</div>
-                                            <div style={{ color: '#ff5252', fontSize: '0.75rem', fontWeight: 900 }}>{c.abuseDays.length} дни с нарушения</div>
+                                        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: '1rem', marginBottom: '1rem' }}>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontWeight: 700, fontSize: isMobile ? '0.9rem' : '1rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                                                <div style={{ color: '#ff5252', fontSize: '0.75rem', fontWeight: 900 }}>{c.abuseDays.length} дни с нарушения</div>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleClearAbuse(c.id)}
+                                                style={{ background: 'rgba(255,82,82,0.1)', border: 'none', color: '#ff5252', padding: isMobile ? '8px 12px' : '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 800, width: isMobile ? '100%' : 'auto', justifyContent: 'center' }}
+                                            >
+                                                <Trash2 size={isMobile ? 14 : 14} /> ИЗЧИСТИ
+                                            </button>
                                         </div>
                                         
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -663,7 +664,7 @@ const StatCard = ({ icon: Icon, label, value, color, isMobile }: StatCardProps) 
             <Icon size={isMobile ? 12 : 16} color={color} /> {label}
         </div>
         <div style={{ 
-            fontSize: isMobile ? '1rem' : '2.25rem', 
+            fontSize: isMobile ? '0.9rem' : '2.25rem', 
             fontWeight: 900, 
             color: '#fff', 
             overflow: 'hidden', 
