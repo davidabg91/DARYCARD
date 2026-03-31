@@ -19,7 +19,6 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import type { AppUser, UserRole } from '../types/auth';
-import LoadingScreen from '../components/LoadingScreen';
 
 interface AuthContextType {
     currentUser: AppUser | null;
@@ -138,10 +137,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // We can't easily delete from Auth without Admin SDK, but we can remove from Firestore database
         await deleteDoc(doc(db, 'users', userId));
     };
-
-    if (loading) {
-        return <LoadingScreen />;
-    }
 
     return (
         <AuthContext.Provider value={{ currentUser, users, loading, login, logout, addUser, updateUserRole, deleteUser }}>

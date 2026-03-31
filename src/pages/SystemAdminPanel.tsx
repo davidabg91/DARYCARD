@@ -6,7 +6,6 @@ import {
     UserPlus, Trash2
 } from 'lucide-react';
 import { collection, query, onSnapshot, updateDoc, doc } from 'firebase/firestore';
-import LoadingScreen from '../components/LoadingScreen';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
@@ -273,7 +272,14 @@ const SystemAdminPanel: React.FC = () => {
         } finally { setUserLoading(false); }
     };
 
-    if (loading) return <LoadingScreen />;
+    if (loading) return (
+        <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div style={{ height: '200px', background: 'rgba(255,255,255,0.03)', borderRadius: '24px', animation: 'pulse 2s infinite' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                {[1,2,3,4].map(i => <div key={i} style={{ height: '100px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px' }} />)}
+            </div>
+        </div>
+    );
 
     const filteredLogs = globalLogs.filter(log =>
         log.performedBy.toLowerCase().includes(auditSearch.toLowerCase()) ||

@@ -21,7 +21,7 @@ const LoadingScreen: React.FC = () => {
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: '1rem',
-                animation: 'fadeIn 0.5s ease-out'
+                animation: 'fadeIn 0.5s ease-out 0.25s both' // Added 0.25s delay
             }}>
                 <div style={{
                     width: '50px',

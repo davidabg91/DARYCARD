@@ -6,7 +6,6 @@ const AdSlideshow = React.lazy(() => import('../components/AdSlideshow'));
 const BusSchedule = React.lazy(() => import('../components/BusSchedule'));
 import { db } from '../firebase';
 import logo from '../assets/logo_main.png';
-import LoadingScreen from '../components/LoadingScreen';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc, addDoc, collection } from 'firebase/firestore';
 
 interface Client {
@@ -404,8 +403,51 @@ const ClientProfile: React.FC = () => {
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, []);
 
-    if (loading) {
-        return <LoadingScreen />;
+    // Skeleton UI for the Card - Matches the real card's dimensions for zero layout shift
+    const SkeletonCard = () => (
+        <div className="id-card-container" style={{
+            width: '100%', maxWidth: '480px', border: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'rgba(30, 30, 35, 0.95)', position: 'relative', overflow: 'hidden',
+            display: 'flex', flexDirection: 'column', borderRadius: '24px', zIndex: 10
+        }}>
+            <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ width: '80px', height: '14px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }} />
+                <div style={{ width: '100px', height: '22px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }} />
+            </div>
+            <div style={{ padding: '1.5rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                <div style={{ width: '140px', height: '185px', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.2rem', justifyContent: 'center' }}>
+                    <div style={{ width: '80%', height: '32px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }} />
+                    <div style={{ width: '100%', height: '18px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.5rem' }}>
+                        <div style={{ height: '45px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }} />
+                        <div style={{ height: '45px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }} />
+                    </div>
+                </div>
+            </div>
+            {/* Shimmer effect inside the component */}
+            <style>{`
+                .id-card-container::before {
+                    content: "";
+                    position: absolute;
+                    top: 0; right: 0; bottom: 0; left: 0;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+                    transform: translateX(-100%);
+                    animation: shimmer 2s infinite;
+                }
+                @keyframes shimmer { 100% { transform: translateX(100%); } }
+            `}</style>
+        </div>
+    );
+
+    const isInitializingAuth = !currentUser && useAuth().loading;
+
+    if (loading && !client) {
+        return (
+            <div style={{ minHeight: '100vh', background: '#09090b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
+                <SkeletonCard />
+            </div>
+        );
     }
 
     if (error) {
@@ -754,9 +796,17 @@ const ClientProfile: React.FC = () => {
                 </div>
             </div>
 
-            {/* Action Area (Outside Card) */}
-            <div className="action-area" style={{ marginTop: '2.5rem', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
+            {/* Action Area (Outside Card) - Delayed until Auth is ready */}
+            <div className="action-area" style={{ 
+                marginTop: '2.5rem', 
+                width: '100%', 
+                maxWidth: '480px', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '1rem',
+                opacity: isInitializingAuth ? 0 : 1,
+                transition: 'opacity 0.4s ease'
+            }}>
                 {currentUser && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <button onClick={initiationRenew} style={{ 

@@ -5,13 +5,13 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useParams } from 'react-router-dom';
 import LoadingScreen from './components/LoadingScreen';
+import ClientProfile from './pages/ClientProfile';
+import LoginPage from './pages/LoginPage';
 
 // Lazy load pages
 const Landing = lazy(() => import('./pages/Landing'));
 const StaffPortal = lazy(() => import('./pages/StaffPortal'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
-const ClientProfile = lazy(() => import('./pages/ClientProfile'));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SystemAdminPanel = lazy(() => import('./pages/SystemAdminPanel'));
 const Help = lazy(() => import('./pages/Help'));
 const Signal = lazy(() => import('./pages/Signal'));
