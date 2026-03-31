@@ -287,20 +287,21 @@ const SystemAdminPanel: React.FC = () => {
 
             {/* Dashboard Tab - Support Horizontal Scroll on Mobile only */}
             {activeTab === 'dashboard' && (
-                <div style={{ 
-                    width: '100%', 
-                    overflowX: isMobile ? 'auto' : 'visible', 
-                    WebkitOverflowScrolling: 'touch',
-                    scrollbarWidth: 'thin'
-                }}>
+                <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
                     <div style={{ 
-                        padding: isMobile ? '0.25rem 0.25rem 3rem 0.25rem' : '0',
-                        animation: 'fadeIn 0.3s ease',
-                        minWidth: isMobile ? '480px' : 'auto',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '2rem'
+                        width: '100%', 
+                        overflowX: isMobile ? 'auto' : 'visible', 
+                        WebkitOverflowScrolling: 'touch',
+                        scrollbarWidth: 'none' /* Hide scrollbar for cleaner look */
                     }}>
+                        <div style={{ 
+                            padding: isMobile ? '0.25rem 0.25rem 3rem 0.25rem' : '0',
+                            animation: 'fadeIn 0.3s ease',
+                            minWidth: isMobile ? '750px' : 'auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2rem'
+                        }}>
                     {/* Month Selector */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: isMobile ? '0.5rem' : '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem' }}>
@@ -489,8 +490,24 @@ const SystemAdminPanel: React.FC = () => {
                         </Card>
                     </div>
                 </div>
-            </div>
-        )}
+                {/* Visual Scroll Hint Gradient on Mobile */}
+                {isMobile && (
+                    <div style={{ 
+                        position: 'absolute', 
+                        top: 0, 
+                        right: 0, 
+                        bottom: '3rem', 
+                        width: '40px', 
+                        background: 'linear-gradient(to left, rgba(0,0,0,0.5), transparent)', 
+                        pointerEvents: 'none', 
+                        zIndex: 10,
+                        borderTopRightRadius: '20px',
+                        borderBottomRightRadius: '20px'
+                    }} />
+                )}
+                    </div>
+                </div>
+            )}
 
             {/* Users Tab */}
             {activeTab === 'users' && (

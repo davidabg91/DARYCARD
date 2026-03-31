@@ -350,8 +350,7 @@ const Layout: React.FC = () => {
                     padding: isClientProfilePath || isRentPath ? '0' : (isMobile ? '0.75rem' : '2rem'), 
                     display: 'flex', 
                     flexDirection: 'column', 
-                    animation: 'fadeIn 0.4s ease',
-                    overflowX: 'hidden'
+                    animation: 'fadeIn 0.4s ease'
                 }}
             >
                 <Outlet />
