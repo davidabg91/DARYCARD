@@ -9,9 +9,10 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 const Layout: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const isAdminPath = location.pathname.startsWith('/admin');
     const isClientProfilePath = location.pathname.startsWith('/client/');
     const isRentPath = location.pathname === '/rent';
+    const isAdminPath = location.pathname === '/admin' || location.pathname === '/system-admin';
+    const isFullScreen = isClientProfilePath || isRentPath || isAdminPath;
     const { currentUser, logout } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -344,12 +345,16 @@ const Layout: React.FC = () => {
             </header>
 
             <main 
-                className={isClientProfilePath || isRentPath ? 'full-screen-main' : ''}
+                className={isFullScreen ? 'full-screen-main' : ''}
                 style={{ 
                     flex: 1, 
-                    padding: isClientProfilePath || isRentPath ? '0' : (isMobile ? '0.75rem' : '2rem'), 
-                    display: 'flex', 
-                    flexDirection: 'column', 
+                    padding: isFullScreen ? '0' : (isMobile ? '0.75rem' : '2rem'), 
+                    maxWidth: isFullScreen ? 'none' : '1400px',
+                    margin: isFullScreen ? '0' : '0 auto',
+                    width: '100%',
+                    background: isAdminPath ? 'rgba(26, 26, 26, 0.95)' : 'transparent',
+                    display: 'flex',
+                    flexDirection: 'column',
                     animation: 'fadeIn 0.4s ease'
                 }}
             >

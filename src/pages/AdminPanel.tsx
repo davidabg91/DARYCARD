@@ -714,7 +714,7 @@ const AdminPanel: React.FC = () => {
 
 
     return (
-        <div style={{ width: '100%', animation: 'fadeIn 0.4s ease' }}>
+        <div style={{ width: '100%', animation: 'fadeIn 0.4s ease', padding: isMobile ? '0' : '0 1.5rem 1.5rem' }}>
 
             <div style={{ 
                 display: 'flex', 
