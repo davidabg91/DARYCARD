@@ -3,7 +3,6 @@ import { HashRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
-import { useParams } from 'react-router-dom';
 import LoadingScreen from './components/LoadingScreen';
 import ClientProfile from './pages/ClientProfile';
 import LoginPage from './pages/LoginPage';

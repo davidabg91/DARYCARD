@@ -94,6 +94,9 @@ const ClientProfile: React.FC = () => {
     const [regAmount, setRegAmount] = useState('50');
     const [regPhoto, setRegPhoto] = useState<string | null>(null);
     const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+    const cloudSyncStatusRef = useRef(cloudSyncStatus);
+    useEffect(() => { cloudSyncStatusRef.current = cloudSyncStatus; }, [cloudSyncStatus]);
+
     const [regMonth, setRegMonth] = useState<string>(() => {
         const now = new Date();
         let targetMonth = now.getMonth() + 1;
@@ -319,7 +322,7 @@ const ClientProfile: React.FC = () => {
                         }
                     } catch (e) { console.error("Cloud sync error:", e); }
                 };
-                if (cloudSyncStatus === 'idle') checkAdminWaiting();
+                if (cloudSyncStatusRef.current === 'idle') checkAdminWaiting();
             }
             setLoading(false);
         }, (err) => {
