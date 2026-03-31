@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    BarChart, Users as UsersIcon, History as HistoryIcon, 
-    TrendingUp, DollarSign, 
+import {
+    BarChart, Users as UsersIcon, History as HistoryIcon,
+    TrendingUp, DollarSign,
     RefreshCw, Search, Clock, Shield,
     UserPlus, Trash2
 } from 'lucide-react';
@@ -69,7 +69,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
 const SystemAdminPanel: React.FC = () => {
     const { users, currentUser, addUser, updateUserRole, deleteUser } = useAuth();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'audit'>('dashboard');
-    
+
     // Global Data
     const [clients, setClients] = useState<Client[]>([]);
     const [globalLogs, setGlobalLogs] = useState<GlobalLog[]>([]);
@@ -140,7 +140,7 @@ const SystemAdminPanel: React.FC = () => {
     const getActionColor = (action: string) => {
         const a = action.toLowerCase();
         if (a.includes('създаване')) return '#00e676'; // Green
-        if (a.includes('изтриване') || a.includes('анулиране') || a.includes('триене')) return '#ff5252'; // Red
+        if (a.includes('изтриване') || a.includes('анулиране') || a.includes('триене') || a.includes('изтрито')) return '#ff5252'; // Red
         if (a.includes('подновяване')) return '#2196f3'; // Blue
         if (a.includes('генериране') || a.includes('копиране')) return '#00bcd4'; // Cyan
         return '#ffab00'; // Default Orange
@@ -148,12 +148,12 @@ const SystemAdminPanel: React.FC = () => {
 
     // --- Dashboard Calculations ---
     const isAll = statsMonth === 'all';
-    const totalRevenue = isAll 
+    const totalRevenue = isAll
         ? clients.reduce((acc, c) => acc + (c.amountPaid || 0), 0)
         : clients.reduce((acc, c) => {
             const monthlyRenewal = (c.renewalHistory || []).find(r => r.month === statsMonth);
             return acc + (monthlyRenewal ? monthlyRenewal.amount : 0);
-          }, 0);
+        }, 0);
 
     const activeClientsCount = isAll
         ? clients.filter(c => !c.isCanceled && !isExpired(c.expiryDate, c)).length
@@ -169,7 +169,7 @@ const SystemAdminPanel: React.FC = () => {
         .slice(0, 5);
 
     const todayIso = new Date().toISOString().split('T')[0];
-    
+
     // Revenue for selected day
     const revenueSelectedDay = clients.reduce((acc, c) => {
         const payments = (c.renewalHistory || []).filter(r => r.date?.startsWith(selectedDate));
@@ -209,20 +209,20 @@ const SystemAdminPanel: React.FC = () => {
             : routeClients.reduce((acc, c) => {
                 const monthlyRenewal = (c.renewalHistory || []).find(r => r.month === statsMonth);
                 return acc + (monthlyRenewal ? monthlyRenewal.amount : 0);
-              }, 0);
-        const count = isAll 
-            ? routeClients.length 
+            }, 0);
+        const count = isAll
+            ? routeClients.length
             : routeClients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;
-        
+
         return { route, count, revenue };
     }).sort((a, b) => b.revenue - a.revenue);
 
     // Suspicious Activity (Abuse detection)
     const suspiciousClientsData = clients.map(c => {
         if (!c.scanHistory) return null;
-        
+
         // Filter out scans before last review
-        const relevantScans = c.abuseReviewedAt 
+        const relevantScans = c.abuseReviewedAt
             ? c.scanHistory.filter(ts => ts > c.abuseReviewedAt!)
             : c.scanHistory;
 
@@ -274,7 +274,7 @@ const SystemAdminPanel: React.FC = () => {
 
     if (loading) return <div style={{ padding: '5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Зареждане на системни данни...</div>;
 
-    const filteredLogs = globalLogs.filter(log => 
+    const filteredLogs = globalLogs.filter(log =>
         log.performedBy.toLowerCase().includes(auditSearch.toLowerCase()) ||
         log.action.toLowerCase().includes(auditSearch.toLowerCase()) ||
         log.targetName.toLowerCase().includes(auditSearch.toLowerCase()) ||
@@ -299,7 +299,7 @@ const SystemAdminPanel: React.FC = () => {
                 <div style={{ position: 'relative', width: '100%' }}>
                     <div className={isMobile ? 'admin-scroll-fix' : ''}>
                         <div className={isMobile ? 'admin-scroll-content' : ''} style={!isMobile ? { display: 'flex', flexDirection: 'column', gap: '2.5rem' } : {}}>
-                            
+
                             {/* Section 1: Ключови показатели */}
                             <section>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -308,8 +308,8 @@ const SystemAdminPanel: React.FC = () => {
                                     </h2>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.4rem 0.8rem', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
                                         <TrendingUp size={16} color="#ff5252" />
-                                        <select 
-                                            value={statsMonth} 
+                                        <select
+                                            value={statsMonth}
                                             onChange={(e) => setStatsMonth(e.target.value)}
                                             style={{ background: 'transparent', color: '#fff', border: 'none', fontSize: '0.9rem', fontWeight: 700, outline: 'none', cursor: 'pointer' }}
                                         >
@@ -320,10 +320,10 @@ const SystemAdminPanel: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div style={{ 
-                                    display: 'grid', 
-                                    gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(240px, 1fr))', 
-                                    gap: isMobile ? '0.75rem' : '1.5rem' 
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(240px, 1fr))',
+                                    gap: isMobile ? '0.75rem' : '1.5rem'
                                 }}>
                                     <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
                                     <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="#00ADB5" isMobile={isMobile} />
@@ -346,14 +346,14 @@ const SystemAdminPanel: React.FC = () => {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '2rem', flexDirection: isMobile ? 'column' : 'row', gap: '1.25rem' }}>
                                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Разпределение по часове</h3>
                                             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
-                                                <input 
-                                                    type="date" 
+                                                <input
+                                                    type="date"
                                                     value={selectedDate}
                                                     onChange={(e) => setSelectedDate(e.target.value)}
                                                     style={{ flex: isMobile ? 1 : 'none', background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem', borderRadius: '10px', fontSize: '0.8rem' }}
                                                 />
-                                                <select 
-                                                    value={chartRoute} 
+                                                <select
+                                                    value={chartRoute}
                                                     onChange={(e) => setChartRoute(e.target.value)}
                                                     style={{ flex: isMobile ? 1 : 'none', background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem', borderRadius: '10px', fontSize: '0.8rem' }}
                                                 >
@@ -362,13 +362,13 @@ const SystemAdminPanel: React.FC = () => {
                                                 </select>
                                             </div>
                                         </div>
-                                        
+
                                         <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'thin' }}>
                                             <div style={{ height: '240px', display: 'flex', alignItems: 'flex-end', gap: isMobile ? '3px' : '6px', padding: '1rem 0', minWidth: isMobile ? '600px' : 'auto' }}>
                                                 {hourlyDistribution.map((count, hr) => (
                                                     <div key={hr} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '8px', height: '100%', position: 'relative' }}>
                                                         {count > 0 && <span style={{ position: 'absolute', top: '-20px', width: '100%', textAlign: 'center', fontSize: '0.65rem', fontWeight: 800, color: hr === peakHour ? '#ff5252' : 'var(--primary-color)' }}>{count}</span>}
-                                                        <div style={{ width: '100%', height: `${(count/maxScans)*100}%`, background: hr === peakHour ? 'linear-gradient(to top, #ff5252, #ff8a80)' : 'linear-gradient(to top, var(--primary-color), var(--accent-color))', opacity: count > 0 ? 1 : 0.05, borderRadius: '4px 4px 0 0', minHeight: count > 0 ? '4px' : '2px', transition: 'height 0.5s ease-out' }}></div>
+                                                        <div style={{ width: '100%', height: `${(count / maxScans) * 100}%`, background: hr === peakHour ? 'linear-gradient(to top, #ff5252, #ff8a80)' : 'linear-gradient(to top, var(--primary-color), var(--accent-color))', opacity: count > 0 ? 1 : 0.05, borderRadius: '4px 4px 0 0', minHeight: count > 0 ? '4px' : '2px', transition: 'height 0.5s ease-out' }}></div>
                                                         <span style={{ fontSize: '0.6rem', textAlign: 'center', opacity: hr % 4 === 0 ? 0.8 : 0.2, fontWeight: hr % 4 === 0 ? 800 : 400 }}>{hr}:00</span>
                                                     </div>
                                                 ))}
@@ -460,14 +460,14 @@ const SystemAdminPanel: React.FC = () => {
                                                                 <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff' }}>{c.name}</div>
                                                                 <div style={{ color: '#ff5252', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase' }}>{c.abuseDays.length} дни с аномалии</div>
                                                             </div>
-                                                            <button 
+                                                            <button
                                                                 onClick={() => handleClearAbuse(c.id)}
                                                                 style={{ background: '#ff5252', color: '#fff', padding: '0.6rem 1.25rem', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 900, border: 'none', boxShadow: '0 4px 12px rgba(255,82,82,0.2)' }}
                                                             >
                                                                 <Trash2 size={14} /> ИЗЧИСТИ
                                                             </button>
                                                         </div>
-                                                        
+
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                                                             {c.abuseDays.slice(0, 3).map(([date, scans], idx) => (
                                                                 <div key={idx} style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '10px' }}>
@@ -519,7 +519,7 @@ const SystemAdminPanel: React.FC = () => {
                                     </div>
                                 )}
                             </div>
-                            
+
                             {isMobile && (
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Роля</label>
@@ -682,11 +682,11 @@ const StatCard = ({ icon: Icon, label, value, color, isMobile }: StatCardProps) 
         <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: isMobile ? '0.6rem' : '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.1rem' }}>
             {label}
         </div>
-        <div style={{ 
-            fontSize: isMobile ? '1.1rem' : '2.25rem', 
-            fontWeight: 900, 
-            color: '#fff', 
-            overflow: 'hidden', 
+        <div style={{
+            fontSize: isMobile ? '1.1rem' : '2.25rem',
+            fontWeight: 900,
+            color: '#fff',
+            overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap'
         }}>{value}</div>
