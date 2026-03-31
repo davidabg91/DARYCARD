@@ -132,7 +132,7 @@ const ClientProfile: React.FC = () => {
     const initAudio = () => {
         if (audioInitializedRef.current) return;
         try {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
             audioContextRef.current = new AudioContextClass();
             // Resume context on user interaction if needed
             if (audioContextRef.current?.state === 'suspended') {
