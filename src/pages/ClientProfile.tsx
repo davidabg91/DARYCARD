@@ -70,6 +70,43 @@ const compressImage = (dataUrl: string, maxWidth: number, maxHeight: number, qua
     });
 };
 
+// Skeleton UI for the Card - Declared outside to avoid re-creation during render
+const SkeletonCard = () => (
+    <div className="id-card-container" style={{
+        width: '100%', maxWidth: '480px', border: '1px solid rgba(255, 255, 255, 0.08)',
+        background: 'rgba(30, 30, 35, 0.95)', position: 'relative', overflow: 'hidden',
+        display: 'flex', flexDirection: 'column', borderRadius: '24px', zIndex: 10
+    }}>
+        <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ width: '80px', height: '14px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }} />
+            <div style={{ width: '100px', height: '22px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }} />
+        </div>
+        <div style={{ padding: '1.5rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <div style={{ width: '140px', height: '185px', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.2rem', justifyContent: 'center' }}>
+                <div style={{ width: '80%', height: '32px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }} />
+                <div style={{ width: '100%', height: '18px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    <div style={{ height: '45px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }} />
+                    <div style={{ height: '45px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }} />
+                </div>
+            </div>
+        </div>
+        {/* Shimmer effect inside the component */}
+        <style>{`
+            .id-card-container::before {
+                content: "";
+                position: absolute;
+                top: 0; right: 0; bottom: 0; left: 0;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+                transform: translateX(-100%);
+                animation: shimmer 2s infinite;
+            }
+            @keyframes shimmer { 100% { transform: translateX(100%); } }
+        `}</style>
+    </div>
+);
+
 const ClientProfile: React.FC = () => {
     const { id: rawId } = useParams<{ id: string }>();
     const id = sanitizeId(rawId);
@@ -396,41 +433,7 @@ const ClientProfile: React.FC = () => {
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [initAudio]);
 
-    const SkeletonCard = () => (
-        <div className="id-card-container" style={{
-            width: '100%', maxWidth: '480px', border: '1px solid rgba(255, 255, 255, 0.08)',
-            background: 'rgba(30, 30, 35, 0.95)', position: 'relative', overflow: 'hidden',
-            display: 'flex', flexDirection: 'column', borderRadius: '24px', zIndex: 10
-        }}>
-            <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ width: '80px', height: '14px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }} />
-                <div style={{ width: '100px', height: '22px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }} />
-            </div>
-            <div style={{ padding: '1.5rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-                <div style={{ width: '140px', height: '185px', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }} />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.2rem', justifyContent: 'center' }}>
-                    <div style={{ width: '80%', height: '32px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }} />
-                    <div style={{ width: '100%', height: '18px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }} />
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.5rem' }}>
-                        <div style={{ height: '45px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }} />
-                        <div style={{ height: '45px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }} />
-                    </div>
-                </div>
-            </div>
-            {/* Shimmer effect inside the component */}
-            <style>{`
-                .id-card-container::before {
-                    content: "";
-                    position: absolute;
-                    top: 0; right: 0; bottom: 0; left: 0;
-                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
-                    transform: translateX(-100%);
-                    animation: shimmer 2s infinite;
-                }
-                @keyframes shimmer { 100% { transform: translateX(100%); } }
-            `}</style>
-        </div>
-    );
+
 
     const isInitializingAuth = !currentUser && authLoading;
 
