@@ -318,7 +318,7 @@ const ClientProfile: React.FC = () => {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, [id, cloudSyncStatus, initAudio, playSuccessSound, playErrorSound]);
+    }, [id, initAudio, playSuccessSound, playErrorSound]); // Removed cloudSyncStatus to prevent re-subscription flicker
 
     const scannedRef = useRef<string | null>(null);
     const hasClient = !!client;
