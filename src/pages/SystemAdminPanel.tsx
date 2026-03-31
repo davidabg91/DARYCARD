@@ -303,28 +303,19 @@ const SystemAdminPanel: React.FC = () => {
                             </select>
                         </div>
                     </div>
-
-                    {/* Stats Grid Wrapper with Horizontal Scroll on Mobile */}
+                    {/* Stats Grid - Vertical Stacking (2 columns) without scroll */}
                     <div style={{ 
-                        width: '100%', 
-                        overflowX: isMobile ? 'auto' : 'visible', 
-                        WebkitOverflowScrolling: 'touch',
-                        paddingBottom: isMobile ? '0.5rem' : '0'
+                        display: 'grid', 
+                        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', 
+                        gap: isMobile ? '0.4rem' : '1.25rem' 
                     }}>
-                        <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: isMobile ? 'repeat(7, 160px)' : 'repeat(auto-fit, minmax(220px, 1fr))', 
-                            gap: isMobile ? '0.75rem' : '1.25rem',
-                            minWidth: isMobile ? 'max-content' : 'auto'
-                        }}>
-                            <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
-                            <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" isMobile={isMobile} />
-                            <StatCard icon={HistoryIcon} label="Сканирани" value={scannedToday} color="#00ADB5" isMobile={isMobile} />
-                            <StatCard icon={Percent} label="Плащане" value={`${paymentRate}%`} color="#ffab00" isMobile={isMobile} />
-                            <StatCard icon={RefreshCw} label="Обновени" value={renewedCount} color="#4caf50" isMobile={isMobile} />
-                            <StatCard icon={Percent} label="На Карта" value={`${avgProfit} €`} color="#e91e63" isMobile={isMobile} />
-                            <StatCard icon={Shield} label="Липсващи" value={pendingTotal} color="#ff5252" isMobile={isMobile} />
-                        </div>
+                        <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
+                        <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" isMobile={isMobile} />
+                        <StatCard icon={HistoryIcon} label="Сканирани" value={scannedToday} color="#00ADB5" isMobile={isMobile} />
+                        <StatCard icon={Percent} label="Плащане" value={`${paymentRate}%`} color="#ffab00" isMobile={isMobile} />
+                        <StatCard icon={RefreshCw} label="Обновени" value={renewedCount} color="#4caf50" isMobile={isMobile} />
+                        <StatCard icon={Percent} label="На Карта" value={`${avgProfit} €`} color="#e91e63" isMobile={isMobile} />
+                        <StatCard icon={Shield} label="Липсващи" value={pendingTotal} color="#ff5252" isMobile={isMobile} />
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(450px, 1fr))', gap: isMobile ? '1rem' : '2rem' }}>
@@ -355,11 +346,7 @@ const SystemAdminPanel: React.FC = () => {
                             {/* Hourly distribution simplified visual */}
                             <div style={{ 
                                 width: '100%', 
-                                overflowX: 'auto', 
-                                WebkitOverflowScrolling: 'touch',
-                                paddingBottom: '0.5rem',
-                                scrollbarWidth: 'none',
-                                msOverflowStyle: 'none'
+                                paddingBottom: '0.5rem'
                             }}>
                                 <div style={{ 
                                     height: '220px', 
@@ -367,7 +354,7 @@ const SystemAdminPanel: React.FC = () => {
                                     alignItems: 'flex-end', 
                                     gap: isMobile ? '2px' : '4px', 
                                     padding: '1rem 0',
-                                    minWidth: isMobile ? '350px' : 'auto'
+                                    minWidth: '0'
                                 }}>
                                     {hourlyDistribution.map((count, hr) => (
                                         <div key={hr} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '8px', height: '100%', position: 'relative' }}>
@@ -441,11 +428,11 @@ const SystemAdminPanel: React.FC = () => {
                             </div>
                         </Card>
 
-                        <Card style={{ padding: isMobile ? '1.25rem' : '2rem', overflowX: 'auto' }}>
+                        <Card style={{ padding: isMobile ? '0.85rem' : '2rem' }}>
                             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff5252' }}>
                                 <Shield size={20} /> Съмнителна Активност (Злоупотреби)
                             </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: isMobile ? '350px' : 'auto' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {suspiciousClients.length > 0 ? suspiciousClients.map(c => (
                                     <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,82,82,0.05)', borderRadius: '14px', border: '1px solid rgba(255,82,82,0.1)', position: 'relative' }}>
                                         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: '1rem', marginBottom: '1rem' }}>
@@ -668,7 +655,7 @@ interface StatCardProps {
 const StatCard = ({ icon: Icon, label, value, color, isMobile }: StatCardProps) => (
     <Card style={{ padding: isMobile ? '0.75rem 0.85rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, width: '3px', height: '100%', background: color }}></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.6rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.55rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             <Icon size={isMobile ? 12 : 16} color={color} /> {label}
         </div>
         <div style={{ 
