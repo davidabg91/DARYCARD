@@ -19,7 +19,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        globIgnores: ['**/assets/ads/*.png'],
+        globIgnores: ['**/assets/ads/*.png', 'pwa-icon.png', 'favicon.png', 'og-image.png'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
