@@ -3,15 +3,77 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content="Официална система за управление на абонаментни карти за градски транспорт Плевен - Dary Commerce." />
-    <link rel="icon" type="image/png" href="favicon.png?v=2" />
-    <link rel="icon" type="image/x-icon" href="favicon.ico?v=2" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3" />
+    <link rel="icon" type="image/png" href="favicon.png?v=3" />
     <link rel="apple-touch-icon" href="og-image.png?v=3" />
     <link rel="manifest" href="manifest.webmanifest?v=3" />
+    
+    <!-- Advanced Preconnect & Resource Hints -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
+    
+    <!-- Critical Asset Preloading -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Outfit:wght@400;700;900&display=swap&font-display=swap" as="style">
+    <link rel="preload" href="/src/assets/logo_main.png" as="image">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Outfit:wght@400;700;900&display=swap&font-display=swap">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a1a1a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Dary Commerce - Системен Панел</title>
+    <!-- Font & Asset Preloads -->
+    <link rel="preload" href="https://fonts.gstatic.com/s/outfit/v11/QGYsz_Tv7UM98nRfMTw7.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/src/assets/logo_main.png" as="image">
+    
+    <style>
+      :root {
+        --bg-color: #1a1a1a;
+        --primary-color: #ff5252;
+      }
+      body {
+        margin: 0;
+        background-color: var(--bg-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      #initial-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+        font-family: 'Inter', sans-serif;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 82, 82, 0.1);
+        border-top: 3px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .loader-text {
+        color: var(--primary-color);
+        font-size: 0.75rem;
+        font-weight: 900;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        opacity: 0.6;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 0.8; }
+      }
+    </style>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,7 +95,13 @@
     <meta property="twitter:image" content="https://darycommerce.com/og-image.png?v=3" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Instant Inlined Loader (Replaced by React) -->
+      <div id="initial-loader">
+        <div class="spinner"></div>
+        <div class="loader-text">DARY SYSTEM</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
