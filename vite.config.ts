@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt', // <== This makes it open instantly from cache
       includeAssets: ['favicon.svg', 'favicon.png', 'og-image.png', 'pwa-icon.png'],
       manifest: {
         name: 'Dary Commerce - Системен Панел',

@@ -279,6 +279,7 @@ const ClientProfile: React.FC = () => {
                 const clientData: Client = { ...data, id: docSnap.id } as Client;
                 setClient(clientData);
                 if (!hasPlayedSound.current) {
+                    initAudio(); // Try to init immediately on data arrival
                     const now = new Date();
                     const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
                     const hasPaidCurrentMonth = (clientData.renewalHistory || []).some(rh => rh.month === currentMonthStr);
@@ -290,7 +291,7 @@ const ClientProfile: React.FC = () => {
             } else {
                 setClient(null);
                 if (!hasPlayedSound.current) {
-                    initAudio(); // Try to init on any update too
+                    initAudio(); 
                     playErrorSound();
                     hasPlayedSound.current = true;
                 }
@@ -370,7 +371,7 @@ const ClientProfile: React.FC = () => {
 
         const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
         const handler = () => {
-            initAudio(); // Initialize audio on first user interaction
+            initAudio(); 
             resetIdleTimer();
         };
         events.forEach(event => document.addEventListener(event, handler, { passive: true }));
