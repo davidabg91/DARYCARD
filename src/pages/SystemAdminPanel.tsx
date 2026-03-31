@@ -273,7 +273,7 @@ const SystemAdminPanel: React.FC = () => {
     );
 
     return (
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: isMobile ? '0' : '1.5rem', animation: 'fadeIn 0.4s ease' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: isMobile ? '0 0.5rem' : '1.5rem', animation: 'fadeIn 0.4s ease' }}>
             <h1 style={{ fontSize: isMobile ? '1.75rem' : '2.5rem', fontWeight: 900, marginBottom: isMobile ? '1.5rem' : '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#ff5252' }}>
                 <Shield size={isMobile ? 28 : 40} /> АДМИН ПАНЕЛ
             </h1>
@@ -307,7 +307,7 @@ const SystemAdminPanel: React.FC = () => {
                     <div style={{ 
                         display: 'grid', 
                         gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', 
-                        gap: isMobile ? '0.4rem' : '1.25rem' 
+                        gap: isMobile ? '0.35rem' : '1.25rem' 
                     }}>
                         <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
                         <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" isMobile={isMobile} />
@@ -343,10 +343,12 @@ const SystemAdminPanel: React.FC = () => {
                                 </div>
                             </div>
                             
-                            {/* Hourly distribution simplified visual */}
                             <div style={{ 
                                 width: '100%', 
-                                paddingBottom: '0.5rem'
+                                overflowX: 'auto', 
+                                WebkitOverflowScrolling: 'touch',
+                                paddingBottom: '0.75rem',
+                                scrollbarWidth: 'thin'
                             }}>
                                 <div style={{ 
                                     height: '220px', 
@@ -354,7 +356,7 @@ const SystemAdminPanel: React.FC = () => {
                                     alignItems: 'flex-end', 
                                     gap: isMobile ? '2px' : '4px', 
                                     padding: '1rem 0',
-                                    minWidth: '0'
+                                    minWidth: isMobile ? '600px' : 'auto'
                                 }}>
                                     {hourlyDistribution.map((count, hr) => (
                                         <div key={hr} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '8px', height: '100%', position: 'relative' }}>
@@ -434,17 +436,17 @@ const SystemAdminPanel: React.FC = () => {
                             </h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {suspiciousClients.length > 0 ? suspiciousClients.map(c => (
-                                    <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,82,82,0.05)', borderRadius: '14px', border: '1px solid rgba(255,82,82,0.1)', position: 'relative' }}>
-                                        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: '1rem', marginBottom: '1rem' }}>
+                                    <div key={c.id} style={{ padding: isMobile ? '0.6rem' : '1rem', background: 'rgba(255,82,82,0.05)', borderRadius: '12px', border: '1px solid rgba(255,82,82,0.1)', position: 'relative' }}>
+                                        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '0.5rem' : '1rem', marginBottom: '1rem' }}>
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontWeight: 700, fontSize: isMobile ? '0.9rem' : '1rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
-                                                <div style={{ color: '#ff5252', fontSize: '0.75rem', fontWeight: 900 }}>{c.abuseDays.length} дни с нарушения</div>
+                                                <div style={{ fontWeight: 700, fontSize: isMobile ? '0.8rem' : '1rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                                                <div style={{ color: '#ff5252', fontSize: '0.65rem', fontWeight: 900 }}>{c.abuseDays.length} дни с нарушения</div>
                                             </div>
                                             <button 
                                                 onClick={() => handleClearAbuse(c.id)}
-                                                style={{ background: 'rgba(255,82,82,0.1)', border: 'none', color: '#ff5252', padding: isMobile ? '8px 12px' : '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 800, width: isMobile ? '100%' : 'auto', justifyContent: 'center' }}
+                                                style={{ background: 'rgba(255,82,82,0.1)', border: 'none', color: '#ff5252', padding: isMobile ? '6px 10px' : '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', fontWeight: 800, width: isMobile ? '100%' : 'auto', justifyContent: 'center' }}
                                             >
-                                                <Trash2 size={isMobile ? 14 : 14} /> ИЗЧИСТИ
+                                                <Trash2 size={isMobile ? 12 : 14} /> ИЗЧИСТИ
                                             </button>
                                         </div>
                                         
@@ -653,13 +655,13 @@ interface StatCardProps {
 }
 
 const StatCard = ({ icon: Icon, label, value, color, isMobile }: StatCardProps) => (
-    <Card style={{ padding: isMobile ? '0.75rem 0.85rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', position: 'relative', overflow: 'hidden' }}>
+    <Card style={{ padding: isMobile ? '0.4rem 0.5rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.2rem', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, width: '3px', height: '100%', background: color }}></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.55rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            <Icon size={isMobile ? 12 : 16} color={color} /> {label}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.5rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <Icon size={isMobile ? 10 : 16} color={color} /> {label}
         </div>
         <div style={{ 
-            fontSize: isMobile ? '0.9rem' : '2.25rem', 
+            fontSize: isMobile ? '0.75rem' : '2.25rem', 
             fontWeight: 900, 
             color: '#fff', 
             overflow: 'hidden', 
