@@ -6,6 +6,7 @@ import {
     UserPlus, Trash2
 } from 'lucide-react';
 import { collection, query, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import LoadingScreen from '../components/LoadingScreen';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
@@ -272,7 +273,7 @@ const SystemAdminPanel: React.FC = () => {
         } finally { setUserLoading(false); }
     };
 
-    if (loading) return <div style={{ padding: '5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Зареждане на системни данни...</div>;
+    if (loading) return <LoadingScreen />;
 
     const filteredLogs = globalLogs.filter(log =>
         log.performedBy.toLowerCase().includes(auditSearch.toLowerCase()) ||

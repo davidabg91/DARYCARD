@@ -6,6 +6,7 @@ const AdSlideshow = React.lazy(() => import('../components/AdSlideshow'));
 const BusSchedule = React.lazy(() => import('../components/BusSchedule'));
 import { db } from '../firebase';
 import logo from '../assets/logo_main.png';
+import LoadingScreen from '../components/LoadingScreen';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc, addDoc, collection } from 'firebase/firestore';
 
 interface Client {
@@ -404,14 +405,7 @@ const ClientProfile: React.FC = () => {
     }, []);
 
     if (loading) {
-        return (
-            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', color: '#fff' }}>
-                <div style={{ textAlign: 'center' }}>
-                    <RefreshCw className="spin" size={48} color="var(--primary-color)" />
-                    <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Зареждане на данни...</p>
-                </div>
-            </div>
-        );
+        return <LoadingScreen />;
     }
 
     if (error) {
