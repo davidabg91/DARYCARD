@@ -2,8 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, Ban, Clock, Settings, RefreshCw, Camera, CreditCard, ShieldCheck, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import AdSlideshow from '../components/AdSlideshow';
-import BusSchedule from '../components/BusSchedule';
+const AdSlideshow = React.lazy(() => import('../components/AdSlideshow'));
+const BusSchedule = React.lazy(() => import('../components/BusSchedule'));
 import { db } from '../firebase';
 import logo from '../assets/logo_main.png';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc, addDoc, collection } from 'firebase/firestore';
@@ -126,10 +126,26 @@ const ClientProfile: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const hasPlayedSound = useRef(false);
 
-    const playSuccessSound = () => {
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const audioInitializedRef = useRef(false);
+
+    const initAudio = () => {
+        if (audioInitializedRef.current) return;
         try {
-            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-            const context = new AudioContextClass();
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            audioContextRef.current = new AudioContextClass();
+            // Resume context on user interaction if needed
+            if (audioContextRef.current?.state === 'suspended') {
+                audioContextRef.current.resume();
+            }
+            audioInitializedRef.current = true;
+        } catch (e) { console.error("Audio init error", e); }
+    };
+
+    const playSuccessSound = () => {
+        const context = audioContextRef.current;
+        if (!context) return;
+        try {
             const playTone = (freq: number, start: number, duration: number, vol: number = 0.08) => {
                 const osc = context.createOscillator();
                 const gain = context.createGain();
@@ -147,7 +163,7 @@ const ClientProfile: React.FC = () => {
             playTone(739.99, 0.08, 0.5);   
             playTone(880.00, 0.16, 0.6);   
             playTone(1174.66, 0.24, 0.7);  
-        } catch (e) { console.error("Audio error", e); }
+        } catch (e) { console.error("Audio success error", e); }
     };
 
     const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -215,9 +231,9 @@ const ClientProfile: React.FC = () => {
     };
 
     const playErrorSound = () => {
+        const context = audioContextRef.current;
+        if (!context) return;
         try {
-            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-            const context = new AudioContextClass();
             const createBuzz = (startTime: number, duration: number) => {
                 const osc1 = context.createOscillator();
                 const osc2 = context.createOscillator();
@@ -240,7 +256,7 @@ const ClientProfile: React.FC = () => {
             };
             createBuzz(0, 0.5);
             createBuzz(0.6, 0.7); 
-        } catch (e) { console.error("Audio error", e); }
+        } catch (e) { console.error("Audio error error", e); }
     };
 
     useEffect(() => {
@@ -262,6 +278,7 @@ const ClientProfile: React.FC = () => {
             } else {
                 setClient(null);
                 if (!hasPlayedSound.current) {
+                    initAudio(); // Try to init on any update too
                     playErrorSound();
                     hasPlayedSound.current = true;
                 }
@@ -340,8 +357,11 @@ const ClientProfile: React.FC = () => {
         };
 
         const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-        const handler = () => resetIdleTimer();
-        events.forEach(event => document.addEventListener(event, handler));
+        const handler = () => {
+            initAudio(); // Initialize audio on first user interaction
+            resetIdleTimer();
+        };
+        events.forEach(event => document.addEventListener(event, handler, { passive: true }));
         
         // Start initial timer if allowed
         if (!loading && !isRegistering && !showPhotoModal && !showRenewConfirm) {
@@ -561,19 +581,17 @@ const ClientProfile: React.FC = () => {
             <div className="id-card-container" style={{
                 width: '100%',
                 maxWidth: '480px',
-                background: 'rgba(255, 255, 255, 0.02)',
-                backdropFilter: 'blur(30px)',
-                WebkitBackdropFilter: 'blur(30px)',
-                borderRadius: '32px',
                 border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 40px 100px rgba(0,0,0,0.6), inset 0 0 40px rgba(255,255,255,0.02)',
+                boxShadow: '0 40px 100px rgba(0,0,0,0.6)',
                 position: 'relative',
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
                 animation: 'cardEnter 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
                 zIndex: 10,
-                willChange: 'transform, opacity, backdrop-filter'
+                willChange: 'transform, opacity',
+                // Disable backdrop-filter on small screens for performance
+                ...(window.innerWidth > 600 ? { backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)' } : { background: 'rgba(30, 30, 35, 0.95)' })
             }}>
                 {/* Holographic Overlay */}
                 <div style={{
@@ -849,12 +867,16 @@ const ClientProfile: React.FC = () => {
                     ПОСЛЕДНО СКАНЕ: {scanTime} • СИСТЕМЕН РЕФ: {client?.id.toUpperCase()}
                 </div>
                 
-                <BusSchedule route={client?.route || ''} />
+                <React.Suspense fallback={null}>
+                    <BusSchedule route={client?.route || ''} />
+                </React.Suspense>
             </div>
 
             {/* Overlays */}
             {isIdle && !loading && !isRegistering && !showPhotoModal && !showRenewConfirm && !showOnlinePayment && (
-                <AdSlideshow onClose={() => setIsIdle(false)} />
+                <React.Suspense fallback={null}>
+                    <AdSlideshow onClose={() => setIsIdle(false)} />
+                </React.Suspense>
             )}
 
             {showRenewConfirm && client && (
