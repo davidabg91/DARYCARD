@@ -287,21 +287,9 @@ const SystemAdminPanel: React.FC = () => {
 
             {/* Dashboard Tab - Support Horizontal Scroll on Mobile only */}
             {activeTab === 'dashboard' && (
-                <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
-                    <div style={{ 
-                        width: '100%', 
-                        overflowX: isMobile ? 'auto' : 'visible', 
-                        WebkitOverflowScrolling: 'touch',
-                        scrollbarWidth: 'none' /* Hide scrollbar for cleaner look */
-                    }}>
-                        <div style={{ 
-                            padding: isMobile ? '0.25rem 0.25rem 3rem 0.25rem' : '0',
-                            animation: 'fadeIn 0.3s ease',
-                            minWidth: isMobile ? '750px' : 'auto',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '2rem'
-                        }}>
+                <div style={{ position: 'relative', width: '100%' }}>
+                    <div className={isMobile ? 'admin-scroll-fix' : ''}>
+                        <div className={isMobile ? 'admin-scroll-content' : ''}>
                     {/* Month Selector */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: isMobile ? '0.5rem' : '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem' }}>
