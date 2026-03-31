@@ -306,8 +306,8 @@ const SystemAdminPanel: React.FC = () => {
                     {/* Stats Grid - Vertical Stacking (2 columns) without scroll */}
                     <div style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', 
-                        gap: isMobile ? '0.35rem' : '1.25rem' 
+                        gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fit, minmax(220px, 1fr))', 
+                        gap: isMobile ? '0.3rem' : '1.25rem' 
                     }}>
                         <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
                         <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" isMobile={isMobile} />
@@ -655,9 +655,9 @@ interface StatCardProps {
 }
 
 const StatCard = ({ icon: Icon, label, value, color, isMobile }: StatCardProps) => (
-    <Card style={{ padding: isMobile ? '0.4rem 0.5rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.2rem', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '3px', height: '100%', background: color }}></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.5rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+    <Card style={{ padding: isMobile ? '0.35rem 0.15rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem', position: 'relative', overflow: 'hidden', alignItems: isMobile ? 'center' : 'flex-start', textAlign: isMobile ? 'center' : 'left' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, width: isMobile ? '2px' : '3px', height: '100%', background: color }}></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.45rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             <Icon size={isMobile ? 10 : 16} color={color} /> {label}
         </div>
         <div style={{ 
