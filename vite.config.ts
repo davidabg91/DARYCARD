@@ -8,7 +8,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: [
+        'favicon.ico', 
+        'favicon.svg', 
+        'apple-touch-icon.png', 
+        'favicon.png',
+        'og-image.png',
+        'pwa-icon.png'
+      ],
       manifest: {
         name: 'Dary Commerce - Системен Панел',
         short_name: 'Dary Card',
@@ -20,6 +27,11 @@ export default defineConfig({
         scope: '/',
         start_url: '/',
         icons: [
+          {
+            src: 'pwa-icon.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
           {
             src: 'pwa-icon.png',
             sizes: '512x512',
