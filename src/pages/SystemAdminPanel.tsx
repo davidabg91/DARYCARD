@@ -306,8 +306,8 @@ const SystemAdminPanel: React.FC = () => {
                     {/* Stats Grid - Vertical Stacking (2 columns) without scroll */}
                     <div style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fit, minmax(220px, 1fr))', 
-                        gap: isMobile ? '0.3rem' : '1.25rem' 
+                        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', 
+                        gap: isMobile ? '0.5rem' : '1.25rem' 
                     }}>
                         <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
                         <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" isMobile={isMobile} />
@@ -345,18 +345,24 @@ const SystemAdminPanel: React.FC = () => {
                             
                             <div style={{ 
                                 width: '100%', 
-                                overflowX: 'auto', 
+                                overflowX: isMobile ? 'auto' : 'visible', 
                                 WebkitOverflowScrolling: 'touch',
-                                paddingBottom: '0.75rem',
-                                scrollbarWidth: 'thin'
+                                paddingBottom: '1rem',
+                                display: 'block'
                             }}>
-                                <div style={{ 
+                                <style>{`
+                                    .chart-scroll::-webkit-scrollbar { height: 6px; }
+                                    .chart-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+                                    .chart-scroll::-webkit-scrollbar-thumb { background: #ff5252; border-radius: 10px; }
+                                `}</style>
+                                <div className="chart-scroll" style={{ 
                                     height: '220px', 
                                     display: 'flex', 
                                     alignItems: 'flex-end', 
-                                    gap: isMobile ? '2px' : '4px', 
+                                    gap: isMobile ? '4px' : '4px', 
                                     padding: '1rem 0',
-                                    minWidth: isMobile ? '600px' : 'auto'
+                                    minWidth: isMobile ? '1000px' : 'auto',
+                                    overflowX: isMobile ? 'visible' : 'hidden'
                                 }}>
                                     {hourlyDistribution.map((count, hr) => (
                                         <div key={hr} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '8px', height: '100%', position: 'relative' }}>
@@ -387,14 +393,14 @@ const SystemAdminPanel: React.FC = () => {
                             </h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {topScannedClients.length > 0 ? topScannedClients.map((c, i) => (
-                                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem', background: 'rgba(255,255,255,0.02)', borderRadius: '14px', border: '1px solid var(--surface-border)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', overflow: 'hidden' }}>
+                                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'space-between', gap: isMobile ? '0.5rem' : '1rem', padding: isMobile ? '0.6rem' : '0.85rem', background: 'rgba(255,255,255,0.02)', borderRadius: '14px', border: '1px solid var(--surface-border)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem', overflow: 'hidden', flex: isMobile ? 'none' : 1 }}>
                                             <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: i < 3 ? ['gold', 'silver', '#cd7f32'][i] : 'rgba(255,255,255,0.1)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 900, flexShrink: 0 }}>{i + 1}</div>
-                                            <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                                            <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: isMobile ? '0.85rem' : '1rem' }}>{c.name}</div>
                                         </div>
-                                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                        <div style={{ textAlign: isMobile ? 'left' : 'right', flexShrink: 0, display: 'flex', alignItems: 'baseline', gap: '4px' }}>
                                             <div style={{ fontWeight: 900, color: 'var(--primary-color)', fontSize: isMobile ? '0.9rem' : '1.1rem' }}>{c.scanCount}</div>
-                                            <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>пътувания</div>
+                                            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>пътувания</div>
                                         </div>
                                     </div>
                                 )) : <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.3 }}>Няма данни.</div>}
@@ -411,18 +417,18 @@ const SystemAdminPanel: React.FC = () => {
                             <div style={{ overflowX: 'auto' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
-                                        <tr style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                                            <th style={{ padding: '0.75rem' }}>ЛИНИЯ</th>
-                                            <th style={{ padding: '0.75rem' }}>АКТИВНИ</th>
-                                            <th style={{ padding: '0.75rem', textAlign: 'right' }}>ПРИХОД</th>
+                                        <tr style={{ color: 'var(--text-secondary)', fontSize: isMobile ? '0.65rem' : '0.8rem' }}>
+                                            <th style={{ padding: isMobile ? '0.5rem 0.25rem' : '0.75rem' }}>ЛИНИЯ</th>
+                                            <th style={{ padding: isMobile ? '0.5rem 0.25rem' : '0.75rem' }}>АКТИВНИ</th>
+                                            <th style={{ padding: isMobile ? '0.5rem 0.25rem' : '0.75rem', textAlign: 'right' }}>ПРИХОД</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {routeStats.filter(s => s.count > 0 || s.revenue > 0).slice(0, 10).map((s, i) => (
                                             <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                                <td style={{ padding: '0.75rem', fontWeight: 600, fontSize: '0.85rem' }}>{s.route}</td>
-                                                <td style={{ padding: '0.75rem' }}><span style={{ padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem' }}>{s.count}</span></td>
-                                                <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, color: '#00e676' }}>{s.revenue.toFixed(2)} €</td>
+                                                <td style={{ padding: isMobile ? '0.5rem 0.25rem' : '0.75rem', fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{s.route}</td>
+                                                <td style={{ padding: isMobile ? '0.5rem 0.25rem' : '0.75rem' }}><span style={{ padding: isMobile ? '1px 4px' : '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontSize: isMobile ? '0.7rem' : '0.8rem' }}>{s.count}</span></td>
+                                                <td style={{ padding: isMobile ? '0.5rem 0.25rem' : '0.75rem', textAlign: 'right', fontWeight: 800, color: '#00e676', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{s.revenue.toFixed(2)} €</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -655,13 +661,24 @@ interface StatCardProps {
 }
 
 const StatCard = ({ icon: Icon, label, value, color, isMobile }: StatCardProps) => (
-    <Card style={{ padding: isMobile ? '0.35rem 0.15rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem', position: 'relative', overflow: 'hidden', alignItems: isMobile ? 'center' : 'flex-start', textAlign: isMobile ? 'center' : 'left' }}>
+    <Card style={{ 
+        padding: isMobile ? '0.35rem 0.2rem' : '1.5rem', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: isMobile ? '0.1rem' : '0.4rem', 
+        position: 'relative', 
+        overflow: 'hidden', 
+        alignItems: isMobile ? 'center' : 'flex-start', 
+        textAlign: isMobile ? 'center' : 'left',
+        aspectRatio: isMobile ? '1/1' : 'auto',
+        justifyContent: isMobile ? 'center' : 'flex-start'
+    }}>
         <div style={{ position: 'absolute', top: 0, left: 0, width: isMobile ? '2px' : '3px', height: '100%', background: color }}></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.45rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            <Icon size={isMobile ? 10 : 16} color={color} /> {label}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: 'rgba(255,255,255,0.4)', fontSize: isMobile ? '0.5rem' : '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <Icon size={isMobile ? 12 : 16} color={color} /> {label}
         </div>
         <div style={{ 
-            fontSize: isMobile ? '0.75rem' : '2.25rem', 
+            fontSize: isMobile ? '0.85rem' : '2.25rem', 
             fontWeight: 900, 
             color: '#fff', 
             overflow: 'hidden', 
