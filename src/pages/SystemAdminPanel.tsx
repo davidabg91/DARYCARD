@@ -137,6 +137,15 @@ const SystemAdminPanel: React.FC = () => {
         return now > expiry;
     };
 
+    const getActionColor = (action: string) => {
+        const a = action.toLowerCase();
+        if (a.includes('създаване')) return '#00e676'; // Green
+        if (a.includes('изтриване') || a.includes('анулиране') || a.includes('триене')) return '#ff5252'; // Red
+        if (a.includes('подновяване')) return '#2196f3'; // Blue
+        if (a.includes('генериране') || a.includes('копиране')) return '#00bcd4'; // Cyan
+        return '#ffab00'; // Default Orange
+    };
+
     // --- Dashboard Calculations ---
     const isAll = statsMonth === 'all';
     const totalRevenue = isAll 
@@ -590,7 +599,7 @@ const SystemAdminPanel: React.FC = () => {
                                             <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
                                                 <td style={{ padding: '1.25rem', fontSize: '0.8rem', opacity: 0.5 }}>{new Date(log.timestamp).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                                                 <td style={{ padding: '1.25rem' }}><span style={{ padding: '4px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>{log.performedBy.split('@')[0]}</span></td>
-                                                <td style={{ padding: '1.25rem' }}><span style={{ fontWeight: 900, fontSize: '0.85rem', color: log.action === 'Създаване' ? '#00e676' : log.action === 'Изтриване' ? '#ff5252' : '#ffab00' }}>{log.action}</span></td>
+                                                <td style={{ padding: '1.25rem' }}><span style={{ fontWeight: 900, fontSize: '0.85rem', color: getActionColor(log.action) }}>{log.action}</span></td>
                                                 <td style={{ padding: '1.25rem', fontWeight: 600 }}>{log.targetName}</td>
                                                 <td style={{ padding: '1.25rem', fontSize: '0.85rem', opacity: 0.7, maxWidth: '250px' }}>{log.details}</td>
                                                 <td style={{ padding: '1.25rem', textAlign: 'right', fontWeight: 900, color: log.amount > 0 ? '#00e676' : log.amount < 0 ? '#ff5252' : '#fff' }}>{log.amount !== 0 ? `${log.amount} €` : '-'}</td>
@@ -605,7 +614,7 @@ const SystemAdminPanel: React.FC = () => {
                                     <div key={log.id} style={{ padding: '1rem', background: '#1a1a1a', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>{new Date(log.timestamp).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-                                            <span style={{ fontWeight: 900, fontSize: '0.75rem', color: log.action === 'Създаване' ? '#00e676' : log.action === 'Изтриване' ? '#ff5252' : '#ffab00', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px' }}>{log.action}</span>
+                                            <span style={{ fontWeight: 900, fontSize: '0.75rem', color: getActionColor(log.action), background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px' }}>{log.action}</span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <div style={{ flex: 1 }}>
