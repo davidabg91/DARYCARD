@@ -11,11 +11,9 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: [
         'favicon.svg', 
-        'apple-touch-icon.png', 
         'favicon.png',
         'og-image.png',
-        'pwa-icon.png',
-        'logo_main.png'
+        'pwa-icon.png'
       ],
       manifest: {
         name: 'Dary Commerce - Системен Панел',
