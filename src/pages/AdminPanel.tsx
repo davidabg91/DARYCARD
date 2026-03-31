@@ -810,7 +810,7 @@ const AdminPanel: React.FC = () => {
                                 <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><DollarSign size={18} /> ПРИХОД ДНЕС</div>
                                 <div style={{ background: 'rgba(0, 200, 83, 0.1)', color: '#00c853', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>ДНЕС</div>
                             </div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#fff' }}>{revenueToday.toFixed(2)} €</div>
+                            <div style={{ fontSize: isMobile ? '1.75rem' : '2.5rem', fontWeight: 900, color: '#fff' }}>{revenueToday.toFixed(2)} €</div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Регистрирани днес: <b>{registrationsToday}</b></div>
                         </Card>
 
@@ -819,7 +819,7 @@ const AdminPanel: React.FC = () => {
                                 <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={18} /> ПРИХОД ЗА МЕСЕЦА</div>
                                 <div style={{ background: 'rgba(0, 173, 181, 0.1)', color: 'var(--primary-color)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>{currentMonthIso}</div>
                             </div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#fff' }}>{revenueMonthCurrent.toFixed(2)} €</div>
+                            <div style={{ fontSize: isMobile ? '1.75rem' : '2.5rem', fontWeight: 900, color: '#fff' }}>{revenueMonthCurrent.toFixed(2)} €</div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Общо активни този месец</div>
                         </Card>
                     </div>
