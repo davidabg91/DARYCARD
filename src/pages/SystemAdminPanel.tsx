@@ -304,19 +304,27 @@ const SystemAdminPanel: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Stats Grid */}
+                    {/* Stats Grid Wrapper with Horizontal Scroll on Mobile */}
                     <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: isMobile ? 'repeat(auto-fit, minmax(130px, 1fr))' : 'repeat(auto-fit, minmax(220px, 1fr))', 
-                        gap: isMobile ? '0.5rem' : '1.25rem' 
+                        width: '100%', 
+                        overflowX: isMobile ? 'auto' : 'visible', 
+                        WebkitOverflowScrolling: 'touch',
+                        paddingBottom: isMobile ? '0.5rem' : '0'
                     }}>
-                        <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
-                        <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" isMobile={isMobile} />
-                        <StatCard icon={HistoryIcon} label="Сканирани" value={scannedToday} color="#00ADB5" isMobile={isMobile} />
-                        <StatCard icon={Percent} label="Плащане" value={`${paymentRate}%`} color="#ffab00" isMobile={isMobile} />
-                        <StatCard icon={RefreshCw} label="Обновени" value={renewedCount} color="#4caf50" isMobile={isMobile} />
-                        <StatCard icon={Percent} label="На Карта" value={`${avgProfit} €`} color="#e91e63" isMobile={isMobile} />
-                        <StatCard icon={Shield} label="Липсващи" value={pendingTotal} color="#ff5252" isMobile={isMobile} />
+                        <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: isMobile ? 'repeat(7, 160px)' : 'repeat(auto-fit, minmax(220px, 1fr))', 
+                            gap: isMobile ? '0.75rem' : '1.25rem',
+                            minWidth: isMobile ? 'max-content' : 'auto'
+                        }}>
+                            <StatCard icon={DollarSign} label="Обороти" value={`${totalRevenue.toFixed(2)} €`} color="#00e676" isMobile={isMobile} />
+                            <StatCard icon={UsersIcon} label="Активни Карти" value={activeClientsCount} color="var(--primary-color)" isMobile={isMobile} />
+                            <StatCard icon={HistoryIcon} label="Сканирани" value={scannedToday} color="#00ADB5" isMobile={isMobile} />
+                            <StatCard icon={Percent} label="Плащане" value={`${paymentRate}%`} color="#ffab00" isMobile={isMobile} />
+                            <StatCard icon={RefreshCw} label="Обновени" value={renewedCount} color="#4caf50" isMobile={isMobile} />
+                            <StatCard icon={Percent} label="На Карта" value={`${avgProfit} €`} color="#e91e63" isMobile={isMobile} />
+                            <StatCard icon={Shield} label="Липсващи" value={pendingTotal} color="#ff5252" isMobile={isMobile} />
+                        </div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(450px, 1fr))', gap: isMobile ? '1rem' : '2rem' }}>
@@ -433,11 +441,11 @@ const SystemAdminPanel: React.FC = () => {
                             </div>
                         </Card>
 
-                        <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
+                        <Card style={{ padding: isMobile ? '1.25rem' : '2rem', overflowX: 'auto' }}>
                             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff5252' }}>
                                 <Shield size={20} /> Съмнителна Активност (Злоупотреби)
                             </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: isMobile ? '350px' : 'auto' }}>
                                 {suspiciousClients.length > 0 ? suspiciousClients.map(c => (
                                     <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,82,82,0.05)', borderRadius: '14px', border: '1px solid rgba(255,82,82,0.1)', position: 'relative' }}>
                                         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: '1rem', marginBottom: '1rem' }}>
