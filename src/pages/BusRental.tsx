@@ -113,7 +113,7 @@ const BusRental: React.FC = () => {
                 
                 <div style={{ 
                     position: 'relative', zIndex: 2, textAlign: 'center', padding: isMobile ? '0 1rem' : '0 1.5rem', 
-                    maxWidth: '1000px', animation: 'fadeIn 0.8s ease-out' 
+                    maxWidth: isMobile ? '100%' : '1200px', animation: 'fadeIn 0.8s ease-out' 
                 }}>
                     <div style={{ 
                         display: 'inline-flex', alignItems: 'center', gap: '0.5rem', 
