@@ -128,6 +128,7 @@ const ClientProfile: React.FC = () => {
 
     const audioContextRef = useRef<AudioContext | null>(null);
     const audioInitializedRef = useRef(false);
+    const soundPendingRef = useRef<'success' | 'error' | null>(null);
 
     const initAudio = () => {
         if (audioInitializedRef.current) return;
@@ -139,12 +140,20 @@ const ClientProfile: React.FC = () => {
                 audioContextRef.current.resume();
             }
             audioInitializedRef.current = true;
+            
+            // Play any pending sound
+            if (soundPendingRef.current === 'success') playSuccessSound();
+            else if (soundPendingRef.current === 'error') playErrorSound();
+            soundPendingRef.current = null;
         } catch (e) { console.error("Audio init error", e); }
     };
 
     const playSuccessSound = () => {
         const context = audioContextRef.current;
-        if (!context) return;
+        if (!context) {
+            soundPendingRef.current = 'success';
+            return;
+        }
         try {
             const playTone = (freq: number, start: number, duration: number, vol: number = 0.08) => {
                 const osc = context.createOscillator();
@@ -232,7 +241,10 @@ const ClientProfile: React.FC = () => {
 
     const playErrorSound = () => {
         const context = audioContextRef.current;
-        if (!context) return;
+        if (!context) {
+            soundPendingRef.current = 'error';
+            return;
+        }
         try {
             const createBuzz = (startTime: number, duration: number) => {
                 const osc1 = context.createOscillator();

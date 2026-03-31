@@ -1,32 +1,29 @@
 <!doctype html>
-<html lang="en">
+<html lang="bg">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <title>Dary Commerce - Системен Панел</title>
     <meta name="description" content="Официална система за управление на абонаментни карти за градски транспорт Плевен - Dary Commerce." />
-    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3" />
-    <link rel="icon" type="image/png" href="favicon.png?v=3" />
-    <link rel="apple-touch-icon" href="og-image.png?v=3" />
-    <link rel="manifest" href="manifest.webmanifest?v=3" />
+    
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=4" />
+    <link rel="icon" type="image/png" href="/favicon.png?v=4" />
+    <link rel="apple-touch-icon" href="/og-image.png?v=4" />
+    <link rel="manifest" href="/manifest.webmanifest?v=4" />
     
     <!-- Advanced Preconnect & Resource Hints -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
     
     <!-- Critical Asset Preloading -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Outfit:wght@400;700;900&display=swap&font-display=swap" as="style">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Outfit:wght@400;700;900&display=swap" as="style">
     <link rel="preload" href="/src/assets/logo_main.png" as="image">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Outfit:wght@400;700;900&display=swap&font-display=swap">
-    
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#1a1a1a" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>Dary Commerce - Системен Панел</title>
-    <!-- Font & Asset Preloads -->
-    <link rel="preload" href="https://fonts.gstatic.com/s/outfit/v11/QGYsz_Tv7UM98nRfMTw7.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/src/assets/logo_main.png" as="image">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Outfit:wght@400;700;900&display=swap">
     
     <style>
       :root {
@@ -40,13 +37,13 @@
         align-items: center;
         justify-content: center;
         min-height: 100vh;
+        font-family: 'Inter', sans-serif;
       }
       #initial-loader {
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 1.5rem;
-        font-family: 'Inter', sans-serif;
       }
       .spinner {
         width: 40px;
@@ -75,24 +72,19 @@
       }
     </style>
     
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://darycommerce.com/" />
     <meta property="og:title" content="Dary Commerce - Системен Панел" />
     <meta property="og:description" content="Официална система за управление на абонаментни карти за градски транспорт Плевен - Dary Commerce." />
-    <meta property="og:image" content="https://darycommerce.com/og-image.png?v=3" />
+    <meta property="og:image" content="https://darycommerce.com/og-image.png?v=4" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://darycommerce.com/" />
     <meta property="twitter:title" content="Dary Commerce - Системен Панел" />
     <meta property="twitter:description" content="Официална система за управление на абонаментни карти за градски транспорт Плевен - Dary Commerce." />
-    <meta property="twitter:image" content="https://darycommerce.com/og-image.png?v=3" />
+    <meta property="twitter:image" content="https://darycommerce.com/og-image.png?v=4" />
   </head>
   <body>
     <div id="root">
