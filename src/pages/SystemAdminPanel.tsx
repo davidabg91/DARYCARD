@@ -285,9 +285,20 @@ const SystemAdminPanel: React.FC = () => {
                 <TabButton id="audit" icon={HistoryIcon} label="ОДИТ" active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} color="#ff5252" isMobile={isMobile} />
             </div>
 
-            {/* Dashboard Tab */}
+            {/* Dashboard Tab - Support Horizontal Scroll on Mobile only */}
             {activeTab === 'dashboard' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.3s ease' }}>
+                <div style={{ 
+                    width: '100%', 
+                    overflowX: isMobile ? 'auto' : 'visible', 
+                    WebkitOverflowScrolling: 'touch',
+                    padding: isMobile ? '0.25rem 0.25rem 3rem 0.25rem' : '0',
+                    animation: 'fadeIn 0.3s ease',
+                    minWidth: isMobile ? '480px' : 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2rem',
+                    scrollbarWidth: 'thin'
+                }}>
                     {/* Month Selector */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: isMobile ? '0.5rem' : '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem' }}>
