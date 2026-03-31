@@ -714,7 +714,7 @@ const AdminPanel: React.FC = () => {
 
 
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', animation: 'fadeIn 0.4s ease' }}>
+        <div style={{ width: '100%', animation: 'fadeIn 0.4s ease' }}>
 
             <div style={{ 
                 display: 'flex', 
@@ -984,32 +984,67 @@ const AdminPanel: React.FC = () => {
                                                 <strong> Маршрут:</strong> {reportRoute === 'all' ? 'Всички' : reportRoute}
                                             </p>
                                         </div>
-                                        <div style={{ overflowX: 'auto' }}>
-                                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
-                                                <thead>
-                                                    <tr>
-                                                        <th>Име на Клиент</th>
-                                                        <th>Вид Карта</th>
-                                                        <th>Курс</th>
-                                                        <th>Платена Сума</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {filteredReportClients.length > 0 ? filteredReportClients.map(c => (
-                                                        <tr key={c.id}>
-                                                            <td style={{ fontWeight: 600 }}>{c.name}</td>
-                                                            <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>{c.cardType || 'Нормална карта'}</span></td>
-                                                            <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
-                                                            <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €</td>
-                                                        </tr>
-                                                    )) : (
+                                        {!isMobile ? (
+                                            <div style={{ overflowX: 'auto' }}>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                                                    <thead>
                                                         <tr>
-                                                            <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма данни за избраните филтри</td>
+                                                            <th>Име на Клиент</th>
+                                                            <th>Вид Карта</th>
+                                                            <th>Курс</th>
+                                                            <th>Платена Сума</th>
                                                         </tr>
-                                                    )}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    </thead>
+                                                    <tbody>
+                                                        {filteredReportClients.length > 0 ? filteredReportClients.map(c => (
+                                                            <tr key={c.id}>
+                                                                <td style={{ fontWeight: 600 }}>{c.name}</td>
+                                                                <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>{c.cardType || 'Нормална карта'}</span></td>
+                                                                <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
+                                                                <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €</td>
+                                                            </tr>
+                                                        )) : (
+                                                            <tr>
+                                                                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма данни за избраните филтри</td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                {filteredReportClients.length > 0 ? filteredReportClients.map(c => (
+                                                    <div key={c.id} style={{ 
+                                                        padding: '1.25rem', 
+                                                        background: 'rgba(255,255,255,0.03)', 
+                                                        borderRadius: '16px', 
+                                                        border: '1px solid rgba(255,255,255,0.08)',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '0.75rem'
+                                                    }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                            <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff' }}>{c.name}</div>
+                                                            <div style={{ fontWeight: 900, color: '#00e676', fontSize: '1.1rem' }}>
+                                                                {reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                            <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
+                                                                {c.cardType || 'Нормална карта'}
+                                                            </span>
+                                                            <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(0, 173, 181, 0.1)', borderRadius: '6px', color: 'var(--primary-color)', fontWeight: 600 }}>
+                                                                {c.route}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                )) : (
+                                                    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                                                        Няма данни за избраните филтри
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                         <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '2px solid rgba(255,255,255,0.1)' }}>
                                             <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>
                                                 Общо: <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#00e676', marginLeft: '1rem' }}>{totalReportRevenue.toFixed(2)} €</span>

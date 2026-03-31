@@ -337,7 +337,7 @@ const Landing: React.FC = () => {
                 .main-content {
                     position: relative;
                     z-index: 1;
-                    max-width: 1200px;
+                    width: 100%;
                     margin: 0 auto;
                     padding: 4rem 1.5rem;
                 }

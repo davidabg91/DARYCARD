@@ -273,7 +273,7 @@ const SystemAdminPanel: React.FC = () => {
     );
 
     return (
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: isMobile ? '0 1rem 3rem' : '1.5rem', animation: 'fadeIn 0.4s ease' }}>
+        <div style={{ width: '100%', padding: isMobile ? '0 1rem 3rem' : '1.5rem', animation: 'fadeIn 0.4s ease' }}>
             <h1 style={{ fontSize: isMobile ? '1.75rem' : '2.5rem', fontWeight: 900, marginBottom: isMobile ? '1.5rem' : '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#ff5252' }}>
                 <Shield size={isMobile ? 28 : 40} /> АДМИН ПАНЕЛ
             </h1>
