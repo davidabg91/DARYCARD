@@ -478,22 +478,7 @@ const SystemAdminPanel: React.FC = () => {
                         </Card>
                     </div>
                 </div>
-                {/* Visual Scroll Hint Gradient on Mobile */}
-                {isMobile && (
-                    <div style={{ 
-                        position: 'absolute', 
-                        top: 0, 
-                        right: 0, 
-                        bottom: '3rem', 
-                        width: '40px', 
-                        background: 'linear-gradient(to left, rgba(0,0,0,0.5), transparent)', 
-                        pointerEvents: 'none', 
-                        zIndex: 10,
-                        borderTopRightRadius: '20px',
-                        borderBottomRightRadius: '20px'
-                    }} />
-                )}
-                    </div>
+                </div>
                 </div>
             )}
 
@@ -680,13 +665,13 @@ interface StatCardProps {
 }
 
 const StatCard = ({ icon: Icon, label, value, color, isMobile }: StatCardProps) => (
-    <Card style={{ padding: isMobile ? '1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: isMobile ? '0.2rem' : '0.4rem', position: 'relative', overflow: 'hidden' }}>
+    <Card style={{ padding: isMobile ? '0.75rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: isMobile ? '0.1rem' : '0.4rem', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: color }}></div>
-        <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: isMobile ? '0.6rem' : '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.2rem' }}>
+        <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: isMobile ? '0.6rem' : '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.1rem' }}>
             {label}
         </div>
         <div style={{ 
-            fontSize: isMobile ? '1.25rem' : '2.25rem', 
+            fontSize: isMobile ? '1.1rem' : '2.25rem', 
             fontWeight: 900, 
             color: '#fff', 
             overflow: 'hidden', 
