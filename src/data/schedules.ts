@@ -101,3 +101,6 @@ SCHEDULES["Крушовица"] = SCHEDULES["Садовец"];
 SCHEDULES["Божурица"] = SCHEDULES["Рибен"];
 SCHEDULES["Долна Митрополия - Тръстеник"] = SCHEDULES["Тръстеник"];
 SCHEDULES["Долна Митрополия - Славовица"] = SCHEDULES["Славовица"];
+SCHEDULES["Ореховица"] = SCHEDULES["Байкал"];
+SCHEDULES["Брегаре"] = SCHEDULES["Байкал"];
+SCHEDULES["Крушовене"] = SCHEDULES["Байкал"];

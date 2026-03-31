@@ -513,7 +513,10 @@ const Landing: React.FC = () => {
                                 "Победа": "РИБЕН",
                                 "Биволаре": "РИБЕН",
                                 "Градина": "БЪРКАЧ",
-                                "Крушовица": "САДОВЕЦ"
+                                "Крушовица": "САДОВЕЦ",
+                                "Ореховица": "БАЙКАЛ",
+                                "Брегаре": "БАЙКАЛ",
+                                "Крушовене": "БАЙКАЛ"
                             };
 
                             if (originMapping[line]) {
@@ -670,6 +673,37 @@ const Landing: React.FC = () => {
                                                 </div>
                                                 <div style={{ fontWeight: 800 }}>{meta?.priceCard || '---'}</div>
                                             </div>
+                                        </div>
+
+                                        {/* Discount Information Notice */}
+                                        <div style={{
+                                            padding: '0.8rem 1rem',
+                                            background: 'rgba(0,173,181,0.05)',
+                                            borderRadius: '12px',
+                                            border: '1px solid rgba(0,173,181,0.2)',
+                                            fontSize: '0.8rem',
+                                            color: 'rgba(255,255,255,0.8)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.8rem',
+                                            marginTop: '-0.5rem'
+                                        }}>
+                                            <div style={{ 
+                                                width: '24px', 
+                                                height: '24px', 
+                                                borderRadius: '50%', 
+                                                background: 'rgba(0,173,181,0.1)', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center',
+                                                color: 'var(--primary-color)',
+                                                flexShrink: 0
+                                            }}>
+                                                <Info size={14} />
+                                            </div>
+                                            <p style={{ margin: 0, lineHeight: 1.4, fontWeight: 500 }}>
+                                                Цените за ученици и пенсионери са <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-50%</span> от тези цени, а за хора с увреждания над 70.99% са с <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-25%</span>.
+                                            </p>
                                         </div>
 
                                         {/* Expanded Schedule */}
