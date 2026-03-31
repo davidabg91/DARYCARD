@@ -207,14 +207,19 @@ const ClientProfile: React.FC = () => {
         } catch (e) { console.error("Audio init error", e); }
     }, [playSuccessSound, playErrorSound]);
 
-    // Fast Switch Logic: Reset states immediately when ID changes
-    useEffect(() => {
+    // Fast Switch Logic: Sync state when ID changes during render (per React best practices)
+    const [prevId, setPrevId] = useState(id);
+    if (id !== prevId) {
+        setPrevId(id);
         setClient(null);
         setLoading(true);
         setError(null);
         setIsRegistering(false);
+    }
+
+    useEffect(() => {
         hasPlayedSound.current = false;
-        initAudio(); // Also attempt to init audio context early if needed
+        initAudio();
     }, [id, initAudio]);
 
     const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
