@@ -258,7 +258,7 @@ const Layout: React.FC = () => {
                     }}>
                         <img
                             src={logo}
-                            alt="Dary Travel"
+                            alt="Dary Commerce"
                             style={{
                                 height: isMobile ? '40px' : '55px',
                                 width: 'auto',

@@ -142,7 +142,7 @@ const LoginPage: React.FC = () => {
                     </button>
                     
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '1rem' }}>
-                        Система за сигурност Dary Travel © 2026
+                        Система за сигурност Dary Commerce © 2026
                     </p>
                 </form>
             </div>
