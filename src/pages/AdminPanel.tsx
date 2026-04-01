@@ -1528,9 +1528,11 @@ const AdminPanel: React.FC = () => {
                                         fontFamily: 'monospace',
                                         fontSize: '0.85rem'
                                     }}>
-                                        <div style={{ wordBreak: 'break-all', color: 'var(--primary-color)', lineHeight: 1.6 }}>
-                                            {generatedLinks.join(',')}
-                                        </div>
+                                        {generatedLinks.map((link, idx) => (
+                                            <div key={idx} style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--primary-color)' }}>
+                                                {link}
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}
