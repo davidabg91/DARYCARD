@@ -62,6 +62,24 @@ const Landing: React.FC = () => {
         return `${mins} мин`;
     };
 
+    const currentDay = currentTime.getDay();
+    const isSat = currentDay === 6;
+    const isSun = currentDay === 0;
+    const isWorkday = currentDay >= 1 && currentDay <= 5;
+
+    const getNextTime = (times: string[] | undefined) => {
+        if (!times || times.length === 0) return null;
+        const now = currentTime.getHours() * 60 + currentTime.getMinutes();
+        const future = times
+            .map(t => {
+                const [h, m] = t.split(':').map(Number);
+                return { t, mins: h * 60 + m };
+            })
+            .filter(x => x.mins > now)
+            .sort((a, b) => a.mins - b.mins);
+        return future.length > 0 ? future[0].t : null;
+    };
+
     return (
         <div style={{ 
             minHeight: '100vh', 
@@ -107,6 +125,19 @@ const Landing: React.FC = () => {
                     font-size: 0.8rem;
                     font-weight: 600;
                     border: 1px solid rgba(255,255,255,0.1);
+                }
+                .next-bus-tag-active {
+                    background: rgba(46, 204, 113, 0.2) !important;
+                    color: #2ecc71 !important;
+                    border-color: #2ecc71 !important;
+                    box-shadow: 0 0 15px rgba(46, 204, 113, 0.3);
+                    animation: pulse-green 2s infinite ease-in-out;
+                    z-index: 10;
+                }
+                @keyframes pulse-green {
+                    0% { box-shadow: 0 0 5px rgba(46, 204, 113, 0.3); transform: scale(1); }
+                    50% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.6); transform: scale(1.05); }
+                    100% { box-shadow: 0 0 5px rgba(46, 204, 113, 0.3); transform: scale(1); }
                 }
                 @keyframes fadeIn {
                     from { opacity: 0; transform: translateY(10px); }
@@ -724,66 +755,96 @@ const Landing: React.FC = () => {
                                                     <div>
                                                         <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
                                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                            {sched.fromPleven.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                            {sched.fromPleven.map(t => (
+                                                                <span key={t} className={`schedule-tag ${isWorkday && t === getNextTime(sched.fromPleven) ? 'next-bus-tag-active' : ''}`}>
+                                                                    {t}
+                                                                </span>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                     <div>
                                                         <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
                                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                            {sched.fromDestination.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                            {sched.fromDestination.map(t => (
+                                                                <span key={t} className={`schedule-tag ${isWorkday && t === getNextTime(sched.fromDestination) ? 'next-bus-tag-active' : ''}`}>
+                                                                    {t}
+                                                                </span>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 {/* Saturday Schedule */}
-                                                {sched.saturday && (
-                                                    <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.2rem' }}>
-                                                        <div style={{ marginBottom: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                            <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#ff9800', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                                                <Clock size={16} /> СЪБОТА
-                                                            </div>
-                                                        </div>
-                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
-                                                            <div>
-                                                                <div style={{ fontSize: '0.7rem', color: '#ff9800', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
-                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                                    {sched.saturday.fromPleven.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                {sched.saturday && (() => {
+                                                    const satSched = sched.saturday;
+                                                    return (
+                                                        <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.2rem' }}>
+                                                            <div style={{ marginBottom: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                                <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#ff9800', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                                    <Clock size={16} /> СЪБОТА
                                                                 </div>
                                                             </div>
-                                                            <div>
-                                                                <div style={{ fontSize: '0.7rem', color: '#ff9800', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
-                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                                    {sched.saturday.fromDestination.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.7rem', color: '#ff9800', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
+                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                        {satSched.fromPleven.map(t => (
+                                                                            <span key={t} className={`schedule-tag ${isSat && t === getNextTime(satSched.fromPleven) ? 'next-bus-tag-active' : ''}`}>
+                                                                                {t}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.7rem', color: '#ff9800', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
+                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                        {satSched.fromDestination.map(t => (
+                                                                            <span key={t} className={`schedule-tag ${isSat && t === getNextTime(satSched.fromDestination) ? 'next-bus-tag-active' : ''}`}>
+                                                                                {t}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                )}
+                                                    );
+                                                })()}
 
                                                 {/* Sunday Schedule */}
-                                                {sched.sunday && (
-                                                    <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.2rem' }}>
-                                                        <div style={{ marginBottom: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                            <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#ff5252', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                                                <Clock size={16} /> НЕДЕЛЯ
-                                                            </div>
-                                                        </div>
-                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
-                                                            <div>
-                                                                <div style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
-                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                                    {sched.sunday.fromPleven.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                {sched.sunday && (() => {
+                                                    const sunSched = sched.sunday;
+                                                    return (
+                                                        <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.2rem' }}>
+                                                            <div style={{ marginBottom: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                                <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#ff5252', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                                    <Clock size={16} /> НЕДЕЛЯ
                                                                 </div>
                                                             </div>
-                                                            <div>
-                                                                <div style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
-                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                                    {sched.sunday.fromDestination.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
+                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                        {sunSched.fromPleven.map(t => (
+                                                                            <span key={t} className={`schedule-tag ${isSun && t === getNextTime(sunSched.fromPleven) ? 'next-bus-tag-active' : ''}`}>
+                                                                                {t}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
+                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                        {sunSched.fromDestination.map(t => (
+                                                                            <span key={t} className={`schedule-tag ${isSun && t === getNextTime(sunSched.fromDestination) ? 'next-bus-tag-active' : ''}`}>
+                                                                                {t}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                )}
+                                                    );
+                                                })()}
 
                                                 {originMapping[line] && (
                                                     <div style={{ 
