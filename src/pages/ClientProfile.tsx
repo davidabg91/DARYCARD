@@ -71,16 +71,12 @@ const compressImage = (dataUrl: string, maxWidth: number, maxHeight: number, qua
     });
 };
 
-// Global flag to track if the very first load has happened. 
-// This survives component remounts during route changes.
-let isInitialLoaded = false;
-
 const ClientProfile: React.FC = () => {
     const { id: rawId } = useParams<{ id: string }>();
     const id = sanitizeId(rawId);
     const { currentUser, loading: authLoading } = useAuth();
     const [client, setClient] = useState<Client | null>(null);
-    const [loading, setLoading] = useState(!isInitialLoaded);
+    const [loading, setLoading] = useState(true);
     const [scanTime] = useState(new Date().toLocaleTimeString('bg-BG'));
     const [showRenewConfirm, setShowRenewConfirm] = useState(false);
     const [renewError, setRenewError] = useState<string | null>(null);
@@ -335,12 +331,10 @@ const ClientProfile: React.FC = () => {
                 if (cloudSyncStatusRef.current === 'idle') checkAdminWaiting();
             }
             setLoading(false);
-            isInitialLoaded = true;
         }, (err) => {
             console.error("Firestore error:", err);
             setError(err.message);
             setLoading(false);
-            isInitialLoaded = true;
         });
         return () => unsubscribe();
     }, [id, initAudio, playSuccessSound, playErrorSound]); // Removed cloudSyncStatus to prevent re-subscription flicker
