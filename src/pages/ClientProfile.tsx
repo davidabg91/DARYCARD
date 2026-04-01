@@ -212,7 +212,8 @@ const ClientProfile: React.FC = () => {
     if (id !== prevId) {
         setPrevId(id);
         setClient(null);
-        setLoading(true);
+        // Important: We don't set loading to true here to avoid the full-page LoadingScreen flicker.
+        // We let the inline logic handle the data arrival.
         setError(null);
         setIsRegistering(false);
     }
@@ -609,7 +610,7 @@ const ClientProfile: React.FC = () => {
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
-                animation: 'cardEnter 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+                animation: 'cardEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                 zIndex: 10,
                 willChange: 'transform, opacity',
                 // Disable backdrop-filter on small screens for performance
