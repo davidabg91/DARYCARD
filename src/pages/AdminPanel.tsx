@@ -592,7 +592,7 @@ const AdminPanel: React.FC = () => {
     };
 
     const copyLinksToClipboard = () => {
-        const text = generatedLinks.join('\n');
+        const text = generatedLinks.join(',');
         navigator.clipboard.writeText(text);
         setMessage({ text: 'Линковете са копирани в клипборда!', type: 'success' });
         logGlobalActivity('Копиране на NFC линкове', 'Система', `Копирани ${generatedLinks.length} NFC линка в клипборда.`);
@@ -1528,11 +1528,9 @@ const AdminPanel: React.FC = () => {
                                         fontFamily: 'monospace',
                                         fontSize: '0.85rem'
                                     }}>
-                                        {generatedLinks.map((link, idx) => (
-                                            <div key={idx} style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--primary-color)' }}>
-                                                {link}
-                                            </div>
-                                        ))}
+                                        <div style={{ wordBreak: 'break-all', color: 'var(--primary-color)', lineHeight: 1.6 }}>
+                                            {generatedLinks.join(',')}
+                                        </div>
                                     </div>
                                 </div>
                             )}
