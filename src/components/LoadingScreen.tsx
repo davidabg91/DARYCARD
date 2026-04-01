@@ -1,4 +1,4 @@
-import React from 'react';
+import logo from '../assets/logo_main.png';
 
 const LoadingScreen: React.FC = () => {
     return (
@@ -8,9 +8,9 @@ const LoadingScreen: React.FC = () => {
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
-            background: 'var(--bg-color, #1a1a1a)',
+            background: '#000',
             color: '#fff',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: '"Outfit", "Inter", sans-serif',
             position: 'fixed',
             top: 0,
             left: 0,
@@ -20,42 +20,45 @@ const LoadingScreen: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '1rem',
-                animation: 'fadeIn 0.5s ease-out 0.25s both' // Added 0.25s delay
+                gap: '2.5rem',
+                animation: 'fadeIn 0.6s ease-out both'
             }}>
                 <div style={{
-                    width: '50px',
-                    height: '50px',
-                    border: '3px solid rgba(255, 82, 82, 0.1)',
-                    borderTop: '3px solid #ff5252',
-                    borderRadius: '50%',
-                    animation: 'spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite',
-                    marginBottom: '0.5rem'
-                }} />
+                    width: '120px',
+                    height: 'auto',
+                    position: 'relative',
+                    animation: 'logoPulse 2s ease-in-out infinite'
+                }}>
+                    <img src={logo} alt="Dary Logo" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                </div>
+                
                 <div style={{ textAlign: 'center' }}>
                     <div style={{ 
-                        fontSize: '0.9rem', 
+                        fontSize: '0.75rem', 
                         fontWeight: 900, 
-                        letterSpacing: '4px', 
-                        textTransform: 'uppercase',
-                        color: '#ff5252',
-                        opacity: 0.9,
-                        marginBottom: '4px'
-                    }}>DARY SYSTEM</div>
-                    <div style={{ 
-                        fontSize: '0.65rem', 
-                        fontWeight: 700, 
-                        letterSpacing: '6px', 
+                        letterSpacing: '8px', 
                         textTransform: 'uppercase',
                         color: 'rgba(255,255,255,0.4)',
-                        animation: 'pulse 1.5s ease-in-out infinite'
+                        marginRight: '-8px' // Compensation for the last letter-spacing
                     }}>ЗАРЕЖДАНЕ</div>
+                    <div style={{
+                        marginTop: '0.75rem',
+                        height: '2px',
+                        width: '40px',
+                        background: 'var(--primary-color, #00adb5)',
+                        margin: '0.75rem auto 0',
+                        borderRadius: 'full',
+                        animation: 'barLoading 1.5s ease-in-out infinite'
+                    }} />
                 </div>
             </div>
             <style>{`
-                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-                @keyframes pulse { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.6; } }
+                @keyframes logoPulse { 
+                    0%, 100% { transform: scale(1); opacity: 0.8; filter: drop-shadow(0 0 0 rgba(0,173,181,0)); } 
+                    50% { transform: scale(1.05); opacity: 1; filter: drop-shadow(0 0 20px rgba(0,173,181,0.3)); } 
+                }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes barLoading { 0% { width: 10px; opacity: 0.2; } 50% { width: 60px; opacity: 1; } 100% { width: 10px; opacity: 0.2; } }
             `}</style>
         </div>
     );
