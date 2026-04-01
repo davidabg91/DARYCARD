@@ -22,13 +22,24 @@ function GlobalNfcListener() {
   const nfcStartedRef = React.useRef(false);
 
   React.useEffect(() => {
+    interface NDEFReadingEvent extends Event {
+      message: {
+        records: {
+          recordType: string;
+          data: DataView;
+        }[];
+      };
+    }
+
     const startNfc = async () => {
       if (!('NDEFReader' in window) || nfcStartedRef.current) return;
       try {
-        const reader = new (window as any).NDEFReader();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ReaderClass = (window as any).NDEFReader;
+        const reader = new ReaderClass();
         await reader.scan();
         nfcStartedRef.current = true;
-        reader.onreading = (event: any) => {
+        reader.onreading = (event: NDEFReadingEvent) => {
           const { message } = event;
           for (const record of message.records) {
             if (record.recordType === "url") {
