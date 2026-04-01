@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import React, { lazy, Suspense } from 'react';
+import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -17,6 +17,51 @@ const BusRental = lazy(() => import('./pages/BusRental'));
 
 const PageLoader = () => <LoadingScreen />;
 
+function GlobalNfcListener() {
+  const navigate = useNavigate();
+  const nfcStartedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    const startNfc = async () => {
+      if (!('NDEFReader' in window) || nfcStartedRef.current) return;
+      try {
+        const reader = new (window as any).NDEFReader();
+        await reader.scan();
+        nfcStartedRef.current = true;
+        reader.onreading = (event: any) => {
+          const { message } = event;
+          for (const record of message.records) {
+            if (record.recordType === "url") {
+              const decoder = new TextDecoder();
+              const url = decoder.decode(record.data);
+              const parts = url.split('/client/');
+              if (parts.length > 1) {
+                const id = parts[1].split(/[?#]/)[0].trim();
+                if (id) navigate(`/client/${id}`);
+              }
+            }
+          }
+        };
+      } catch (e) { console.warn("NFC error:", e); }
+    };
+
+    const handleInteraction = () => {
+      startNfc();
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction);
+    return () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+  }, [navigate]);
+
+  return null;
+}
+
 function ClientProfileWrapper() {
   return <ClientProfile />;
 }
@@ -25,6 +70,7 @@ function App() {
   return (
     <AuthProvider>
       <HashRouter>
+        <GlobalNfcListener />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public — no login needed */}
