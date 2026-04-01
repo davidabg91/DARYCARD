@@ -12,7 +12,7 @@
 
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="theme-color" content="#000000" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     
@@ -37,57 +37,13 @@
     
     <style>
       :root {
-        --bg-color: #1a1a1a;
-        --primary-color: #ff5252;
+        --bg-color: #000000;
       }
       body {
         margin: 0;
         background-color: var(--bg-color);
         min-height: 100vh;
         font-family: 'Inter', sans-serif;
-      }
-      #initial-loader {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-      }
-      .spinner {
-        width: 50px;
-        height: 50px;
-        border: 3px solid rgba(255, 82, 82, 0.1);
-        border-top: 3px solid var(--primary-color);
-        border-radius: 50%;
-        animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        margin-bottom: 0.5rem;
-      }
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      .loader-content {
-        text-align: center;
-      }
-      .loader-title {
-        color: var(--primary-color);
-        font-size: 0.9rem;
-        font-weight: 900;
-        letter-spacing: 4px;
-        text-transform: uppercase;
-        opacity: 0.9;
-        margin-bottom: 4px;
-      }
-      .loader-subtitle {
-        color: rgba(255, 255, 255, 0.4);
-        font-size: 0.65rem;
-        font-weight: 700;
-        letter-spacing: 6px;
-        text-transform: uppercase;
-        animation: pulse 1.5s ease-in-out infinite;
-      }
-      @keyframes pulse {
-        0%, 100% { opacity: 0.2; }
-        50% { opacity: 0.6; }
       }
     </style>
     
@@ -143,14 +99,7 @@
   </head>
   <body>
     <div id="root">
-      <!-- Instant Inlined Loader (Replaced by React) -->
-      <div id="initial-loader">
-        <div class="spinner"></div>
-        <div class="loader-content">
-          <div class="loader-title">DARY SYSTEM</div>
-          <div class="loader-subtitle">ЗАРЕЖДАНЕ</div>
-        </div>
-      </div>
+      <!-- App mounts here -->
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
