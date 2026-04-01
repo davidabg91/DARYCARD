@@ -3,7 +3,7 @@ import logo from '../assets/logo_main.png';
 const LoadingScreen: React.FC = () => {
     return (
         <div style={{ 
-            height: '100vh', 
+            height: '100dvh', 
             width: '100vw', 
             display: 'flex', 
             alignItems: 'center', 
@@ -57,7 +57,7 @@ const LoadingScreen: React.FC = () => {
                     0%, 100% { transform: scale(1); opacity: 0.85; filter: drop-shadow(0 0 0 rgba(0,173,181,0)); } 
                     50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 30px rgba(0,173,181,0.4)); } 
                 }
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                 @keyframes barLoading { 0% { width: 20px; opacity: 0.2; } 50% { width: 120px; opacity: 1; } 100% { width: 20px; opacity: 0.2; } }
             `}</style>
         </div>
