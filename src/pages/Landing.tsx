@@ -720,11 +720,7 @@ const Landing: React.FC = () => {
                                                     </h4>
                                                     <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: '0.2rem' }}>(делнични дни)</div>
                                                 </div>
-                                                <div style={{ 
-                                                    display: 'grid', 
-                                                    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
-                                                    gap: '1rem' 
-                                                }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
                                                     <div>
                                                         <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
                                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
@@ -738,6 +734,57 @@ const Landing: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 </div>
+
+                                                {/* Saturday Schedule */}
+                                                {sched.saturday && (
+                                                    <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.2rem' }}>
+                                                        <div style={{ marginBottom: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                            <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#ff9800', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                                <Clock size={16} /> СЪБОТА
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
+                                                            <div>
+                                                                <div style={{ fontSize: '0.7rem', color: '#ff9800', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                    {sched.saturday.fromPleven.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '0.7rem', color: '#ff9800', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                    {sched.saturday.fromDestination.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Sunday Schedule */}
+                                                {sched.sunday && (
+                                                    <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.2rem' }}>
+                                                        <div style={{ marginBottom: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                            <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#ff5252', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                                <Clock size={16} /> НЕДЕЛЯ
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
+                                                            <div>
+                                                                <div style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                    {sched.sunday.fromPleven.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                    {sched.sunday.fromDestination.map(t => <span key={t} className="schedule-tag">{t}</span>)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 {originMapping[line] && (
                                                     <div style={{ 
                                                         marginTop: '1rem', 
