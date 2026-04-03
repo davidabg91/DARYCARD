@@ -945,9 +945,10 @@ const AdminPanel: React.FC = () => {
                                 const rows = filteredReportClients.map(c => {
                                     const isShort = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
                                     const distStr = isShort ? "До 10 км" : "Над 10 км";
+                                    const distancePart = reportDistanceFilter === 'all' ? '' : ` (${distStr})`;
                                     const addressPart = (reportCardType === 'Пенсионерска карта' && c.address) ? ` - Адрес: ${c.address}` : '';
                                     const schoolPart = (reportCardType === 'Ученическа карта' && c.school) ? ` (${c.school})` : '';
-                                    return `${c.name}${schoolPart}${addressPart} - ${c.cardType || 'Нормална карта'} - ${c.route} (${distStr}) - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
+                                    return `${c.name}${schoolPart}${addressPart} - ${c.cardType || 'Нормална карта'} - ${c.route}${distancePart} - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
                                 }).join('\n');
                                 const footer = `\n---\nОбщо: ${totalReportRevenue.toFixed(2)} €`;
                                 const shareText = header + rows + footer;
@@ -1031,8 +1032,10 @@ const AdminPanel: React.FC = () => {
                                             <p style={{ marginBottom: '1.5rem', fontSize: '14px', color: '#555' }}>
                                                 <strong>Месец:</strong> {reportMonth === 'all' ? 'Всички' : reportMonth} | 
                                                 <strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички' : reportCardType} | 
-                                                <strong> Маршрут:</strong> {reportRoute === 'all' ? 'Всички' : reportRoute} | 
-                                                <strong> Разстояние:</strong> {reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}
+                                                <strong> Маршрут:</strong> {reportRoute === 'all' ? 'Всички' : reportRoute}
+                                                {reportDistanceFilter !== 'all' && (
+                                                    <> | <strong>Разстояние:</strong> {reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км'}</>
+                                                )}
                                             </p>
                                         </div>
                                         {!isMobile ? (
@@ -1043,7 +1046,7 @@ const AdminPanel: React.FC = () => {
                                                             <th>Име на Клиент</th>
                                                             <th>Вид Карта</th>
                                                             <th>Курс</th>
-                                                            <th>Разстояние</th>
+                                                            {reportDistanceFilter !== 'all' && <th>Разстояние</th>}
                                                             {reportCardType === 'Пенсионерска карта' && <th>Адрес</th>}
                                                             {reportCardType === 'Ученическа карта' && <th>Училище</th>}
                                                             <th>Платена Сума</th>
@@ -1055,7 +1058,11 @@ const AdminPanel: React.FC = () => {
                                                                 <td style={{ fontWeight: 600 }}>{c.name}</td>
                                                                 <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>{c.cardType || 'Нормална карта'}</span></td>
                                                                 <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
-                                                                <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}</td>
+                                                                {reportDistanceFilter !== 'all' && (
+                                                                    <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                                        {["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}
+                                                                    </td>
+                                                                )}
                                                                 {reportCardType === 'Пенсионерска карта' && <td style={{ fontSize: '0.8rem' }}>{c.address || '---'}</td>}
                                                                 {reportCardType === 'Ученическа карта' && <td style={{ fontSize: '0.8rem' }}>{c.school || '---'}</td>}
                                                                 <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €</td>
@@ -1090,12 +1097,14 @@ const AdminPanel: React.FC = () => {
                                                             <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
                                                                 {c.cardType || 'Нормална карта'}
                                                             </span>
-                                                            <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(0, 173, 181, 0.1)', borderRadius: '6px', color: 'var(--primary-color)', fontWeight: 600 }}>
+                                                            <span style={{ fontSize: '0.7rem', padding: '0.6rem 1.2rem', background: 'rgba(0, 173, 181, 0.1)', borderRadius: '6px', color: 'var(--primary-color)', fontWeight: 600 }}>
                                                                 {c.route}
                                                             </span>
-                                                            <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
-                                                                {["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}
-                                                            </span>
+                                                            {reportDistanceFilter !== 'all' && (
+                                                                <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
+                                                                    {["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}
+                                                                </span>
+                                                            )}
                                                             {reportCardType === 'Пенсионерска карта' && (
                                                                 <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'rgba(255,171,0,0.8)', fontStyle: 'italic' }}>
                                                                     <b>Адрес:</b> {c.address || 'Няма въведен адрес'}
