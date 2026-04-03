@@ -76,7 +76,7 @@ const ROUTES = [
     "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
     "Долна Митрополия", "Ясен", "Крушовица", "Дисевица", "Търнене", "Градина",
     "Петърница", "Опанец", "Победа", "Подем", "Божурица",
-    "Горни Дъбник",
+    "Горни Дъбник", "Ясен-Дисевица",
     "Долни Дъбник - Садовец", "Долна Митрополия - Тръстеник", "Долна Митрополия - Славовица"
 ];
 
@@ -264,6 +264,7 @@ const AdminPanel: React.FC = () => {
     const [reportMonth, setReportMonth] = useState<string>('all');
     const [reportCardType, setReportCardType] = useState<string>('all');
     const [reportRoute, setReportRoute] = useState<string>('all');
+    const [reportDistanceFilter, setReportDistanceFilter] = useState<string>('all');
 
     const [photoError, setPhotoError] = useState<string | null>(null);
     
@@ -900,14 +901,24 @@ const AdminPanel: React.FC = () => {
                                 }
                                 if (reportRoute !== 'all' && c.route !== reportRoute) match = false;
                                 if (reportMonth !== 'all' && getMonthPayment(c, reportMonth) <= 0) match = false;
+                                
+                                // Distance Filter Logic
+                                const isShortDistance = ["Ясен", "Опанец", "Дисевица", "Търнене", "Ясен-Дисевица"].includes(c.route);
+                                if (reportDistanceFilter === 'under10' && !isShortDistance) match = false;
+                                if (reportDistanceFilter === 'over10' && isShortDistance) match = false;
+
                                 return match;
                             });
                             
                             const totalReportRevenue = filteredReportClients.reduce((sum, c) => sum + (reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)), 0);
                             
                             const handleShareReport = async () => {
-                                const header = `Финансов Отчет DARY COMMERCE\nМесец: ${reportMonth === 'all' ? 'Всички' : reportMonth} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute}\n---\n`;
-                                const rows = filteredReportClients.map(c => `${c.name} - ${c.cardType || 'Нормална карта'} - ${c.route} - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`).join('\n');
+                                const header = `Финансов Отчет DARY COMMERCE\nМесец: ${reportMonth === 'all' ? 'Всички' : reportMonth} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute} | Дистанция: ${reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}\n---\n`;
+                                const rows = filteredReportClients.map(c => {
+                                    const isShort = ["Ясен", "Опанец", "Дисевица", "Търнене", "Ясен-Дисевица"].includes(c.route);
+                                    const distStr = isShort ? "До 10 км" : "Над 10 км";
+                                    return `${c.name} - ${c.cardType || 'Нормална карта'} - ${c.route} (${distStr}) - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
+                                }).join('\n');
                                 const footer = `\n---\nОбщо: ${totalReportRevenue.toFixed(2)} €`;
                                 const shareText = header + rows + footer;
 
@@ -962,8 +973,17 @@ const AdminPanel: React.FC = () => {
                                             <select value={reportCardType} onChange={e => setReportCardType(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
                                                 <option value="all">Всички Видове</option>
                                                 <option value="Нормална карта">Нормална карта</option>
-                                                <option value="Детска карта">Детска карта</option>
+                                                <option value="Ученическа карта">Ученическа карта</option>
                                                 <option value="Пенсионерска карта">Пенсионерска карта</option>
+                                                <option value="Инвалидна карта">Инвалидна карта</option>
+                                            </select>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Разстояние</label>
+                                            <select value={reportDistanceFilter} onChange={e => setReportDistanceFilter(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                                <option value="all">Всички</option>
+                                                <option value="under10">До 10 км</option>
+                                                <option value="over10">Над 10 км</option>
                                             </select>
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
@@ -980,8 +1000,9 @@ const AdminPanel: React.FC = () => {
                                             <h2 style={{ marginBottom: '1rem', color: 'black' }}>Финансов Отчет DARY COMMERCE</h2>
                                             <p style={{ marginBottom: '1.5rem', fontSize: '14px', color: '#555' }}>
                                                 <strong>Месец:</strong> {reportMonth === 'all' ? 'Всички' : reportMonth} | 
-                                                <strong> Вид Карта:</strong> {reportCardType === 'all' ? 'Всички' : reportCardType} | 
-                                                <strong> Маршрут:</strong> {reportRoute === 'all' ? 'Всички' : reportRoute}
+                                                <strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички' : reportCardType} | 
+                                                <strong> Маршрут:</strong> {reportRoute === 'all' ? 'Всички' : reportRoute} | 
+                                                <strong> Разстояние:</strong> {reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}
                                             </p>
                                         </div>
                                         {!isMobile ? (
@@ -992,6 +1013,7 @@ const AdminPanel: React.FC = () => {
                                                             <th>Име на Клиент</th>
                                                             <th>Вид Карта</th>
                                                             <th>Курс</th>
+                                                            <th>Разстояние</th>
                                                             <th>Платена Сума</th>
                                                         </tr>
                                                     </thead>
@@ -1001,6 +1023,7 @@ const AdminPanel: React.FC = () => {
                                                                 <td style={{ fontWeight: 600 }}>{c.name}</td>
                                                                 <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>{c.cardType || 'Нормална карта'}</span></td>
                                                                 <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
+                                                                <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{["Ясен", "Опанец", "Дисевица", "Търнене", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}</td>
                                                                 <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €</td>
                                                             </tr>
                                                         )) : (
@@ -1035,6 +1058,9 @@ const AdminPanel: React.FC = () => {
                                                             </span>
                                                             <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(0, 173, 181, 0.1)', borderRadius: '6px', color: 'var(--primary-color)', fontWeight: 600 }}>
                                                                 {c.route}
+                                                            </span>
+                                                            <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
+                                                                {["Ясен", "Опанец", "Дисевица", "Търнене", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -1356,8 +1382,9 @@ const AdminPanel: React.FC = () => {
                                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Вид Карта</label>
                                         <select style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }} value={cardType} onChange={e => setCardType(e.target.value)} required>
                                             <option value="Нормална карта">Нормална карта</option>
-                                            <option value="Детска карта">Детска карта</option>
+                                            <option value="Ученическа карта">Ученическа карта</option>
                                             <option value="Пенсионерска карта">Пенсионерска карта</option>
+                                            <option value="Инвалидна карта">Инвалидна карта</option>
                                         </select>
                                     </div>
                                     <div>
