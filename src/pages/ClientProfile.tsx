@@ -23,6 +23,7 @@ interface Client {
     history?: { date: string; action: string; details?: string; amount?: number; performedBy?: string; }[];
     cardType?: string;
     address?: string;
+    school?: string;
 }
 
 const ROUTES = [
@@ -33,6 +34,27 @@ const ROUTES = [
     "Ясен-Дисевица",
     "Д. Дъбник - Садовец", "Д.Митрополия - Тръстеник", "Д.Митрополия - Славовица"
 ];
+const SCHOOLS = [
+    "ДФСГ",
+    "МГ ГЕО МИЛЕВ",
+    "МЕД. УНИВЕРСИТЕТ",
+    "ОУ „Д-Р ПЕТЪР БЕРОН“",
+    "ОУ „ЦВ СПАСОВ“",
+    "ПГ ЕХТ",
+    "ПГ ЛВ",
+    "ПГ МЕТ",
+    "ПГ ОТ „ХР БОЯДЖИЕВ“",
+    "ПГ ПССТ",
+    "ПГ ПЧЕ",
+    "ПГ САГ",
+    "ПГ Т „ЦВ ЛАЗАРОВ“",
+    "ПГ ТУРИЗЪМ",
+    "ПГ ХВТ",
+    "СУ „АН. ДИМИТРОВА“",
+    "СУ „Г. БЕНКОВСКИ“",
+    "СУ „ИВ. ВАЗОВ“",
+    "СУ „СТ. ЗАИМОВ“"
+].sort((a, b) => a.localeCompare(b, 'bg'));
 
 const sanitizeId = (id: string | null | undefined): string => {
     if (!id) return '';
@@ -92,6 +114,8 @@ const ClientProfile: React.FC = () => {
     
     const [regName, setRegName] = useState('');
     const [regCardType, setRegCardType] = useState('Нормална карта');
+    const [regSelectedSchool, setRegSelectedSchool] = useState('');
+    const [regCustomSchool, setRegCustomSchool] = useState('');
     const [regRoute, setRegRoute] = useState('');
     const [regAmount, setRegAmount] = useState('50');
     const [regPhoto, setRegPhoto] = useState<string | null>(null);
@@ -252,6 +276,7 @@ const ClientProfile: React.FC = () => {
             route: regRoute,
             cardType: regCardType,
             address: regCardType === 'Пенсионерска карта' ? regAddress : '',
+            school: regCardType === 'Ученическа карта' ? (regSelectedSchool === 'custom' ? regCustomSchool : regSelectedSchool) : '',
             expiryDate: expiryMonth,
             photo: regPhoto,
             createdAt: now.toISOString(),
@@ -482,6 +507,35 @@ const ClientProfile: React.FC = () => {
                                     <option value="Пенсионерска карта">Пенсионерска карта</option>
                                     <option value="Инвалидна карта">Инвалидна карта</option>
                                 </select></div>
+                                {regCardType === 'Ученическа карта' && (
+                                    <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--primary-color)', marginBottom: '0.4rem', display: 'block', fontWeight: 800 }}>УЧИЛИЩЕ</label>
+                                            <select 
+                                                value={regSelectedSchool} 
+                                                onChange={e => setRegSelectedSchool(e.target.value)} 
+                                                style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid var(--primary-color)', borderRadius: '12px', color: '#fff', outline: 'none' }}
+                                                required={regCardType === 'Ученическа карта'}
+                                            >
+                                                <option value="">Избери училище...</option>
+                                                {SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
+                                                <option value="custom">Друго (въведи ръчно)...</option>
+                                            </select>
+                                        </div>
+                                        {regSelectedSchool === 'custom' && (
+                                            <div style={{ animation: 'slideDown 0.3s ease' }}>
+                                                <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>ИМЕ НА УЧИЛИЩЕ</label>
+                                                <input 
+                                                    value={regCustomSchool} 
+                                                    onChange={e => setRegCustomSchool(e.target.value)} 
+                                                    style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} 
+                                                    placeholder="Въведи училище..." 
+                                                    required={regSelectedSchool === 'custom'}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 {regCardType === 'Пенсионерска карта' && (
                                     <div style={{ animation: 'fadeIn 0.3s ease' }}>
                                         <label style={{ fontSize: '0.8rem', color: '#ffab00', marginBottom: '0.4rem', display: 'block', fontWeight: 800 }}>АДРЕС (Задължително за пенсионери)</label>

@@ -48,6 +48,7 @@ interface Client {
     scanHistory?: string[];
     cardType?: string;
     address?: string;
+    school?: string;
 }
 
 interface Signal {
@@ -80,6 +81,27 @@ const ROUTES = [
     "Горни Дъбник", "Ясен-Дисевица",
     "Долни Дъбник - Садовец", "Долна Митрополия - Тръстеник", "Долна Митрополия - Славовица"
 ];
+const SCHOOLS = [
+    "ДФСГ",
+    "МГ ГЕО МИЛЕВ",
+    "МЕД. УНИВЕРСИТЕТ",
+    "ОУ „Д-Р ПЕТЪР БЕРОН“",
+    "ОУ „ЦВ СПАСОВ“",
+    "ПГ ЕХТ",
+    "ПГ ЛВ",
+    "ПГ МЕТ",
+    "ПГ ОТ „ХР БОЯДЖИЕВ“",
+    "ПГ ПССТ",
+    "ПГ ПЧЕ",
+    "ПГ САГ",
+    "ПГ Т „ЦВ ЛАЗАРОВ“",
+    "ПГ ТУРИЗЪМ",
+    "ПГ ХВТ",
+    "СУ „АН. ДИМИТРОВА“",
+    "СУ „Г. БЕНКОВСКИ“",
+    "СУ „ИВ. ВАЗОВ“",
+    "СУ „СТ. ЗАИМОВ“"
+].sort((a, b) => a.localeCompare(b, 'bg'));
 
 const generateClientId = () => Math.random().toString(36).substr(2, 9).toUpperCase();
 
@@ -234,6 +256,8 @@ const AdminPanel: React.FC = () => {
     const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
     const [nfcLinkId, setNfcLinkId] = useState('');
     const [address, setAddress] = useState('');
+    const [selectedSchool, setSelectedSchool] = useState('');
+    const [customSchool, setCustomSchool] = useState('');
     const [isWaitingForScan, setIsWaitingForScan] = useState(false);
 
     // Modal/Action State
@@ -469,6 +493,7 @@ const AdminPanel: React.FC = () => {
             expiryDate: expiryDate,
             photo: photoDataURL || '',
             address: cardType === 'Пенсионерска карта' ? address : '',
+            school: cardType === 'Ученическа карта' ? (selectedSchool === 'custom' ? customSchool : selectedSchool) : '',
             createdAt: new Date().toISOString(),
             renewalHistory: [{ date: new Date().toISOString(), amount: Number(amountPaid), month: expiryDate }],
             history: [{
@@ -490,7 +515,7 @@ const AdminPanel: React.FC = () => {
             
             if (isNew) {
                 setRegistrationSuccess(client);
-                setClientName(''); setCardType('Нормална карта'); setAddress(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
+                setClientName(''); setCardType('Нормална карта'); setAddress(''); setSelectedSchool(''); setCustomSchool(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
                 setShowActionModal(false);
                 setSelectedClient(null);
             } else {
@@ -921,7 +946,8 @@ const AdminPanel: React.FC = () => {
                                     const isShort = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
                                     const distStr = isShort ? "До 10 км" : "Над 10 км";
                                     const addressPart = (reportCardType === 'Пенсионерска карта' && c.address) ? ` - Адрес: ${c.address}` : '';
-                                    return `${c.name}${addressPart} - ${c.cardType || 'Нормална карта'} - ${c.route} (${distStr}) - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
+                                    const schoolPart = (reportCardType === 'Ученическа карта' && c.school) ? ` (${c.school})` : '';
+                                    return `${c.name}${schoolPart}${addressPart} - ${c.cardType || 'Нормална карта'} - ${c.route} (${distStr}) - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
                                 }).join('\n');
                                 const footer = `\n---\nОбщо: ${totalReportRevenue.toFixed(2)} €`;
                                 const shareText = header + rows + footer;
@@ -1019,6 +1045,7 @@ const AdminPanel: React.FC = () => {
                                                             <th>Курс</th>
                                                             <th>Разстояние</th>
                                                             {reportCardType === 'Пенсионерска карта' && <th>Адрес</th>}
+                                                            {reportCardType === 'Ученическа карта' && <th>Училище</th>}
                                                             <th>Платена Сума</th>
                                                         </tr>
                                                     </thead>
@@ -1030,6 +1057,7 @@ const AdminPanel: React.FC = () => {
                                                                 <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
                                                                 <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}</td>
                                                                 {reportCardType === 'Пенсионерска карта' && <td style={{ fontSize: '0.8rem' }}>{c.address || '---'}</td>}
+                                                                {reportCardType === 'Ученическа карта' && <td style={{ fontSize: '0.8rem' }}>{c.school || '---'}</td>}
                                                                 <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €</td>
                                                             </tr>
                                                         )) : (
@@ -1071,6 +1099,11 @@ const AdminPanel: React.FC = () => {
                                                             {reportCardType === 'Пенсионерска карта' && (
                                                                 <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'rgba(255,171,0,0.8)', fontStyle: 'italic' }}>
                                                                     <b>Адрес:</b> {c.address || 'Няма въведен адрес'}
+                                                                </div>
+                                                            )}
+                                                            {reportCardType === 'Ученическа карта' && (
+                                                                <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--primary-color)', fontStyle: 'italic' }}>
+                                                                    <b>Училище:</b> {c.school || 'Няма въведено училище'}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1409,6 +1442,36 @@ const AdminPanel: React.FC = () => {
                                                 placeholder="напр. ул. Иван Вазов 10, Плевен"
                                                 required={cardType === 'Пенсионерска карта'} 
                                             />
+                                        </div>
+                                    )}
+                                    {cardType === 'Ученическа карта' && (
+                                        <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--primary-color)', fontWeight: 700 }}>Училище</label>
+                                                <select 
+                                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--primary-color)', color: 'white' }} 
+                                                    value={selectedSchool} 
+                                                    onChange={e => setSelectedSchool(e.target.value)}
+                                                    required={cardType === 'Ученическа карта'}
+                                                >
+                                                    <option value="">-- Изберете Училище --</option>
+                                                    {SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
+                                                    <option value="custom">Друго (въведи ръчно)...</option>
+                                                </select>
+                                            </div>
+                                            {selectedSchool === 'custom' && (
+                                                <div style={{ animation: 'slideDown 0.3s ease' }}>
+                                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Име на Училището</label>
+                                                    <input 
+                                                        type="text" 
+                                                        style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} 
+                                                        value={customSchool} 
+                                                        onChange={e => setCustomSchool(e.target.value)} 
+                                                        placeholder="Въведете училище тук..."
+                                                        required={selectedSchool === 'custom'}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                     <div>
