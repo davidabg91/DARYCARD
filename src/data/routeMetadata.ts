@@ -56,8 +56,8 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   },
   "Горна Митрополия": {
     stops: ["Плевен", "Опанец", "Д.М", "Г.М"],
-    priceSingle: "1.55 €",
-    priceCard: "31.00 €"
+    priceSingle: "1.50 €",
+    priceCard: "51.00 €"
   },
   "Опанец": {
     stops: ["Плевен", "Опанец"],
