@@ -915,7 +915,7 @@ const Landing: React.FC = () => {
                                  <h4 style={{ marginBottom: '1.5rem', fontWeight: 900, color: 'var(--primary-color)' }}>Работно Време</h4>
                                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                      <span>Понеделник - Петък</span>
-                                     <span style={{ fontWeight: 800 }}>07:30 - 18:30</span>
+                                     <span style={{ fontWeight: 800 }}>08:00 - 17:00</span>
                                  </div>
                                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.8rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)' }}>
                                      <span>Събота</span>
