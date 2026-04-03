@@ -47,6 +47,7 @@ interface Client {
     lastScanAt?: string;
     scanHistory?: string[];
     cardType?: string;
+    address?: string;
 }
 
 interface Signal {
@@ -232,6 +233,7 @@ const AdminPanel: React.FC = () => {
     const [expiryDate, setExpiryDate] = useState(getDefaultExpiryMonth());
     const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
     const [nfcLinkId, setNfcLinkId] = useState('');
+    const [address, setAddress] = useState('');
     const [isWaitingForScan, setIsWaitingForScan] = useState(false);
 
     // Modal/Action State
@@ -466,6 +468,7 @@ const AdminPanel: React.FC = () => {
             amountPaid: Number(amountPaid),
             expiryDate: expiryDate,
             photo: photoDataURL || '',
+            address: cardType === 'Пенсионерска карта' ? address : '',
             createdAt: new Date().toISOString(),
             renewalHistory: [{ date: new Date().toISOString(), amount: Number(amountPaid), month: expiryDate }],
             history: [{
@@ -487,7 +490,7 @@ const AdminPanel: React.FC = () => {
             
             if (isNew) {
                 setRegistrationSuccess(client);
-                setClientName(''); setCardType('Нормална карта'); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
+                setClientName(''); setCardType('Нормална карта'); setAddress(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
                 setShowActionModal(false);
                 setSelectedClient(null);
             } else {
@@ -917,7 +920,8 @@ const AdminPanel: React.FC = () => {
                                 const rows = filteredReportClients.map(c => {
                                     const isShort = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
                                     const distStr = isShort ? "До 10 км" : "Над 10 км";
-                                    return `${c.name} - ${c.cardType || 'Нормална карта'} - ${c.route} (${distStr}) - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
+                                    const addressPart = (reportCardType === 'Пенсионерска карта' && c.address) ? ` - Адрес: ${c.address}` : '';
+                                    return `${c.name}${addressPart} - ${c.cardType || 'Нормална карта'} - ${c.route} (${distStr}) - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
                                 }).join('\n');
                                 const footer = `\n---\nОбщо: ${totalReportRevenue.toFixed(2)} €`;
                                 const shareText = header + rows + footer;
@@ -1014,6 +1018,7 @@ const AdminPanel: React.FC = () => {
                                                             <th>Вид Карта</th>
                                                             <th>Курс</th>
                                                             <th>Разстояние</th>
+                                                            {reportCardType === 'Пенсионерска карта' && <th>Адрес</th>}
                                                             <th>Платена Сума</th>
                                                         </tr>
                                                     </thead>
@@ -1024,6 +1029,7 @@ const AdminPanel: React.FC = () => {
                                                                 <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>{c.cardType || 'Нормална карта'}</span></td>
                                                                 <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
                                                                 <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}</td>
+                                                                {reportCardType === 'Пенсионерска карта' && <td style={{ fontSize: '0.8rem' }}>{c.address || '---'}</td>}
                                                                 <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €</td>
                                                             </tr>
                                                         )) : (
@@ -1062,6 +1068,11 @@ const AdminPanel: React.FC = () => {
                                                             <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
                                                                 {["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}
                                                             </span>
+                                                            {reportCardType === 'Пенсионерска карта' && (
+                                                                <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'rgba(255,171,0,0.8)', fontStyle: 'italic' }}>
+                                                                    <b>Адрес:</b> {c.address || 'Няма въведен адрес'}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 )) : (
@@ -1387,6 +1398,19 @@ const AdminPanel: React.FC = () => {
                                             <option value="Инвалидна карта">Инвалидна карта</option>
                                         </select>
                                     </div>
+                                    {cardType === 'Пенсионерска карта' && (
+                                        <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#ffab00', fontWeight: 700 }}>Адрес (Задължително за пенсионери)</label>
+                                            <input 
+                                                type="text" 
+                                                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(255, 171, 0, 0.05)', border: '1px solid rgba(255, 171, 0, 0.3)', color: '#ffab00' }} 
+                                                value={address} 
+                                                onChange={e => setAddress(e.target.value)} 
+                                                placeholder="напр. ул. Иван Вазов 10, Плевен"
+                                                required={cardType === 'Пенсионерска карта'} 
+                                            />
+                                        </div>
+                                    )}
                                     <div>
                                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Курс (Маршрут)</label>
                                         <select style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }} value={selectedRoute} onChange={e => setSelectedRoute(e.target.value)} required>

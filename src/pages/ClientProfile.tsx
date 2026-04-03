@@ -22,6 +22,7 @@ interface Client {
     renewalHistory?: { date: string, amount: number, month: string }[];
     history?: { date: string; action: string; details?: string; amount?: number; performedBy?: string; }[];
     cardType?: string;
+    address?: string;
 }
 
 const ROUTES = [
@@ -94,6 +95,7 @@ const ClientProfile: React.FC = () => {
     const [regRoute, setRegRoute] = useState('');
     const [regAmount, setRegAmount] = useState('50');
     const [regPhoto, setRegPhoto] = useState<string | null>(null);
+    const [regAddress, setRegAddress] = useState('');
     const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
     const cloudSyncStatusRef = useRef(cloudSyncStatus);
     useEffect(() => { cloudSyncStatusRef.current = cloudSyncStatus; }, [cloudSyncStatus]);
@@ -249,6 +251,7 @@ const ClientProfile: React.FC = () => {
             name: regName,
             route: regRoute,
             cardType: regCardType,
+            address: regCardType === 'Пенсионерска карта' ? regAddress : '',
             expiryDate: expiryMonth,
             photo: regPhoto,
             createdAt: now.toISOString(),
@@ -479,6 +482,18 @@ const ClientProfile: React.FC = () => {
                                     <option value="Пенсионерска карта">Пенсионерска карта</option>
                                     <option value="Инвалидна карта">Инвалидна карта</option>
                                 </select></div>
+                                {regCardType === 'Пенсионерска карта' && (
+                                    <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                                        <label style={{ fontSize: '0.8rem', color: '#ffab00', marginBottom: '0.4rem', display: 'block', fontWeight: 800 }}>АДРЕС (Задължително за пенсионери)</label>
+                                        <input 
+                                            value={regAddress} 
+                                            onChange={e => setRegAddress(e.target.value)} 
+                                            style={{ width: '100%', padding: '1rem', background: 'rgba(255,171,0,0.05)', border: '1px solid rgba(255,171,0,0.3)', borderRadius: '12px', color: '#ffab00', outline: 'none' }} 
+                                            placeholder="напр. гр. Плевен, ул. Свобода 1..." 
+                                            required={regCardType === 'Пенсионерска карта'}
+                                        />
+                                    </div>
+                                )}
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МАРШРУТ (КУРС)</label><select value={regRoute} onChange={e => setRegRoute(e.target.value)} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}><option value="">Избери маршрут...</option>{ROUTES.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>СУМА (€)</label><input type="number" value={regAmount} onChange={e => setRegAmount(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} /></div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МЕСЕЦ</label><input type="month" value={regMonth} onChange={e => setRegMonth(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none', colorScheme: 'dark' }} /></div>
