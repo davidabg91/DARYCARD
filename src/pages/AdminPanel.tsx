@@ -903,7 +903,7 @@ const AdminPanel: React.FC = () => {
                                 if (reportMonth !== 'all' && getMonthPayment(c, reportMonth) <= 0) match = false;
                                 
                                 // Distance Filter Logic
-                                const isShortDistance = ["Ясен", "Опанец", "Дисевица", "Търнене", "Ясен-Дисевица"].includes(c.route);
+                                const isShortDistance = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
                                 if (reportDistanceFilter === 'under10' && !isShortDistance) match = false;
                                 if (reportDistanceFilter === 'over10' && isShortDistance) match = false;
 
@@ -915,7 +915,7 @@ const AdminPanel: React.FC = () => {
                             const handleShareReport = async () => {
                                 const header = `Финансов Отчет DARY COMMERCE\nМесец: ${reportMonth === 'all' ? 'Всички' : reportMonth} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute} | Дистанция: ${reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}\n---\n`;
                                 const rows = filteredReportClients.map(c => {
-                                    const isShort = ["Ясен", "Опанец", "Дисевица", "Търнене", "Ясен-Дисевица"].includes(c.route);
+                                    const isShort = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
                                     const distStr = isShort ? "До 10 км" : "Над 10 км";
                                     return `${c.name} - ${c.cardType || 'Нормална карта'} - ${c.route} (${distStr}) - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
                                 }).join('\n');
@@ -1023,7 +1023,7 @@ const AdminPanel: React.FC = () => {
                                                                 <td style={{ fontWeight: 600 }}>{c.name}</td>
                                                                 <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>{c.cardType || 'Нормална карта'}</span></td>
                                                                 <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
-                                                                <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{["Ясен", "Опанец", "Дисевица", "Търнене", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}</td>
+                                                                <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}</td>
                                                                 <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €</td>
                                                             </tr>
                                                         )) : (
@@ -1060,7 +1060,7 @@ const AdminPanel: React.FC = () => {
                                                                 {c.route}
                                                             </span>
                                                             <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
-                                                                {["Ясен", "Опанец", "Дисевица", "Търнене", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}
+                                                                {["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}
                                                             </span>
                                                         </div>
                                                     </div>
