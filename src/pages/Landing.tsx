@@ -632,12 +632,6 @@ const Landing: React.FC = () => {
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', padding: '0.8rem 0 1.2rem' }}>
                                                 {/* Pleven -> Destination */}
                                                 <div style={{ background: 'rgba(0,173,181,0.03)', padding: '4.5rem 1rem 4.5rem', borderRadius: '16px', border: '1px solid rgba(0,173,181,0.1)' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem', marginTop: '-3rem' }}>
-                                                        <div style={{ width: '8px', height: '8px', background: 'var(--primary-color)', borderRadius: '50%' }} />
-                                                        <div style={{ fontSize: '0.65rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                                             ОТ ПЛЕВЕН → {line.toUpperCase()}
-                                                        </div>
-                                                    </div>
                                                     <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem', position: 'relative' }}>
                                                         {meta.stops.map((stop, i) => (
                                                             <React.Fragment key={i}>
