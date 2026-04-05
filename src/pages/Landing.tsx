@@ -38,28 +38,43 @@ const Landing: React.FC = () => {
         const sched = SCHEDULES[line];
         if (!sched) return null;
         
-        let times = sched[direction];
         const day = currentTime.getDay();
-        if (day === 6 && sched.saturday) { // Saturday
-            times = sched.saturday[direction];
-        } else if (day === 0 && sched.sunday) { // Sunday
-            times = sched.sunday[direction];
-        }
-
-        if (!times || times.length === 0) return null;
-        
         const now = currentTime.getHours() * 60 + currentTime.getMinutes();
-        const soonest = times
+        
+        const getScheduleForDay = (d: number) => {
+            if (d === 6 && sched.saturday) return sched.saturday[direction];
+            if (d === 0 && sched.sunday) return sched.sunday[direction];
+            return sched[direction];
+        };
+
+        const todayTimes = getScheduleForDay(day);
+        if (!todayTimes || todayTimes.length === 0) return null;
+
+        const nextToday = todayTimes
             .map(t => {
                 const [h, m] = t.split(':').map(Number);
-                const total = h * 60 + m;
-                // If the bus is yet to come today, return minutes remaining
-                // If all buses for today have passed, return minutes until first bus tomorrow (simplified)
-                return total > now ? total - now : (24 * 60 - now) + total;
+                return h * 60 + m;
             })
-            .sort((a, b) => a - b)[0];
+            .filter(m => m > now)
+            .sort((a,b) => a - b)[0];
 
-        return soonest === undefined ? null : soonest;
+        if (nextToday !== undefined) {
+            return nextToday - now;
+        }
+
+        // This is a simplified "tomorrow":
+        const tomorrowDay = (day + 1) % 7;
+        const tomorrowTimes = getScheduleForDay(tomorrowDay);
+        if (!tomorrowTimes || tomorrowTimes.length === 0) return null;
+
+        const firstTomorrow = tomorrowTimes
+            .map(t => {
+                const [h, m] = t.split(':').map(Number);
+                return h * 60 + m;
+            })
+            .sort((a,b) => a - b)[0];
+
+        return (24 * 60 - now) + firstTomorrow;
     };
 
     const formatCountdown = (mins: number | null) => {
@@ -748,108 +763,87 @@ const Landing: React.FC = () => {
                                                 padding: '1.2rem', 
                                                 background: 'rgba(255,255,255,0.02)', 
                                                 borderRadius: '16px',
-                                                animation: 'fadeIn 0.3s ease-out'
+                                                animation: 'fadeIn 0.3s ease-out',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '1.5rem'
                                             }}>
-                                                <div style={{ marginBottom: '1.2rem', paddingBottom: '0.8rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <div style={{ marginBottom: '-0.5rem', paddingBottom: '0.8rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                     <h4 style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                                         <Clock size={16} /> Пълно разписание на курса
                                                     </h4>
-                                                    <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: '0.2rem' }}>(делнични дни)</div>
-                                                </div>
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
-                                                    <div>
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
-                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                            {sched.fromPleven.map(t => (
-                                                                <span key={t} className={`schedule-tag ${isWorkday && t === getNextTime(sched.fromPleven) ? 'next-bus-tag-active' : ''}`}>
-                                                                    {t}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
-                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                            {sched.fromDestination.map(t => (
-                                                                <span key={t} className={`schedule-tag ${isWorkday && t === getNextTime(sched.fromDestination) ? 'next-bus-tag-active' : ''}`}>
-                                                                    {t}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
                                                 </div>
 
-                                                {/* Saturday Schedule */}
-                                                {sched.saturday && (() => {
-                                                    const satSched = sched.saturday;
-                                                    return (
-                                                        <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.2rem' }}>
-                                                            <div style={{ marginBottom: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                                <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#ff9800', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                                                    <Clock size={16} /> СЪБОТА
+                                                {/* Reordered Schedule Groups */}
+                                                {[
+                                                    { 
+                                                        id: 'sunday', 
+                                                        condition: !!sched.sunday, 
+                                                        isCurrent: isSun, 
+                                                        label: 'НЕДЕЛЯ', 
+                                                        color: '#ff5252', 
+                                                        times: sched.sunday 
+                                                    },
+                                                    { 
+                                                        id: 'saturday', 
+                                                        condition: !!sched.saturday, 
+                                                        isCurrent: isSat, 
+                                                        label: 'СЪБОТА', 
+                                                        color: '#ff9800', 
+                                                        times: sched.saturday 
+                                                    },
+                                                    { 
+                                                        id: 'weekday', 
+                                                        condition: true, 
+                                                        isCurrent: isWorkday, 
+                                                        label: 'ДЕЛНИЧНИ ДНИ', 
+                                                        color: 'var(--primary-color)', 
+                                                        times: sched 
+                                                    }
+                                                ]
+                                                .sort((a, b) => {
+                                                    if (a.isCurrent) return -1;
+                                                    if (b.isCurrent) return 1;
+                                                    return 0;
+                                                })
+                                                .filter(group => group.condition)
+                                                .map((group) => (
+                                                    <div key={group.id} style={{ 
+                                                        marginTop: '0.5rem', 
+                                                        padding: '1rem', 
+                                                        background: group.isCurrent ? 'rgba(255,255,255,0.03)' : 'transparent',
+                                                        borderRadius: '12px',
+                                                        border: group.isCurrent ? `1px solid ${group.color}44` : '1px solid transparent'
+                                                    }}>
+                                                        <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                            <div style={{ fontSize: '0.75rem', fontWeight: 900, color: group.color, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                                {group.label} {group.isCurrent && <span style={{ fontSize: '0.6rem', background: group.color, color: '#000', padding: '1px 6px', borderRadius: '4px', marginLeft: '5px' }}>ДНЕС</span>}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
+                                                            <div>
+                                                                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                    {group.times!.fromPleven.map(t => (
+                                                                        <span key={t} className={`schedule-tag ${group.isCurrent && t === getNextTime(group.times!.fromPleven) ? 'next-bus-tag-active' : ''}`}>
+                                                                            {t}
+                                                                        </span>
+                                                                    ))}
                                                                 </div>
                                                             </div>
-                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
-                                                                <div>
-                                                                    <div style={{ fontSize: '0.7rem', color: '#ff9800', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
-                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                                        {satSched.fromPleven.map(t => (
-                                                                            <span key={t} className={`schedule-tag ${isSat && t === getNextTime(satSched.fromPleven) ? 'next-bus-tag-active' : ''}`}>
-                                                                                {t}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                                <div>
-                                                                    <div style={{ fontSize: '0.7rem', color: '#ff9800', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
-                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                                        {satSched.fromDestination.map(t => (
-                                                                            <span key={t} className={`schedule-tag ${isSat && t === getNextTime(satSched.fromDestination) ? 'next-bus-tag-active' : ''}`}>
-                                                                                {t}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                    {group.times!.fromDestination.map(t => (
+                                                                        <span key={t} className={`schedule-tag ${group.isCurrent && t === getNextTime(group.times!.fromDestination) ? 'next-bus-tag-active' : ''}`}>
+                                                                            {t}
+                                                                        </span>
+                                                                    ))}
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    );
-                                                })()}
-
-                                                {/* Sunday Schedule */}
-                                                {sched.sunday && (() => {
-                                                    const sunSched = sched.sunday;
-                                                    return (
-                                                        <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.2rem' }}>
-                                                            <div style={{ marginBottom: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                                <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#ff5252', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                                                    <Clock size={16} /> НЕДЕЛЯ
-                                                                </div>
-                                                            </div>
-                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
-                                                                <div>
-                                                                    <div style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
-                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                                        {sunSched.fromPleven.map(t => (
-                                                                            <span key={t} className={`schedule-tag ${isSun && t === getNextTime(sunSched.fromPleven) ? 'next-bus-tag-active' : ''}`}>
-                                                                                {t}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                                <div>
-                                                                    <div style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
-                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                                        {sunSched.fromDestination.map(t => (
-                                                                            <span key={t} className={`schedule-tag ${isSun && t === getNextTime(sunSched.fromDestination) ? 'next-bus-tag-active' : ''}`}>
-                                                                                {t}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })()}
+                                                    </div>
+                                                ))}
 
                                                 {originMapping[line] && (
                                                     <div style={{ 
