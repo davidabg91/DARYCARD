@@ -37,14 +37,24 @@ const Landing: React.FC = () => {
     const getNextBus = (line: string, direction: 'fromPleven' | 'fromDestination') => {
         const sched = SCHEDULES[line];
         if (!sched) return null;
-        const times = sched[direction];
-        if (!times) return null;
+        
+        let times = sched[direction];
+        const day = currentTime.getDay();
+        if (day === 6 && sched.saturday) { // Saturday
+            times = sched.saturday[direction];
+        } else if (day === 0 && sched.sunday) { // Sunday
+            times = sched.sunday[direction];
+        }
+
+        if (!times || times.length === 0) return null;
         
         const now = currentTime.getHours() * 60 + currentTime.getMinutes();
         const soonest = times
             .map(t => {
                 const [h, m] = t.split(':').map(Number);
                 const total = h * 60 + m;
+                // If the bus is yet to come today, return minutes remaining
+                // If all buses for today have passed, return minutes until first bus tomorrow (simplified)
                 return total > now ? total - now : (24 * 60 - now) + total;
             })
             .sort((a, b) => a - b)[0];
@@ -621,21 +631,22 @@ const Landing: React.FC = () => {
                                         {meta && (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', padding: '0.8rem 0 1.2rem' }}>
                                                 {/* Pleven -> Destination */}
-                                                <div style={{ background: 'rgba(0,173,181,0.03)', padding: '1.2rem 1rem 4.5rem', borderRadius: '16px', border: '1px solid rgba(0,173,181,0.1)' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem' }}>
+                                                <div style={{ background: 'rgba(0,173,181,0.03)', padding: '4.5rem 1rem 4.5rem', borderRadius: '16px', border: '1px solid rgba(0,173,181,0.1)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem', marginTop: '-3rem' }}>
                                                         <div style={{ width: '8px', height: '8px', background: 'var(--primary-color)', borderRadius: '50%' }} />
                                                         <div style={{ fontSize: '0.65rem', color: 'var(--primary-color)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
                                                              ОТ ПЛЕВЕН → {line.toUpperCase()}
                                                         </div>
                                                     </div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem', position: 'relative' }}>
                                                         {meta.stops.map((stop, i) => (
                                                             <React.Fragment key={i}>
                                                                 <div className="stop-dot" title={stop} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
                                                                     <div style={{ width: '10px', height: '10px', background: 'var(--primary-color)', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)' }} />
                                                                     <span style={{ 
                                                                         position: 'absolute', 
-                                                                        top: '22px', 
+                                                                        top: i % 2 === 0 ? '22px' : 'auto',
+                                                                        bottom: i % 2 !== 0 ? '22px' : 'auto', 
                                                                         fontSize: 'clamp(0.6rem, 1.25vw, 0.85rem)', 
                                                                         whiteSpace: 'nowrap', 
                                                                         opacity: 0.9,

@@ -19,8 +19,16 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
 
     if (!scheduleData) return null;
 
-    const isSunday = currentTime.getDay() === 0;
-    const activeSchedule = (isSunday && scheduleData.sunday) ? scheduleData.sunday : scheduleData;
+    const day = currentTime.getDay();
+    const isSunday = day === 0;
+    const isSaturday = day === 6;
+    
+    let activeSchedule = scheduleData;
+    if (isSunday && scheduleData.sunday) {
+        activeSchedule = scheduleData.sunday;
+    } else if (isSaturday && scheduleData.saturday) {
+        activeSchedule = scheduleData.saturday;
+    }
 
     const getMinutes = (timeStr: string) => {
         const [hours, minutes] = timeStr.split(':').map(Number);
@@ -55,7 +63,9 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                     <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '1px' }}>РАЗПИСАНИЕ АВТОБУСИ</span>
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
-                    ({isSunday ? 'неделя' : (route === 'Тръстеник' ? 'понеделник-събота' : 'делнични дни')})
+                    ({isSunday ? 'неделя' : 
+                      isSaturday ? 'събота' : 
+                      (route === 'Тръстеник' ? 'понеделник-събота' : 'делнични дни')})
                 </div>
                 {isBarkachRoute && (
                     <div style={{ fontSize: '0.75rem', color: '#ffb74d', fontWeight: 600, textAlign: 'center', marginTop: '6px', maxWidth: '90%' }}>
