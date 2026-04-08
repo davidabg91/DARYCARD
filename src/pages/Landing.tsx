@@ -3,9 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   Clock, MapPin, Search, 
   CreditCard, ExternalLink,
-  ArrowRight, Phone, MessageCircle, AlertTriangle, Info, Ticket
+  ArrowRight, Phone, MessageCircle, AlertTriangle, Info, Ticket,
+  Bell, Calendar
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 import { SCHEDULES } from '../data/schedules';
 import { ROUTE_METADATA, abbreviate } from '../data/routeMetadata';
 import PushSubscription from '../components/PushSubscription';
@@ -14,6 +17,25 @@ const Landing: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentTime, setCurrentTime] = useState(new Date());
     const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
+    const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
+
+    useEffect(() => {
+        const q = query(
+            collection(db, 'push_notifications'),
+            orderBy('timestamp', 'desc'),
+            limit(3)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const notifs = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setRecentNotifications(notifs);
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 10000);
@@ -463,6 +485,106 @@ const Landing: React.FC = () => {
                         />
                     </div>
                 </div>
+
+                {/* Announcements Section */}
+                {recentNotifications.length > 0 && !selectedRoute && (
+                    <div style={{ 
+                        maxWidth: '800px', 
+                        margin: '0 auto 4rem',
+                        animation: 'fadeIn 0.6s ease-out'
+                    }}>
+                        <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '0.8rem', 
+                            marginBottom: '1.5rem',
+                            padding: '0 1rem'
+                        }}>
+                            <div style={{ 
+                                width: '32px', 
+                                height: '32px', 
+                                borderRadius: '8px', 
+                                background: 'rgba(255, 82, 82, 0.1)', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                color: '#ff5252'
+                            }}>
+                                <Bell size={18} />
+                            </div>
+                            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, letterSpacing: '1px' }}>
+                                ВАЖНИ ИЗВЕСТИЯ
+                            </h2>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {recentNotifications.map((notif) => (
+                                <div key={notif.id} style={{ 
+                                    background: 'rgba(255, 255, 255, 0.02)',
+                                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                                    borderRadius: '24px',
+                                    padding: '1.5rem',
+                                    backdropFilter: 'blur(10px)',
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                }}>
+                                    <div style={{ 
+                                        position: 'absolute', 
+                                        top: 0, 
+                                        left: 0, 
+                                        width: '4px', 
+                                        height: '100%', 
+                                        background: '#ff5252' 
+                                    }} />
+                                    
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.8rem' }}>
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#ff5252' }}>
+                                            {notif.title}
+                                        </h3>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '0.4rem', 
+                                            fontSize: '0.75rem', 
+                                            color: 'rgba(255,255,255,0.4)',
+                                            fontWeight: 600
+                                        }}>
+                                            <Calendar size={12} />
+                                            {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString('bg-BG') : ''}
+                                        </div>
+                                    </div>
+                                    
+                                    <p style={{ 
+                                        margin: 0, 
+                                        fontSize: '0.95rem', 
+                                        lineHeight: 1.6, 
+                                        color: 'rgba(255,255,255,0.8)',
+                                        whiteSpace: 'pre-wrap'
+                                    }}>
+                                        {notif.body}
+                                    </p>
+
+                                    {notif.courseId && notif.courseId !== 'all' && (
+                                        <div style={{ 
+                                            marginTop: '1rem', 
+                                            display: 'inline-flex', 
+                                            padding: '0.3rem 0.8rem', 
+                                            background: 'rgba(255,255,255,0.05)', 
+                                            borderRadius: '8px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            color: 'rgba(255,255,255,0.5)',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                            Линия: {notif.courseId}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Back Button for Selected Route */}
                 {selectedRoute && (
