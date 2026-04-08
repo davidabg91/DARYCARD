@@ -9,7 +9,7 @@ import {
     AlertCircle, Bus, Send, Bell
 } from 'lucide-react';
 import Card from '../components/Card';
-import { db, messaging } from '../firebase';
+import { db } from '../firebase';
 import { 
     addDoc,
     doc, 

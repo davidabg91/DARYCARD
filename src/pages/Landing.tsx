@@ -560,13 +560,11 @@ const Landing: React.FC = () => {
                             const nextFromDest = getNextBus(line, 'fromDestination');
                             const meta = ROUTE_METADATA[line];
                             const sched = SCHEDULES[line];
-                            const isExpanded = true; // Use true to show full schedule by default as requested
+                            const isExpanded = true; 
                             
-                            // Parse labels for "From - To" routes
                             let fromLabel = 'ПЛЕВЕН';
                             let toLabel = line.toUpperCase();
                             
-                            // Special origin mappings for sub-routes
                             const originMapping: Record<string, string> = {
                                 "Божурица": "РИБЕН",
                                 "Победа": "РИБЕН",
@@ -645,7 +643,6 @@ const Landing: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        {/* Visual Paths */}
                                         {meta && (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', padding: '0.8rem 0 1.2rem' }}>
                                                 {/* Pleven -> Destination */}
@@ -729,7 +726,6 @@ const Landing: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        {/* Discount Information Notice */}
                                         <div style={{
                                             padding: '0.8rem 1rem',
                                             background: 'rgba(0,173,181,0.05)',
@@ -760,7 +756,6 @@ const Landing: React.FC = () => {
                                             </p>
                                         </div>
 
-                                        {/* Expanded Schedule */}
                                         {isExpanded && (
                                             <div style={{ 
                                                 padding: '1.2rem', 
@@ -777,7 +772,6 @@ const Landing: React.FC = () => {
                                                     </h4>
                                                 </div>
 
-                                                {/* Reordered Schedule Groups */}
                                                 {[
                                                     { 
                                                         id: 'sunday', 
@@ -805,7 +799,7 @@ const Landing: React.FC = () => {
                                                     }
                                                 ]
                                                 .filter(group => group.condition)
-                                                .sort((a, b) => (a.isCurrent ? -1 : 1))
+                                                .sort((a, _b) => (a.isCurrent ? -1 : 1))
                                                 .map((group) => (
                                                     <div key={group.id} style={{ 
                                                         marginTop: '0.5rem', 
@@ -886,7 +880,6 @@ const Landing: React.FC = () => {
                                                     </div>
                                                 ))}
 
-                                                {/* Push Notification Subscription */}
                                                 <PushSubscription courseId={line} />
 
                                                 {originMapping[line] && (
@@ -910,7 +903,6 @@ const Landing: React.FC = () => {
                     </div>
                 )}
 
-                {/* Info Section */}
                 <section id="info-section" className="mobile-info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1rem', overflowX: 'hidden' }}>
                     <div className="info-container">
                         <div style={{ flex: '1', width: '100%', minWidth: 0 }}>
@@ -974,7 +966,6 @@ const Landing: React.FC = () => {
 
             </main>
 
-            {/* Footer */}
             <footer style={{ 
                 borderTop: '1px solid rgba(255,255,255,0.05)', 
                 padding: 'clamp(2rem, 8vw, 4rem) 1.5rem 2rem',
@@ -1065,7 +1056,6 @@ const Landing: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Legal Info Bar */}
                 <div style={{ 
                     maxWidth: '1200px', 
                     margin: '3rem auto 0', 

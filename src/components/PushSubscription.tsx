@@ -15,15 +15,14 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
     const [showSuccess, setShowSuccess] = useState(false);
 
     useEffect(() => {
+        const checkSubscription = async () => {
+            const storedToken = localStorage.getItem(`fcm_token_${courseId}`);
+            if (storedToken) {
+                setIsSubscribed(true);
+            }
+        };
         checkSubscription();
     }, [courseId]);
-
-    const checkSubscription = async () => {
-        const storedToken = localStorage.getItem(`fcm_token_${courseId}`);
-        if (storedToken) {
-            setIsSubscribed(true);
-        }
-    };
 
     const handleSubscribe = async () => {
         if (!messaging) return;
@@ -68,9 +67,10 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
                 setShowSuccess(true);
                 setTimeout(() => setShowSuccess(false), 3000);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Unknown error';
             console.error('Subscription error:', err);
-            setError('Възникна грешка при абонамента. ' + (err.message || ''));
+            setError('Възникна грешка при абонамента. ' + message);
         } finally {
             setLoading(false);
         }
