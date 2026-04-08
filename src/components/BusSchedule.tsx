@@ -31,7 +31,9 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
     }
 
     const getMinutes = (timeStr: string) => {
-        const [hours, minutes] = timeStr.split(':').map(Number);
+        const parts = timeStr.split(':');
+        const hours = parseInt(parts[0]);
+        const minutes = parseInt(parts[1]); // parseInt handles strings like "00 (ново)" correctly
         return hours * 60 + minutes;
     };
 
@@ -68,8 +70,24 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                       (route === 'Тръстеник' ? 'понеделник-събота' : 'делнични дни')})
                 </div>
                 {isBarkachRoute && (
-                    <div style={{ fontSize: '0.75rem', color: '#ffb74d', fontWeight: 600, textAlign: 'center', marginTop: '6px', maxWidth: '90%' }}>
-                        * Посочените часове са за курса до Бъркач. Автобусът обслужва и {abbreviate(route)}.
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#ffb74d', fontWeight: 600, textAlign: 'center', marginTop: '6px', maxWidth: '90%' }}>
+                            * Посочените часове са за курса до Бъркач. Автобусът обслужва и {abbreviate(route)}.
+                        </div>
+                        <div style={{ 
+                            fontSize: '0.75rem', 
+                            color: '#00e676', 
+                            fontWeight: 800, 
+                            textAlign: 'center', 
+                            marginTop: '2px', 
+                            maxWidth: '90%', 
+                            padding: '4px 12px', 
+                            background: 'rgba(0, 230, 118, 0.05)', 
+                            borderRadius: '100px',
+                            border: '1px solid rgba(0, 230, 118, 0.1)'
+                        }}>
+                             ВАЖНО: Има промяна в разписанието за делнични дни (отбелязани с "ново").
+                        </div>
                     </div>
                 )}
             </div>

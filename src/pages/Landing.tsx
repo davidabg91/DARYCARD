@@ -52,8 +52,8 @@ const Landing: React.FC = () => {
 
         const nextToday = todayTimes
             .map(t => {
-                const [h, m] = t.split(':').map(Number);
-                return h * 60 + m;
+                const parts = t.split(':');
+                return parseInt(parts[0]) * 60 + parseInt(parts[1]);
             })
             .filter(m => m > now)
             .sort((a,b) => a - b)[0];
@@ -69,8 +69,8 @@ const Landing: React.FC = () => {
 
         const firstTomorrow = tomorrowTimes
             .map(t => {
-                const [h, m] = t.split(':').map(Number);
-                return h * 60 + m;
+                const parts = t.split(':');
+                return parseInt(parts[0]) * 60 + parseInt(parts[1]);
             })
             .sort((a,b) => a - b)[0];
 
@@ -97,7 +97,9 @@ const Landing: React.FC = () => {
         const now = currentTime.getHours() * 60 + currentTime.getMinutes();
         const future = times
             .map(t => {
-                const [h, m] = t.split(':').map(Number);
+                const parts = t.split(':');
+                const h = parseInt(parts[0]);
+                const m = parseInt(parts[1]);
                 return { t, mins: h * 60 + m };
             })
             .filter(x => x.mins > now)
@@ -772,6 +774,22 @@ const Landing: React.FC = () => {
                                                     <h4 style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                                         <Clock size={16} /> Пълно разписание на курса
                                                     </h4>
+                                                    {line === 'Бъркач' && (
+                                                        <div style={{ 
+                                                            fontSize: '0.75rem', 
+                                                            color: 'var(--success-color)', 
+                                                            fontWeight: 800, 
+                                                            textAlign: 'center', 
+                                                            marginTop: '8px', 
+                                                            padding: '6px 16px', 
+                                                            background: 'rgba(46, 204, 113, 0.1)', 
+                                                            borderRadius: '100px',
+                                                            border: '1px solid rgba(46, 204, 113, 0.2)',
+                                                            animation: 'fadeIn 0.5s ease-out'
+                                                        }}>
+                                                            АКТУАЛИЗИРАНО: Промяна в разписанието за делнични дни (отбелязани с "ново").
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Reordered Schedule Groups */}
