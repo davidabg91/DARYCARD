@@ -50,6 +50,12 @@ export const sendPushNotification = functions.firestore
                         title: title,
                         body: body,
                     },
+                    webpush: {
+                        notification: {
+                            icon: 'https://darycommerce.com/pwa-icon.png',
+                            badge: 'https://darycommerce.com/favicon.png', // Small monochrome icon for the status bar
+                        }
+                    },
                     tokens: batchTokens,
                 };
 
