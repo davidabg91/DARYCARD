@@ -13,11 +13,19 @@ import { SCHEDULES } from '../data/schedules';
 import { ROUTE_METADATA, abbreviate } from '../data/routeMetadata';
 import PushSubscription from '../components/PushSubscription';
 
+interface Announcement {
+    id: string;
+    title: string;
+    body: string;
+    courseId?: string;
+    timestamp?: number | string;
+}
+
 const Landing: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentTime, setCurrentTime] = useState(new Date());
     const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
-    const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
+    const [recentNotifications, setRecentNotifications] = useState<Announcement[]>([]);
 
     useEffect(() => {
         const q = query(
@@ -30,7 +38,7 @@ const Landing: React.FC = () => {
             const notifs = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
-            }));
+            })) as Announcement[];
             setRecentNotifications(notifs);
         });
 
