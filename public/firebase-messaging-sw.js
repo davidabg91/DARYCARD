@@ -12,9 +12,30 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  // We no longer call self.registration.showNotification here because 
+// We no longer call self.registration.showNotification here because 
   // the FCM SDK displays the 'notification' payload automatically, 
   // preventing double notifications on the device.
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  // Define where to go when the notification is clicked
+  const urlToOpen = new URL('/', self.location.origin).href;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // If a window is already open, focus it
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If no window is open, open a new one
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });

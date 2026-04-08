@@ -58,6 +58,9 @@ export const sendPushNotification = functions.firestore
                             icon: 'https://darycommerce.com/pwa-icon.png',
                             badge: 'https://darycommerce.com/favicon.png',
                             image: 'https://darycommerce.com/pwa-icon.png'
+                        },
+                        fcmOptions: {
+                            link: 'https://darycommerce.com/'
                         }
                     },
                     android: {
