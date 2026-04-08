@@ -9,7 +9,7 @@ admin.initializeApp();
  */
 export const sendPushNotification = functions.firestore
     .document("push_notifications/{notificationId}")
-    .onCreate(async (snapshot) => {
+    .onCreate(async (snapshot: admin.firestore.QueryDocumentSnapshot) => {
         const data = snapshot.data();
         if (!data) return;
 
@@ -29,7 +29,7 @@ export const sendPushNotification = functions.firestore
             const subscribers = await query.get();
             const tokens: string[] = [];
 
-            subscribers.forEach((doc) => {
+            subscribers.forEach((doc: admin.firestore.QueryDocumentSnapshot) => {
                 const token = doc.data().token;
                 if (token && !tokens.includes(token)) {
                     tokens.push(token);

@@ -95,9 +95,10 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
                 localStorage.removeItem(`fcm_token_${courseId}`);
                 setIsSubscribed(false);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Unsubscribe error:', err);
-            setError('Грешка при отказ: ' + (err.message || 'Неизвестна грешка'));
+            const errorMessage = err instanceof Error ? err.message : 'Неизвестна грешка';
+            setError('Грешка при отказ: ' + errorMessage);
         } finally {
             setLoading(false);
         }
