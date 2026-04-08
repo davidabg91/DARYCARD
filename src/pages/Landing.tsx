@@ -799,7 +799,7 @@ const Landing: React.FC = () => {
                                                     }
                                                 ]
                                                 .filter(group => group.condition)
-                                                .sort((a, _b) => (a.isCurrent ? -1 : 1))
+                                                .sort((a, b) => (a.isCurrent === b.isCurrent ? 0 : a.isCurrent ? -1 : 1))
                                                 .map((group) => (
                                                     <div key={group.id} style={{ 
                                                         marginTop: '0.5rem', 
