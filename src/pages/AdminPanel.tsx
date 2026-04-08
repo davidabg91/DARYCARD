@@ -1053,6 +1053,44 @@ const AdminPanel: React.FC = () => {
                             </div>
                         </Card>
                     </div>
+
+                    <Card style={{ marginTop: '2rem' }}>
+                        <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--primary-color)' }}>
+                            <Users size={20} /> Статистика на Абонатите по Линии
+                        </h3>
+                        <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', 
+                            gap: '1rem' 
+                        }}>
+                            {Object.keys(ROUTE_METADATA).map(routeId => {
+                                const count = subscribers.filter(s => s.courseId === routeId).length;
+                                if (count === 0) return null; // Only show routes with subscribers to keep it clean, or show all? 
+                                return (
+                                    <div key={routeId} style={{ 
+                                        padding: '1rem', 
+                                        background: 'rgba(255,255,255,0.02)', 
+                                        border: '1px solid var(--surface-border)', 
+                                        borderRadius: '12px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.5rem'
+                                    }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: getRouteColor(routeId) }}>{routeId}</div>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+                                            <span style={{ fontSize: '1.5rem', fontWeight: 900 }}>{count}</span>
+                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>АБОНАТИ</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {subscribers.length === 0 && (
+                                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                                    Все още няма регистрирани абонати по нито една линия.
+                                </div>
+                            )}
+                        </div>
+                    </Card>
                 </div>
             )}
 
