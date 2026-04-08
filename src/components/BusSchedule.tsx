@@ -96,48 +96,94 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                 {/* Outward */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginBottom: '4px' }}>ОТ {fromLabel}</div>
-                    {activeSchedule.fromPleven.map(time => {
-                        const isPast = getMinutes(time) < currentMinutes;
-                        const isNext = !isPast && activeSchedule.fromPleven.find(t => getMinutes(t) >= currentMinutes) === time;
-                        return (
-                            <div key={time} style={{
-                                background: isNext ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255,255,255,0.03)',
-                                color: isNext ? '#00e676' : (isPast ? 'rgba(255,255,255,0.2)' : '#fff'),
-                                padding: '8px',
-                                borderRadius: '10px',
-                                textAlign: 'center',
-                                fontSize: '0.9rem',
-                                fontWeight: isNext ? 900 : 700,
-                                border: isNext ? '1px solid #00e676' : '1px solid transparent'
-                            }}>
-                                {time}
-                            </div>
-                        );
-                    })}
-                </div>
+                            {activeSchedule.fromPleven.map(time => {
+                                const isPast = getMinutes(time) < currentMinutes;
+                                const isNext = !isPast && activeSchedule.fromPleven.find(t => getMinutes(t) >= currentMinutes) === time;
+                                const isNew = time.includes('*');
+                                const displayTime = time.replace('*', '');
+                                
+                                return (
+                                    <div key={time} style={{
+                                        background: isNext ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255,255,255,0.03)',
+                                        color: isNext ? '#00e676' : (isPast ? 'rgba(255,255,255,0.2)' : '#fff'),
+                                        padding: '8px',
+                                        paddingTop: isNew ? '12px' : '8px', // Adjust padding for badge
+                                        borderRadius: '10px',
+                                        textAlign: 'center',
+                                        fontSize: '0.9rem',
+                                        fontWeight: isNext ? 900 : 700,
+                                        border: isNext ? '1px solid #00e676' : '1px solid transparent',
+                                        position: 'relative' // For badge positioning
+                                    }}>
+                                        {isNew && (
+                                            <span style={{
+                                                position: 'absolute',
+                                                top: '-8px',
+                                                left: '50%',
+                                                transform: 'translateX(-50%)',
+                                                background: '#ff5252',
+                                                color: '#fff',
+                                                fontSize: '0.55rem',
+                                                fontWeight: 900,
+                                                padding: '2px 6px',
+                                                borderRadius: '6px',
+                                                textTransform: 'uppercase',
+                                                zIndex: 5,
+                                                boxShadow: '0 2px 4px rgba(255, 82, 82, 0.3)',
+                                                letterSpacing: '0.5px'
+                                            }}>ново</span>
+                                        )}
+                                        {displayTime}
+                                    </div>
+                                );
+                            })}
+                        </div>
 
                 {/* Return */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginBottom: '4px' }}>ОТ {toLabel === 'ПЛЕВЕН' ? 'ДЕСТИНАЦИЯ' : toLabel}</div>
-                    {activeSchedule.fromDestination.map(time => {
-                        const isPast = getMinutes(time) < currentMinutes;
-                        const isNext = !isPast && activeSchedule.fromDestination.find(t => getMinutes(t) >= currentMinutes) === time;
-                        return (
-                            <div key={time} style={{
-                                background: isNext ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255,255,255,0.03)',
-                                color: isNext ? '#00e676' : (isPast ? 'rgba(255,255,255,0.2)' : '#fff'),
-                                padding: '8px',
-                                borderRadius: '10px',
-                                textAlign: 'center',
-                                fontSize: '0.9rem',
-                                fontWeight: isNext ? 900 : 700,
-                                border: isNext ? '1px solid #00e676' : '1px solid transparent'
-                            }}>
-                                {time}
-                            </div>
-                        );
-                    })}
-                </div>
+                            {activeSchedule.fromDestination.map(time => {
+                                const isPast = getMinutes(time) < currentMinutes;
+                                const isNext = !isPast && activeSchedule.fromDestination.find(t => getMinutes(t) >= currentMinutes) === time;
+                                const isNew = time.includes('*');
+                                const displayTime = time.replace('*', '');
+
+                                return (
+                                    <div key={time} style={{
+                                        background: isNext ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255,255,255,0.03)',
+                                        color: isNext ? '#00e676' : (isPast ? 'rgba(255,255,255,0.2)' : '#fff'),
+                                        padding: '8px',
+                                        paddingTop: isNew ? '12px' : '8px',
+                                        borderRadius: '10px',
+                                        textAlign: 'center',
+                                        fontSize: '0.9rem',
+                                        fontWeight: isNext ? 900 : 700,
+                                        border: isNext ? '1px solid #00e676' : '1px solid transparent',
+                                        position: 'relative'
+                                    }}>
+                                        {isNew && (
+                                            <span style={{
+                                                position: 'absolute',
+                                                top: '-8px',
+                                                left: '50%',
+                                                transform: 'translateX(-50%)',
+                                                background: '#ff5252',
+                                                color: '#fff',
+                                                fontSize: '0.55rem',
+                                                fontWeight: 900,
+                                                padding: '2px 6px',
+                                                borderRadius: '6px',
+                                                textTransform: 'uppercase',
+                                                zIndex: 5,
+                                                boxShadow: '0 2px 4px rgba(255, 82, 82, 0.3)',
+                                                letterSpacing: '0.5px'
+                                            }}>ново</span>
+                                        )}
+                                        {displayTime}
+                                    </div>
+                                );
+                            })}
+                        </div>
             </div>
         </div>
     );

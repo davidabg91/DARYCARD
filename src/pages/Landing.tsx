@@ -842,21 +842,61 @@ const Landing: React.FC = () => {
                                                             <div>
                                                                 <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ ПЛЕВЕН</div>
                                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                                    {group.times!.fromPleven.map(t => (
-                                                                        <span key={t} className={`schedule-tag ${group.isCurrent && t === getNextTime(group.times!.fromPleven) ? 'next-bus-tag-active' : ''}`}>
-                                                                            {t}
-                                                                        </span>
-                                                                    ))}
+                                                                    {group.times!.fromPleven.map(t => {
+                                                                        const isNew = t.includes('*');
+                                                                        const displayTime = t.replace('*', '');
+                                                                        return (
+                                                                            <span key={t} className={`schedule-tag ${group.isCurrent && t === getNextTime(group.times!.fromPleven) ? 'next-bus-tag-active' : ''}`} style={{ position: 'relative' }}>
+                                                                                {isNew && (
+                                                                                    <span style={{
+                                                                                        position: 'absolute',
+                                                                                        top: '-10px',
+                                                                                        left: '50%',
+                                                                                        transform: 'translateX(-50%)',
+                                                                                        background: '#ff5252',
+                                                                                        color: '#fff',
+                                                                                        fontSize: '0.45rem',
+                                                                                        fontWeight: 900,
+                                                                                        padding: '1px 4px',
+                                                                                        borderRadius: '4px',
+                                                                                        zIndex: 5,
+                                                                                        boxShadow: '0 2px 4px rgba(255, 82, 82, 0.3)'
+                                                                                    }}>НОВО</span>
+                                                                                )}
+                                                                                {displayTime}
+                                                                            </span>
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, marginBottom: '0.5rem' }}>ОТ {toLabel}</div>
                                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                                    {group.times!.fromDestination.map(t => (
-                                                                        <span key={t} className={`schedule-tag ${group.isCurrent && t === getNextTime(group.times!.fromDestination) ? 'next-bus-tag-active' : ''}`}>
-                                                                            {t}
-                                                                        </span>
-                                                                    ))}
+                                                                    {group.times!.fromDestination.map(t => {
+                                                                        const isNew = t.includes('*');
+                                                                        const displayTime = t.replace('*', '');
+                                                                        return (
+                                                                            <span key={t} className={`schedule-tag ${group.isCurrent && t === getNextTime(group.times!.fromDestination) ? 'next-bus-tag-active' : ''}`} style={{ position: 'relative' }}>
+                                                                                {isNew && (
+                                                                                    <span style={{
+                                                                                        position: 'absolute',
+                                                                                        top: '-10px',
+                                                                                        left: '50%',
+                                                                                        transform: 'translateX(-50%)',
+                                                                                        background: '#ff5252',
+                                                                                        color: '#fff',
+                                                                                        fontSize: '0.45rem',
+                                                                                        fontWeight: 900,
+                                                                                        padding: '1px 4px',
+                                                                                        borderRadius: '4px',
+                                                                                        zIndex: 5,
+                                                                                        boxShadow: '0 2px 4px rgba(255, 82, 82, 0.3)'
+                                                                                    }}>НОВО</span>
+                                                                                )}
+                                                                                {displayTime}
+                                                                            </span>
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             </div>
                                                         </div>
