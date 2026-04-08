@@ -1034,8 +1034,14 @@ const AdminPanel: React.FC = () => {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                                 {notifications.length > 0 ? (
                                     notifications.map(notif => (
-                                        <div key={notif.id} style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--surface-border)', borderRadius: '12px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                        <div key={notif.id} style={{ 
+                                            padding: '1rem', 
+                                            background: 'rgba(255,255,255,0.02)', 
+                                            border: '1px solid var(--surface-border)', 
+                                            borderRadius: '12px',
+                                            position: 'relative'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', paddingRight: '2rem' }}>
                                                 <div style={{ fontWeight: 800, color: '#ff4081', fontSize: '0.9rem' }}>{notif.title}</div>
                                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{new Date(notif.timestamp).toLocaleString('bg-BG')}</div>
                                             </div>
@@ -1045,6 +1051,36 @@ const AdminPanel: React.FC = () => {
                                                     До: {notif.courseId === 'all' ? 'Всички линии' : notif.courseId}
                                                 </div>
                                             </div>
+
+                                            {/* Delete Button */}
+                                            <button 
+                                                onClick={async () => {
+                                                    if (window.confirm('Сигурни ли сте, че искате да изтриете това известие от историята?')) {
+                                                        try {
+                                                            await deleteDoc(doc(db, 'push_notifications', notif.id));
+                                                        } catch (err) {
+                                                            console.error('Delete notification error:', err);
+                                                            alert('Грешка при триене на известието.');
+                                                        }
+                                                    }
+                                                }}
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: '0.8rem',
+                                                    right: '0.8rem',
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'rgba(255,255,255,0.2)',
+                                                    cursor: 'pointer',
+                                                    padding: '4px',
+                                                    borderRadius: '6px',
+                                                    transition: '0.3s'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.color = '#ff5252'}
+                                                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.2)'}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     ))
                                 ) : (
