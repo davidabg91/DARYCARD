@@ -15,7 +15,6 @@ const messaging = firebase.messaging();
 // We no longer call self.registration.showNotification here because 
   // the FCM SDK displays the 'notification' payload automatically, 
   // preventing double notifications on the device.
-});
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
