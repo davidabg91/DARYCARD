@@ -49,17 +49,22 @@ export const sendPushNotification = functions.firestore
                     notification: {
                         title: title,
                         body: body,
+                        image: 'https://darycommerce.com/pwa-icon.png' // Big image if supported
                     },
                     webpush: {
                         notification: {
+                            title: title,
+                            body: body,
                             icon: 'https://darycommerce.com/pwa-icon.png',
                             badge: 'https://darycommerce.com/favicon.png',
+                            image: 'https://darycommerce.com/pwa-icon.png'
                         }
                     },
                     android: {
                         notification: {
-                            icon: 'stock_white_24dp', // Use system icon for Android status bar if needed
-                            color: '#ff5252'
+                            icon: 'stock_white_24dp',
+                            color: '#ff5252',
+                            image: 'https://darycommerce.com/pwa-icon.png'
                         }
                     },
                     tokens: batchTokens,

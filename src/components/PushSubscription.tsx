@@ -87,14 +87,17 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
                     where('courseId', '==', courseId)
                 );
                 const snapshot = await getDocs(q);
-                snapshot.forEach(async (document) => {
-                    await deleteDoc(doc(db, 'push_subscriptions', document.id));
-                });
+                const deletePromises = snapshot.docs.map(document => 
+                    deleteDoc(doc(db, 'push_subscriptions', document.id))
+                );
+                await Promise.all(deletePromises);
+                
                 localStorage.removeItem(`fcm_token_${courseId}`);
                 setIsSubscribed(false);
             }
         } catch (err) {
             console.error('Unsubscribe error:', err);
+            setError('Възникна грешка при отказ от абонамент. Моля, опитайте пак.');
         } finally {
             setLoading(false);
         }
