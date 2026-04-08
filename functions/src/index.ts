@@ -53,7 +53,13 @@ export const sendPushNotification = functions.firestore
                     webpush: {
                         notification: {
                             icon: 'https://darycommerce.com/pwa-icon.png',
-                            badge: 'https://darycommerce.com/favicon.png', // Small monochrome icon for the status bar
+                            badge: 'https://darycommerce.com/favicon.png',
+                        }
+                    },
+                    android: {
+                        notification: {
+                            icon: 'stock_white_24dp', // Use system icon for Android status bar if needed
+                            color: '#ff5252'
                         }
                     },
                     tokens: batchTokens,
