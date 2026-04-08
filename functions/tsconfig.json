@@ -9,7 +9,7 @@
     "target": "es2020",
     "declaration": true,
     "esModuleInterop": true,
-    "lib": ["es2020", "esnext.disposable"],
+    "lib": ["es2020"],
     "skipLibCheck": true
   },
   "include": [
