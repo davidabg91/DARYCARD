@@ -41,7 +41,7 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
             // 2. Get FCM Token
             // VAPID Key from Firebase Console (optional for some browsers but recommended)
             const token = await getToken(messaging, {
-                vapidKey: 'BGH9-sK4uM0oV-o6YVXZ-vXzW9z-tP9P-E-S-E-E' // Note: This should be user's VAPID key
+                vapidKey: 'BE7-3cZ9dKhdQXrxP7o-QbCvl2XubkfIEkg7w8xsyJFN6OzfQ4YWg4UjuimkaALUBBjXz4Inqzc0bPhdupYOlYo'
             });
 
             if (token) {
