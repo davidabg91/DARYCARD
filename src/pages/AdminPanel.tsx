@@ -239,6 +239,7 @@ const AdminPanel: React.FC = () => {
     const [signals, setSignals] = useState<Signal[]>([]);
     const [rentals, setRentals] = useState<Rental[]>([]);
     const [notifications, setNotifications] = useState<PushNotification[]>([]);
+    const [subscribers, setSubscribers] = useState<{ courseId: string; token: string }[]>([]);
     const [sendingNotification, setSendingNotification] = useState(false);
     const [notifTitle, setNotifTitle] = useState('');
     const [notifBody, setNotifBody] = useState('');
@@ -449,11 +450,22 @@ const AdminPanel: React.FC = () => {
             setNotifications(notifList.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
         });
 
+        // 6. Listen for Push Subscriptions
+        const subQ = query(collection(db, 'push_subscriptions'));
+        const unsubscribeSub = onSnapshot(subQ, (snapshot) => {
+            const list: { courseId: string; token: string }[] = [];
+            snapshot.forEach((doc) => {
+                list.push(doc.data() as { courseId: string; token: string });
+            });
+            setSubscribers(list);
+        });
+
         return () => {
             unsubscribe();
             unsubscribeSignals();
             unsubscribeRentals();
             unsubscribeNotifications();
+            unsubscribeSub();
             actionUnsubscribe();
         };
     }, [location.search]);
@@ -903,7 +915,12 @@ const AdminPanel: React.FC = () => {
                             </h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ДО КУРС / ЛИНИЯ (Изберете една или повече)</label>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ДО КУРС / ЛИНИЯ (Изберете една или повече)</label>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 800, background: 'rgba(0, 173, 181, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                                            ОБЩО АБОНАТИ: {new Set(subscribers.map(s => s.token)).size}
+                                        </div>
+                                    </div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', padding: '0.5rem', background: 'rgba(0,0,0,0.1)', borderRadius: '12px' }}>
                                         <button
                                             onClick={() => setSelectedNotifRoutes(['all'])}
@@ -916,13 +933,17 @@ const AdminPanel: React.FC = () => {
                                                 fontSize: '0.75rem',
                                                 fontWeight: 800,
                                                 cursor: 'pointer',
-                                                transition: 'all 0.3s'
+                                                transition: 'all 0.3s',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.4rem'
                                             }}
                                         >
-                                            ВСИЧКИ АБОНАТИ
+                                            ВСИЧКИ <span style={{ opacity: 0.6, fontSize: '0.65rem' }}>({new Set(subscribers.map(s => s.token)).size})</span>
                                         </button>
                                         {Object.keys(ROUTE_METADATA).map(routeId => {
                                             const isSelected = selectedNotifRoutes.includes(routeId);
+                                            const routeSubCount = subscribers.filter(s => s.courseId === routeId).length;
                                             return (
                                                 <button
                                                     key={routeId}
@@ -947,10 +968,13 @@ const AdminPanel: React.FC = () => {
                                                         fontSize: '0.75rem',
                                                         fontWeight: 800,
                                                         cursor: 'pointer',
-                                                        transition: 'all 0.3s'
+                                                        transition: 'all 0.3s',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.4rem'
                                                     }}
                                                 >
-                                                    {routeId}
+                                                    {routeId} <span style={{ opacity: 0.6, fontSize: '0.65rem' }}>({routeSubCount})</span>
                                                 </button>
                                             );
                                         })}
