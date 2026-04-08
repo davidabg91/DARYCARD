@@ -242,7 +242,7 @@ const AdminPanel: React.FC = () => {
     const [sendingNotification, setSendingNotification] = useState(false);
     const [notifTitle, setNotifTitle] = useState('');
     const [notifBody, setNotifBody] = useState('');
-    const [notifRoute, setNotifRoute] = useState('all');
+    const [selectedNotifRoutes, setSelectedNotifRoutes] = useState<string[]>(['all']);
     const [searchTerm, setSearchTerm] = useState('');
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -459,20 +459,23 @@ const AdminPanel: React.FC = () => {
     }, [location.search]);
 
     const handleSendNotification = async () => {
-        if (!notifTitle || !notifBody) return;
+        if (!notifTitle || !notifBody || selectedNotifRoutes.length === 0) return;
         setSendingNotification(true);
         try {
-            await addDoc(collection(db, 'push_notifications'), {
-                courseId: notifRoute,
-                title: notifTitle,
-                body: notifBody,
-                timestamp: new Date().toISOString(),
-                sentStatus: 'pending',
-                performedBy: currentUser?.username || 'Admin'
-            });
-            
-            // Log as global activity
-            await logGlobalActivity('PUSH_NOTIFICATION', notifRoute, `Изпратено съобщение: ${notifBody}`);
+            // We create separate documents for each selected route to leverage the existing Cloud Function
+            for (const routeId of selectedNotifRoutes) {
+                await addDoc(collection(db, 'push_notifications'), {
+                    courseId: routeId,
+                    title: notifTitle,
+                    body: notifBody,
+                    timestamp: new Date().toISOString(),
+                    sentStatus: 'pending',
+                    performedBy: currentUser?.username || 'Admin'
+                });
+                
+                // Log as global activity
+                await logGlobalActivity('PUSH_NOTIFICATION', routeId, `Изпратено съобщение: ${notifBody}`);
+            }
             
             setNotifTitle('');
             setNotifBody('');
@@ -899,16 +902,59 @@ const AdminPanel: React.FC = () => {
                                 <Send size={20} /> Изпрати Известие
                             </h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ДО КУРС / ЛИНИЯ</label>
-                                    <select 
-                                        value={notifRoute} 
-                                        onChange={e => setNotifRoute(e.target.value)}
-                                        style={{ padding: '0.8rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '10px', outline: 'none' }}
-                                    >
-                                        <option value="all">Всички Абонати</option>
-                                        {Object.keys(ROUTE_METADATA).map(r => <option key={r} value={r}>{r}</option>)}
-                                    </select>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ДО КУРС / ЛИНИЯ (Изберете една или повече)</label>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', padding: '0.5rem', background: 'rgba(0,0,0,0.1)', borderRadius: '12px' }}>
+                                        <button
+                                            onClick={() => setSelectedNotifRoutes(['all'])}
+                                            style={{
+                                                padding: '0.5rem 1rem',
+                                                borderRadius: '50px',
+                                                border: '1px solid var(--surface-border)',
+                                                background: selectedNotifRoutes.includes('all') ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
+                                                color: selectedNotifRoutes.includes('all') ? '#fff' : 'var(--text-secondary)',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 800,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.3s'
+                                            }}
+                                        >
+                                            ВСИЧКИ АБОНАТИ
+                                        </button>
+                                        {Object.keys(ROUTE_METADATA).map(routeId => {
+                                            const isSelected = selectedNotifRoutes.includes(routeId);
+                                            return (
+                                                <button
+                                                    key={routeId}
+                                                    onClick={() => {
+                                                        if (selectedNotifRoutes.includes('all')) {
+                                                            setSelectedNotifRoutes([routeId]);
+                                                        } else {
+                                                            if (isSelected) {
+                                                                const next = selectedNotifRoutes.filter(r => r !== routeId);
+                                                                setSelectedNotifRoutes(next.length === 0 ? ['all'] : next);
+                                                            } else {
+                                                                setSelectedNotifRoutes([...selectedNotifRoutes, routeId]);
+                                                            }
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        padding: '0.5rem 1rem',
+                                                        borderRadius: '50px',
+                                                        border: `1px solid ${isSelected ? getRouteColor(routeId) : 'var(--surface-border)'}`,
+                                                        background: isSelected ? `${getRouteColor(routeId)}22` : 'rgba(255,255,255,0.05)',
+                                                        color: isSelected ? getRouteColor(routeId) : 'var(--text-secondary)',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 800,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.3s'
+                                                    }}
+                                                >
+                                                    {routeId}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
