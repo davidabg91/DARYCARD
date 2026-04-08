@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { initializeFirestore } from 'firebase/firestore';
+import { getMessaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB0F2U11RI7NcBs0ghhu5J642HcGNP5T18",
@@ -17,5 +18,6 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = initializeFirestore(app, {});
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 
 export default app;

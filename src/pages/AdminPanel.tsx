@@ -6,10 +6,10 @@ import {
     RefreshCw, List, Save, 
     ShieldCheck, Shield, TrendingUp,
     PiggyBank, AlertTriangle, Share2,
-    AlertCircle, Bus
+    AlertCircle, Bus, Send, Bell
 } from 'lucide-react';
 import Card from '../components/Card';
-import { db } from '../firebase';
+import { db, messaging } from '../firebase';
 import { 
     addDoc,
     doc, 
@@ -21,6 +21,7 @@ import {
     query
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
+import { ROUTE_METADATA } from '../data/routeMetadata';
 
 interface ClientLog {
     date: string;
@@ -71,6 +72,16 @@ interface Rental {
     destination: string;
     timestamp: string;
     status: 'new' | 'read' | 'contacted' | 'completed';
+}
+
+interface PushNotification {
+    id: string;
+    courseId: string;
+    title: string;
+    body: string;
+    timestamp: string;
+    sentStatus?: 'pending' | 'sent' | 'failed';
+    subscriberCount?: number;
 }
 
 const ROUTES = [
@@ -143,11 +154,12 @@ const getDefaultExpiryMonth = () => {
 };
 
 interface TabButtonProps {
-    id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals';
+    id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications';
     icon: React.ElementType;
+    badgeColor?: string;
     label: string;
-    activeTab: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals';
-    setActiveTab: (id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals') => void;
+    activeTab: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications';
+    setActiveTab: (id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications') => void;
     activeColor?: string;
     badge?: number;
     isMobile?: boolean;
@@ -220,12 +232,17 @@ const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
     const isAdmin = currentUser?.role === 'admin';
-    const [activeTab, setActiveTab] = useState<'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals'>(
+    const [activeTab, setActiveTab] = useState<'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications'>(
         'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
     const [signals, setSignals] = useState<Signal[]>([]);
     const [rentals, setRentals] = useState<Rental[]>([]);
+    const [notifications, setNotifications] = useState<PushNotification[]>([]);
+    const [sendingNotification, setSendingNotification] = useState(false);
+    const [notifTitle, setNotifTitle] = useState('');
+    const [notifBody, setNotifBody] = useState('');
+    const [notifRoute, setNotifRoute] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -422,13 +439,52 @@ const AdminPanel: React.FC = () => {
             }
         });
 
+        // 5. Listen for Notifications in Real-time
+        const notificationsQ = query(collection(db, 'push_notifications'));
+        const unsubscribeNotifications = onSnapshot(notificationsQ, (snapshot) => {
+            const notifList: PushNotification[] = [];
+            snapshot.forEach((doc) => {
+                notifList.push({ id: doc.id, ...doc.data() } as PushNotification);
+            });
+            setNotifications(notifList.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+        });
+
         return () => {
             unsubscribe();
             unsubscribeSignals();
             unsubscribeRentals();
+            unsubscribeNotifications();
             actionUnsubscribe();
         };
     }, [location.search]);
+
+    const handleSendNotification = async () => {
+        if (!notifTitle || !notifBody) return;
+        setSendingNotification(true);
+        try {
+            await addDoc(collection(db, 'push_notifications'), {
+                courseId: notifRoute,
+                title: notifTitle,
+                body: notifBody,
+                timestamp: new Date().toISOString(),
+                sentStatus: 'pending',
+                performedBy: currentUser?.username || 'Admin'
+            });
+            
+            // Log as global activity
+            await logGlobalActivity('PUSH_NOTIFICATION', notifRoute, `Изпратено съобщение: ${notifBody}`);
+            
+            setNotifTitle('');
+            setNotifBody('');
+            setModalMessage({ text: 'Съобщението е изпратено успешно!', type: 'success' });
+            setTimeout(() => setModalMessage(null), 3000);
+        } catch (err) {
+            console.error("Error sending notification:", err);
+            setModalMessage({ text: 'Грешка при изпращане на съобщението.', type: 'error' });
+        } finally {
+            setSendingNotification(false);
+        }
+    };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setPhotoError(null);
@@ -788,7 +844,12 @@ const AdminPanel: React.FC = () => {
                     <TabButton id="finances" icon={PiggyBank} label="ФИНАНСИ" activeColor="#ff9800" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                     <TabButton id="rentals" icon={Bus} label="НАЕМИ" activeColor="#0091ea" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadRentalsCount} isMobile={isMobile} />
                     <TabButton id="signals" icon={AlertCircle} label="СИГНАЛИ" activeColor="#ff5252" activeTab={activeTab} setActiveTab={setActiveTab} badge={unreadSignalsCount} isMobile={isMobile} />
-                    {isAdmin && <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />}
+                    {isAdmin && (
+                        <>
+                            <TabButton id="notifications" icon={Bell} label="ИЗВЕСТИЯ" activeColor="#ff4081" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
+                            <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -829,6 +890,101 @@ const AdminPanel: React.FC = () => {
             100% { opacity: 1; transform: scale(1); }
         }
       `}</style>
+
+            {activeTab === 'notifications' && (
+                <div style={{ animation: 'fadeIn 0.4s ease', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '2rem' }}>
+                        <Card>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#ff4081' }}>
+                                <Send size={20} /> Изпрати Известие
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ДО КУРС / ЛИНИЯ</label>
+                                    <select 
+                                        value={notifRoute} 
+                                        onChange={e => setNotifRoute(e.target.value)}
+                                        style={{ padding: '0.8rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '10px', outline: 'none' }}
+                                    >
+                                        <option value="all">Всички Абонати</option>
+                                        {Object.keys(ROUTE_METADATA).map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ЗАГЛАВИЕ</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="Пример: Промяна в разписанието"
+                                        value={notifTitle}
+                                        onChange={e => setNotifTitle(e.target.value)}
+                                        style={{ padding: '0.8rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '10px', outline: 'none' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>СЪОБЩЕНИЕ</label>
+                                    <textarea 
+                                        placeholder="Въведете важно съобщение към пътниците..."
+                                        rows={4}
+                                        value={notifBody}
+                                        onChange={e => setNotifBody(e.target.value)}
+                                        style={{ padding: '0.8rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '10px', outline: 'none', resize: 'none' }}
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={handleSendNotification}
+                                    disabled={sendingNotification || !notifTitle || !notifBody}
+                                    style={{
+                                        padding: '1rem',
+                                        background: sendingNotification ? 'rgba(255,255,255,0.05)' : '#ff4081',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '12px',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.8rem',
+                                        transition: 'all 0.3s'
+                                    }}
+                                >
+                                    {sendingNotification ? <RefreshCw className="spin" size={20} /> : <Send size={20} />}
+                                    {sendingNotification ? 'ИЗПРАЩАНЕ...' : 'ИЗПРАТИ СЕГА'}
+                                </button>
+                            </div>
+                        </Card>
+
+                        <Card>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <Bell size={20} /> История на Известията
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                                {notifications.length > 0 ? (
+                                    notifications.map(notif => (
+                                        <div key={notif.id} style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--surface-border)', borderRadius: '12px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                                <div style={{ fontWeight: 800, color: '#ff4081', fontSize: '0.9rem' }}>{notif.title}</div>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{new Date(notif.timestamp).toLocaleString('bg-BG')}</div>
+                                            </div>
+                                            <div style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '0.5rem' }}>{notif.body}</div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)' }}>
+                                                    До: {notif.courseId === 'all' ? 'Всички линии' : notif.courseId}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма изпратени известия.</div>
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            )}
 
             {activeTab === 'finances' && (
                 <div style={{ animation: 'fadeIn 0.4s ease', display: 'flex', flexDirection: 'column', gap: '2rem' }}>

@@ -8,6 +8,7 @@ import {
 import { Link } from 'react-router-dom';
 import { SCHEDULES } from '../data/schedules';
 import { ROUTE_METADATA, abbreviate } from '../data/routeMetadata';
+import PushSubscription from '../components/PushSubscription';
 
 const Landing: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -52,7 +53,7 @@ const Landing: React.FC = () => {
 
         const nextToday = todayTimes
             .map(t => {
-                const parts = t.split(':');
+                const parts = t.replace('*', '').split(':');
                 return parseInt(parts[0]) * 60 + parseInt(parts[1]);
             })
             .filter(m => m > now)
@@ -69,7 +70,7 @@ const Landing: React.FC = () => {
 
         const firstTomorrow = tomorrowTimes
             .map(t => {
-                const parts = t.split(':');
+                const parts = t.replace('*', '').split(':');
                 return parseInt(parts[0]) * 60 + parseInt(parts[1]);
             })
             .sort((a,b) => a - b)[0];
@@ -97,10 +98,10 @@ const Landing: React.FC = () => {
         const now = currentTime.getHours() * 60 + currentTime.getMinutes();
         const future = times
             .map(t => {
-                const parts = t.split(':');
+                const parts = t.replace('*', '').split(':');
                 const h = parseInt(parts[0]);
                 const m = parseInt(parts[1]);
-                return { t, mins: h * 60 + m };
+                return { t: t.replace('*', ''), mins: h * 60 + m };
             })
             .filter(x => x.mins > now)
             .sort((a, b) => a.mins - b.mins);
@@ -774,22 +775,6 @@ const Landing: React.FC = () => {
                                                     <h4 style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                                         <Clock size={16} /> Пълно разписание на курса
                                                     </h4>
-                                                    {line === 'Бъркач' && (
-                                                        <div style={{ 
-                                                            fontSize: '0.75rem', 
-                                                            color: 'var(--success-color)', 
-                                                            fontWeight: 800, 
-                                                            textAlign: 'center', 
-                                                            marginTop: '8px', 
-                                                            padding: '6px 16px', 
-                                                            background: 'rgba(46, 204, 113, 0.1)', 
-                                                            borderRadius: '100px',
-                                                            border: '1px solid rgba(46, 204, 113, 0.2)',
-                                                            animation: 'fadeIn 0.5s ease-out'
-                                                        }}>
-                                                            АКТУАЛИЗИРАНО: Промяна в разписанието за делнични дни (отбелязани с "ново").
-                                                        </div>
-                                                    )}
                                                 </div>
 
                                                 {/* Reordered Schedule Groups */}
@@ -798,33 +783,29 @@ const Landing: React.FC = () => {
                                                         id: 'sunday', 
                                                         condition: !!sched.sunday, 
                                                         isCurrent: isSun, 
-                                                        label: 'НЕДЕЛЯ', 
-                                                        color: '#ff5252', 
-                                                        times: sched.sunday 
+                                                        label: 'НЕДЕЛЯ',
+                                                        color: '#ff5252',
+                                                        times: sched.sunday
                                                     },
                                                     { 
                                                         id: 'saturday', 
                                                         condition: !!sched.saturday, 
                                                         isCurrent: isSat, 
-                                                        label: 'СЪБОТА', 
-                                                        color: '#ff9800', 
-                                                        times: sched.saturday 
+                                                        label: 'СЪБОТА',
+                                                        color: '#ff9800',
+                                                        times: sched.saturday
                                                     },
                                                     { 
-                                                        id: 'weekday', 
+                                                        id: 'workdays', 
                                                         condition: true, 
                                                         isCurrent: isWorkday, 
-                                                        label: 'ДЕЛНИЧНИ ДНИ', 
-                                                        color: 'var(--primary-color)', 
-                                                        times: sched 
+                                                        label: 'ДЕЛНИК',
+                                                        color: 'var(--primary-color)',
+                                                        times: { fromPleven: sched.fromPleven, fromDestination: sched.fromDestination }
                                                     }
                                                 ]
-                                                .sort((a, b) => {
-                                                    if (a.isCurrent) return -1;
-                                                    if (b.isCurrent) return 1;
-                                                    return 0;
-                                                })
                                                 .filter(group => group.condition)
+                                                .sort((a, b) => (a.isCurrent ? -1 : 1))
                                                 .map((group) => (
                                                     <div key={group.id} style={{ 
                                                         marginTop: '0.5rem', 
@@ -846,7 +827,7 @@ const Landing: React.FC = () => {
                                                                         const isNew = t.includes('*');
                                                                         const displayTime = t.replace('*', '');
                                                                         return (
-                                                                            <span key={t} className={`schedule-tag ${group.isCurrent && t === getNextTime(group.times!.fromPleven) ? 'next-bus-tag-active' : ''}`} style={{ position: 'relative' }}>
+                                                                            <span key={t} className={`schedule-tag ${group.isCurrent && displayTime === getNextTime(group.times!.fromPleven) ? 'next-bus-tag-active' : ''}`} style={{ position: 'relative' }}>
                                                                                 {isNew && (
                                                                                     <span style={{
                                                                                         position: 'absolute',
@@ -860,7 +841,8 @@ const Landing: React.FC = () => {
                                                                                         padding: '1px 4px',
                                                                                         borderRadius: '4px',
                                                                                         zIndex: 5,
-                                                                                        boxShadow: '0 2px 4px rgba(255, 82, 82, 0.3)'
+                                                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                                                                        border: '1px solid rgba(255,255,255,0.2)'
                                                                                     }}>НОВО</span>
                                                                                 )}
                                                                                 {displayTime}
@@ -876,7 +858,7 @@ const Landing: React.FC = () => {
                                                                         const isNew = t.includes('*');
                                                                         const displayTime = t.replace('*', '');
                                                                         return (
-                                                                            <span key={t} className={`schedule-tag ${group.isCurrent && t === getNextTime(group.times!.fromDestination) ? 'next-bus-tag-active' : ''}`} style={{ position: 'relative' }}>
+                                                                            <span key={t} className={`schedule-tag ${group.isCurrent && displayTime === getNextTime(group.times!.fromDestination) ? 'next-bus-tag-active' : ''}`} style={{ position: 'relative' }}>
                                                                                 {isNew && (
                                                                                     <span style={{
                                                                                         position: 'absolute',
@@ -890,7 +872,8 @@ const Landing: React.FC = () => {
                                                                                         padding: '1px 4px',
                                                                                         borderRadius: '4px',
                                                                                         zIndex: 5,
-                                                                                        boxShadow: '0 2px 4px rgba(255, 82, 82, 0.3)'
+                                                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                                                                        border: '1px solid rgba(255,255,255,0.2)'
                                                                                     }}>НОВО</span>
                                                                                 )}
                                                                                 {displayTime}
@@ -902,6 +885,9 @@ const Landing: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 ))}
+
+                                                {/* Push Notification Subscription */}
+                                                <PushSubscription courseId={line} />
 
                                                 {originMapping[line] && (
                                                     <div style={{ 
@@ -918,7 +904,6 @@ const Landing: React.FC = () => {
                                                 )}
                                             </div>
                                         )}
-
                                 </div>
                             );
                         })}
