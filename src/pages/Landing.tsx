@@ -9,7 +9,7 @@ import {
 import { Link } from 'react-router-dom';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
-import { SCHEDULES } from '../data/schedules';
+import { SCHEDULES, RouteSchedule, ScheduleTime } from '../data/schedules';
 import { ROUTE_METADATA, abbreviate } from '../data/routeMetadata';
 import PushSubscription from '../components/PushSubscription';
 
@@ -75,7 +75,7 @@ const Landing: React.FC = () => {
     );
 
 
-    const getScheduleForDay = (d: number, isEaster: boolean, sched: any) => {
+    const getScheduleForDay = (d: number, isEaster: boolean, sched: RouteSchedule): RouteSchedule | ScheduleTime => {
         if ((isEaster || d === 0) && sched.sunday) return sched.sunday;
         if (d === 6 && sched.saturday) return sched.saturday;
         return sched;
