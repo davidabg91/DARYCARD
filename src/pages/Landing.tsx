@@ -9,7 +9,8 @@ import {
 import { Link } from 'react-router-dom';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
-import { SCHEDULES, RouteSchedule, ScheduleTime } from '../data/schedules';
+import { SCHEDULES } from '../data/schedules';
+import type { RouteSchedule, ScheduleTime } from '../data/schedules';
 import { ROUTE_METADATA, abbreviate } from '../data/routeMetadata';
 import PushSubscription from '../components/PushSubscription';
 
