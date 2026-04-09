@@ -13,6 +13,8 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [isIOS] = useState(/iPad|iPhone|iPod/.test(navigator.userAgent));
+    const [isSupported] = useState(typeof Notification !== 'undefined');
 
     useEffect(() => {
         const checkSubscription = async () => {
@@ -30,6 +32,17 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
         setError(null);
 
         try {
+            // 0. Check support
+            if (!isSupported) {
+                if (isIOS) {
+                    setError('За да получавате известия на iOS, моля добавете приложението към началния екран (Add to Home Screen) и го отворете от там.');
+                } else {
+                    setError('Вашият браузър не поддържа известия.');
+                }
+                setLoading(false);
+                return;
+            }
+
             // 1. Request Permission
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
