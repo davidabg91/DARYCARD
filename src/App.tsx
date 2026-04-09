@@ -14,6 +14,7 @@ const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 const Help = lazy(() => import('./pages/Help'));
 const Signal = lazy(() => import('./pages/Signal'));
 const BusRental = lazy(() => import('./pages/BusRental'));
+const Legal = lazy(() => import('./pages/Legal'));
 
 const PageLoader = () => <LoadingScreen />;
 
@@ -53,6 +54,8 @@ function App() {
               <Route path="help" element={
                 <ProtectedRoute><Help /></ProtectedRoute>
               } />
+
+              <Route path="legal" element={<Legal />} />
             </Route>
           </Routes>
         </Suspense>

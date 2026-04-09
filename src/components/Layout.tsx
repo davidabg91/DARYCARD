@@ -443,6 +443,10 @@ const Layout: React.FC = () => {
                     </div>
                 </a>
                 <p>© {new Date().getFullYear()} Dary Commerce. Всички права запазени.</p>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.2rem' }}>
+                    <Link to="/legal" style={{ color: 'inherit', textDecoration: 'underline', opacity: 0.8 }}>Правна информация</Link>
+                    <Link to="/legal" style={{ color: 'inherit', textDecoration: 'underline', opacity: 0.8 }}>Лични данни</Link>
+                </div>
                 <p style={{ opacity: 0.6 }}>Обществен транспорт за град Плевен и региона</p>
             </footer>
         </div>

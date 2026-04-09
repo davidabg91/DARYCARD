@@ -1218,7 +1218,11 @@ const Landing: React.FC = () => {
                     </div>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid rgba(255,255,255,0.02)', paddingTop: '1rem' }}>
-                        <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.65rem' }}>Контролни органи:</span>
+                        <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.65rem' }}>Правна информация:</span>
+                        <Link to="/legal" style={{ color: 'inherit', textDecoration: 'underline' }}>Общи условия</Link>
+                        <span style={{ opacity: 0.3 }}>•</span>
+                        <Link to="/legal" style={{ color: 'inherit', textDecoration: 'underline' }}>Лични данни (GDPR)</Link>
+                        <span style={{ opacity: 0.3 }}>•</span>
                         <a href="https://kzp.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>КЗП</a>
                         <span style={{ opacity: 0.3 }}>•</span>
                         <a href="https://www.rta.government.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>ИААА</a>
