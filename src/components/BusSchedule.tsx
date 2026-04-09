@@ -70,7 +70,7 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                     <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '1px' }}>РАЗПИСАНИЕ АВТОБУСИ</span>
                 </div>
                 <div style={{ fontSize: '0.75rem', color: isEasterHoliday ? '#ff5252' : 'rgba(255,255,255,0.4)', fontWeight: 800 }}>
-                    ({isEasterHoliday ? 'ВЕЛИКДЕНСКИ ПРАЗНИЦИ: Важи неделно разписание' : 
+                    ({isEasterHoliday ? 'ВЕЛИКДЕНСКИ ПРАЗНИЦИ: Важи неделно разписание до 13.04 включително' : 
                       (isSunday ? 'неделя' : 
                        isSaturday ? 'събота' : 
                        (route === 'Тръстеник' ? 'понеделник-събота' : 'делнични дни'))})

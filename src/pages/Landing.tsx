@@ -27,6 +27,16 @@ const Landing: React.FC = () => {
     const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
     const [recentNotifications, setRecentNotifications] = useState<Announcement[]>([]);
 
+    const currentDay = currentTime.getDay();
+    const isEasterHoliday = currentTime.getFullYear() === 2026 && 
+                            currentTime.getMonth() === 3 && 
+                            currentTime.getDate() >= 10 && 
+                            currentTime.getDate() <= 13;
+
+    const isSat = !isEasterHoliday && currentDay === 6;
+    const isSun = isEasterHoliday || currentDay === 0;
+    const isWorkday = !isEasterHoliday && currentDay >= 1 && currentDay <= 5;
+
     useEffect(() => {
         const q = query(
             collection(db, 'push_notifications'),
@@ -65,6 +75,12 @@ const Landing: React.FC = () => {
     );
 
 
+    const getScheduleForDay = (d: number, isEaster: boolean, sched: any) => {
+        if ((isEaster || d === 0) && sched.sunday) return sched.sunday;
+        if (d === 6 && sched.saturday) return sched.saturday;
+        return sched;
+    };
+
     const getNextBus = (line: string, direction: 'fromPleven' | 'fromDestination') => {
         const sched = SCHEDULES[line];
         if (!sched) return null;
@@ -72,13 +88,8 @@ const Landing: React.FC = () => {
         const day = currentTime.getDay();
         const now = currentTime.getHours() * 60 + currentTime.getMinutes();
         
-        const getScheduleForDay = (d: number) => {
-            if (d === 6 && sched.saturday) return sched.saturday[direction];
-            if (d === 0 && sched.sunday) return sched.sunday[direction];
-            return sched[direction];
-        };
-
-        const todayTimes = getScheduleForDay(day);
+        const todaySched = getScheduleForDay(day, isEasterHoliday, sched);
+        const todayTimes = todaySched[direction];
         if (!todayTimes || todayTimes.length === 0) return null;
 
         const nextToday = todayTimes
@@ -95,7 +106,21 @@ const Landing: React.FC = () => {
 
         // This is a simplified "tomorrow":
         const tomorrowDay = (day + 1) % 7;
-        const tomorrowTimes = getScheduleForDay(tomorrowDay);
+        // Tomorrow is easter if today is easter AND it's not the last day, 
+        // OR if today is the day before the first holiday.
+        // For 2026, April 10-13 are holidays. 
+        // If today is April 9, tomorrow (10) is holiday.
+        // If today is April 10, tomorrow (11) is holiday.
+        // If today is April 13, tomorrow (14) is NOT holiday.
+        const tomorrowDate = new Date(currentTime);
+        tomorrowDate.setDate(currentTime.getDate() + 1);
+        const isTomorrowEaster = tomorrowDate.getFullYear() === 2026 && 
+                                 tomorrowDate.getMonth() === 3 && 
+                                 tomorrowDate.getDate() >= 10 && 
+                                 tomorrowDate.getDate() <= 13;
+
+        const tomorrowSched = getScheduleForDay(tomorrowDay, isTomorrowEaster, sched);
+        const tomorrowTimes = tomorrowSched[direction];
         if (!tomorrowTimes || tomorrowTimes.length === 0) return null;
 
         const firstTomorrow = tomorrowTimes
@@ -117,11 +142,6 @@ const Landing: React.FC = () => {
         }
         return `${mins} мин`;
     };
-
-    const currentDay = currentTime.getDay();
-    const isSat = currentDay === 6;
-    const isSun = currentDay === 0;
-    const isWorkday = currentDay >= 1 && currentDay <= 5;
 
     const getNextTime = (times: string[] | undefined) => {
         if (!times || times.length === 0) return null;
@@ -423,6 +443,20 @@ const Landing: React.FC = () => {
                         grid-template-columns: repeat(2, 1fr) !important;
                     }
                 }
+                .holiday-notice {
+                    background: rgba(255, 82, 82, 0.1);
+                    border: 1px solid rgba(255, 82, 82, 0.2);
+                    padding: 0.8rem 1.2rem;
+                    border-radius: 12px;
+                    color: #ff5252;
+                    font-size: 0.85rem;
+                    font-weight: 800;
+                    margin-bottom: 2rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.8rem;
+                    animation: fadeIn 0.6s ease-out;
+                }
                 .main-content {
                     position: relative;
                     z-index: 1;
@@ -623,6 +657,13 @@ const Landing: React.FC = () => {
                     >
                         <ArrowRight size={18} style={{ transform: 'rotate(180deg)' }} /> Всички Дестинации
                     </button>
+                )}
+
+                {isEasterHoliday && (
+                    <div className="holiday-notice" style={{ maxWidth: selectedRoute ? '1200px' : '800px', margin: selectedRoute ? '0 auto 2rem' : '0 auto 3rem' }}>
+                        <Calendar size={20} />
+                        ВЕЛИКДЕНСКИ ПРАЗНИЦИ: Важи неделно разписание до 13.04 включително.
+                    </div>
                 )}
 
                 {/* Selection Grid OR Route Detail */}
