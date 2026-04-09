@@ -22,9 +22,14 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
     const day = currentTime.getDay();
     const isSunday = day === 0;
     const isSaturday = day === 6;
+
+    const isEasterHoliday = currentTime.getFullYear() === 2026 && 
+                            currentTime.getMonth() === 3 && 
+                            currentTime.getDate() >= 10 && 
+                            currentTime.getDate() <= 13;
     
     let activeSchedule = scheduleData;
-    if (isSunday && scheduleData.sunday) {
+    if ((isSunday || isEasterHoliday) && scheduleData.sunday) {
         activeSchedule = scheduleData.sunday;
     } else if (isSaturday && scheduleData.saturday) {
         activeSchedule = scheduleData.saturday;
@@ -64,10 +69,11 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                     <Bus size={20} />
                     <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '1px' }}>РАЗПИСАНИЕ АВТОБУСИ</span>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
-                    ({isSunday ? 'неделя' : 
-                      isSaturday ? 'събота' : 
-                      (route === 'Тръстеник' ? 'понеделник-събота' : 'делнични дни')})
+                <div style={{ fontSize: '0.75rem', color: isEasterHoliday ? '#ff5252' : 'rgba(255,255,255,0.4)', fontWeight: 800 }}>
+                    ({isEasterHoliday ? 'ВЕЛИКДЕНСКИ ПРАЗНИЦИ: Важи неделно разписание' : 
+                      (isSunday ? 'неделя' : 
+                       isSaturday ? 'събота' : 
+                       (route === 'Тръстеник' ? 'понеделник-събота' : 'делнични дни'))})
                 </div>
                 {isBarkachRoute && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
