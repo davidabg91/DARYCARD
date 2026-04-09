@@ -92,7 +92,7 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                             borderRadius: '100px',
                             border: '1px solid rgba(0, 230, 118, 0.1)'
                         }}>
-                             ВАЖНО: Има промяна в разписанието за делнични дни (отбелязани с "ново").
+                             ВАЖНО: Има промяна в разписанието (отбелязани с "ново").
                         </div>
                     </div>
                 )}
