@@ -205,24 +205,26 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
 
             <div style={{ 
                 display: 'flex', 
+                flexWrap: 'wrap',
                 gap: '0.5rem', 
-                marginTop: '0.5rem',
+                marginTop: '0.8rem',
                 justifyContent: 'center'
             }}>
                 <button
                     onClick={() => setActiveInstructions(activeInstructions === 'ios' ? null : 'ios')}
                     style={{
-                        padding: '0.4rem 0.8rem',
-                        borderRadius: '8px',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '10px',
                         background: activeInstructions === 'ios' ? 'rgba(255,255,255,0.1)' : 'transparent',
                         border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'rgba(255,255,255,0.6)',
-                        fontSize: '0.7rem',
+                        color: activeInstructions === 'ios' ? '#fff' : 'rgba(255,255,255,0.6)',
+                        fontSize: '0.75rem',
                         fontWeight: 700,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.4rem'
+                        gap: '0.5rem',
+                        transition: '0.2s'
                     }}
                 >
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style={{ flexShrink: 0 }}>
@@ -232,17 +234,18 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
                 <button
                     onClick={() => setActiveInstructions(activeInstructions === 'android' ? null : 'android')}
                     style={{
-                        padding: '0.4rem 0.8rem',
-                        borderRadius: '8px',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '10px',
                         background: activeInstructions === 'android' ? 'rgba(255,255,255,0.1)' : 'transparent',
                         border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'rgba(255,255,255,0.6)',
-                        fontSize: '0.7rem',
+                        color: activeInstructions === 'android' ? '#fff' : 'rgba(255,255,255,0.6)',
+                        fontSize: '0.75rem',
                         fontWeight: 700,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.4rem'
+                        gap: '0.5rem',
+                        transition: '0.2s'
                     }}
                 >
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="#3DDC84" style={{ flexShrink: 0 }}>
