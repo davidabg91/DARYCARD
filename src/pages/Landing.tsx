@@ -594,46 +594,61 @@ const Landing: React.FC = () => {
                                             background: isExpanded ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)'
                                         }}
                                     >
-                                        <div className="notice-header" style={{ position: 'relative' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, paddingRight: '4rem' }}>
-                                                <div style={{ 
-                                                    width: '4px', 
-                                                    height: '24px', 
-                                                    background: '#ff5252',
-                                                    borderRadius: '2px'
-                                                }} />
+                                        <div className="notice-header" style={{ 
+                                            padding: '1.2rem 1.5rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '1.2rem'
+                                        }}>
+                                            <div style={{ 
+                                                width: '4px', 
+                                                height: '32px', 
+                                                background: '#ff5252',
+                                                borderRadius: '2px',
+                                                flexShrink: 0
+                                            }} />
+                                            
+                                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                                 <h3 style={{ 
                                                     margin: 0, 
                                                     fontSize: '1.05rem', 
                                                     fontWeight: 800, 
                                                     color: isExpanded ? '#ff5252' : '#fff',
                                                     transition: '0.3s',
-                                                    lineHeight: 1.3
+                                                    lineHeight: 1.3,
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis'
                                                 }}>
                                                     {notif.title}
                                                 </h3>
-                                            </div>
-                                            
-                                            <div style={{ 
-                                                position: 'absolute',
-                                                top: '0.6rem',
-                                                right: '1.5rem',
-                                                fontSize: '0.65rem', 
-                                                color: 'rgba(255,255,255,0.3)',
-                                                fontWeight: 700,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.3rem',
-                                                background: 'rgba(255,255,255,0.03)',
-                                                padding: '0.2rem 0.5rem',
-                                                borderRadius: '6px',
-                                                letterSpacing: '0.5px'
-                                            }}>
-                                                <Calendar size={10} />
-                                                {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString('bg-BG') : ''}
+                                                <div style={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: '0.8rem',
+                                                    fontSize: '0.7rem',
+                                                    color: 'rgba(255,255,255,0.4)',
+                                                    fontWeight: 600
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                        <Calendar size={12} />
+                                                        {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString('bg-BG') : ''}
+                                                    </div>
+                                                    {notif.courseId && notif.courseId !== 'all' && (
+                                                        <span style={{ 
+                                                            padding: '0.1rem 0.4rem', 
+                                                            background: 'rgba(255,255,255,0.05)', 
+                                                            borderRadius: '4px',
+                                                            fontSize: '0.65rem',
+                                                            color: 'rgba(255,255,255,0.6)'
+                                                        }}>
+                                                            Линия {notif.courseId}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
 
-                                            <div style={{ display: 'flex', alignItems: 'center', marginLeft: '1rem' }}>
+                                            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                                                 {isExpanded ? <ChevronUp size={20} color="#ff5252" /> : <ChevronDown size={20} color="rgba(255,255,255,0.3)" />}
                                             </div>
                                         </div>
