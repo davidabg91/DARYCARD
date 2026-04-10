@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, messaging } from '../firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
-import { Bell, BellOff, Loader2, CheckCircle2 } from 'lucide-react';
+import { Bell, BellOff, Loader2, CheckCircle2, Smartphone, Apple, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface PushSubscriptionProps {
     courseId: string;
@@ -15,6 +15,7 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [isIOS] = useState(/iPad|iPhone|iPod/.test(navigator.userAgent));
     const [isSupported] = useState(typeof Notification !== 'undefined');
+    const [activeInstructions, setActiveInstructions] = useState<'ios' | 'android' | null>(null);
 
     useEffect(() => {
         const checkSubscription = async () => {
@@ -201,6 +202,100 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
                     </>
                 )}
             </button>
+
+            <div style={{ 
+                display: 'flex', 
+                gap: '0.5rem', 
+                marginTop: '0.5rem',
+                justifyContent: 'center'
+            }}>
+                <button
+                    onClick={() => setActiveInstructions(activeInstructions === 'ios' ? null : 'ios')}
+                    style={{
+                        padding: '0.4rem 0.8rem',
+                        borderRadius: '8px',
+                        background: activeInstructions === 'ios' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: 'rgba(255,255,255,0.6)',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem'
+                    }}
+                >
+                    <Apple size={14} /> iOS ИНСТРУКЦИИ {activeInstructions === 'ios' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                </button>
+                <button
+                    onClick={() => setActiveInstructions(activeInstructions === 'android' ? null : 'android')}
+                    style={{
+                        padding: '0.4rem 0.8rem',
+                        borderRadius: '8px',
+                        background: activeInstructions === 'android' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: 'rgba(255,255,255,0.6)',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem'
+                    }}
+                >
+                    <Smartphone size={14} /> ANDROID ИНСТРУКЦИИ {activeInstructions === 'android' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                </button>
+            </div>
+
+            {activeInstructions && (
+                <div style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    borderRadius: '12px',
+                    padding: '1rem',
+                    border: '1px dashed rgba(255,255,255,0.1)',
+                    animation: 'fadeIn 0.3s ease'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem', color: '#ff5252' }}>
+                        <Info size={16} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>
+                            {activeInstructions === 'ios' ? 'Инструкции за iPhone/iPad' : 'Инструкции за Android'}
+                        </span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                        {activeInstructions === 'ios' ? (
+                            <>
+                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+                                    <strong style={{ color: '#fff' }}>1.</strong> Отворете сайта през браузъра <strong style={{color: '#ff5252'}}>Safari</strong>.
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+                                    <strong style={{ color: '#fff' }}>2.</strong> Натиснете бутона „Споделяне“ (квадратче със стрелка нагоре).
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+                                    <strong style={{ color: '#fff' }}>3.</strong> Изберете <strong style={{color: '#fff'}}>„Добави към началния екран“</strong> (Add to Home Screen).
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+                                    <strong style={{ color: '#fff' }}>4.</strong> Отворете приложението от иконата на телефона си и натиснете „Абонирай се“.
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+                                    <strong style={{ color: '#fff' }}>1.</strong> Натиснете червения бутон <strong style={{color: '#fff'}}>„Абонирай се сега“</strong>.
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+                                    <strong style={{ color: '#fff' }}>2.</strong> Когато браузърът поиска разрешение, изберете <strong style={{color: '#00c853'}}>„Разреши“ (Allow)</strong>.
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, padding: '0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                                    <strong style={{ color: '#ff5252' }}>Важно:</strong> Ако не получавате известия, проверете настройките:
+                                    <br/>• Настройки -> Приложения -> Chrome -> Известия (Включено)
+                                    <br/>• Настройки на Chrome -> Настройки за сайта -> Известия (Разрешено)
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
