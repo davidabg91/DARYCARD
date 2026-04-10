@@ -47,7 +47,24 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
     // Determine labels based on route name
     let fromLabel = 'ПЛЕВЕН';
     let toLabel = route.toUpperCase();
-    if (route.includes(' - ')) {
+
+    const originMapping: Record<string, string> = {
+        "Божурица": "РИБЕН",
+        "Победа": "РИБЕН",
+        "Биволаре": "РИБЕН",
+        "Градина": "БЪРКАЧ",
+        "Дисевица": "БЪРКАЧ",
+        "Търнене": "БЪРКАЧ",
+        "Петърница": "БЪРКАЧ",
+        "Крушовица": "САДОВЕЦ",
+        "Ореховица": "БАЙКАЛ",
+        "Брегаре": "БАЙКАЛ",
+        "Крушовене": "БАЙКАЛ"
+    };
+
+    if (originMapping[route]) {
+        toLabel = originMapping[route];
+    } else if (route.includes(' - ')) {
         const parts = route.split(' - ');
         fromLabel = parts[0].toUpperCase();
         toLabel = parts[1].toUpperCase();
