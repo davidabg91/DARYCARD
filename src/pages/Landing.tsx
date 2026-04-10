@@ -621,6 +621,7 @@ const Landing: React.FC = () => {
                                                     alignItems: 'center',
                                                     gap: '0.4rem'
                                                 }}>
+                                                    <Calendar size={12} />
                                                     {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString('bg-BG') : ''}
                                                 </div>
                                                 {isExpanded ? <ChevronUp size={20} color="#ff5252" /> : <ChevronDown size={20} color="rgba(255,255,255,0.3)" />}
