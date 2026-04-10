@@ -594,8 +594,8 @@ const Landing: React.FC = () => {
                                             background: isExpanded ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)'
                                         }}
                                     >
-                                        <div className="notice-header">
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                                        <div className="notice-header" style={{ position: 'relative' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, paddingRight: '4rem' }}>
                                                 <div style={{ 
                                                     width: '4px', 
                                                     height: '24px', 
@@ -607,23 +607,33 @@ const Landing: React.FC = () => {
                                                     fontSize: '1.05rem', 
                                                     fontWeight: 800, 
                                                     color: isExpanded ? '#ff5252' : '#fff',
-                                                    transition: '0.3s'
+                                                    transition: '0.3s',
+                                                    lineHeight: 1.3
                                                 }}>
                                                     {notif.title}
                                                 </h3>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                <div style={{ 
-                                                    fontSize: '0.75rem', 
-                                                    color: 'rgba(255,255,255,0.4)',
-                                                    fontWeight: 600,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.4rem'
-                                                }}>
-                                                    <Calendar size={12} />
-                                                    {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString('bg-BG') : ''}
-                                                </div>
+                                            
+                                            <div style={{ 
+                                                position: 'absolute',
+                                                top: '0.6rem',
+                                                right: '1.5rem',
+                                                fontSize: '0.65rem', 
+                                                color: 'rgba(255,255,255,0.3)',
+                                                fontWeight: 700,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.3rem',
+                                                background: 'rgba(255,255,255,0.03)',
+                                                padding: '0.2rem 0.5rem',
+                                                borderRadius: '6px',
+                                                letterSpacing: '0.5px'
+                                            }}>
+                                                <Calendar size={10} />
+                                                {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString('bg-BG') : ''}
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', marginLeft: '1rem' }}>
                                                 {isExpanded ? <ChevronUp size={20} color="#ff5252" /> : <ChevronDown size={20} color="rgba(255,255,255,0.3)" />}
                                             </div>
                                         </div>
