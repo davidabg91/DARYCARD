@@ -4,7 +4,7 @@ import {
   Clock, MapPin, Search, 
   CreditCard, ExternalLink,
   ArrowRight, Phone, MessageCircle, AlertTriangle, Info, Ticket,
-  Bell, Calendar
+  Bell, Calendar, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
@@ -31,6 +31,7 @@ const Landing: React.FC = () => {
         const saved = localStorage.getItem('recent_notifications');
         return saved ? JSON.parse(saved) : [];
     });
+    const [expandedNotifId, setExpandedNotifId] = useState<string | null>(null);
 
     const currentDay = currentTime.getDay();
     const isEasterHoliday = currentTime.getFullYear() === 2026 && 
@@ -478,6 +479,43 @@ const Landing: React.FC = () => {
                     margin: 0 auto;
                     padding: 4rem 1.5rem;
                 }
+                .notice-item {
+                    background: rgba(255, 255, 255, 0.02);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    border-radius: 20px;
+                    overflow: hidden;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    cursor: pointer;
+                    backdrop-filter: blur(10px);
+                }
+                .notice-item:hover {
+                    background: rgba(255, 255, 255, 0.05);
+                    border-color: rgba(255, 82, 82, 0.3);
+                }
+                .notice-header {
+                    padding: 1.2rem 1.5rem;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 1rem;
+                }
+                .notice-content {
+                    padding: 0 1.5rem 1.5rem;
+                    border-top: 1px solid rgba(255, 255, 255, 0.05);
+                    animation: slideDown 0.3s ease-out;
+                }
+                @keyframes slideDown {
+                    from { opacity: 0; transform: translateY(-10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                @media (max-width: 768px) {
+                    .notice-header {
+                        padding: 1rem;
+                    }
+                    .notice-content {
+                        padding: 0 1rem 1.2rem;
+                    }
+                }
             `}</style>
 
             <div className="hero-bg" />
@@ -544,70 +582,84 @@ const Landing: React.FC = () => {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {recentNotifications.map((notif) => (
-                                <div key={notif.id} style={{ 
-                                    background: 'rgba(255, 255, 255, 0.02)',
-                                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                                    borderRadius: '24px',
-                                    padding: '1.5rem',
-                                    backdropFilter: 'blur(10px)',
-                                    position: 'relative',
-                                    overflow: 'hidden'
-                                }}>
-                                    <div style={{ 
-                                        position: 'absolute', 
-                                        top: 0, 
-                                        left: 0, 
-                                        width: '4px', 
-                                        height: '100%', 
-                                        background: '#ff5252' 
-                                    }} />
-                                    
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.8rem' }}>
-                                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#ff5252' }}>
-                                            {notif.title}
-                                        </h3>
-                                        <div style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: '0.4rem', 
-                                            fontSize: '0.75rem', 
-                                            color: 'rgba(255,255,255,0.4)',
-                                            fontWeight: 600
-                                        }}>
-                                            <Calendar size={12} />
-                                            {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString('bg-BG') : ''}
+                            {recentNotifications.map((notif) => {
+                                const isExpanded = expandedNotifId === notif.id;
+                                return (
+                                    <div 
+                                        key={notif.id} 
+                                        className="notice-item"
+                                        onClick={() => setExpandedNotifId(isExpanded ? null : notif.id)}
+                                        style={{
+                                            borderColor: isExpanded ? 'rgba(255, 82, 82, 0.3)' : 'rgba(255, 255, 255, 0.05)',
+                                            background: isExpanded ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)'
+                                        }}
+                                    >
+                                        <div className="notice-header">
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                                                <div style={{ 
+                                                    width: '4px', 
+                                                    height: '24px', 
+                                                    background: '#ff5252',
+                                                    borderRadius: '2px'
+                                                }} />
+                                                <h3 style={{ 
+                                                    margin: 0, 
+                                                    fontSize: '1.05rem', 
+                                                    fontWeight: 800, 
+                                                    color: isExpanded ? '#ff5252' : '#fff',
+                                                    transition: '0.3s'
+                                                }}>
+                                                    {notif.title}
+                                                </h3>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                <div style={{ 
+                                                    fontSize: '0.75rem', 
+                                                    color: 'rgba(255,255,255,0.4)',
+                                                    fontWeight: 600,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.4rem'
+                                                }}>
+                                                    {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString('bg-BG') : ''}
+                                                </div>
+                                                {isExpanded ? <ChevronUp size={20} color="#ff5252" /> : <ChevronDown size={20} color="rgba(255,255,255,0.3)" />}
+                                            </div>
                                         </div>
-                                    </div>
-                                    
-                                    <p style={{ 
-                                        margin: 0, 
-                                        fontSize: '0.95rem', 
-                                        lineHeight: 1.6, 
-                                        color: 'rgba(255,255,255,0.8)',
-                                        whiteSpace: 'pre-wrap'
-                                    }}>
-                                        {notif.body}
-                                    </p>
+                                        
+                                        {isExpanded && (
+                                            <div className="notice-content">
+                                                <p style={{ 
+                                                    margin: '1rem 0 0', 
+                                                    fontSize: '0.95rem', 
+                                                    lineHeight: 1.6, 
+                                                    color: 'rgba(255,255,255,0.8)',
+                                                    whiteSpace: 'pre-wrap'
+                                                }}>
+                                                    {notif.body}
+                                                </p>
 
-                                    {notif.courseId && notif.courseId !== 'all' && (
-                                        <div style={{ 
-                                            marginTop: '1rem', 
-                                            display: 'inline-flex', 
-                                            padding: '0.3rem 0.8rem', 
-                                            background: 'rgba(255,255,255,0.05)', 
-                                            borderRadius: '8px',
-                                            fontSize: '0.7rem',
-                                            fontWeight: 700,
-                                            color: 'rgba(255,255,255,0.5)',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.5px'
-                                        }}>
-                                            Линия: {notif.courseId}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                                {notif.courseId && notif.courseId !== 'all' && (
+                                                    <div style={{ 
+                                                        marginTop: '1.2rem', 
+                                                        display: 'inline-flex', 
+                                                        padding: '0.4rem 0.8rem', 
+                                                        background: 'rgba(255,255,255,0.05)', 
+                                                        borderRadius: '8px',
+                                                        fontSize: '0.7rem',
+                                                        fontWeight: 700,
+                                                        color: 'rgba(255,255,255,0.6)',
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: '0.5px'
+                                                    }}>
+                                                        Линия: {notif.courseId}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
