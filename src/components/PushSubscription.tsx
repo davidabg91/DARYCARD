@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, messaging } from '../firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
-import { Bell, BellOff, Loader2, CheckCircle2, Smartphone, Apple, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bell, BellOff, Loader2, CheckCircle2, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface PushSubscriptionProps {
     courseId: string;
@@ -225,7 +225,9 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
                         gap: '0.4rem'
                     }}
                 >
-                    <Apple size={14} /> iOS ИНСТРУКЦИИ {activeInstructions === 'ios' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    <svg viewBox="0 0 384 512" width="14" height="14" fill="currentColor">
+                        <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 21.8-88.5 21.8-11.4 0-51.1-20.3-81.9-20.3-64.1 0-123.6 44.2-123.6 137.9 0 46.1 16.5 90 44 128.7 28.1 39.5 61.1 79.7 101.9 79.7 34.5 0 46.7-22.3 88.3-22.3 40.5 0 54 22.3 88.3 22.3 40.8 0 74.4-40 102.1-77.9 20.9-29.3 29.5-56.1 29.5-57.1-.6-.2-69.4-26.1-70.1-105.8zM242.4 87.1c16-20.9 27.5-48.4 24.3-76.4-22.8 1.4-53.5 16.5-70.3 35.5-14.1 16.5-26.7 44.5-23.7 71.9 25.1 2.3 53.6-13.3 69.7-31z"/>
+                    </svg> iOS ИНСТРУКЦИИ {activeInstructions === 'ios' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </button>
                 <button
                     onClick={() => setActiveInstructions(activeInstructions === 'android' ? null : 'android')}
@@ -243,7 +245,9 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
                         gap: '0.4rem'
                     }}
                 >
-                    <Smartphone size={14} /> ANDROID ИНСТРУКЦИИ {activeInstructions === 'android' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    <svg viewBox="0 0 576 512" width="16" height="16" fill="#3DDC84">
+                        <path d="M420.55 301.93a24 24 0 1 1 24-24 24 24 0 0 1-24 24m-265.1 0a24 24 0 1 1 24-24 24 24 0 0 1-24 24m271.95-65.7l31.5-54.5a11 11 0 0 0-3.8-15.1 11.1 11.1 0 0 0-15 3.8l-31.9 55.4a251.6 251.6 0 0 0-236.4 0L139.85 170a11.1 11.1 0 1 0-18.8 11.3l31.5 54.5a227.6 227.6 0 0 0-112.5 177.3h408.1a227.8 227.8 0 0 0-112.5-177l.4-.4z"/>
+                    </svg> ANDROID ИНСТРУКЦИИ {activeInstructions === 'android' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </button>
             </div>
 
