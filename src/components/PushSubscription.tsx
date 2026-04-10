@@ -227,9 +227,13 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
                         transition: '0.2s'
                     }}
                 >
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style={{ flexShrink: 0 }}>
-                        <path d="M12.152 6.896c-.012-1.907 1.547-2.827 1.613-2.867-.883-1.294-2.256-1.47-2.744-1.49-1.165-.119-2.274.687-2.866.687-.591 0-1.503-.674-2.481-.654-1.285.019-2.47.747-3.13 1.897-1.332 2.308-.341 5.717 0 7.641.454 2.1 3.12 6.095 5.56 6.095 1.151 0 1.504-.7 2.898-.7 1.395 0 1.84.7 2.898.7 2.441 0 4.805-3.69 5.56-6.095-2.001-1.047-2.001-3.007-2.001-3.014v-.014zM10.303 3.364c.548-.636.917-1.521.817-2.404-.759.03-1.684.504-2.228 1.141-.489.571-.917 1.455-.817 2.338.835.066 1.684-.439 2.228-1.075z"/>
-                    </svg> iOS ИНСТРУКЦИИ {activeInstructions === 'ios' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    <img 
+                        src="https://cdn.simpleicons.org/apple/white" 
+                        width="16" 
+                        height="16" 
+                        alt="iOS"
+                        style={{ filter: 'brightness(1)' }}
+                    /> iOS ИНСТРУКЦИИ {activeInstructions === 'ios' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </button>
                 <button
                     onClick={() => setActiveInstructions(activeInstructions === 'android' ? null : 'android')}
@@ -248,9 +252,12 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
                         transition: '0.2s'
                     }}
                 >
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="#3DDC84" style={{ flexShrink: 0 }}>
-                        <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993s-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993s-.4482.9997-.9993.9997m11.4045-6.023l2.5155-4.356c.1299-.225.0528-.512-.1722-.6418a.4704.4704 0 0 0-.6418.1722l-2.5404 4.3992a10.052 10.052 0 0 0-11.0853 0L6.0592 4.4928a.4704.4704 0 0 0-.6418-.1722c-.225.1299-.3021.4168-.1722.6418l2.5155 4.356C3.9613 11.3323 1.3414 15.1118 1.3414 19.3414h21.3172c0-4.2295-2.6191-8.0091-6.4141-10.023z"/>
-                    </svg> ANDROID ИНСТРУКЦИИ {activeInstructions === 'android' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    <img 
+                        src="https://cdn.simpleicons.org/android/3DDC84" 
+                        width="16" 
+                        height="16" 
+                        alt="Android"
+                    /> ANDROID ИНСТРУКЦИИ {activeInstructions === 'android' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </button>
             </div>
 

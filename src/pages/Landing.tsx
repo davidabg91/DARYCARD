@@ -61,6 +61,12 @@ const Landing: React.FC = () => {
         return () => clearInterval(timer);
     }, []);
 
+    useEffect(() => {
+        if (selectedRoute) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [selectedRoute]);
+
     const EXCLUDED_ROUTES = [
         "Долни Дъбник - Садовец",
         "Долна Митрополия - Славовица",
