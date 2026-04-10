@@ -26,6 +26,7 @@ const Landing: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [currentTime, setCurrentTime] = useState(new Date());
     const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
+    const routeDetailRef = React.useRef<HTMLDivElement>(null);
     const [recentNotifications, setRecentNotifications] = useState<Announcement[]>([]);
 
     const currentDay = currentTime.getDay();
@@ -63,7 +64,9 @@ const Landing: React.FC = () => {
 
     useEffect(() => {
         if (selectedRoute) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => {
+                routeDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         }
     }, [selectedRoute]);
 
@@ -733,7 +736,7 @@ const Landing: React.FC = () => {
                         </div>
                     </>
                 ) : (
-                    <div className="route-grid" style={{ gridTemplateColumns: '1fr' }}>
+                    <div ref={routeDetailRef} className="route-grid" style={{ gridTemplateColumns: '1fr' }}>
                         {filteredRoutes.filter(l => l === selectedRoute).map((line) => {
                             const nextFromPleven = getNextBus(line, 'fromPleven');
                             const nextFromDest = getNextBus(line, 'fromDestination');
