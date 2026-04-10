@@ -497,36 +497,6 @@ const Landing: React.FC = () => {
                         Пълни графици и информация за всички автобусни линии в град Плевен и региона
                     </p>
 
-                    {/* Search Bar */}
-                    <div className="search-container" style={{ 
-                        maxWidth: '600px', 
-                        margin: '0 auto',
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '20px',
-                        padding: '0.5rem 1rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '1rem',
-                        backdropFilter: 'blur(10px)',
-                        transition: '0.3s'
-                    }}>
-                        <Search size={24} color="rgba(255,255,255,0.3)" />
-                        <input 
-                            placeholder="Намери своята линия"
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            style={{ 
-                                width: '100%', 
-                                background: 'none', 
-                                border: 'none', 
-                                color: '#fff', 
-                                fontSize: '1.1rem',
-                                padding: '0.8rem 0',
-                                outline: 'none'
-                            }}
-                        />
-                    </div>
                 </div>
 
                 {/* Announcements Section */}
@@ -671,7 +641,7 @@ const Landing: React.FC = () => {
                 {!selectedRoute ? (
                     <>
                         <div style={{ 
-                            marginBottom: '3rem', 
+                            marginBottom: '2rem', 
                             textAlign: 'center',
                             display: 'flex',
                             flexDirection: 'column',
@@ -706,6 +676,37 @@ const Landing: React.FC = () => {
                                 към {new Date().toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 <span style={{ width: '30px', height: '1.5px', background: 'linear-gradient(90deg, rgba(0, 173, 181, 0.3), transparent)' }} />
                             </div>
+                        </div>
+
+                        {/* Search Bar */}
+                        <div className="search-container" style={{ 
+                            maxWidth: '600px', 
+                            margin: '0 auto 3rem',
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '20px',
+                            padding: '0.5rem 1rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1rem',
+                            backdropFilter: 'blur(10px)',
+                            transition: '0.3s'
+                        }}>
+                            <Search size={24} color="rgba(255,255,255,0.3)" />
+                            <input 
+                                placeholder="Намери своята линия"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                style={{ 
+                                    width: '100%', 
+                                    background: 'none', 
+                                    border: 'none', 
+                                    color: '#fff', 
+                                    fontSize: '1.1rem',
+                                    padding: '0.8rem 0',
+                                    outline: 'none'
+                                }}
+                            />
                         </div>
                         <div className="route-grid selection-grid">
                             {filteredRoutes.map((line) => (
