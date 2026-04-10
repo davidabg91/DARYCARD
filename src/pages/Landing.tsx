@@ -27,7 +27,10 @@ const Landing: React.FC = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
     const routeDetailRef = React.useRef<HTMLDivElement>(null);
-    const [recentNotifications, setRecentNotifications] = useState<Announcement[]>([]);
+    const [recentNotifications, setRecentNotifications] = useState<Announcement[]>(() => {
+        const saved = localStorage.getItem('recent_notifications');
+        return saved ? JSON.parse(saved) : [];
+    });
 
     const currentDay = currentTime.getDay();
     const isEasterHoliday = currentTime.getFullYear() === 2026 && 
@@ -52,6 +55,7 @@ const Landing: React.FC = () => {
                 ...doc.data()
             })) as Announcement[];
             setRecentNotifications(notifs);
+            localStorage.setItem('recent_notifications', JSON.stringify(notifs));
         });
 
         return () => unsubscribe();
