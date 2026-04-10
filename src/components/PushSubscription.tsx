@@ -288,8 +288,8 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
                                 </div>
                                 <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, padding: '0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
                                     <strong style={{ color: '#ff5252' }}>Важно:</strong> Ако не получавате известия, проверете настройките:
-                                    <br/>• Настройки -> Приложения -> Chrome -> Известия (Включено)
-                                    <br/>• Настройки на Chrome -> Настройки за сайта -> Известия (Разрешено)
+                                    <br/>• Настройки → Приложения → Chrome → Известия (Включено)
+                                    <br/>• Настройки на Chrome → Настройки за сайта → Известия (Разрешено)
                                 </div>
                             </>
                         )}
