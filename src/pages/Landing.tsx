@@ -695,12 +695,7 @@ const Landing: React.FC = () => {
                     </button>
                 )}
 
-                {isEasterHoliday && (
-                    <div className="holiday-notice" style={{ maxWidth: selectedRoute ? '1200px' : '800px', margin: selectedRoute ? '0 auto 2rem' : '0 auto 3rem' }}>
-                        <Calendar size={20} />
-                        ВЕЛИКДЕНСКИ ПРАЗНИЦИ: Важи неделно разписание до 13.04 включително.
-                    </div>
-                )}
+
 
                 {/* Selection Grid OR Route Detail */}
                 {!selectedRoute ? (
