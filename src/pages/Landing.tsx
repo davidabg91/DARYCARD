@@ -602,10 +602,10 @@ const Landing: React.FC = () => {
                                         }}>
                                             <div style={{ 
                                                 width: '4px', 
-                                                height: '32px', 
                                                 background: '#ff5252',
                                                 borderRadius: '2px',
-                                                flexShrink: 0
+                                                flexShrink: 0,
+                                                alignSelf: 'stretch'
                                             }} />
                                             
                                             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
@@ -615,10 +615,7 @@ const Landing: React.FC = () => {
                                                     fontWeight: 800, 
                                                     color: isExpanded ? '#ff5252' : '#fff',
                                                     transition: '0.3s',
-                                                    lineHeight: 1.3,
-                                                    whiteSpace: 'nowrap',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis'
+                                                    lineHeight: 1.3
                                                 }}>
                                                     {notif.title}
                                                 </h3>
