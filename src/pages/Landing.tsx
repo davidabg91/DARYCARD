@@ -718,12 +718,6 @@ const Landing: React.FC = () => {
                     </button>
                 )}
 
-                {isEasterHoliday && selectedRoute && (
-                    <div className="holiday-notice" style={{ maxWidth: '1200px', margin: '0 auto 2rem' }}>
-                        <Calendar size={20} />
-                        ВЕЛИКДЕНСКИ ПРАЗНИЦИ: Важи неделно разписание до 13.04 включително.
-                    </div>
-                )}
 
 
                 {/* Selection Grid OR Route Detail */}
@@ -1035,6 +1029,24 @@ const Landing: React.FC = () => {
                                                     <h4 style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                                         <Clock size={16} /> Пълно разписание на курса
                                                     </h4>
+                                                    {isEasterHoliday && (
+                                                        <div style={{ 
+                                                            marginTop: '0.8rem',
+                                                            background: 'rgba(255, 82, 82, 0.1)', 
+                                                            border: '1px solid rgba(255, 82, 82, 0.2)', 
+                                                            padding: '0.6rem 1rem', 
+                                                            borderRadius: '8px', 
+                                                            color: '#ff5252', 
+                                                            fontSize: '0.8rem', 
+                                                            fontWeight: 800,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.6rem'
+                                                        }}>
+                                                            <Calendar size={16} />
+                                                            ВЕЛИКДЕНСКИ ПРАЗНИЦИ: Важи неделно разписание до 13.04 включително.
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {[
