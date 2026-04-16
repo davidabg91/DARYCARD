@@ -31,7 +31,11 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/,
+            urlPattern: ({ url }) => {
+              const isImage = /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i.test(url.pathname);
+              const isAd = url.pathname.includes('/assets/ads/');
+              return isImage && !isAd;
+            },
             handler: 'CacheFirst',
             options: {
               cacheName: 'images-cache',

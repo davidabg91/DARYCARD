@@ -6,22 +6,22 @@ interface AdSlideshowProps {
 
 const AD_IMAGES = [
     {
-        url: '/assets/ads/ad_alps.png',
+        url: '/assets/ads/ad_alps.webp',
         title: 'Езерата на Алпите',
         description: 'Незабравимо пътуване до Сейнт Мориц'
     },
     {
-        url: '/assets/ads/ad_riviera.png',
+        url: '/assets/ads/ad_riviera.webp',
         title: 'Перлите на Ривиерата',
         description: 'Монако, Ница и Сен Тропе'
     },
     {
-        url: '/assets/ads/ad_paris.png',
+        url: '/assets/ads/ad_paris.webp',
         title: 'Магията на Париж',
         description: 'Градът на светлините'
     },
     {
-        url: '/assets/ads/ad_kitai.png',
+        url: '/assets/ads/ad_kitai.webp',
         title: 'Мистичният Китай',
         description: 'Великата китайска стена и забраненият град'
     }
