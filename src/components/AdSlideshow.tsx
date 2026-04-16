@@ -32,25 +32,21 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
     const [imagesLoaded, setImagesLoaded] = useState(false);
 
     useEffect(() => {
-        // Preload all images
-        const preloadImages = async () => {
-            const promises = AD_IMAGES.map(ad => {
-                return new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.src = ad.url;
-                    img.onload = resolve;
-                    img.onerror = reject;
-                });
-            });
-            try {
-                await Promise.all(promises);
-                setImagesLoaded(true);
-            } catch (err) {
-                console.error("Failed to preload some images", err);
-                setImagesLoaded(true); // Proceed anyway after attempt
-            }
+        // Preload the FIRST image quickly to show something as soon as possible
+        const preloadFirstImage = () => {
+            const img = new Image();
+            img.src = AD_IMAGES[0].url;
+            img.onload = () => setImagesLoaded(true);
+            img.onerror = () => setImagesLoaded(true); // Fallback to showing the component anyway
         };
-        preloadImages();
+        
+        preloadFirstImage();
+
+        // Background preload for the rest
+        AD_IMAGES.slice(1).forEach(ad => {
+            const img = new Image();
+            img.src = ad.url;
+        });
     }, []);
 
     useEffect(() => {
@@ -63,7 +59,14 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
         return () => clearInterval(interval);
     }, [imagesLoaded]);
 
-    if (!imagesLoaded) return null;
+    if (!imagesLoaded) {
+        return (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid #ff1744', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+            </div>
+        );
+    }
 
     return (
         <div 
