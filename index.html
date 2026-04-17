@@ -30,7 +30,23 @@
       }
     </script>
     <script type="module">
-      // This is the only way to potentially reach import.meta
+      // 🛡️ Service Worker Nuke (Force Unregister all old caches)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+            console.log('Old Service Worker Unregistered');
+          }
+        });
+        
+        // Clear caches too
+        if (window.caches) {
+          caches.keys().then(function(names) {
+            for (let name of names) caches.delete(name);
+          });
+        }
+      }
+
       try {
         if (typeof import.meta !== 'undefined' && typeof import.meta.resolve === 'undefined') {
           import.meta.resolve = function(s) { return s; };

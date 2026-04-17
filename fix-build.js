@@ -41,6 +41,9 @@ function processDirectory(dir) {
             content = content.replace(/nomodule /g, '');
             content = content.replace(/data-src="(.*?)"/g, (match, p1) => `src="${p1}?v=${v}"`);
             
+            // Also version CSS for good measure
+            content = content.replace(/href="(.*?\.css)"/g, (match, p1) => `href="${p1}?v=${v}"`);
+            
             fs.writeFileSync(filePath, content, 'utf8');
             console.log(`✅ index.html transformed to Force Legacy Mode.`);
         }
