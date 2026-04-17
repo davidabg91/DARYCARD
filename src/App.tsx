@@ -90,7 +90,6 @@ function DeepLinkHandler() {
 }
 
 function VersionChecker() {
-  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     const checkVersion = async () => {
@@ -114,7 +113,6 @@ function VersionChecker() {
         const versionMatch = html.match(/ВЕРСИЯ:\s*(.*?)<\/div>/);
         const serverVersion = versionMatch ? versionMatch[1].trim() : null;
         
-        // @ts-expect-error - Global defined in types.d.ts
         const localVersion = window.__BUILD_TIME__.trim();
 
         console.log('System: Version Check', { localVersion, serverVersion });
@@ -129,7 +127,7 @@ function VersionChecker() {
       } catch (e) {
         console.error('System: Version Check Failed', e);
       } finally {
-        setIsChecking(false);
+        // Version check complete
       }
     };
 
