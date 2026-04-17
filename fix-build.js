@@ -37,8 +37,9 @@ function processDirectory(dir) {
             content = content.replace(/<script type="module">import'data:text\/javascript,if\(!import\.meta\.resolve\).*?<\/script>/g, '');
             
             // Make the legacy polyfill and entry point load normally (remove nomodule)
+            const v = Date.now();
             content = content.replace(/nomodule /g, '');
-            content = content.replace(/data-src=/g, 'src=');
+            content = content.replace(/data-src="(.*?)"/g, (match, p1) => `src="${p1}?v=${v}"`);
             
             fs.writeFileSync(filePath, content, 'utf8');
             console.log(`✅ index.html transformed to Force Legacy Mode.`);
