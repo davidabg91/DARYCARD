@@ -141,6 +141,7 @@ const ClientProfile: React.FC = () => {
     const [isPaying, setIsPaying] = useState(false);
     const [paymentComplete, setPaymentComplete] = useState(false);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [isLive, setIsLive] = useState(false);
 
     useEffect(() => {
         const handleOnline = () => setIsOnline(true);
@@ -318,7 +319,10 @@ const ClientProfile: React.FC = () => {
 
     useEffect(() => {
         if (!id) return;
-        const unsubscribe = onSnapshot(doc(db, 'clients', id), (docSnap) => {
+        const unsubscribe = onSnapshot(doc(db, 'clients', id), { includeMetadataChanges: true }, (docSnap) => {
+            const isFromCache = docSnap.metadata.fromCache;
+            setIsLive(!isFromCache);
+            
             if (docSnap.exists()) {
                 const data = docSnap.data() as Record<string, unknown>;
                 const clientData: Client = { ...data, id: docSnap.id } as Client;
@@ -745,8 +749,8 @@ const ClientProfile: React.FC = () => {
                         alignItems: 'center',
                         gap: '4px'
                     }}>
-                        <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: isOnline ? themeColor : '#f79e1b', boxShadow: `0 0 8px ${isOnline ? themeColor : '#f79e1b'}` }} />
-                        {isOnline ? 'СИНХРОНИЗИРАНО' : 'ОФЛАЙН'}
+                        <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: isLive ? themeColor : '#f79e1b', boxShadow: `0 0 8px ${isLive ? themeColor : '#f79e1b'}` }} />
+                        {isLive ? 'ПРОВЕРЕНО В РЕАЛНО ВРЕМЕ' : 'ОФЛАЙН / КЕШИРАНИ ДАННИ'}
                     </div>
                 </div>
 
