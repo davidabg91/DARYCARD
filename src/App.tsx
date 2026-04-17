@@ -89,10 +89,63 @@ function DeepLinkHandler() {
   );
 }
 
+function VersionChecker() {
+  const [isChecking, setIsChecking] = useState(false);
+
+  useEffect(() => {
+    const checkVersion = async () => {
+      // Don't check if we just reloaded or are offline
+      if (sessionStorage.getItem('dary_just_reloaded') === 'true' || !navigator.onLine) {
+        sessionStorage.removeItem('dary_just_reloaded');
+        return;
+      }
+
+      setIsChecking(true);
+      try {
+        // Fetch index.html with cache-buster
+        const response = await fetch('/?t=' + Date.now(), { 
+          cache: 'no-store',
+          headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+        });
+        const html = await response.text();
+        
+        // Find the version in the fetched HTML
+        // Looks for: ВЕРСИЯ: 17.04.2026 г., 22:00:15
+        const versionMatch = html.match(/ВЕРСИЯ:\s*(.*?)<\/div>/);
+        const serverVersion = versionMatch ? versionMatch[1].trim() : null;
+        
+        // @ts-expect-error - Global defined in types.d.ts
+        const localVersion = window.__BUILD_TIME__.trim();
+
+        console.log('System: Version Check', { localVersion, serverVersion });
+
+        if (serverVersion && localVersion && serverVersion !== localVersion) {
+          console.warn('System: Version Mismatch Detected! Force Refreshing...');
+          sessionStorage.setItem('dary_just_reloaded', 'true');
+          // Important: window.location.reload(true) is deprecated in some browsers, 
+          // but we want a hard reload from the server.
+          window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now() + window.location.hash;
+        }
+      } catch (e) {
+        console.error('System: Version Check Failed', e);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    // Delay slightly to let the page settle
+    const timer = setTimeout(checkVersion, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return null;
+}
+
 function App() {
   return (
     <AuthProvider>
       <HashRouter>
+        <VersionChecker />
         <DeepLinkHandler />
         <Suspense fallback={<PageLoader />}>
           <Routes>

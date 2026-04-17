@@ -30,22 +30,39 @@
       }
     </script>
     <script type="module">
-      // 🛡️ Service Worker Nuke (Force Unregister all old caches)
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for(let registration of registrations) {
-            registration.unregister();
-            console.log('Old Service Worker Unregistered');
-          }
-        });
+      // 🛡️ COMPREHENSIVE CACHE NUKE & VERSION CONTROL
+      // This script runs at the very beginning to ensure we aren't stuck in a zombie cache.
+      (function() {
+        const CACHE_CLEAR_KEY = 'dary_cache_cleared_v2';
         
-        // Clear caches too
-        if (window.caches) {
-          caches.keys().then(function(names) {
-            for (let name of names) caches.delete(name);
+        // Unregister ALL Service Workers
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            for (let registration of registrations) {
+              registration.unregister();
+              console.warn('System: Service Worker Unregistered');
+            }
           });
         }
-      }
+
+        // Clear Caches
+        if (window.caches) {
+          caches.keys().then(names => {
+            for (let name of names) {
+              caches.delete(name);
+              console.warn('System: Cache Storage Cleared:', name);
+            }
+          });
+        }
+
+        // Only force reload once per session to avoid infinite loops
+        if (!sessionStorage.getItem(CACHE_CLEAR_KEY)) {
+          sessionStorage.setItem(CACHE_CLEAR_KEY, 'true');
+          console.warn('System: Forcing Session Clean Refresh');
+          // We wait a tiny bit to let internal caches settle before reload
+          setTimeout(() => { if (!window.location.search.includes('cleared')) window.location.reload(true); }, 150);
+        }
+      })();
 
       try {
         if (typeof import.meta !== 'undefined' && typeof import.meta.resolve === 'undefined') {

@@ -39,13 +39,22 @@ function processDirectory(dir) {
             // Make the legacy polyfill and entry point load normally (remove nomodule)
             const v = Date.now();
             content = content.replace(/nomodule /g, '');
+            
+            // VERSION SCRIPTS (including those without data-src)
+            content = content.replace(/src="(.*?\.js)"/g, (match, p1) => {
+                if (p1.includes('?')) return match;
+                return `src="${p1}?v=${v}"`;
+            });
             content = content.replace(/data-src="(.*?)"/g, (match, p1) => `src="${p1}?v=${v}"`);
             
-            // Also version CSS for good measure
-            content = content.replace(/href="(.*?\.css)"/g, (match, p1) => `href="${p1}?v=${v}"`);
+            // VERSION CSS
+            content = content.replace(/href="(.*?\.css)"/g, (match, p1) => {
+                if (p1.includes('?')) return match;
+                return `href="${p1}?v=${v}"`;
+            });
             
             fs.writeFileSync(filePath, content, 'utf8');
-            console.log(`✅ index.html transformed to Force Legacy Mode.`);
+            console.log(`✅ index.html transformed to Force Legacy Mode with Versioning: v=${v}`);
         }
     });
 }
