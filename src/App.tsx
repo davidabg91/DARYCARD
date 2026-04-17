@@ -27,8 +27,6 @@ function ClientProfileWrapper() {
 function DeepLinkHandler() {
   const navigate = useNavigate();
   const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
-  const [nfcStatus, setNfcStatus] = useState('NFC: ИЗКЛ.');
-
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -54,7 +52,7 @@ function DeepLinkHandler() {
             navigate(`/client/${tagId}`);
           }
         },
-        (status) => setNfcStatus(status)
+        () => {} // Status updates no longer needed
       );
     };
 
