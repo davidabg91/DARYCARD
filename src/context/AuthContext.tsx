@@ -36,6 +36,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [users, setUsers] = useState<AppUser[]>([]);
     const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+    const [loading, setLoading] = useState(true);
     const loadingRef = React.useRef(loading);
     useEffect(() => {
         loadingRef.current = loading;
