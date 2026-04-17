@@ -99,7 +99,6 @@ function VersionChecker() {
         return;
       }
 
-      setIsChecking(true);
       try {
         // Fetch index.html with cache-buster
         const response = await fetch('/?t=' + Date.now(), { 
