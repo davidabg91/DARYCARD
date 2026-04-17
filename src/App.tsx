@@ -87,27 +87,6 @@ function DeepLinkHandler() {
           НЯМА ВРЪЗКА С ИНТЕРНЕТ
         </div>
       )}
-      {/* 🧬 NFC Diagnostic Bar (Only visible in Native App) */}
-      {('Capacitor' in window) && (
-        <div style={{
-          position: 'fixed',
-          top: '10px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: '#ff5252',
-          color: 'white',
-          padding: '5px 15px',
-          fontSize: '0.8rem',
-          zIndex: 999999,
-          pointerEvents: 'none',
-          borderRadius: '20px',
-          boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
-          fontWeight: '900',
-          border: '2px solid white'
-        }}>
-          {nfcStatus}
-        </div>
-      )}
     </>
   );
 }
