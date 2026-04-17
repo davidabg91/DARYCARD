@@ -17,10 +17,10 @@ export default defineConfig({
       avif: { quality: 60 },
     }),
   ],
-  define: {
     // 🛡️ Fix for myPOS Ultra WebView (Android 11)
     // Replaces the modern import.meta.resolve syntax with a safe fallback during build
-    'import.meta.resolve': '(undefined)'
+    'import.meta.resolve': '(undefined)',
+    '__BUILD_TIME__': JSON.stringify(new Date().toLocaleString('bg-BG', { timeZone: 'Europe/Sofia' }))
   },
   build: {
     target: 'chrome58',
