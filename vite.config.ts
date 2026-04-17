@@ -17,6 +17,7 @@ export default defineConfig({
       avif: { quality: 60 },
     }),
   ],
+  define: {
     // 🛡️ Fix for myPOS Ultra WebView (Android 11)
     // Replaces the modern import.meta.resolve syntax with a safe fallback during build
     'import.meta.resolve': '(undefined)',
