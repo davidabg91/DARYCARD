@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db, messaging } from '../firebase';
+import { db, getSafeMessaging } from '../firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
 import { Bell, BellOff, Loader2, CheckCircle2, Info, ChevronDown, ChevronUp } from 'lucide-react';
@@ -28,7 +28,11 @@ const PushSubscription: React.FC<PushSubscriptionProps> = ({ courseId }) => {
     }, [courseId]);
 
     const handleSubscribe = async () => {
-        if (!messaging) return;
+        const messaging = await getSafeMessaging();
+        if (!messaging) {
+            setError('Вашето устройство или браузър не поддържат известия.');
+            return;
+        }
         setLoading(true);
         setError(null);
 

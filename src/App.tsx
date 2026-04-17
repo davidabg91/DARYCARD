@@ -1,5 +1,7 @@
-import { lazy, Suspense } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { App as CapApp } from '@capacitor/app';
+import { NFCService } from './services/NFCService';
+import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -22,10 +24,99 @@ function ClientProfileWrapper() {
   return <ClientProfile />;
 }
 
+function DeepLinkHandler() {
+  const navigate = useNavigate();
+  const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
+  const [nfcStatus, setNfcStatus] = useState('NFC: ИЗКЛ.');
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    const setupListener = async () => {
+      // 1. App Links / Deep Links
+      CapApp.addListener('appUrlOpen', (data) => {
+        const url = new URL(data.url);
+        let path = url.hash ? url.hash.replace('#', '') : url.pathname;
+        if (path) {
+          if (path === '/' || path === '') path = '/';
+          navigate(path);
+        }
+      });
+
+      // 2. NFC Scanning with Diagnostic Status
+      NFCService.init(
+        (tagId) => {
+          if (tagId) {
+            navigate(`/client/${tagId}`);
+          }
+        },
+        (status) => setNfcStatus(status)
+      );
+    };
+
+    setupListener();
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      CapApp.removeAllListeners();
+      NFCService.stop();
+    };
+  }, [navigate]);
+
+  return (
+    <>
+      {isOffline && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: '#ff5252',
+          color: 'white',
+          textAlign: 'center',
+          padding: '4px',
+          fontSize: '0.7rem',
+          fontWeight: 'bold',
+          zIndex: 9999
+        }}>
+          НЯМА ВРЪЗКА С ИНТЕРНЕТ
+        </div>
+      )}
+      {/* 🧬 NFC Diagnostic Bar (Only visible in Native App) */}
+      {window.hasOwnProperty('Capacitor') && (
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#ff5252',
+          color: 'white',
+          padding: '5px 15px',
+          fontSize: '0.8rem',
+          zIndex: 999999,
+          pointerEvents: 'none',
+          borderRadius: '20px',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+          fontWeight: '900',
+          border: '2px solid white'
+        }}>
+          {nfcStatus}
+        </div>
+      )}
+    </>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
       <HashRouter>
+        <DeepLinkHandler />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public — no login needed */}

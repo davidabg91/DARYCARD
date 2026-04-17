@@ -39,8 +39,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Safety timeout: stop loading after 10 seconds even if Firebase hasn't responded
+        const safetyTimeout = setTimeout(() => {
+            if (loading) {
+                console.warn('Authentication check timed out. Firebase might be blocked by a proxy or network issue.');
+                setLoading(false);
+            }
+        }, 10000);
+
         // 1. Listen for Auth State
         const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
+            clearTimeout(safetyTimeout);
             setLoading(true);
             try {
                 if (fbUser) {

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Dary Card</string>
+    <string name="title_activity_main">Dary Card</string>
+    <string name="package_name">com.darycommerce.app</string>
+    <string name="custom_url_scheme">com.darycommerce.app</string>
+</resources>

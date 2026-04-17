@@ -8,6 +8,34 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-RZ7JWCDJ0W');
+
+      // 🩺 DIAGNOSTIC ERROR CATCHER
+      window.onerror = function(msg, url, lineNo, columnNo, error) {
+        var div = document.createElement('div');
+        div.style = 'position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:99999;padding:10px;font-family:monospace;font-size:12px;';
+        div.innerHTML = 'ERROR: ' + msg + '<br>Line: ' + lineNo + '<br>Column: ' + columnNo;
+        document.body.appendChild(div);
+        return false;
+      };
+      window.onunhandledrejection = function(event) {
+        var div = document.createElement('div');
+        div.style = 'position:fixed;top:50%;left:0;width:100%;background:orange;color:white;z-index:99999;padding:10px;font-family:monospace;font-size:12px;';
+        div.innerHTML = 'PROMISE REJECTION: ' + event.reason;
+        document.body.appendChild(div);
+      };
+
+      // 🛡️ REPAIR import.meta.resolve (Fix for myPOS/Old Chrome)
+      if (typeof import === 'undefined') {
+         // Some older browsers need a global hint
+      }
+    </script>
+    <script type="module">
+      // This is the only way to potentially reach import.meta
+      try {
+        if (typeof import.meta !== 'undefined' && typeof import.meta.resolve === 'undefined') {
+          import.meta.resolve = function(s) { return s; };
+        }
+      } catch (e) { console.warn('Polyfill fail:', e); }
     </script>
 
     <meta charset="UTF-8" />
