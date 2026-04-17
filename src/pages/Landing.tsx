@@ -1376,7 +1376,7 @@ const Landing: React.FC = () => {
                         <span style={{ opacity: 0.3 }}>•</span>
                         <a href="https://cpdp.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>КЗЛД</a>
                         <span style={{ opacity: 0.3 }}>•</span>
-                        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.15)', fontWeight: 800 }}>ВЕРСИЯ: {(window as any).__BUILD_TIME__}</div>
+                        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.15)', fontWeight: 800 }}>ВЕРСИЯ: {window.__BUILD_TIME__}</div>
                     </div>
                 </div>
             </footer>
