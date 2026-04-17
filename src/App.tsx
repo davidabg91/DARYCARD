@@ -88,7 +88,7 @@ function DeepLinkHandler() {
         </div>
       )}
       {/* 🧬 NFC Diagnostic Bar (Only visible in Native App) */}
-      {window.hasOwnProperty('Capacitor') && (
+      {('Capacitor' in window) && (
         <div style={{
           position: 'fixed',
           top: '10px',

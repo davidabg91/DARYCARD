@@ -49,8 +49,8 @@ export class NFCService {
             this.isInitialized = true;
             onStatusUpdate('NFC: ГОТОВНОСТ');
             console.log('NFC Service Initialized Successfully');
-        } catch (error: any) {
-            const errorMsg = error.message || error.toString() || 'Unknown error';
+        } catch (error: unknown) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
             onStatusUpdate('NFC ГРЕШКА: ' + errorMsg);
             console.error('Error initializing NFC Service:', error);
         }

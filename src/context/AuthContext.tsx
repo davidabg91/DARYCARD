@@ -36,12 +36,15 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [users, setUsers] = useState<AppUser[]>([]);
     const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
-    const [loading, setLoading] = useState(true);
+    const loadingRef = React.useRef(loading);
+    useEffect(() => {
+        loadingRef.current = loading;
+    }, [loading]);
 
     useEffect(() => {
         // Safety timeout: stop loading after 10 seconds even if Firebase hasn't responded
         const safetyTimeout = setTimeout(() => {
-            if (loading) {
+            if (loadingRef.current) {
                 console.warn('Authentication check timed out. Firebase might be blocked by a proxy or network issue.');
                 setLoading(false);
             }
