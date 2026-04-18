@@ -896,20 +896,23 @@ const ClientProfile: React.FC = () => {
                                     </>
                                 )}
                                 <div className="status-badge" style={{ 
-                                    fontSize: '0.85rem', 
-                                    fontWeight: 900, 
+                                    fontSize: !hasPaidCurrentMonth ? '1.5rem' : '0.85rem', 
+                                    fontWeight: 950, 
                                     color: themeColor, 
                                     marginTop: '2px', 
-                                    display: 'inline-flex', 
+                                    display: 'flex', 
                                     alignItems: 'center', 
-                                    gap: '8px',
-                                    padding: '6px 12px',
-                                    background: `rgba(255,255,255,0.03)`,
-                                    borderRadius: '50px',
-                                    width: 'fit-content',
-                                    border: '1px solid rgba(255,255,255,0.05)'
+                                    justifyContent: !hasPaidCurrentMonth ? 'center' : 'flex-start',
+                                    gap: !hasPaidCurrentMonth ? '12px' : '8px',
+                                    padding: !hasPaidCurrentMonth ? '1.5rem 1rem' : '6px 12px',
+                                    background: !hasPaidCurrentMonth ? `rgba(255, 23, 68, 0.05)` : `rgba(255,255,255,0.03)`,
+                                    borderRadius: !hasPaidCurrentMonth ? '24px' : '50px',
+                                    width: !hasPaidCurrentMonth ? '100%' : 'fit-content',
+                                    border: !hasPaidCurrentMonth ? `1px solid ${themeColor}44` : '1px solid rgba(255,255,255,0.05)',
+                                    textAlign: 'center',
+                                    boxShadow: !hasPaidCurrentMonth ? `0 10px 30px ${themeColor}15` : 'none'
                                 }}>
-                                    <StatusIcon size={16} strokeWidth={3} />
+                                    <StatusIcon size={!hasPaidCurrentMonth ? 28 : 16} strokeWidth={3} />
                                     {statusText}
                                 </div>
                             </div>
