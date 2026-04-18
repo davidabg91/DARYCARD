@@ -237,6 +237,14 @@ const Landing: React.FC = () => {
                     to { opacity: 1; transform: translateY(0); }
                 }
 
+                .mobile-br { display: none; }
+                .desktop-br { display: block; }
+
+                @media (max-width: 768px) {
+                    .desktop-br { display: none; }
+                    .mobile-br { display: block; }
+                }
+
                 .selection-card {
                     background: rgba(255,255,255,0.03);
                     border: 1px solid rgba(255,255,255,0.05);
@@ -528,14 +536,15 @@ const Landing: React.FC = () => {
 
 
                     <h1 style={{ 
-                        fontSize: 'clamp(2rem, 8vw, 4.5rem)', 
+                        fontSize: 'clamp(2.2rem, 8vw, 4.5rem)', 
                         fontWeight: 900, 
                         marginBottom: '1rem', 
                         letterSpacing: '-2px',
                         lineHeight: 1.1
                     }}>
-                        Вашите Пътувания, <br/>
-                        По-Умни с <span style={{ color: '#ff5252' }}>DARY Commerce</span>
+                        Вашите Пътувания, <br className="desktop-br"/>
+                        По-Умни <br className="mobile-br"/>
+                        с <span style={{ color: '#ff5252' }}>DARY Commerce</span>
                     </h1>
                     <p style={{ 
                         fontSize: 'clamp(1.1rem, 4vw, 1.4rem)', 
