@@ -695,15 +695,16 @@ const ClientProfile: React.FC = () => {
                 // Disable backdrop-filter on small screens for performance
                 ...(window.innerWidth > 600 ? { backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)' } : { background: 'rgba(30, 30, 35, 0.95)' })
             }}>
-                {/* Holographic Overlay */}
+                {/* Holographic Overlay & Mesh Background */}
+                <div className="mesh-gradient" />
                 <div style={{
                     position: 'absolute',
                     inset: 0,
-                    background: `linear-gradient(135deg, transparent 0%, ${themeColor}11 50%, transparent 100%)`,
+                    background: `linear-gradient(135deg, transparent 0%, ${themeColor}08 50%, transparent 100%)`,
                     backgroundSize: '200% 200%',
-                    animation: 'hologram 8s linear infinite',
+                    animation: 'hologram 10s linear infinite',
                     pointerEvents: 'none',
-                    zIndex: 5
+                    zIndex: 2
                 }} />
 
                 {/* Card Header */}
@@ -758,71 +759,157 @@ const ClientProfile: React.FC = () => {
                 <div className="id-card-body" style={{ 
                     flex: 1, 
                     display: 'flex', 
-                    padding: '1.5rem', 
-                    gap: '1.5rem', 
+                    padding: '2rem 1.5rem', 
+                    gap: '2rem', 
                     position: 'relative',
-                    flexWrap: 'wrap'
+                    flexWrap: 'wrap',
+                    zIndex: 10
                 }}>
                     {/* Photo Area */}
                     <div className="id-photo-area" style={{ 
                         display: 'flex', 
                         flexDirection: 'column', 
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        position: 'relative'
                     }}>
+                        {/* Glow effect under photo */}
+                        <div style={{
+                            position: 'absolute',
+                            width: '120px',
+                            height: '140px',
+                            background: themeColor,
+                            borderRadius: '50%',
+                            filter: 'blur(40px)',
+                            opacity: 0.15,
+                            zIndex: -1,
+                            animation: 'glowPulse 4s infinite ease-in-out'
+                        }} />
+                        
                         <div className="photo-frame" style={{
-                            width: '140px',
-                            height: '165px',
-                            borderRadius: '16px',
+                            width: '150px',
+                            height: '185px',
+                            borderRadius: '24px',
                             overflow: 'hidden',
-                            border: '1px solid rgba(255,255,255,0.12)',
+                            border: '1px solid rgba(255,255,255,0.15)',
                             position: 'relative',
-                            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
-                            background: '#111'
-                        }} onClick={() => setShowPhotoModal(true)}>
+                            boxShadow: '0 25px 50px rgba(0,0,0,0.6)',
+                            background: 'linear-gradient(180deg, #1a1a1e 0%, #111 100%)',
+                            transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                            cursor: 'pointer'
+                        }} onClick={() => setShowPhotoModal(true)}
+                           onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05) rotate(1deg)'}
+                           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) rotate(0)'}>
                             {client && client.photo && <img src={client.photo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Client" />}
-                            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }} />
-                            <div style={{ position: 'absolute', inset: 0, border: `2px solid ${themeColor}22`, borderRadius: '16px', pointerEvents: 'none' }} />
+                            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' }} />
+                            <div style={{ 
+                                position: 'absolute', 
+                                inset: 0, 
+                                border: `1.5px solid ${themeColor}33`, 
+                                borderRadius: '24px', 
+                                pointerEvents: 'none',
+                                boxShadow: `inset 0 0 20px ${themeColor}11`
+                            }} />
+                            
+                            {/* Chip reflection */}
+                            <div style={{
+                                position: 'absolute',
+                                top: '10px',
+                                right: '10px',
+                                width: '30px',
+                                height: '20px',
+                                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%)',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(255,255,255,0.05)'
+                            }} />
                         </div>
                     </div>
 
                     {/* Data Area */}
-                    <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1.2rem' }}>
+                    <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1.5rem' }}>
                         <div>
-                            <div style={{ fontSize: '0.6rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px' }}>ПРИТЕЖАТЕЛ</div>
-                            <h2 className="holder-name" style={{ fontSize: '1.6rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1.1 }}>{client?.name.toUpperCase()}</h2>
+                            <div style={{ 
+                                fontSize: '0.65rem', 
+                                color: themeColor, 
+                                fontWeight: 900, 
+                                textTransform: 'uppercase', 
+                                letterSpacing: '2px', 
+                                marginBottom: '4px',
+                                textShadow: `0 0 10px ${themeColor}44`
+                            }}>ПРИТЕЖАТЕЛ</div>
+                            <h2 className="holder-name" style={{ 
+                                fontSize: '1.8rem', 
+                                fontWeight: 950, 
+                                margin: 0, 
+                                letterSpacing: '-1px', 
+                                color: '#fff', 
+                                lineHeight: 1.05,
+                                background: 'linear-gradient(to right, #fff, rgba(255,255,255,0.7))',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent'
+                            }}>{client?.name.toUpperCase()}</h2>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
                             <div>
-                                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '2px' }}>ДЕСТИНАЦИЯ</div>
-                                <div className="route-text" style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>{client?.route}</div>
+                                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '1px' }}>ДЕСТИНАЦИЯ</div>
+                                <div className="route-text" style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>{client?.route}</div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '2px' }}>ИЗДАДЕНА НА</div>
-                                <div className="date-text" style={{ fontSize: '1rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>{client && new Date(client.createdAt).toLocaleDateString('bg-BG')}</div>
+                                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '1px' }}>ИЗДАДЕНА НА</div>
+                                <div className="date-text" style={{ fontSize: '1rem', fontWeight: 800, color: 'rgba(255,255,255,0.6)' }}>{client && new Date(client.createdAt).toLocaleDateString('bg-BG')}</div>
                             </div>
                         </div>
 
                         {/* Validity Badge */}
                         <div style={{ 
-                            background: `${themeColor}20`,
-                            border: `1px solid ${themeColor}40`,
-                            borderRadius: '16px',
-                            padding: '1rem',
+                            background: `linear-gradient(135deg, ${themeColor}22 0%, ${themeColor}09 100%)`,
+                            border: `1px solid ${themeColor}33`,
+                            borderRadius: '20px',
+                            padding: '1.2rem',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '4px',
-                            boxShadow: `0 10px 30px ${themeColor}10`
+                            gap: '12px',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            boxShadow: `0 15px 35px ${themeColor}15`
                         }}>
-                            <div className="validity-content" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {/* Shimmer effect inside badge */}
+                            <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)',
+                                animation: 'shimmer 2s infinite',
+                                pointerEvents: 'none'
+                            }} />
+
+                            <div className="validity-content" style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', zIndex: 1 }}>
                                 {hasPaidCurrentMonth && (
                                     <>
-                                        <div style={{ fontSize: '0.6rem', color: themeColor, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>ВАЛИДНА ДО КРАЯ НА</div>
-                                        <div className="valid-month" style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>{getFormattedMonth(currentMonthStr)}</div>
+                                        <div style={{ fontSize: '0.65rem', color: themeColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1.5px' }}>ВАЛИДНА ДО КРАЯ НА</div>
+                                        <div className="valid-month" style={{ 
+                                            fontSize: '1.8rem', 
+                                            fontWeight: 950, 
+                                            color: '#fff',
+                                            lineHeight: 1,
+                                            margin: '4px 0'
+                                        }}>{getFormattedMonth(currentMonthStr)}</div>
                                     </>
                                 )}
-                                <div className="status-badge" style={{ fontSize: '0.75rem', fontWeight: 800, color: themeColor, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <StatusIcon size={14} />
+                                <div className="status-badge" style={{ 
+                                    fontSize: '0.85rem', 
+                                    fontWeight: 900, 
+                                    color: themeColor, 
+                                    marginTop: '2px', 
+                                    display: 'inline-flex', 
+                                    alignItems: 'center', 
+                                    gap: '8px',
+                                    padding: '6px 12px',
+                                    background: `rgba(255,255,255,0.03)`,
+                                    borderRadius: '50px',
+                                    width: 'fit-content',
+                                    border: '1px solid rgba(255,255,255,0.05)'
+                                }}>
+                                    <StatusIcon size={16} strokeWidth={3} />
                                     {statusText}
                                 </div>
                             </div>
@@ -1181,26 +1268,53 @@ const ClientProfile: React.FC = () => {
                     }
                 }
                 @keyframes cardEnter {
-                    from { opacity: 0; transform: translateY(30px) scale(0.95); rotate: 1deg; }
-                    to { opacity: 1; transform: translateY(0) scale(1); rotate: 0deg; }
+                    from { opacity: 0; transform: translateY(30px) scale(0.95) rotateX(5deg); }
+                    to { opacity: 1; transform: translateY(0) scale(1) rotateX(0deg); }
                 }
                 @keyframes hologram {
                     0% { background-position: 0% 0%; }
                     100% { background-position: 200% 200%; }
                 }
+                @keyframes meshScroll {
+                    0% { background-position: 0% 0%; }
+                    50% { background-position: 100% 100%; }
+                    100% { background-position: 0% 0%; }
+                }
+                @keyframes shimmer {
+                    0% { transform: translateX(-100%) skewX(-20deg); }
+                    100% { transform: translateX(200%) skewX(-20deg); }
+                }
+                @keyframes glowPulse {
+                    0%, 100% { opacity: 0.5; filter: blur(10px); }
+                    50% { opacity: 0.8; filter: blur(15px); }
+                }
+                
+                .id-card-container {
+                    perspective: 1000px;
+                }
+                
+                .mesh-gradient {
+                    position: absolute;
+                    inset: -50%;
+                    width: 200%;
+                    height: 200%;
+                    background: radial-gradient(circle at 30% 20%, ${themeColor}15 0%, transparent 40%),
+                                radial-gradient(circle at 70% 80%, ${themeColor}10 0%, transparent 40%);
+                    background-size: 50% 50%;
+                    animation: meshScroll 15s ease infinite;
+                    pointer-events: none;
+                    z-index: 0;
+                    opacity: 0.6;
+                }
+
                 .id-card-container::after {
                     content: '';
                     position: absolute;
-                    top: -50%;
-                    left: -50%;
-                    width: 200%;
-                    height: 200%;
-                    background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 40%);
+                    inset: 0;
+                    background: radial-gradient(circle at top right, rgba(255,255,255,0.05) 0%, transparent 60%);
                     pointer-events: none;
-                    opacity: 0.3;
-                    mix-blend-mode: soft-light;
-                    transform: rotate(45deg);
                 }
+
                 @media (max-width: 600px) {
                     .card-header {
                         padding: 0.8rem 1rem 0.6rem !important;
@@ -1250,6 +1364,7 @@ const ClientProfile: React.FC = () => {
                         backdrop-filter: none !important;
                         -webkit-backdrop-filter: none !important;
                         background: rgba(30,30,35,0.8) !important;
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.5) !important;
                     }
                 }
             `}</style>
