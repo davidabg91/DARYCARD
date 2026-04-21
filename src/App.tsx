@@ -119,15 +119,17 @@ function App() {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
     const checkVersion = async () => {
       try {
-        const response = await fetch(`/version.json?t=${Date.now()}`);
+        const response = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
         if (!response.ok) return;
         
         const data = await response.json();
         const serverVersion = data.version;
         const localVersion = localStorage.getItem('app_version');
+        
+        console.log(`[Version Check] Local: ${localVersion} | Server: ${serverVersion}`);
 
         if (localVersion && serverVersion && localVersion !== serverVersion) {
-          console.log('🚀 NEW VERSION DETECTED. REFRESHING...', { localVersion, serverVersion });
+          console.log('🚀 NEW VERSION DETECTED. REFRESHING SYSTEM...');
           localStorage.setItem('app_version', serverVersion);
           
           if ('serviceWorker' in navigator) {
