@@ -116,6 +116,39 @@ function DeepLinkHandler() {
 
 function App() {
   useEffect(() => {
+    // 🛡️ FORCE UPDATE LOGIC: Check for new version on mount
+    const checkVersion = async () => {
+      try {
+        const response = await fetch(`/version.json?t=${Date.now()}`);
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        const serverVersion = data.version;
+        const localVersion = localStorage.getItem('app_version');
+
+        if (localVersion && serverVersion && localVersion !== serverVersion) {
+          console.log('🚀 NEW VERSION DETECTED. REFRESHING...', { localVersion, serverVersion });
+          localStorage.setItem('app_version', serverVersion);
+          
+          // Clear any aggressive service worker cache if exists
+          if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let registration of registrations) {
+               await registration.unregister();
+            }
+          }
+          
+          // Hard reload
+          window.location.reload();
+        } else if (serverVersion) {
+            localStorage.setItem('app_version', serverVersion);
+        }
+      } catch (err) {
+        console.error('⚠️ Version check failed:', err);
+      }
+    };
+    checkVersion();
+
     // 🛡️ IRON GUARD: Initialize NFC at the ROOF level. Never stops.
     NFCService.init(
       (tagId, url) => {
