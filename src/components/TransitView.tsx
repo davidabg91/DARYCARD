@@ -28,6 +28,22 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [showManagement, setShowManagement] = useState(false);
     const [unregistered, setUnregistered] = useState(false);
     const [showPhotoModal, setShowPhotoModal] = useState(false);
+
+    // Prop state synchronization to avoid cascading renders in useEffect
+    const [prevId, setPrevId] = useState(id);
+    if (id !== prevId) {
+        setPrevId(id);
+        setLoading(true);
+        setUnregistered(false);
+        setClient(null);
+    }
+
+    // Use refs for values needed in the effect timer to avoid dependency loops
+    const showManagementRef = useRef(showManagement);
+    const unregisteredRef = useRef(unregistered);
+
+    useEffect(() => { showManagementRef.current = showManagement; }, [showManagement]);
+    useEffect(() => { unregisteredRef.current = unregistered; }, [unregistered]);
     
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'moderator';
 
@@ -71,15 +87,15 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         osc.stop(context.currentTime + start + duration);
     };
 
-    const playSuccessSound = () => {
+    const playSuccessSound = React.useCallback(() => {
         initAudio();
         playTone(587.33, 0, 0.5);      // D5
         playTone(739.99, 0.08, 0.5);   // F#5
         playTone(880.00, 0.16, 0.6);   // A5
         playTone(1174.66, 0.24, 0.7);  // D6
-    };
+    }, []);
 
-    const playErrorSound = () => {
+    const playErrorSound = React.useCallback(() => {
         initAudio();
         const context = audioContextRef.current;
         if (!context) return;
@@ -104,16 +120,11 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         };
         createBuzz(0, 0.2);
         createBuzz(0.25, 0.4);
-    };
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
-        
-        // Only fetch if we have an ID and we haven't successfully loaded THIS client yet
         if (!id) return;
-
-        setLoading(true);
-        setUnregistered(false);
 
         getDoc(doc(db, 'clients', id)).then((snap) => {
             if (isMounted) {
@@ -140,18 +151,18 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         });
 
         const timer = setTimeout(() => {
-            if (isMounted && !showManagement) onClose();
-        }, unregistered ? 60000 : 30000); 
+            if (isMounted && !showManagementRef.current) onClose();
+        }, unregisteredRef.current ? 60000 : 30000); 
 
         return () => {
             isMounted = false;
             clearTimeout(timer);
         };
-    }, [id, onClose]); // ONLY depend on ID and the stable onClose
+    }, [id, onClose, playErrorSound, playSuccessSound]); 
 
     const now = new Date();
     const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
-    const hasPaidCurrentMonth = (client?.renewalHistory || []).some((rh: any) => rh.month === currentMonthStr);
+    const hasPaidCurrentMonth = (client?.renewalHistory || []).some((rh) => rh.month === currentMonthStr);
     const isValid = client && !client.isCanceled && hasPaidCurrentMonth;
     const themeColor = unregistered ? '#ff9100' : (isValid ? '#00e676' : '#ff1744');
 
