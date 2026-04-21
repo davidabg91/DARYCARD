@@ -50,13 +50,16 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // Slow heartbeat: 60 seconds to save battery/data
         const interval = setInterval(performPing, 60000);
 
-        // Initial check
-        void performPing();
+        // Initial check - deferred to satisfy linting rules
+        const initialCheckTimer = setTimeout(() => {
+            void performPing();
+        }, 100);
 
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
             clearInterval(interval);
+            clearTimeout(initialCheckTimer);
         };
     }, [performPing]);
 
