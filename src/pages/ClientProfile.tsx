@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, XCircle, Ban, Clock, Settings, RefreshCw, Camera, CreditCard, Lock, Zap, UserPlus } from 'lucide-react';
+import { CheckCircle, XCircle, Ban, Clock, Settings, RefreshCw, Camera, CreditCard, Lock, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
