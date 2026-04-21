@@ -203,7 +203,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
     // SLIDESHOW AUTO-PLAY
     useEffect(() => {
-        let interval: any;
+        let interval: ReturnType<typeof setInterval> | undefined;
         if (showAds) {
             interval = setInterval(() => {
                 setCurrentAdIndex(prev => (prev + 1) % adImages.length);
