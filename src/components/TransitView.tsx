@@ -50,6 +50,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [showAds, setShowAds] = useState(false);
     const [currentAdIndex, setCurrentAdIndex] = useState(0);
     const [lastActivity, setLastActivity] = useState(Date.now());
+    const [isActuallyOnline, setIsActuallyOnline] = useState(window.navigator.onLine);
     const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
 
     const adImages = [
@@ -213,12 +214,37 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
+        // 📡 SMART PING: Verified internet check
+        const checkActualStatus = async () => {
+             const controller = new AbortController();
+             const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+             try {
+                const res = await fetch(`/version.json?t=${Date.now()}`, { 
+                    method: 'HEAD', 
+                    cache: 'no-store',
+                    signal: controller.signal 
+                });
+                clearTimeout(timeoutId);
+                const isOnline = res.ok;
+                setIsActuallyOnline(isOnline);
+                setIsOffline(!isOnline);
+             } catch (e) {
+                clearTimeout(timeoutId);
+                setIsActuallyOnline(false);
+                setIsOffline(true);
+             }
+        };
+
+        checkActualStatus();
+        const pingInterval = setInterval(checkActualStatus, 5000); // Check every 5s
+
         return () => {
             window.removeEventListener('touchstart', resetActivity);
             window.removeEventListener('mousedown', resetActivity);
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
             clearInterval(idleCheck);
+            clearInterval(pingInterval);
         };
     }, [lastActivity, showAds, showPhotoModal, showSuccessModal]);
 
@@ -328,8 +354,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2.5rem' }}>
                                 {/* Connectivity Status Label */}
                                 <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.4, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '-2rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOffline ? '#ff5252' : '#00e676' }} />
-                                    {isOffline ? 'БЕЗ ИНТЕРНЕТ (ЛОКАЛНА ПАМЕТ)' : 'СВЪРЗАН СЪС СЪРВЪРА'}
+                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isActuallyOnline ? '#00e676' : '#ff5252' }} />
+                                    {isActuallyOnline ? 'СВЪРЗАН СЪС СЪРВЪРА' : 'БЕЗ ИНТЕРНЕТ (ЛОКАЛНА ПАМЕТ)'}
                                 </div>
 
                                 {/* Status Badge */}
@@ -582,7 +608,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     </div>
 
                     {/* Quick ID Overlay for the ads (Optional, to remind who is scanned) */}
-                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v4.5-ULTIMATUM</div>
+                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v4.6-LIVE-PING</div>
                     <div style={{ position: 'absolute', top: '4vh', right: '4vh', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
                          <img src={client?.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #00e676' }} alt="Mini Profile" />
                          <span style={{ fontWeight: 900, fontSize: '0.8rem' }}>{client?.name?.split(' ')[0]}</span>
