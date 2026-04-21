@@ -65,6 +65,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         setLoading(true);
         setUnregistered(false);
         setClient(null);
+        setShowAds(false); // INTERRUPT ADS ON NEW SCAN
     }
 
     // Use refs for values needed in the effect timer to avoid dependency loops
@@ -567,7 +568,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     </div>
 
                     {/* Quick ID Overlay for the ads (Optional, to remind who is scanned) */}
-                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v4.1-UI-FIX</div>
+                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v4.2-IMMEDIATE-SCAN</div>
                     <div style={{ position: 'absolute', top: '4vh', right: '4vh', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
                          <img src={client?.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #00e676' }} alt="Mini Profile" />
                          <span style={{ fontWeight: 900, fontSize: '0.8rem' }}>{client?.name?.split(' ')[0]}</span>
