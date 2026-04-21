@@ -1,5 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
-import { App as CapApp } from '@capacitor/app';
+import { lazy, Suspense, useEffect, useState, useCallback } from 'react';
 import { NFCService } from './services/NFCService';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -24,9 +23,27 @@ function ClientProfileWrapper() {
   return <ClientProfile />;
 }
 
+import TransitView from './components/TransitView';
+
 function DeepLinkHandler() {
   const navigate = useNavigate();
   const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
+  const [transitId, setTransitId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    (window as any).onNfcRawEvent = (tagId: string, url: string) => {
+      console.log('🚀 NUCLEAR INJECTION:', { tagId, url });
+      let idFromUrl = null;
+      if (url && url.includes('darycommerce.com') && url.includes('client/')) {
+        const parts = url.split('/');
+        idFromUrl = parts[parts.length - 1];
+      }
+      const finalId = idFromUrl || tagId;
+      if (finalId) setTransitId(finalId);
+    };
+    return () => { delete (window as any).onNfcRawEvent; };
+  }, []);
+
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -34,40 +51,46 @@ function DeepLinkHandler() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    const setupListener = async () => {
-      // 1. App Links / Deep Links
-      CapApp.addListener('appUrlOpen', (data) => {
-        const url = new URL(data.url);
-        let path = url.hash ? url.hash.replace('#', '') : url.pathname;
-        if (path) {
-          if (path === '/' || path === '') path = '/';
-          navigate(path);
-        }
-      });
-
-      // 2. NFC Scanning with Diagnostic Status
-      NFCService.init(
-        (tagId) => {
-          if (tagId) {
-            navigate(`/client/${tagId}`);
-          }
-        },
-        () => {} // Status updates no longer needed
-      );
-    };
-
-    setupListener();
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      CapApp.removeAllListeners();
-      NFCService.stop();
     };
+  }, []);
+
+  useEffect(() => {
+    const handleInjectedScan = (e: any) => {
+      const { id, url } = e.detail || {};
+      console.log('🛡️ IRON GUARD SIGNAL RECEIVED:', { id, url });
+      
+      let idFromUrl = null;
+      if (url && url.includes('darycommerce.com') && url.includes('client/')) {
+        const parts = url.split('/');
+        idFromUrl = parts[parts.length - 1];
+      }
+      
+      const finalId = idFromUrl || id;
+      if (finalId) setTransitId(finalId);
+    };
+
+    window.addEventListener('dary-nfc-scan', handleInjectedScan);
+    return () => window.removeEventListener('dary-nfc-scan', handleInjectedScan);
+  }, []);
+
+  const handleTransitClose = useCallback(() => setTransitId(null), []);
+  const handleTransitUnregistered = useCallback((id: string) => {
+    setTransitId(null);
+    navigate(`/client/${id}`);
   }, [navigate]);
 
   return (
-    <>
+    <div id="transit-id-setter">
+      {transitId && (
+        <TransitView 
+            id={transitId} 
+            onClose={handleTransitClose} 
+            onUnregistered={handleTransitUnregistered}
+        />
+      )}
       {isOffline && (
         <div style={{
           position: 'fixed',
@@ -85,64 +108,34 @@ function DeepLinkHandler() {
           НЯМА ВРЪЗКА С ИНТЕРНЕТ
         </div>
       )}
-    </>
+    </div>
   );
 }
 
-function VersionChecker() {
 
-  useEffect(() => {
-    const checkVersion = async () => {
-      // Don't check if we just reloaded or are offline
-      if (sessionStorage.getItem('dary_just_reloaded') === 'true' || !navigator.onLine) {
-        sessionStorage.removeItem('dary_just_reloaded');
-        return;
-      }
-
-      try {
-        // Fetch index.html with cache-buster
-        const response = await fetch('/?t=' + Date.now(), { 
-          cache: 'no-store',
-          headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
-        });
-        const html = await response.text();
-        
-        // Find the version in the fetched HTML
-        // Looks for: ВЕРСИЯ: 17.04.2026 г., 22:00:15
-        const versionMatch = html.match(/ВЕРСИЯ:\s*(.*?)<\/div>/);
-        const serverVersion = versionMatch ? versionMatch[1].trim() : null;
-        
-        const localVersion = window.__BUILD_TIME__.trim();
-
-        console.log('System: Version Check', { localVersion, serverVersion });
-
-        if (serverVersion && localVersion && serverVersion !== localVersion) {
-          console.warn('System: Version Mismatch Detected! Force Refreshing...');
-          sessionStorage.setItem('dary_just_reloaded', 'true');
-          // Important: window.location.reload(true) is deprecated in some browsers, 
-          // but we want a hard reload from the server.
-          window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now() + window.location.hash;
-        }
-      } catch (e) {
-        console.error('System: Version Check Failed', e);
-      } finally {
-        // Version check complete
-      }
-    };
-
-    // Delay slightly to let the page settle
-    const timer = setTimeout(checkVersion, 2000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  return null;
-}
 
 function App() {
+  useEffect(() => {
+    // 🛡️ IRON GUARD: Initialize NFC at the ROOF level. Never stops.
+    NFCService.init(
+      (tagId, url) => {
+        // Find the global entry point or local state update
+        const transitView = document.getElementById('transit-id-setter');
+        if (transitView) {
+           const event = new CustomEvent('dary-nfc-scan', { detail: { id: tagId, url: url } });
+           window.dispatchEvent(event);
+        }
+      },
+      () => {}
+    );
+
+    const flag = document.getElementById('app-mounted');
+    if (flag) flag.style.display = 'block';
+  }, []);
+
   return (
     <AuthProvider>
       <HashRouter>
-        <VersionChecker />
         <DeepLinkHandler />
         <Suspense fallback={<PageLoader />}>
           <Routes>

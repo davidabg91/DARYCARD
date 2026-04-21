@@ -1,68 +1,53 @@
-import { CapacitorNfc } from '@capgo/capacitor-nfc';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import MyPosSmartSdk from './MyPosSmartSdk';
+import { Capacitor } from '@capacitor/core';
 
 export class NFCService {
-    private static isInitialized = false;
-
     static async init(
-        onScan: (tagId: string) => void,
+        onScan: (tagId: string, url?: string) => void,
         onStatusUpdate: (status: string) => void
     ) {
-        if (this.isInitialized) return;
-
-        try {
-            onStatusUpdate('ОПИТ ЗА NFC...');
-            
-            // Bypass the isSupported check because some POS terminals report false 
-            // even when hardware is present and accessible via direct scan.
-            const { supported } = await CapacitorNfc.isSupported();
-            console.log('NFC Support reported:', supported);
-            
-            // Still report if supported, but DON'T RETURN. Proceed anyway.
-            if (!supported) {
-                console.warn('NFC reported as unsupported, but attempting force start...');
-            }
-
-            // Listen for NFC events
-            await CapacitorNfc.addListener('nfcEvent', async (event) => {
-                console.log('NFC Event received:', event);
-                
-                if (event.tag && event.tag.id) {
-                    // Physical feedback (Vibration)
-                    await Haptics.impact({ style: ImpactStyle.Heavy });
-                    
-                    const tagId = event.tag.id.map(b => b.toString(16).padStart(2, '0')).join('').toLowerCase();
-                    console.log('Detected Tag ID:', tagId);
-                    
-                    onStatusUpdate('КНИГА ПРОЧЕТЕНА!');
-                    setTimeout(() => onStatusUpdate('NFC: ГОТОВНОСТ'), 2000);
-                    
-                    onScan(tagId);
-                }
-            });
-
-            // Start scanning session
-            await CapacitorNfc.startScanning({
-                invalidateAfterFirstRead: false,
-            });
-
-            this.isInitialized = true;
-            onStatusUpdate('NFC: ГОТОВНОСТ');
-            console.log('NFC Service Initialized Successfully');
-        } catch (error: unknown) {
-            const errorMsg = error instanceof Error ? error.message : String(error);
-            onStatusUpdate('NFC ГРЕШКА: ' + errorMsg);
-            console.error('Error initializing NFC Service:', error);
+        // ULTIMATE PERSISTENCE: localStorage survives even page reloads
+        const nfcState = localStorage.getItem('__DARY_NFC_STATE__');
+        
+        if (nfcState === 'INITIALIZED' && (window as any).__DARY_NFC_READY__) {
+            console.log('🛡️ NFCService: Iron Guard Active. Connection already hot.');
+            return;
         }
+
+        (async () => {
+            try {
+                console.log('⚡ ETERNAL SCANNER: ACTIVATE ⚡');
+                localStorage.setItem('__DARY_NFC_STATE__', 'INITIALIZED');
+                (window as any).__DARY_NFC_READY__ = true;
+                
+                if (Capacitor.getPlatform() === 'android') {
+                    console.log('NFCService: Binding DaryScanner Hardware...');
+                    
+                    await MyPosSmartSdk.addListener('nfcEvent', async (event) => {
+                        console.log('!!! DARY SCAN RECEIVED !!!', event);
+                        if (event.tagId) {
+                            onStatusUpdate('КАРТА ПРОЧЕТЕНА!');
+                            onScan(event.tagId, event.url);
+                        }
+                    });
+
+                    await MyPosSmartSdk.startNfcScan();
+                    onStatusUpdate('📡 СКЕНЕР ГОТОВ 📡');
+                    return; 
+
+                }
+
+
+
+            } catch (error: unknown) {
+                console.error('NFCService: Eternal Failure', error);
+                localStorage.removeItem('__DARY_NFC_STATE__');
+            }
+        })();
     }
 
     static async stop() {
-        if (!this.isInitialized) return;
-        try {
-            await CapacitorNfc.stopScanning();
-            this.isInitialized = false;
-        } catch (error) {
-            console.error('Error stopping NFC Service:', error);
-        }
+        // DISABLED IN IRON GUARD MODE
+        console.log('🛡️ NFCService: Stop request denied by Iron Guard.');
     }
 }

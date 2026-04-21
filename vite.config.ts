@@ -8,35 +8,18 @@ export default defineConfig({
   plugins: [
     react(),
     legacy({
-      targets: ['defaults', 'not IE 11', 'Android >= 9'],
+      targets: ['chrome >= 55', 'Android >= 6', 'not IE 11'],
     }),
     ViteImageOptimizer({
       test: /\.(jpe?g|png|gif|tiff|webp|svg|avif)$/i,
       png: { quality: 80 },
-      webp: { quality: 80 },
-      avif: { quality: 60 },
     }),
   ],
   define: {
-    // 🛡️ Fix for myPOS Ultra WebView (Android 11)
-    // Replaces the modern import.meta.resolve syntax with a safe fallback during build
     'import.meta.resolve': '(undefined)',
-    '__BUILD_TIME__': JSON.stringify(new Date().toLocaleString('bg-BG', { timeZone: 'Europe/Sofia' }))
   },
   build: {
-    target: 'chrome58',
-    modulePreload: {
-      polyfill: false
-    },
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('firebase')) return 'firebase-vendor';
-          if (id.includes('react')) return 'react-vendor';
-          if (id.includes('lucide')) return 'ui-vendor';
-        }
-      }
-    }
-  },
-  base: '/',
+    target: 'es2015',
+    modulePreload: false,
+  }
 })

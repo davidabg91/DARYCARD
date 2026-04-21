@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node fix-build.js",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -15,6 +15,7 @@
     "@capacitor/core": "^8.3.1",
     "@capacitor/haptics": "^8.0.2",
     "@capgo/capacitor-nfc": "^8.0.22",
+    "core-js-bundle": "^3.49.0",
     "firebase": "^12.11.0",
     "lucide-react": "^0.577.0",
     "react": "^19.2.4",

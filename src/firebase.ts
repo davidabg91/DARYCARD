@@ -16,11 +16,14 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = initializeFirestore(app, {});
+
+import { persistentLocalCache } from 'firebase/firestore';
+// Enabling persistence for INSTANT sub-second loading on myPOS terminals
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({})
+});
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 
-// Safe Messaging Initialization - exporting a Promise to avoid top-level await issues
-// and ensure we check for browser support before calling getMessaging
 let messagingInstance: Messaging | null = null;
 export const getSafeMessaging = async (): Promise<Messaging | null> => {
     if (messagingInstance) return messagingInstance;
