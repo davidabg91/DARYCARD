@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, XCircle, Ban, Clock, Settings, RefreshCw, Camera, CreditCard, Lock } from 'lucide-react';
+import { CheckCircle, XCircle, Ban, Clock, Settings, RefreshCw, Camera, CreditCard, Lock, Zap, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
@@ -131,6 +131,14 @@ const ClientProfile: React.FC = () => {
 
     const [error, setError] = useState<string | null>(null);
     const hasPlayedSound = useRef(false);
+
+    // Quick Renewal States
+    const [showQuickRenew, setShowQuickRenew] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [renewalMonth, setRenewalMonth] = useState('');
+    const [renewalAmount, setRenewalAmount] = useState(30);
+    const [renewalRoute, setRenewalRoute] = useState('');
+    const [isUpdating, setIsUpdating] = useState(false);
 
     const audioContextRef = useRef<AudioContext | null>(null);
     const audioInitializedRef = useRef(false);
@@ -308,6 +316,13 @@ const ClientProfile: React.FC = () => {
                     if (isActive) playSuccessSound();
                     else playErrorSound();
                     hasPlayedSound.current = true;
+
+                    // Sync renewal form
+                    const nextDate = new Date();
+                    nextDate.setMonth(nextDate.getMonth() + 1);
+                    setRenewalMonth(nextDate.toISOString().slice(0, 7));
+                    setRenewalAmount(clientData.renewalHistory?.[clientData.renewalHistory.length - 1]?.amount || 30);
+                    setRenewalRoute(clientData.route || '');
                 }
             } else {
                 setClient(null);
@@ -557,7 +572,7 @@ const ClientProfile: React.FC = () => {
                 transition: 'background 0.5s ease'
             }} />
             
-            <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v3.7-FORCE</div>
+            <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v3.9-FINAL</div>
             {/* Background Decor */}
             <div style={{ position: 'fixed', top: '-10%', left: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
             <div style={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
@@ -758,12 +773,132 @@ const ClientProfile: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Admin Actions */}
-                {currentUser && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <Link to={`/admin?edit=${client?.id}`} style={{ gridColumn: 'span 2', background: 'rgba(255,255,255,0.05)', color: '#fff', padding: '1.2rem', borderRadius: '20px', textDecoration: 'none', fontWeight: 800, fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                {/* Admin Quick Actions */}
+                {currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator') && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        
+                        {/* Quick Renewal Panel */}
+                        <div style={{ background: '#18181b', borderRadius: '28px', border: '1px solid #00e67633', overflow: 'hidden' }}>
+                            {!showQuickRenew ? (
+                                <button 
+                                    onClick={() => setShowQuickRenew(true)}
+                                    style={{ width: '100%', background: '#00e676', color: '#000', padding: '1.5rem', borderRadius: '24px', border: 'none', fontWeight: 900, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', cursor: 'pointer' }}
+                                >
+                                    <Zap size={24} /> БЪРЗО ПОДНОВЯВАНЕ
+                                </button>
+                            ) : (
+                                <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s ease' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                        <div style={{ fontWeight: 900, fontSize: '0.9rem', color: '#00e676' }}>БЪРЗО ПЛАЩАНЕ</div>
+                                        <button onClick={() => setShowQuickRenew(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontWeight: 900, cursor: 'pointer' }}>ОТКАЗ</button>
+                                    </div>
+                                    
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.6rem', opacity: 0.5, fontWeight: 900 }}>МЕСЕЦ</label>
+                                            <input 
+                                                type="month" 
+                                                value={renewalMonth} 
+                                                onChange={(e) => setRenewalMonth(e.target.value)}
+                                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, colorScheme: 'dark' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.6rem', opacity: 0.5, fontWeight: 900 }}>СУМА (€)</label>
+                                            <input 
+                                                type="number" 
+                                                value={renewalAmount} 
+                                                onChange={(e) => setRenewalAmount(Number(e.target.value))}
+                                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '0.6rem', opacity: 0.5, fontWeight: 900 }}>МАРШРУТ</label>
+                                        <input 
+                                            type="text" 
+                                            value={renewalRoute} 
+                                            onChange={(e) => setRenewalRoute(e.target.value)}
+                                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }}
+                                        />
+                                    </div>
+
+                                    <button 
+                                        disabled={isUpdating}
+                                        onClick={async () => {
+                                            setIsUpdating(true);
+                                            try {
+                                                const clientRef = doc(db, 'clients', client?.id || '');
+                                                await updateDoc(clientRef, {
+                                                    expiryDate: renewalMonth,
+                                                    route: renewalRoute,
+                                                    renewalHistory: arrayUnion({ 
+                                                        date: new Date().toISOString(), 
+                                                        amount: renewalAmount, 
+                                                        month: renewalMonth 
+                                                    }),
+                                                    history: arrayUnion({ 
+                                                        date: new Date().toISOString(), 
+                                                        action: 'БЪРЗО ПОДНОВЯВАНЕ (PROFILE)', 
+                                                        amount: renewalAmount, 
+                                                        month: renewalMonth,
+                                                        route: renewalRoute,
+                                                        performedBy: currentUser?.username 
+                                                    })
+                                                });
+                                                
+                                                try {
+                                                    await addDoc(collection(db, 'activity_logs'), {
+                                                        timestamp: new Date().toISOString(),
+                                                        performedBy: currentUser?.username || 'Admin',
+                                                        action: 'Подновяване',
+                                                        targetName: client?.name || 'Клиент',
+                                                        details: `Бързо подновяване за месец ${renewalMonth}. Сума: ${renewalAmount} €. Маршрут: ${renewalRoute}`,
+                                                        amount: Number(renewalAmount)
+                                                    });
+                                                } catch (logErr) { console.error("Log error", logErr); }
+
+                                                playSuccessSound();
+                                                setShowQuickRenew(false);
+                                                setShowSuccessModal(true);
+                                            } catch (err) {
+                                                console.error(err);
+                                                playErrorSound();
+                                            } finally {
+                                                setIsUpdating(false);
+                                            }
+                                        }}
+                                        style={{ width: '100%', background: '#00e676', color: '#000', padding: '1.2rem', borderRadius: '18px', border: 'none', fontWeight: 900, fontSize: '1.1rem', marginTop: '0.5rem', cursor: 'pointer' }}
+                                    >
+                                        {isUpdating ? 'ОБРАБОТКА...' : 'ПОДНОВИ СЕГА'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        <Link to={`/admin?edit=${client?.id}`} style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', padding: '1.2rem', borderRadius: '20px', textDecoration: 'none', fontWeight: 800, fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
                             <Settings size={18} /> УПРАВЛЕНИЕ В АДМИН ПАНЕЛ
                         </Link>
+                    </div>
+                )}
+
+                {/* Success Modal */}
+                {showSuccessModal && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(30px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+                        <div style={{ background: '#18181b', borderRadius: '32px', padding: '3rem 2rem', width: '100%', maxWidth: '400px', textAlign: 'center', border: '1px solid #00e67644', boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}>
+                            <div style={{ background: 'rgba(0,230,118,0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
+                                <CheckCircle size={60} color="#00e676" />
+                            </div>
+                            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '1rem' }}>ГОТОВО!</h2>
+                            <p style={{ opacity: 0.6, marginBottom: '2rem', lineHeight: '1.6' }}>Абонаментът на <b>{client?.name}</b> бе подновен успешно за <b>{renewalMonth}</b>.</p>
+                            <button 
+                                onClick={() => setShowSuccessModal(false)}
+                                style={{ width: '100%', background: '#fff', color: '#000', padding: '1.2rem', borderRadius: '18px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}
+                            >
+                                РАЗБРАХ
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
