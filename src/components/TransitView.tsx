@@ -220,7 +220,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                 clearTimeout(timeoutId);
                 const isOnline = res.ok;
                 setIsActuallyOnline(isOnline);
-             } catch (e) {
+             } catch {
                 clearTimeout(timeoutId);
                 setIsActuallyOnline(false);
              }
