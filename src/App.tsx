@@ -116,7 +116,7 @@ function DeepLinkHandler() {
 
 function App() {
   useEffect(() => {
-    // 🛡️ FORCE UPDATE LOGIC: Check for new version on mount
+    // 🛡️ FORCE UPDATE LOGIC: Reusable check function
     const checkVersion = async () => {
       try {
         const response = await fetch(`/version.json?t=${Date.now()}`);
@@ -130,15 +130,12 @@ function App() {
           console.log('🚀 NEW VERSION DETECTED. REFRESHING...', { localVersion, serverVersion });
           localStorage.setItem('app_version', serverVersion);
           
-          // Clear any aggressive service worker cache if exists
           if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
             for (const registration of registrations) {
                await registration.unregister();
             }
           }
-          
-          // Hard reload
           window.location.reload();
         } else if (serverVersion) {
             localStorage.setItem('app_version', serverVersion);
@@ -147,7 +144,24 @@ function App() {
         console.error('⚠️ Version check failed:', err);
       }
     };
+
     checkVersion();
+    
+    // Check every 5 minutes while the app is open
+    const versionInterval = setInterval(checkVersion, 5 * 60 * 1000);
+
+    // 🛡️ CHUNK LOAD ERROR RECOVERY: If a lazy-loaded chunk fails, reload immediately
+    const handleError = (e: ErrorEvent | PromiseRejectionEvent) => {
+      const error = (e as any).error || e;
+      const message = error?.message || "";
+      if (message.includes("loading chunk") || message.includes("Loading chunk") || message.includes("Script error")) {
+        console.warn("🛡️ CHUNK LOAD ERROR DETECTED. FORCING RELOAD...");
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleError);
 
     // 🛡️ IRON GUARD: Initialize NFC at the ROOF level. Never stops.
     NFCService.init(
@@ -164,6 +178,12 @@ function App() {
 
     const flag = document.getElementById('app-mounted');
     if (flag) flag.style.display = 'block';
+
+    return () => {
+        clearInterval(versionInterval);
+        window.removeEventListener('error', handleError);
+        window.removeEventListener('unhandledrejection', handleError);
+    };
   }, []);
 
   return (
