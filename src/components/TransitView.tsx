@@ -126,6 +126,25 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         playTone(1174.66, 0.24, 0.7);  // D6
     }, []);
 
+    // 📡 SMART PING: Verified internet check
+    const checkActualStatus = useCallback(async () => {
+         const controller = new AbortController();
+         const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+         try {
+            const res = await fetch(`/version.json?t=${Date.now()}`, { 
+                method: 'HEAD', 
+                cache: 'no-store',
+                signal: controller.signal 
+            });
+            clearTimeout(timeoutId);
+            const isOnline = res.ok;
+            setIsActuallyOnline(isOnline);
+         } catch {
+            clearTimeout(timeoutId);
+            setIsActuallyOnline(false);
+         }
+    }, [setIsActuallyOnline]);
+
     const playErrorSound = React.useCallback(() => {
         initAudio();
         const context = audioContextRef.current;
@@ -159,6 +178,12 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
         getDoc(doc(db, 'clients', id)).then((snap) => {
             if (isMounted) {
+                // INSTANT CONNECTIVITY SENSE: Check metadata + trigger ping
+                if (snap.metadata.fromCache) {
+                    setIsActuallyOnline(false);
+                }
+                checkActualStatus();
+
                 if (snap.exists()) {
                     const data = snap.data() as Client;
                     setClient({ ...data, id: snap.id });
@@ -207,25 +232,6 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                 setShowAds(true);
             }
         }, 1000);
-        // 📡 SMART PING: Verified internet check
-        const checkActualStatus = async () => {
-             const controller = new AbortController();
-             const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
-             try {
-                const res = await fetch(`/version.json?t=${Date.now()}`, { 
-                    method: 'HEAD', 
-                    cache: 'no-store',
-                    signal: controller.signal 
-                });
-                clearTimeout(timeoutId);
-                const isOnline = res.ok;
-                setIsActuallyOnline(isOnline);
-             } catch {
-                clearTimeout(timeoutId);
-                setIsActuallyOnline(false);
-             }
-        };
-
         checkActualStatus();
         const pingInterval = setInterval(checkActualStatus, 5000); // Check every 5s
 
@@ -235,7 +241,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
             clearInterval(idleCheck);
             clearInterval(pingInterval);
         };
-    }, [lastActivity, showAds, showPhotoModal, showSuccessModal]);
+    }, [lastActivity, showAds, showPhotoModal, showSuccessModal, checkActualStatus]);
 
     // SLIDESHOW AUTO-PLAY
     useEffect(() => {
@@ -596,7 +602,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                         ДОКОСНИ ЕКРАНА ЗА ВРЪЩАНЕ
                     </div>
 
-                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v4.7-SYMMETRY</div>
+                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v4.8-HYPER-SENSE</div>
                     <div style={{ position: 'absolute', top: '4vh', right: '4vh', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
                          <img src={client?.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #00e676' }} alt="Mini Profile" />
                          <span style={{ fontWeight: 900, fontSize: '0.8rem' }}>{client?.name?.split(' ')[0]}</span>
