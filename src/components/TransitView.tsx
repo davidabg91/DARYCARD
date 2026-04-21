@@ -37,6 +37,18 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [renewalRoute, setRenewalRoute] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
 
+    // Ads Slideshow States
+    const [showAds, setShowAds] = useState(false);
+    const [currentAdIndex, setCurrentAdIndex] = useState(0);
+    const [lastActivity, setLastActivity] = useState(Date.now());
+
+    const adImages = [
+        '/assets/ads/ad_alps.webp',
+        '/assets/ads/ad_kitai.webp',
+        '/assets/ads/ad_paris.webp',
+        '/assets/ads/ad_riviera.webp'
+    ];
+
     // Prop state synchronization to avoid cascading renders in useEffect
     const [prevId, setPrevId] = useState(id);
     if (id !== prevId) {
@@ -165,15 +177,40 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
             if (isMounted) setLoading(false);
         });
 
-        const timer = setTimeout(() => {
-            if (isMounted && !showManagementRef.current) onClose();
-        }, unregisteredRef.current ? 60000 : 30000); 
-
         return () => {
             isMounted = false;
-            clearTimeout(timer);
         };
-    }, [id, onClose, playErrorSound, playSuccessSound]); 
+    }, [id, playErrorSound, playSuccessSound]); 
+
+    // IDLE DETECTION & SLIDESHOW LOGIC
+    useEffect(() => {
+        const resetActivity = () => setLastActivity(Date.now());
+        window.addEventListener('touchstart', resetActivity);
+        window.addEventListener('mousedown', resetActivity);
+
+        const idleCheck = setInterval(() => {
+            if (Date.now() - lastActivity > 30000 && !showAds && !showManagementRef.current && !showPhotoModal && !showSuccessModal) {
+                setShowAds(true);
+            }
+        }, 1000);
+
+        return () => {
+            window.removeEventListener('touchstart', resetActivity);
+            window.removeEventListener('mousedown', resetActivity);
+            clearInterval(idleCheck);
+        };
+    }, [lastActivity, showAds, showPhotoModal, showSuccessModal]);
+
+    // SLIDESHOW AUTO-PLAY
+    useEffect(() => {
+        let interval: any;
+        if (showAds) {
+            interval = setInterval(() => {
+                setCurrentAdIndex(prev => (prev + 1) % adImages.length);
+            }, 5000);
+        }
+        return () => clearInterval(interval);
+    }, [showAds, adImages.length]);
 
     const now = new Date();
     const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -483,6 +520,42 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                         >
                             ГОТОВО
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* IDLE ADS SLIDESHOW OVERLAY */}
+            {showAds && (
+                <div 
+                    style={{ position: 'fixed', inset: 0, zIndex: 40000, background: '#000', animation: 'fadeIn 0.5s ease' }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setShowAds(false);
+                        setLastActivity(Date.now());
+                    }}
+                >
+                    {adImages.map((img, idx) => (
+                        <div 
+                            key={img}
+                            style={{ 
+                                position: 'absolute', 
+                                inset: 0, 
+                                opacity: currentAdIndex === idx ? 1 : 0, 
+                                transition: 'opacity 1s ease-in-out',
+                                background: `url(${img}) center center / cover no-repeat`
+                            }}
+                        />
+                    ))}
+                    
+                    {/* Interaction Hint */}
+                    <div style={{ position: 'absolute', bottom: '5vh', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', padding: '12px 24px', borderRadius: '30px', color: '#fff', fontSize: '0.9rem', fontWeight: 900, border: '1px solid rgba(255,255,255,0.1)', animation: 'pulse 2s infinite' }}>
+                        ДОКОСНИ ЕКРАНА ЗА ВРЪЩАНЕ
+                    </div>
+
+                    {/* Quick ID Overlay for the ads (Optional, to remind who is scanned) */}
+                    <div style={{ position: 'absolute', top: '4vh', right: '4vh', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
+                         <img src={client?.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #00e676' }} alt="Mini Profile" />
+                         <span style={{ fontWeight: 900, fontSize: '0.8rem' }}>{client?.name?.split(' ')[0]}</span>
                     </div>
                 </div>
             )}
