@@ -17,7 +17,7 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const timeoutId = setTimeout(() => controller.abort(), 3000);
         try {
             const entropy = Math.random().toString(36).substring(7);
-            const res = await fetch(`/version.json?t=${Date.now()}&e=${entropy}`, {
+            const res = await fetch(`version.json?t=${Date.now()}&e=${entropy}`, {
                 method: 'HEAD',
                 cache: 'no-store',
                 signal: controller.signal

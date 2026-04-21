@@ -113,7 +113,7 @@ function App() {
     const checkVersion = async () => {
       try {
         const entropy = Math.random().toString(36).substring(7);
-        const response = await fetch(`/version.json?v=${INTERNAL_APP_VERSION}&t=${Date.now()}&e=${entropy}`, { 
+        const response = await fetch(`version.json?v=${INTERNAL_APP_VERSION}&t=${Date.now()}&e=${entropy}`, { 
           method: 'GET',
           cache: 'no-store',
           headers: {
