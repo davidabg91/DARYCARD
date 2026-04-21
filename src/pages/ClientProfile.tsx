@@ -576,7 +576,7 @@ const ClientProfile: React.FC = () => {
                 transition: 'background 0.5s ease'
             }} />
             
-            <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.3-CLEAN-BOOT</div>
+            <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.4-RESPONSIVE-PAY</div>
             {/* Background Decor */}
             <div style={{ position: 'fixed', top: '-10%', left: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
             <div style={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
@@ -694,17 +694,21 @@ const ClientProfile: React.FC = () => {
 
                         {!paymentComplete ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ 
+                                    display: 'grid', 
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+                                    gap: '1rem' 
+                                }}>
+                                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                         <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '6px' }}>МЕСЕЦ</div>
                                         <input 
                                             type="month" 
                                             value={paymentMonth || currentMonthStr} 
                                             onChange={(e) => setPaymentMonth(e.target.value)} 
-                                            style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', fontWeight: 800, width: '100%', outline: 'none', colorScheme: 'dark' }} 
+                                            style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1rem', fontWeight: 800, width: '100%', outline: 'none', colorScheme: 'dark' }} 
                                         />
                                     </div>
-                                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                         <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '6px' }}>СУМА</div>
                                         <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#00e676' }}>50.80 €</div>
                                     </div>
