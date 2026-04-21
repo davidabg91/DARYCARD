@@ -116,7 +116,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.22.01.52";
+  const INTERNAL_APP_VERSION = "2026.04.22.02.20";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
@@ -132,8 +132,16 @@ function App() {
         console.log(`[Version Check] Internal: ${INTERNAL_APP_VERSION} | Server: ${serverVersion}`);
 
         // Compare against hardcoded version for 100% accuracy
+        const lastTriedVersion = localStorage.getItem('last_tried_version');
+        
         if (serverVersion && INTERNAL_APP_VERSION !== serverVersion) {
+          if (lastTriedVersion === serverVersion) {
+            console.log('⚠️ UPDATE ATTEMPTED BUT CACHE PERSISTS. STANDING BY...');
+            return;
+          }
+          
           console.log('🚀 OUTDATED BUNDLE DETECTED. NUCLEAR REFRESH STARTING...');
+          localStorage.setItem('last_tried_version', serverVersion);
           
           if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
@@ -146,6 +154,9 @@ function App() {
           setTimeout(() => {
             window.location.reload();
           }, 500);
+        } else if (serverVersion === INTERNAL_APP_VERSION) {
+            // Success! Clear the retry flag
+            localStorage.removeItem('last_tried_version');
         }
       } catch (err) {
         console.error('⚠️ Version check failed:', err);
