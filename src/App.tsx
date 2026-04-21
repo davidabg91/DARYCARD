@@ -115,22 +115,25 @@ function DeepLinkHandler() {
 
 
 function App() {
+  // 🛡️ NUCLEAR VERSIONING: The true bundle version
+  const INTERNAL_APP_VERSION = "2026.04.22.00.15";
+
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
     const checkVersion = async () => {
       try {
-        const response = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
+        const entropy = Math.random().toString(36).substring(7);
+        const response = await fetch(`/version.json?t=${Date.now()}&e=${entropy}`, { cache: 'no-store' });
         if (!response.ok) return;
         
         const data = await response.json();
         const serverVersion = data.version;
-        const localVersion = localStorage.getItem('app_version');
         
-        console.log(`[Version Check] Local: ${localVersion} | Server: ${serverVersion}`);
+        console.log(`[Version Check] Internal: ${INTERNAL_APP_VERSION} | Server: ${serverVersion}`);
 
-        if (localVersion && serverVersion && localVersion !== serverVersion) {
-          console.log('🚀 NEW VERSION DETECTED. REFRESHING SYSTEM...');
-          localStorage.setItem('app_version', serverVersion);
+        // Compare against hardcoded version for 100% accuracy
+        if (serverVersion && INTERNAL_APP_VERSION !== serverVersion) {
+          console.log('🚀 OUTDATED BUNDLE DETECTED. NUCLEAR REFRESH STARTING...');
           
           if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
@@ -138,9 +141,11 @@ function App() {
                await registration.unregister();
             }
           }
-          window.location.reload();
-        } else if (serverVersion) {
-            localStorage.setItem('app_version', serverVersion);
+          
+          // Small delay for logs to flush
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
         }
       } catch (err) {
         console.error('⚠️ Version check failed:', err);
