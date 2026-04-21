@@ -152,8 +152,9 @@ function App() {
 
     // 🛡️ CHUNK LOAD ERROR RECOVERY: If a lazy-loaded chunk fails, reload immediately
     const handleError = (e: ErrorEvent | PromiseRejectionEvent) => {
-      const error = (e as any).error || e;
-      const message = error?.message || "";
+      const error = (e instanceof ErrorEvent) ? e.error : (e instanceof PromiseRejectionEvent ? e.reason : e);
+      const message = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : String(error);
+      
       if (message.includes("loading chunk") || message.includes("Loading chunk") || message.includes("Script error")) {
         console.warn("🛡️ CHUNK LOAD ERROR DETECTED. FORCING RELOAD...");
         window.location.reload();
