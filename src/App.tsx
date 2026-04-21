@@ -106,7 +106,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.22.00.15";
+  const INTERNAL_APP_VERSION = "2026.04.22.00.48";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
