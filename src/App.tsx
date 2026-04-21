@@ -106,14 +106,21 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.22.00.48";
+  const INTERNAL_APP_VERSION = "2026.04.22.01.10";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
     const checkVersion = async () => {
       try {
         const entropy = Math.random().toString(36).substring(7);
-        const response = await fetch(`/version.json?t=${Date.now()}&e=${entropy}`, { cache: 'no-store' });
+        const response = await fetch(`/version.json?v=${INTERNAL_APP_VERSION}&t=${Date.now()}&e=${entropy}`, { 
+          method: 'GET',
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
         if (!response.ok) return;
         
         const data = await response.json();
