@@ -26,7 +26,7 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
             const status = res.ok;
             setIsOnline(status);
             return status;
-        } catch (err) {
+        } catch {
             clearTimeout(timeoutId);
             setIsOnline(false);
             return false;
