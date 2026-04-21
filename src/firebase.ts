@@ -17,10 +17,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-import { persistentLocalCache } from 'firebase/firestore';
+import { persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 // Enabling persistence for INSTANT sub-second loading on myPOS terminals
+// Using multipleTabManager to avoid lock contention during reloads/updates
 export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({})
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 

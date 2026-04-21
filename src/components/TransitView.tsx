@@ -224,7 +224,15 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
     // IDLE DETECTION & SLIDESHOW LOGIC
     useEffect(() => {
-        const resetActivity = () => setLastActivity(Date.now());
+        const resetActivity = () => {
+            setLastActivity(Date.now());
+            // 🔊 AUDIO UNLOCKER: Resume context on first user gesture
+            if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+                audioContextRef.current.resume().then(() => {
+                    console.log('🔊 AudioContext unlocked via user gesture.');
+                });
+            }
+        };
         window.addEventListener('touchstart', resetActivity);
         window.addEventListener('mousedown', resetActivity);
 
@@ -611,7 +619,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                         ДОКОСНИ ЕКРАНА ЗА ВРЪЩАНЕ
                     </div>
 
-                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.2-EMERGENCY</div>
+                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.3-CLEAN-BOOT</div>
                     <div style={{ position: 'absolute', top: '4vh', right: '4vh', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
                          <img src={client?.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #00e676' }} alt="Mini Profile" />
                          <span style={{ fontWeight: 900, fontSize: '0.8rem' }}>{client?.name?.split(' ')[0]}</span>
