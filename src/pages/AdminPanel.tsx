@@ -21,6 +21,7 @@ import {
     query
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
+import { useConnectivity } from '../context/ConnectivityContext';
 import { ROUTE_METADATA } from '../data/routeMetadata';
 
 interface ClientLog {
@@ -245,7 +246,7 @@ const AdminPanel: React.FC = () => {
     const [notifBody, setNotifBody] = useState('');
     const [selectedNotifRoutes, setSelectedNotifRoutes] = useState<string[]>(['all']);
     const [searchTerm, setSearchTerm] = useState('');
-    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const { isOnline } = useConnectivity();
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
     useEffect(() => {
@@ -254,16 +255,6 @@ const AdminPanel: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    useEffect(() => {
-        const handleOnline = () => setIsOnline(true);
-        const handleOffline = () => setIsOnline(false);
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-        return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
-        };
-    }, []);
 
     // Registration Form State
     const [clientName, setClientName] = useState('');
@@ -2510,6 +2501,7 @@ const AdminPanel: React.FC = () => {
 
 
         </div>
+        <div style={{ position: 'fixed', bottom: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100, pointerEvents: 'none' }}>v5.0-SYNC</div>
     );
 };
 

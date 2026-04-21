@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState, useCallback } from 'react';
+import { ConnectivityProvider, useConnectivity } from './context/ConnectivityContext';
 import { NFCService } from './services/NFCService';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -27,7 +28,8 @@ import TransitView from './components/TransitView';
 
 function DeepLinkHandler() {
   const navigate = useNavigate();
-  const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
+  const { isOnline } = useConnectivity();
+  const isOffline = !isOnline;
   const [transitId, setTransitId] = useState<string | null>(null);
   
   useEffect(() => {
@@ -44,18 +46,6 @@ function DeepLinkHandler() {
     return () => { delete window.onNfcRawEvent; };
   }, []);
 
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   useEffect(() => {
     const handleInjectedScan = (e: CustomEvent<{ id: string; url: string }>) => {
@@ -195,6 +185,7 @@ function App() {
   }, []);
 
   return (
+    <ConnectivityProvider>
     <AuthProvider>
       <HashRouter>
         <DeepLinkHandler />
@@ -233,6 +224,7 @@ function App() {
         </Suspense>
       </HashRouter>
     </AuthProvider>
+    </ConnectivityProvider>
   );
 }
 
