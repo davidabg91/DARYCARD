@@ -51,7 +51,6 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [currentAdIndex, setCurrentAdIndex] = useState(0);
     const [lastActivity, setLastActivity] = useState(Date.now());
     const [isActuallyOnline, setIsActuallyOnline] = useState(window.navigator.onLine);
-    const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
 
     const adImages = [
         '/assets/ads/ad_alps.webp',
@@ -208,12 +207,6 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                 setShowAds(true);
             }
         }, 1000);
-
-        const handleOnline = () => setIsOffline(false);
-        const handleOffline = () => setIsOffline(true);
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-
         // 📡 SMART PING: Verified internet check
         const checkActualStatus = async () => {
              const controller = new AbortController();
@@ -227,11 +220,9 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                 clearTimeout(timeoutId);
                 const isOnline = res.ok;
                 setIsActuallyOnline(isOnline);
-                setIsOffline(!isOnline);
              } catch (e) {
                 clearTimeout(timeoutId);
                 setIsActuallyOnline(false);
-                setIsOffline(true);
              }
         };
 
@@ -241,8 +232,6 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         return () => {
             window.removeEventListener('touchstart', resetActivity);
             window.removeEventListener('mousedown', resetActivity);
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
             clearInterval(idleCheck);
             clearInterval(pingInterval);
         };
