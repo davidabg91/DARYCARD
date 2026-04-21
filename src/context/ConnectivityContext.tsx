@@ -51,7 +51,7 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const interval = setInterval(performPing, 60000);
 
         // Initial check
-        performPing();
+        void performPing();
 
         return () => {
             window.removeEventListener('online', handleOnline);
