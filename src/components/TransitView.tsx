@@ -29,6 +29,14 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [unregistered, setUnregistered] = useState(false);
     const [showPhotoModal, setShowPhotoModal] = useState(false);
 
+    // Quick Renewal States
+    const [showQuickRenew, setShowQuickRenew] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [renewalMonth, setRenewalMonth] = useState('');
+    const [renewalAmount, setRenewalAmount] = useState(30);
+    const [renewalRoute, setRenewalRoute] = useState('');
+    const [isUpdating, setIsUpdating] = useState(false);
+
     // Prop state synchronization to avoid cascading renders in useEffect
     const [prevId, setPrevId] = useState(id);
     if (id !== prevId) {
@@ -132,6 +140,13 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     const data = snap.data() as Client;
                     setClient({ ...data, id: snap.id });
                     
+                    // Preset Renewal Form
+                    const nextDate = new Date();
+                    nextDate.setMonth(nextDate.getMonth() + 1);
+                    setRenewalMonth(nextDate.toISOString().slice(0, 7));
+                    setRenewalAmount(data.renewalHistory?.[data.renewalHistory.length - 1]?.amount || 30);
+                    setRenewalRoute(data.route || '');
+
                     const nowLocal = new Date();
                     const currentMonthStrLocal = `${nowLocal.getFullYear()}-${(nowLocal.getMonth() + 1).toString().padStart(2, '0')}`;
                     const hasPaid = (data.renewalHistory || []).some((rh) => rh.month === currentMonthStrLocal);
@@ -292,24 +307,94 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                         ) : (
                             <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 
-                                {/* ADMIN / MODERATOR QUICK ACTIONS */}
+                                {/* ADMIN / MODERATOR QUICK ACTIONS - REFACTORED TO MINI-MENU */}
                                 {isAdmin && (
-                                    <button 
-                                        onClick={async () => {
-                                            const clientRef = doc(db, 'clients', client?.id || '');
-                                            const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 7);
-                                            await updateDoc(clientRef, {
-                                                expiryDate: nextMonth,
-                                                renewalHistory: arrayUnion({ date: new Date().toISOString(), amount: 30, month: nextMonth }),
-                                                history: arrayUnion({ date: new Date().toISOString(), action: 'БЪРЗО ПОДНОВЯВАНЕ', amount: 30, performedBy: currentUser?.username })
-                                            });
-                                            playSuccessSound();
-                                            window.location.reload();
-                                        }}
-                                        style={{ width: '100%', background: '#00e676', color: '#000', padding: '1.8rem', borderRadius: '24px', border: 'none', fontWeight: 900, fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}
-                                    >
-                                        <Zap size={26} /> БЪРЗО ПОДНОВЯВАНЕ
-                                    </button>
+                                    <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                                        {!showQuickRenew ? (
+                                            <button 
+                                                onClick={() => setShowQuickRenew(true)}
+                                                style={{ width: '100%', background: '#00e676', color: '#000', padding: '1.8rem', borderRadius: '24px', border: 'none', fontWeight: 900, fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}
+                                            >
+                                                <Zap size={26} /> БЪРЗО ПОДНОВЯВАНЕ
+                                            </button>
+                                        ) : (
+                                            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s ease' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                    <div style={{ fontWeight: 900, fontSize: '1rem', color: '#00e676' }}>МЕНЮ ПЛАЩАНЕ</div>
+                                                    <button onClick={() => setShowQuickRenew(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontWeight: 900 }}>ОТКАЗ</button>
+                                                </div>
+                                                
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                        <label style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 900 }}>МЕСЕЦ</label>
+                                                        <input 
+                                                            type="month" 
+                                                            value={renewalMonth} 
+                                                            onChange={(e) => setRenewalMonth(e.target.value)}
+                                                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }}
+                                                        />
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                        <label style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 900 }}>СУМА (ЛВ)</label>
+                                                        <input 
+                                                            type="number" 
+                                                            value={renewalAmount} 
+                                                            onChange={(e) => setRenewalAmount(Number(e.target.value))}
+                                                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                    <label style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 900 }}>МАРШРУТ / КУРС</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={renewalRoute} 
+                                                        onChange={(e) => setRenewalRoute(e.target.value)}
+                                                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }}
+                                                    />
+                                                </div>
+
+                                                <button 
+                                                    disabled={isUpdating}
+                                                    onClick={async () => {
+                                                        setIsUpdating(true);
+                                                        try {
+                                                            const clientRef = doc(db, 'clients', client?.id || '');
+                                                            await updateDoc(clientRef, {
+                                                                expiryDate: renewalMonth,
+                                                                route: renewalRoute,
+                                                                renewalHistory: arrayUnion({ 
+                                                                    date: new Date().toISOString(), 
+                                                                    amount: renewalAmount, 
+                                                                    month: renewalMonth 
+                                                                }),
+                                                                history: arrayUnion({ 
+                                                                    date: new Date().toISOString(), 
+                                                                    action: 'БЪРЗО ПОДНОВЯВАНЕ', 
+                                                                    amount: renewalAmount, 
+                                                                    month: renewalMonth,
+                                                                    route: renewalRoute,
+                                                                    performedBy: currentUser?.username 
+                                                                })
+                                                            });
+                                                            playSuccessSound();
+                                                            setShowQuickRenew(false);
+                                                            setShowSuccessModal(true);
+                                                        } catch (err) {
+                                                            console.error(err);
+                                                            playErrorSound();
+                                                        } finally {
+                                                            setIsUpdating(false);
+                                                        }
+                                                    }}
+                                                    style={{ width: '100%', background: '#00e676', color: '#000', padding: '1.5rem', borderRadius: '18px', border: 'none', fontWeight: 900, fontSize: '1.2rem', marginTop: '0.5rem', boxShadow: '0 10px 20px rgba(0,230,118,0.2)' }}
+                                                >
+                                                    {isUpdating ? 'ОБРАБОТКА...' : 'ПОДНОВИ'}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
 
                                 <button 
@@ -369,6 +454,36 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     />
                     <div style={{ position: 'absolute', bottom: '10vh', background: 'rgba(255,255,255,0.1)', padding: '12px 24px', borderRadius: '30px', color: '#fff', fontSize: '0.9rem', fontWeight: 900 }}>
                         КЛИКНИ ЗА ЗАТВАРЯНЕ
+                    </div>
+                </div>
+            )}
+
+            {/* SUCCESS CONFIRMATION MODAL */}
+            {showSuccessModal && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 30000, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(40px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                    <div style={{ background: '#111', width: '100%', maxWidth: '400px', borderRadius: '40px', border: '1px solid #00e676', padding: '2.5rem', textAlign: 'center', animation: 'cardAppear 0.4s ease' }}>
+                        <div style={{ background: 'rgba(0,230,118,0.1)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                            <CheckCircle size={50} color="#00e676" />
+                        </div>
+                        <h2 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '1rem' }}>УСПЕШНО!</h2>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '2rem', textAlign: 'left', background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '24px' }}>
+                            <div style={{ fontSize: '0.9rem', opacity: 0.5 }}>ПОДНОВЕНО ЗА:</div>
+                            <div style={{ fontSize: '1.3rem', fontWeight: 900, marginTop: '-5px' }}>{formatBGMonth(renewalMonth)}</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+                                <span>СУМА:</span>
+                                <span style={{ color: '#00e676', fontWeight: 900 }}>{renewalAmount} ЛВ.</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>ЛИНИЯ:</span>
+                                <span style={{ fontWeight: 900 }}>{renewalRoute}</span>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => window.location.reload()}
+                            style={{ width: '100%', background: '#00e676', color: '#000', padding: '1.5rem', borderRadius: '20px', border: 'none', fontWeight: 900, fontSize: '1.2rem', cursor: 'pointer' }}
+                        >
+                            ГОТОВО
+                        </button>
                     </div>
                 </div>
             )}
