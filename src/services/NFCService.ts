@@ -9,7 +9,7 @@ export class NFCService {
         // ULTIMATE PERSISTENCE: localStorage survives even page reloads
         const nfcState = localStorage.getItem('__DARY_NFC_STATE__');
         
-        if (nfcState === 'INITIALIZED' && (window as any).__DARY_NFC_READY__) {
+        if (nfcState === 'INITIALIZED' && window.__DARY_NFC_READY__) {
             console.log('🛡️ NFCService: Iron Guard Active. Connection already hot.');
             return;
         }
@@ -18,7 +18,7 @@ export class NFCService {
             try {
                 console.log('⚡ ETERNAL SCANNER: ACTIVATE ⚡');
                 localStorage.setItem('__DARY_NFC_STATE__', 'INITIALIZED');
-                (window as any).__DARY_NFC_READY__ = true;
+                window.__DARY_NFC_READY__ = true;
                 
                 if (Capacitor.getPlatform() === 'android') {
                     console.log('NFCService: Binding DaryScanner Hardware...');

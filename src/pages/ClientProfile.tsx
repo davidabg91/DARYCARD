@@ -553,7 +553,6 @@ const ClientProfile: React.FC = () => {
                 height: '60%', 
                 background: `${themeColor}11`, 
                 pointerEvents: 'none',
-                pointerEvents: 'none',
                 zIndex: 0,
                 transition: 'background 0.5s ease'
             }} />

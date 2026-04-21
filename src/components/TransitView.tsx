@@ -5,6 +5,15 @@ import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap } from 'lucide
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+interface Client {
+    id: string;
+    name: string;
+    route: string;
+    photo: string;
+    isCanceled?: boolean;
+    renewalHistory?: { month: string; amount: number; date: string }[];
+}
+
 interface TransitViewProps {
     id: string;
     onClose: () => void;
@@ -14,7 +23,7 @@ interface TransitViewProps {
 const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const [client, setClient] = useState<any>(null);
+    const [client, setClient] = useState<Client | null>(null);
     const [loading, setLoading] = useState(true);
     const [showManagement, setShowManagement] = useState(false);
     const [unregistered, setUnregistered] = useState(false);
@@ -39,7 +48,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
     const initAudio = () => {
         if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
         }
         if (audioContextRef.current.state === 'suspended') {
             audioContextRef.current.resume();
@@ -109,12 +118,12 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         getDoc(doc(db, 'clients', id)).then((snap) => {
             if (isMounted) {
                 if (snap.exists()) {
-                    const data = snap.data();
+                    const data = snap.data() as Client;
                     setClient({ ...data, id: snap.id });
                     
                     const nowLocal = new Date();
                     const currentMonthStrLocal = `${nowLocal.getFullYear()}-${(nowLocal.getMonth() + 1).toString().padStart(2, '0')}`;
-                    const hasPaid = (data.renewalHistory || []).some((rh: any) => rh.month === currentMonthStrLocal);
+                    const hasPaid = (data.renewalHistory || []).some((rh) => rh.month === currentMonthStrLocal);
                     const active = !data.isCanceled && hasPaid;
                     
                     if (active) playSuccessSound();
@@ -276,7 +285,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                                 {isAdmin && (
                                     <button 
                                         onClick={async () => {
-                                            const clientRef = doc(db, 'clients', client.id);
+                                            const clientRef = doc(db, 'clients', client?.id || '');
                                             const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 7);
                                             await updateDoc(clientRef, {
                                                 expiryDate: nextMonth,
@@ -293,7 +302,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                                 )}
 
                                 <button 
-                                    onClick={() => { onClose(); navigate(`/client/${client.id}`); }}
+                                    onClick={() => { onClose(); navigate(`/client/${client?.id}`); }}
                                     style={{ width: '100%', background: '#fff', color: '#000', padding: '1.8rem', borderRadius: '24px', border: 'none', fontWeight: 900, fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}
                                 >
                                     <RefreshCw size={26} /> ПЛАТИ СЕГА / ОНЛАЙН

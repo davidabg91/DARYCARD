@@ -31,7 +31,7 @@ function DeepLinkHandler() {
   const [transitId, setTransitId] = useState<string | null>(null);
   
   useEffect(() => {
-    (window as any).onNfcRawEvent = (tagId: string, url: string) => {
+    window.onNfcRawEvent = (tagId: string, url: string) => {
       console.log('🚀 NUCLEAR INJECTION:', { tagId, url });
       let idFromUrl = null;
       if (url && url.includes('darycommerce.com') && url.includes('client/')) {
@@ -41,7 +41,7 @@ function DeepLinkHandler() {
       const finalId = idFromUrl || tagId;
       if (finalId) setTransitId(finalId);
     };
-    return () => { delete (window as any).onNfcRawEvent; };
+    return () => { delete window.onNfcRawEvent; };
   }, []);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ function DeepLinkHandler() {
   }, []);
 
   useEffect(() => {
-    const handleInjectedScan = (e: any) => {
+    const handleInjectedScan = (e: CustomEvent<{ id: string; url: string }>) => {
       const { id, url } = e.detail || {};
       console.log('🛡️ IRON GUARD SIGNAL RECEIVED:', { id, url });
       
@@ -72,8 +72,8 @@ function DeepLinkHandler() {
       if (finalId) setTransitId(finalId);
     };
 
-    window.addEventListener('dary-nfc-scan', handleInjectedScan);
-    return () => window.removeEventListener('dary-nfc-scan', handleInjectedScan);
+    window.addEventListener('dary-nfc-scan', handleInjectedScan as EventListener);
+    return () => window.removeEventListener('dary-nfc-scan', handleInjectedScan as EventListener);
   }, []);
 
   const handleTransitClose = useCallback(() => setTransitId(null), []);
