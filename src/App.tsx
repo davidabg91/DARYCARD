@@ -133,7 +133,7 @@ function App() {
           // Clear any aggressive service worker cache if exists
           if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
-            for (let registration of registrations) {
+            for (const registration of registrations) {
                await registration.unregister();
             }
           }
