@@ -257,7 +257,11 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
     const now = new Date();
     const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
-    const hasPaidCurrentMonth = (client?.renewalHistory || []).some((rh) => rh.month === currentMonthStr);
+    const renewalHistory = client?.renewalHistory || [];
+    const hasPaidCurrentMonth = renewalHistory.some((rh) => rh.month === currentMonthStr);
+    const lastPaidMonth = renewalHistory.length > 0 
+        ? [...renewalHistory].sort((a, b) => b.month.localeCompare(a.month))[0].month 
+        : currentMonthStr;
     const isValid = client && !client.isCanceled && hasPaidCurrentMonth;
     const themeColor = unregistered ? '#ff9100' : (isValid ? '#00e676' : '#ff1744');
 
@@ -370,9 +374,13 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                                     <div style={{ fontSize: '1.4rem', fontWeight: 700, opacity: 0.6, color: themeColor }}>{client?.route}</div>
                                 </div>
 
-                                <div style={{ width: '100%', background: 'rgba(255,255,255,0.03)', borderRadius: '24px', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
-                                    <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>ВАЛИДНОСТ ДО КРАЯ НА</div>
-                                    <div style={{ fontSize: '2rem', fontWeight: 900 }}>{formatBGMonth(currentMonthStr)}</div>
+                                <div style={{ width: '100%', background: isValid ? 'rgba(0,230,118,0.03)' : 'rgba(255,23,68,0.05)', borderRadius: '24px', padding: '1.5rem', border: `1px solid ${isValid ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.2)'}`, textAlign: 'center' }}>
+                                    <div style={{ color: isValid ? 'rgba(255,255,255,0.3)' : '#ff5252', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>
+                                        {isValid ? 'ВАЛИДНОСТ ДО КРАЯ НА' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
+                                    </div>
+                                    <div style={{ fontSize: '2rem', fontWeight: 900, color: isValid ? '#fff' : '#ff5252' }}>
+                                        {formatBGMonth(isValid ? lastPaidMonth : currentMonthStr)}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -603,7 +611,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                         ДОКОСНИ ЕКРАНА ЗА ВРЪЩАНЕ
                     </div>
 
-                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.0-SYNC-TEST</div>
+                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.1-VALIDITY-GUARD</div>
                     <div style={{ position: 'absolute', top: '4vh', right: '4vh', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
                          <img src={client?.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #00e676' }} alt="Mini Profile" />
                          <span style={{ fontWeight: 900, fontSize: '0.8rem' }}>{client?.name?.split(' ')[0]}</span>

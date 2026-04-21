@@ -533,7 +533,11 @@ const ClientProfile: React.FC = () => {
     };
 
     const isCanceled = client?.isCanceled;
-    const hasPaidCurrentMonth = (client?.renewalHistory || []).some(rh => rh.month === currentMonthStr);
+    const renewalHistory = client?.renewalHistory || [];
+    const hasPaidCurrentMonth = renewalHistory.some(rh => rh.month === currentMonthStr);
+    const lastPaidMonth = renewalHistory.length > 0 
+        ? [...renewalHistory].sort((a, b) => b.month.localeCompare(a.month))[0].month 
+        : currentMonthStr;
     const isActive = !isCanceled && hasPaidCurrentMonth;
     const themeColor = isActive ? '#00e676' : '#ff1744';
     
@@ -572,7 +576,7 @@ const ClientProfile: React.FC = () => {
                 transition: 'background 0.5s ease'
             }} />
             
-            <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.0-SYNC-TEST</div>
+            <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.1-VALIDITY-GUARD</div>
             {/* Background Decor */}
             <div style={{ position: 'fixed', top: '-10%', left: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
             <div style={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
@@ -648,13 +652,18 @@ const ClientProfile: React.FC = () => {
 
                     <div style={{
                         width: '100%',
-                        background: 'rgba(255,255,255,0.03)',
+                        background: isActive ? 'rgba(0, 230, 118, 0.05)' : 'rgba(255, 23, 68, 0.08)',
                         borderRadius: '20px',
                         padding: '1.2rem',
-                        border: '1px solid rgba(255,255,255,0.06)'
+                        border: `1px solid ${isActive ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 23, 68, 0.3)'}`,
+                        textAlign: 'center'
                     }}>
-                        <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '4px' }}>ВАЛИДНОСТ ДО КРАЯ НА</div>
-                        <div style={{ fontSize: '1.6rem', fontWeight: 900 }}>{getFormattedMonth(hasPaidCurrentMonth ? currentMonthStr : client.expiryDate)}</div>
+                        <div style={{ color: isActive ? 'rgba(255,255,255,0.3)' : '#ff5252', fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '4px' }}>
+                            {isActive ? 'ВАЛИДНОСТ ДО КРАЯ НА' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
+                        </div>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 900, color: isActive ? '#fff' : '#ff5252' }}>
+                            {getFormattedMonth(isActive ? lastPaidMonth : currentMonthStr)}
+                        </div>
                     </div>
                 </div>
 
