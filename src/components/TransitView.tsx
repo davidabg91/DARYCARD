@@ -20,6 +20,15 @@ interface TransitViewProps {
     onUnregistered: (id: string) => void;
 }
 
+const ROUTES = [
+    "Бъркач", "Тръстеник", "Биволаре", "Горна Митрополия", "Долни Дъбник",
+    "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
+    "Долна Митрополия", "Ясен", "Крушовица", "Дисевица", "Търнене", "Градина",
+    "Петърница", "Опанец", "Победа", "Подем", "Божурица",
+    "Ясен-Дисевица",
+    "Д. Дъбник - Садовец", "Д.Митрополия - Тръстеник", "Д.Митрополия - Славовица"
+];
+
 const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
@@ -374,12 +383,14 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                             <label style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 900 }}>МАРШРУТ / КУРС</label>
-                                            <input 
-                                                type="text" 
+                                            <select 
                                                 value={renewalRoute} 
                                                 onChange={(e) => setRenewalRoute(e.target.value)}
-                                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }}
-                                            />
+                                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, outline: 'none' }}
+                                            >
+                                                <option value="">Избери маршрут...</option>
+                                                {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
+                                            </select>
                                         </div>
 
                                         <button 
@@ -553,7 +564,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     </div>
 
                     {/* Quick ID Overlay for the ads (Optional, to remind who is scanned) */}
-                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v3.9-FINAL</div>
+                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v4.0-STABLE</div>
                     <div style={{ position: 'absolute', top: '4vh', right: '4vh', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
                          <img src={client?.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #00e676' }} alt="Mini Profile" />
                          <span style={{ fontWeight: 900, fontSize: '0.8rem' }}>{client?.name?.split(' ')[0]}</span>

@@ -572,7 +572,7 @@ const ClientProfile: React.FC = () => {
                 transition: 'background 0.5s ease'
             }} />
             
-            <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v3.9.2-FORCE-LINT</div>
+            <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v4.0-STABLE</div>
             {/* Background Decor */}
             <div style={{ position: 'fixed', top: '-10%', left: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
             <div style={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
@@ -816,12 +816,14 @@ const ClientProfile: React.FC = () => {
 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                         <label style={{ fontSize: '0.6rem', opacity: 0.5, fontWeight: 900 }}>МАРШРУТ</label>
-                                        <input 
-                                            type="text" 
+                                        <select 
                                             value={renewalRoute} 
                                             onChange={(e) => setRenewalRoute(e.target.value)}
-                                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }}
-                                        />
+                                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, outline: 'none' }}
+                                        >
+                                            <option value="">Избери маршрут...</option>
+                                            {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
+                                        </select>
                                     </div>
 
                                     <button 
