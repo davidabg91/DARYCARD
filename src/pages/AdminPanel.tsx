@@ -2500,8 +2500,8 @@ const AdminPanel: React.FC = () => {
             )}
 
 
+            <div style={{ position: 'fixed', bottom: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100, pointerEvents: 'none' }}>v5.0-SYNC</div>
         </div>
-        <div style={{ position: 'fixed', bottom: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100, pointerEvents: 'none' }}>v5.0-SYNC</div>
     );
 };
 
