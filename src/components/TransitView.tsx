@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap } from 'lucide-react';
@@ -202,7 +202,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         return () => {
             isMounted = false;
         };
-    }, [id, playErrorSound, playSuccessSound]); 
+    }, [id, playErrorSound, playSuccessSound, checkNow]); 
 
     // IDLE DETECTION & SLIDESHOW LOGIC
     useEffect(() => {
