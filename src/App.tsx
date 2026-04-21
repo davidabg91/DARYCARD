@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useState, useCallback } from 'react';
-import { ConnectivityProvider, useConnectivity } from './context/ConnectivityContext';
 import { NFCService } from './services/NFCService';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -28,8 +27,7 @@ import TransitView from './components/TransitView';
 
 function DeepLinkHandler() {
   const navigate = useNavigate();
-  const { isOnline } = useConnectivity();
-  const isOffline = !isOnline;
+  const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
   const [transitId, setTransitId] = useState<string | null>(null);
   
   useEffect(() => {
@@ -46,6 +44,18 @@ function DeepLinkHandler() {
     return () => { delete window.onNfcRawEvent; };
   }, []);
 
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const handleInjectedScan = (e: CustomEvent<{ id: string; url: string }>) => {
@@ -106,21 +116,14 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.22.01.10";
+  const INTERNAL_APP_VERSION = "2026.04.22.01.52";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
     const checkVersion = async () => {
       try {
         const entropy = Math.random().toString(36).substring(7);
-        const response = await fetch(`version.json?v=${INTERNAL_APP_VERSION}&t=${Date.now()}&e=${entropy}`, { 
-          method: 'GET',
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
+        const response = await fetch(`/version.json?t=${Date.now()}&e=${entropy}`, { cache: 'no-store' });
         if (!response.ok) return;
         
         const data = await response.json();
@@ -192,7 +195,6 @@ function App() {
   }, []);
 
   return (
-    <ConnectivityProvider>
     <AuthProvider>
       <HashRouter>
         <DeepLinkHandler />
@@ -231,7 +233,6 @@ function App() {
         </Suspense>
       </HashRouter>
     </AuthProvider>
-    </ConnectivityProvider>
   );
 }
 

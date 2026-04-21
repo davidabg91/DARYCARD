@@ -1,10 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useConnectivity } from '../context/ConnectivityContext';
 
 interface Client {
     id: string;
@@ -51,8 +50,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [showAds, setShowAds] = useState(false);
     const [currentAdIndex, setCurrentAdIndex] = useState(0);
     const [lastActivity, setLastActivity] = useState(Date.now());
-    const { isOnline, checkNow } = useConnectivity();
-    const isActuallyOnline = isOnline;
+    const [isActuallyOnline, setIsActuallyOnline] = useState(window.navigator.onLine);
 
     const adImages = [
         '/assets/ads/ad_alps.webp',
@@ -128,6 +126,25 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         playTone(1174.66, 0.24, 0.7);  // D6
     }, []);
 
+    // 📡 SMART PING: Verified internet check
+    const checkActualStatus = useCallback(async () => {
+         const controller = new AbortController();
+         const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+         try {
+            const entropy = Math.random().toString(36).substring(7);
+            const res = await fetch(`/version.json?t=${Date.now()}&e=${entropy}`, { 
+                method: 'HEAD', 
+                cache: 'no-store',
+                signal: controller.signal 
+            });
+            clearTimeout(timeoutId);
+            const isOnline = res.ok;
+            setIsActuallyOnline(isOnline);
+         } catch {
+            clearTimeout(timeoutId);
+            setIsActuallyOnline(false);
+         }
+    }, [setIsActuallyOnline]);
 
     const playErrorSound = React.useCallback(() => {
         initAudio();
@@ -164,8 +181,9 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
             if (isMounted) {
                 // INSTANT CONNECTIVITY SENSE: Check metadata + trigger ping
                 if (snap.metadata.fromCache) {
-                    checkNow(); // Force a re-validation if it's hitting cache
+                    setIsActuallyOnline(false);
                 }
+                checkActualStatus();
 
                 if (snap.exists()) {
                     const data = snap.data() as Client;
@@ -202,7 +220,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         return () => {
             isMounted = false;
         };
-    }, [id, playErrorSound, playSuccessSound, checkNow]); 
+    }, [id, playErrorSound, playSuccessSound]); 
 
     // IDLE DETECTION & SLIDESHOW LOGIC
     useEffect(() => {
@@ -215,12 +233,16 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                 setShowAds(true);
             }
         }, 1000);
+        checkActualStatus();
+        const pingInterval = setInterval(checkActualStatus, 5000); // Check every 5s
+
         return () => {
             window.removeEventListener('touchstart', resetActivity);
             window.removeEventListener('mousedown', resetActivity);
             clearInterval(idleCheck);
+            clearInterval(pingInterval);
         };
-    }, [lastActivity, showAds, showPhotoModal, showSuccessModal, checkNow]);
+    }, [lastActivity, showAds, showPhotoModal, showSuccessModal, checkActualStatus]);
 
     // SLIDESHOW AUTO-PLAY
     useEffect(() => {
@@ -581,7 +603,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                         ДОКОСНИ ЕКРАНА ЗА ВРЪЩАНЕ
                     </div>
 
-                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.0-SYNC</div>
+                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.0-SYNC-TEST</div>
                     <div style={{ position: 'absolute', top: '4vh', right: '4vh', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
                          <img src={client?.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #00e676' }} alt="Mini Profile" />
                          <span style={{ fontWeight: 900, fontSize: '0.8rem' }}>{client?.name?.split(' ')[0]}</span>
