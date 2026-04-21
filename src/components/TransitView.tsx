@@ -50,6 +50,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [showAds, setShowAds] = useState(false);
     const [currentAdIndex, setCurrentAdIndex] = useState(0);
     const [lastActivity, setLastActivity] = useState(Date.now());
+    const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
 
     const adImages = [
         '/assets/ads/ad_alps.webp',
@@ -207,9 +208,16 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
             }
         }, 1000);
 
+        const handleOnline = () => setIsOffline(false);
+        const handleOffline = () => setIsOffline(true);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
         return () => {
             window.removeEventListener('touchstart', resetActivity);
             window.removeEventListener('mousedown', resetActivity);
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
             clearInterval(idleCheck);
         };
     }, [lastActivity, showAds, showPhotoModal, showSuccessModal]);
@@ -318,6 +326,12 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                             </div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2.5rem' }}>
+                                {/* Connectivity Status Label */}
+                                <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.4, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '-2rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOffline ? '#ff5252' : '#00e676' }} />
+                                    {isOffline ? 'БЕЗ ИНТЕРНЕТ (ЛОКАЛНА ПАМЕТ)' : 'СВЪРЗАН СЪС СЪРВЪРА'}
+                                </div>
+
                                 {/* Status Badge */}
                                 <div style={{ background: `${themeColor}22`, padding: '12px 24px', borderRadius: '20px', fontSize: '1.1rem', fontWeight: 900, color: themeColor, display: 'flex', alignItems: 'center', gap: '12px', letterSpacing: '1px' }}>
                                     {isValid ? <CheckCircle size={24} /> : <XCircle size={24} />}
@@ -568,7 +582,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     </div>
 
                     {/* Quick ID Overlay for the ads (Optional, to remind who is scanned) */}
-                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v4.2-IMMEDIATE-SCAN</div>
+                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v4.4-STATUS</div>
                     <div style={{ position: 'absolute', top: '4vh', right: '4vh', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
                          <img src={client?.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #00e676' }} alt="Mini Profile" />
                          <span style={{ fontWeight: 900, fontSize: '0.8rem' }}>{client?.name?.split(' ')[0]}</span>
