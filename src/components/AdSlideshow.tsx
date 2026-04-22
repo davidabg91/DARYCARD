@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import adPromo from '../assets/ads/ad_promo.png';
+import adScan from '../assets/ads/ad_scan.png';
 
 interface AdSlideshowProps {
     onClose: () => void;
@@ -6,16 +8,16 @@ interface AdSlideshowProps {
     clientPhoto?: string;
 }
 
-const INTERNAL_APP_VERSION = "2026.04.22.04.11";
+const INTERNAL_APP_VERSION = "2026.04.22.04.15";
 
 const AD_IMAGES = [
     {
-        url: '/assets/ads/ad_promo.png',
+        url: adPromo,
         title: 'DaryCommerce.com',
         description: 'Вашият онлайн портал за абонаменти'
     },
     {
-        url: '/assets/ads/ad_scan.png',
+        url: adScan,
         title: 'СКАНИРАЙ ТУК',
         description: 'Поставете картата над екрана за сканиране'
     }
