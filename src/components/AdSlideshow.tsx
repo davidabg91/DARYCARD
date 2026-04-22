@@ -6,24 +6,14 @@ interface AdSlideshowProps {
 
 const AD_IMAGES = [
     {
-        url: '/assets/ads/ad_alps.webp',
-        title: 'Езерата на Алпите',
-        description: 'Незабравимо пътуване до Сейнт Мориц'
+        url: '/assets/ads/ad_promo.png',
+        title: 'DaryCommerce.com',
+        description: 'Вашият онлайн портал за абонаменти'
     },
     {
-        url: '/assets/ads/ad_riviera.webp',
-        title: 'Перлите на Ривиерата',
-        description: 'Монако, Ница и Сен Тропе'
-    },
-    {
-        url: '/assets/ads/ad_paris.webp',
-        title: 'Магията на Париж',
-        description: 'Градът на светлините'
-    },
-    {
-        url: '/assets/ads/ad_kitai.webp',
-        title: 'Мистичният Китай',
-        description: 'Великата китайска стена и забраненият град'
+        url: '/assets/ads/ad_scan.png',
+        title: 'СКАНИРАЙ ТУК',
+        description: 'Поставете картата над екрана за сканиране'
     }
 ];
 
