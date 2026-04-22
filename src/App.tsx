@@ -117,7 +117,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.22.04.20";
+  const INTERNAL_APP_VERSION = "2026.04.22.04.25";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
@@ -167,9 +167,10 @@ function App() {
           
           // Small delay for logs to flush
           setTimeout(() => {
-            // 🚀 HYPER-SYNC: Breaking the browser cache by modifying the URL itself
-            // We preserve the hash to avoid sending the user back to the landing page
-            window.location.href = window.location.origin + window.location.pathname + '?v=' + serverVersion + window.location.hash;
+            // 🚀 RELOAD: We use reload() instead of changing the URL to keep the links clean
+            // as requested by the user. The localStorage 'last_tried_version' check
+            // above prevents infinite reload loops.
+            window.location.reload();
           }, 500);
         } else if (serverVersion === INTERNAL_APP_VERSION) {
             // Success! Clear the retry flag
