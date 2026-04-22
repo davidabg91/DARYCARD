@@ -91,7 +91,7 @@ function DeepLinkHandler() {
             onUnregistered={handleTransitUnregistered}
         />
       )}
-      <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.7-SYNC-FORCE</div>
+      <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.8-HYPER-SYNC</div>
       {isOffline && (
         <div style={{
           position: 'fixed',
@@ -117,7 +117,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.22.03.22";
+  const INTERNAL_APP_VERSION = "2026.04.22.03.30";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
@@ -153,7 +153,8 @@ function App() {
           
           // Small delay for logs to flush
           setTimeout(() => {
-            window.location.reload();
+            // 🚀 HYPER-SYNC: Breaking the browser cache by modifying the URL itself
+            window.location.href = window.location.origin + window.location.pathname + '?v=' + serverVersion;
           }, 500);
         } else if (serverVersion === INTERNAL_APP_VERSION) {
             // Success! Clear the retry flag
