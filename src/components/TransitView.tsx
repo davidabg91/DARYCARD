@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import AdSlideshow from './AdSlideshow';
 
 interface Client {
     id: string;
@@ -48,16 +49,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
     // Ads Slideshow States
     const [showAds, setShowAds] = useState(false);
-    const [currentAdIndex, setCurrentAdIndex] = useState(0);
     const [lastActivity, setLastActivity] = useState(Date.now());
     const [isActuallyOnline, setIsActuallyOnline] = useState(window.navigator.onLine);
-
-    const adImages = [
-        '/assets/ads/ad_alps.webp',
-        '/assets/ads/ad_kitai.webp',
-        '/assets/ads/ad_paris.webp',
-        '/assets/ads/ad_riviera.webp'
-    ];
 
     // Prop state synchronization to avoid cascading renders in useEffect
     const [prevId, setPrevId] = useState(id);
@@ -252,16 +245,6 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         };
     }, [lastActivity, showAds, showPhotoModal, showSuccessModal, checkActualStatus]);
 
-    // SLIDESHOW AUTO-PLAY
-    useEffect(() => {
-        let interval: ReturnType<typeof setInterval> | undefined;
-        if (showAds) {
-            interval = setInterval(() => {
-                setCurrentAdIndex(prev => (prev + 1) % adImages.length);
-            }, 5000);
-        }
-        return () => clearInterval(interval);
-    }, [showAds, adImages.length]);
 
     const now = new Date();
     const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -593,38 +576,14 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
             {/* IDLE ADS SLIDESHOW OVERLAY */}
             {showAds && (
-                <div 
-                    style={{ position: 'fixed', inset: 0, zIndex: 40000, background: '#000', animation: 'fadeIn 0.5s ease' }}
-                    onClick={(e) => {
-                        e.stopPropagation();
+                <AdSlideshow 
+                    onClose={() => {
                         setShowAds(false);
                         setLastActivity(Date.now());
-                    }}
-                >
-                    {adImages.map((img, idx) => (
-                        <div 
-                            key={img}
-                            style={{ 
-                                position: 'absolute', 
-                                inset: 0, 
-                                opacity: currentAdIndex === idx ? 1 : 0, 
-                                transition: 'opacity 1s ease-in-out',
-                                background: `url(${img}) center center / contain no-repeat`
-                            }}
-                        />
-                    ))}
-                    
-                    {/* Interaction Hint */}
-                    <div style={{ position: 'absolute', bottom: '5vh', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', padding: '12px 24px', borderRadius: '30px', color: '#fff', fontSize: '0.9rem', fontWeight: 900, border: '1px solid rgba(255,255,255,0.1)', animation: 'pulse 2s infinite' }}>
-                        ДОКОСНИ ЕКРАНА ЗА ВРЪЩАНЕ
-                    </div>
-
-                    <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.10-SYNC-RECOVERY</div>
-                    <div style={{ position: 'absolute', top: '4vh', right: '4vh', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
-                         <img src={client?.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #00e676' }} alt="Mini Profile" />
-                         <span style={{ fontWeight: 900, fontSize: '0.8rem' }}>{client?.name?.split(' ')[0]}</span>
-                    </div>
-                </div>
+                    }} 
+                    clientName={client?.name}
+                    clientPhoto={client?.photo}
+                />
             )}
         </div>
     );

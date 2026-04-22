@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 
 interface AdSlideshowProps {
     onClose: () => void;
+    clientName?: string;
+    clientPhoto?: string;
 }
 
-const INTERNAL_APP_VERSION = "2026.04.22.03.14";
+const INTERNAL_APP_VERSION = "2026.04.22.04.05";
 
 const AD_IMAGES = [
     {
@@ -19,7 +21,7 @@ const AD_IMAGES = [
     }
 ];
 
-const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
+const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose, clientName, clientPhoto }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [imagesLoaded, setImagesLoaded] = useState(false);
 
@@ -37,7 +39,7 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
         // Background preload for the rest
         AD_IMAGES.slice(1).forEach(ad => {
             const img = new Image();
-            img.src = ad.url;
+            img.src = `${ad.url}?v=${INTERNAL_APP_VERSION}`;
         });
     }, []);
 
@@ -53,7 +55,7 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
 
     if (!imagesLoaded) {
         return (
-            <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 50000, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid #ff1744', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                 <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
             </div>
@@ -65,7 +67,7 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
             style={{
                 position: 'fixed',
                 inset: 0,
-                zIndex: 9999,
+                zIndex: 50000,
                 background: '#000',
                 display: 'flex',
                 flexDirection: 'column',
@@ -135,10 +137,30 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
                 })}
             </div>
 
+            {/* Interaction Hint */}
+            <div style={{ position: 'absolute', bottom: '5vh', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', padding: '12px 24px', borderRadius: '30px', color: '#fff', fontSize: '0.9rem', fontWeight: 900, border: '1px solid rgba(255,255,255,0.1)', animation: 'pulse 2s infinite', zIndex: 100 }}>
+                ДОКОСНИ ЕКРАНА ЗА ВРЪЩАНЕ
+            </div>
+
+            {/* Version and Mini Profile */}
+            <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100, color: '#fff' }}>v5.10-SYNC-RECOVERY</div>
+            
+            {clientPhoto && (
+                <div style={{ position: 'absolute', top: '4vh', right: '4vh', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '20px', backdropFilter: 'blur(10px)', zIndex: 100 }}>
+                     <img src={clientPhoto} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #00e676' }} alt="Mini Profile" />
+                     {clientName && <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#fff' }}>{clientName.split(' ')[0]}</span>}
+                </div>
+            )}
+
             <style>{`
                 @keyframes fadeIn {
                     from { opacity: 0; }
                     to { opacity: 1; }
+                }
+                @keyframes pulse {
+                    0% { opacity: 0.5; transform: translateX(-50%) scale(1); }
+                    50% { opacity: 1; transform: translateX(-50%) scale(1.05); }
+                    100% { opacity: 0.5; transform: translateX(-50%) scale(1); }
                 }
                 .main-ad-image {
                     object-fit: contain;
@@ -151,3 +173,4 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
 };
 
 export default AdSlideshow;
+
