@@ -117,7 +117,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.22.04.05";
+  const INTERNAL_APP_VERSION = "2026.04.22.04.11";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
@@ -154,7 +154,8 @@ function App() {
           // Small delay for logs to flush
           setTimeout(() => {
             // 🚀 HYPER-SYNC: Breaking the browser cache by modifying the URL itself
-            window.location.href = window.location.origin + window.location.pathname + '?v=' + serverVersion;
+            // We preserve the hash to avoid sending the user back to the landing page
+            window.location.href = window.location.origin + window.location.pathname + '?v=' + serverVersion + window.location.hash;
           }, 500);
         } else if (serverVersion === INTERNAL_APP_VERSION) {
             // Success! Clear the retry flag

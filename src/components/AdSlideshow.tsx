@@ -6,7 +6,7 @@ interface AdSlideshowProps {
     clientPhoto?: string;
 }
 
-const INTERNAL_APP_VERSION = "2026.04.22.04.05";
+const INTERNAL_APP_VERSION = "2026.04.22.04.11";
 
 const AD_IMAGES = [
     {
