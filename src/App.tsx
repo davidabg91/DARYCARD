@@ -117,7 +117,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.22.04.15";
+  const INTERNAL_APP_VERSION = "2026.04.22.04.20";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
@@ -136,6 +136,20 @@ function App() {
         const lastTriedVersion = localStorage.getItem('last_tried_version');
         
         if (serverVersion && INTERNAL_APP_VERSION !== serverVersion) {
+          // 🛡️ STOP THE LOOP: If the URL already has this version, don't redirect again
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('v') === serverVersion) {
+            console.log('⚠️ VERSION MISMATCH PERSISTS DESPITE URL PARAM. ABORTING REDIRECT TO PREVENT LOOP.');
+            return;
+          }
+
+          // 🛡️ PROTECT ACTIVE SESSION: If the user is currently viewing a scanned profile, 
+          // don't interrupt them with a refresh. Wait for next time.
+          if (window.location.hash.includes('/client/')) {
+            console.log('⏳ Update available, but session active. Postponing...');
+            return;
+          }
+
           if (lastTriedVersion === serverVersion) {
             console.log('⚠️ UPDATE ATTEMPTED BUT CACHE PERSISTS. STANDING BY...');
             return;
