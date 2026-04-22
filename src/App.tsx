@@ -91,7 +91,7 @@ function DeepLinkHandler() {
             onUnregistered={handleTransitUnregistered}
         />
       )}
-      {isOffline && <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.5-NEW-ADS</div>}
+      <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.6-CACHE-NUKE</div>
       {isOffline && (
         <div style={{
           position: 'fixed',
@@ -117,7 +117,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.22.03.07";
+  const INTERNAL_APP_VERSION = "2026.04.22.03.14";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function

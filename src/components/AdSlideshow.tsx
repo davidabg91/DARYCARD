@@ -4,6 +4,8 @@ interface AdSlideshowProps {
     onClose: () => void;
 }
 
+const INTERNAL_APP_VERSION = "2026.04.22.03.14";
+
 const AD_IMAGES = [
     {
         url: '/assets/ads/ad_promo.png',
@@ -25,7 +27,7 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
         // Preload the FIRST image quickly to show something as soon as possible
         const preloadFirstImage = () => {
             const img = new Image();
-            img.src = AD_IMAGES[0].url;
+            img.src = `${AD_IMAGES[0].url}?v=${INTERNAL_APP_VERSION}`;
             img.onload = () => setImagesLoaded(true);
             img.onerror = () => setImagesLoaded(true); // Fallback to showing the component anyway
         };
@@ -99,7 +101,7 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
                         >
                             {/* Blurred Background - Simplified for mobile performance */}
                             <img 
-                                src={ad.url} 
+                                src={`${ad.url}?v=${INTERNAL_APP_VERSION}`} 
                                 alt="" 
                                 style={{ 
                                     position: 'absolute',
@@ -116,7 +118,7 @@ const AdSlideshow: React.FC<AdSlideshowProps> = ({ onClose }) => {
                             {/* Main Ad Image */}
                             <img 
                                 className="main-ad-image"
-                                src={ad.url} 
+                                src={`${ad.url}?v=${INTERNAL_APP_VERSION}`} 
                                 alt={ad.title}
                                 style={{ 
                                     position: 'relative',
