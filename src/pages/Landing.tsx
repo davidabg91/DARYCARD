@@ -1353,12 +1353,8 @@ const Landing: React.FC = () => {
                     fontSize: '0.75rem',
                     color: 'rgba(255,255,255,0.3)'
                 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center' }}>
-                            <div><strong>ФИРМА:</strong> ДАРИ КОМЕРС - НА (ООД)</div>
-                            <div><strong>АДРЕС:</strong> гр. Плевен, ул. ДАНАИЛ ПОПОВ 12</div>
-                            <div><strong>УПРАВИТЕЛ:</strong> ДАРИНКА ЦВЕТАНОВА КРЪСТЕВА</div>
-                            <div><strong>ЕИК/ДДС:</strong> BG114601542</div>
+                        <div style={{ display: 'none' }}>
+                            {/* Company details removed as requested */}
                         </div>
                         <div style={{ 
                             padding: '0.4rem 1.2rem', 

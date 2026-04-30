@@ -171,9 +171,9 @@ const InstallPWA: React.FC = () => {
             <div style={{ background: 'rgba(255,82,82,0.1)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
                 <MoreVertical size={32} color="#ff5252" />
             </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '1rem', color: '#fff' }}>ИНСТАЛИРАНЕ</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '1rem', color: '#fff' }}>ИНСТАЛИРАНЕ НА ПРИЛОЖЕНИЕТО</h3>
             <p style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6', marginBottom: '2rem', fontSize: '0.95rem' }}>
-                За да инсталирате приложението ръчно:
+                Вашият браузър в момента не предлага автоматично инсталиране (това се случва, ако вече сте го инсталирали веднъж или сте отхвърлили поканата). Можете да го добавите ръчно:
             </p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
