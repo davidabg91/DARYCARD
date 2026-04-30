@@ -597,27 +597,30 @@ const ClientProfile: React.FC = () => {
                 {/* Holographic Animation Overlay */}
 
                 {/* Card Top Branding */}
-                <div style={{ padding: '0.8rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 900, color: themeColor, letterSpacing: '2px' }}>DARY CARD</span>
-                        <span style={{ width: '1px', height: '10px', background: 'rgba(255,255,255,0.1)' }} />
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)' }}>{client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}</span>
-                    </div>
-                        <div style={{
-                        background: `${themeColor}22`,
-                        padding: '8px 16px',
-                        borderRadius: '14px',
-                        fontSize: '0.85rem',
-                        fontWeight: 900,
-                        color: themeColor,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        border: `1px solid ${themeColor}33`
-                    }}>
-                        {isActive ? <CheckCircle size={18} /> : <XCircle size={18} />}
-                        {statusText}
-                    </div>
+                <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 900, color: themeColor, letterSpacing: '2px' }}>DARY CARD</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)' }}>{client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}</span>
+                </div>
+
+                {/* Sub-Header Status Panel (Full Width) */}
+                <div style={{
+                    width: '100%',
+                    background: `${themeColor}22`,
+                    padding: '8px 0',
+                    textAlign: 'center',
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    fontSize: '0.9rem',
+                    fontWeight: 900,
+                    color: themeColor,
+                    letterSpacing: '1px'
+                }}>
+                    {isActive ? <CheckCircle size={18} /> : <XCircle size={18} />}
+                    {statusText.toUpperCase()}
                 </div>
 
                 {/* Card Core Content */}
