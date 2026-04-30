@@ -541,7 +541,7 @@ const ClientProfile: React.FC = () => {
     const isActive = !isCanceled && hasPaidCurrentMonth;
     const themeColor = isActive ? '#00e676' : '#ff1744';
     
-    let statusText = isCanceled ? 'АНУЛИРАН' : 'НЕВАЛИДЕН АБОНАМЕНТ';
+    let statusText = isCanceled ? 'АНУЛИРАН' : 'КАРТАТА НЕ Е ПЛАТЕНА';
     if (!isCanceled && !hasPaidCurrentMonth) { 
         statusText = `БЕЗ ТАКСА ЗА ${getFormattedMonth(currentMonthStr).split(' ')[0]}`; 
     } else if (isActive) { 

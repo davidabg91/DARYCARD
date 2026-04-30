@@ -381,7 +381,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                                     letterSpacing: '1px'
                                 }}>
                                     {isValid ? <CheckCircle size={20} /> : <XCircle size={20} />}
-                                    {isValid ? 'ВАЛИДЕН АБОНАМЕНТ' : 'НЕВАЛИДЕН АБОНАМЕНТ'}
+                                    {isValid ? 'ВАЛИДЕН АБОНАМЕНТ' : 'КАРТАТА НЕ Е ПЛАТЕНА'}
                                 </div>
 
                                 <div style={{ padding: '1.5rem 2rem 2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
