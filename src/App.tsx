@@ -117,14 +117,14 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.30.19.20";
+  const INTERNAL_APP_VERSION = "2026.04.30.19.30";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
     const checkVersion = async () => {
       try {
         const entropy = Math.random().toString(36).substring(7);
-        const response = await fetch(`/version.json?t=${Date.now()}&e=${entropy}`, { cache: 'no-store' });
+        const response = await fetch(`./version.json?t=${Date.now()}&e=${entropy}`, { cache: 'no-store' });
         if (!response.ok) return;
         
         const data = await response.json();
@@ -132,31 +132,8 @@ function App() {
         
         console.log(`[Version Check] Internal: ${INTERNAL_APP_VERSION} | Server: ${serverVersion}`);
 
-        // Compare against hardcoded version for 100% accuracy
-        const lastTriedVersion = localStorage.getItem('last_tried_version');
-        
         if (serverVersion && INTERNAL_APP_VERSION !== serverVersion) {
-          // 🛡️ STOP THE LOOP: If the URL already has this version, don't redirect again
-          const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get('v') === serverVersion) {
-            console.log('⚠️ VERSION MISMATCH PERSISTS DESPITE URL PARAM. ABORTING REDIRECT TO PREVENT LOOP.');
-            return;
-          }
-
-          // 🛡️ PROTECT ACTIVE SESSION: If the user is currently viewing a scanned profile, 
-          // don't interrupt them with a refresh. Wait for next time.
-          if (window.location.hash.includes('/client/')) {
-            console.log('⏳ Update available, but session active. Postponing...');
-            return;
-          }
-
-          if (lastTriedVersion === serverVersion) {
-            console.log('⚠️ UPDATE ATTEMPTED BUT CACHE PERSISTS. STANDING BY...');
-            return;
-          }
-          
           console.log('🚀 OUTDATED BUNDLE DETECTED. NUCLEAR REFRESH STARTING...');
-          localStorage.setItem('last_tried_version', serverVersion);
           
           if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
@@ -165,16 +142,8 @@ function App() {
             }
           }
           
-          // Small delay for logs to flush
-          setTimeout(() => {
-            // 🚀 RELOAD: We use reload() instead of changing the URL to keep the links clean
-            // as requested by the user. The localStorage 'last_tried_version' check
-            // above prevents infinite reload loops.
-            window.location.reload();
-          }, 500);
-        } else if (serverVersion === INTERNAL_APP_VERSION) {
-            // Success! Clear the retry flag
-            localStorage.removeItem('last_tried_version');
+          localStorage.clear(); // Nuke everything
+          window.location.reload();
         }
       } catch (err) {
         console.error('⚠️ Version check failed:', err);
