@@ -39,6 +39,22 @@
         <div style="letter-spacing: 2px; font-size: 10px; opacity: 0.5;">DARY COMMERCE</div>
       </div>
     </div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // 🛡️ EMERGENCY RESET: Clear any stuck service workers on mobile
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (const registration of registrations) {
+            // Only unregister if it's not the new one (we'll let the new one register later)
+            // Or just unregister everything once to be safe
+            if (!window.localStorage.getItem('sw_hard_reset_v2')) {
+               registration.unregister();
+               window.localStorage.setItem('sw_hard_reset_v2', 'true');
+               window.location.reload();
+            }
+          }
+        });
+      }
+    </script>
+    <script type="module" src="src/main.tsx"></script>
   </body>
 </html>
