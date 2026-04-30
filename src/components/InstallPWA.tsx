@@ -11,7 +11,6 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const InstallPWA: React.FC = () => {
-  const [supportsPWA, setSupportsPWA] = useState(false);
   const [promptInstall, setPromptInstall] = useState<BeforeInstallPromptEvent | null>(null);
   
   const [isIOS] = useState(() => 
