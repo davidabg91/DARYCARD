@@ -69,7 +69,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     }, []);
 
     useEffect(() => {
-        const loadVoices = () => { try { window.speechSynthesis.getVoices(); } catch { /* voice synth check */ } };
+        const loadVoices = () => { try { window.speechSynthesis.getVoices(); } catch(e){} };
         if ('speechSynthesis' in window) {
             window.speechSynthesis.onvoiceschanged = loadVoices;
             loadVoices();
@@ -148,7 +148,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
             playTone(880.00, 0.16, 0.6);   
             playTone(1174.66, 0.24, 0.7);  
             speakStatus('Валидна карта');
-        } catch { /* ignore audio error */ }
+        } catch(e) {}
     }, [speakStatus]);
 
     const playSuccessRef = useRef(playSuccessSound);

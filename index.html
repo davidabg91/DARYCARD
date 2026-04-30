@@ -8,12 +8,6 @@
     <meta http-equiv="Surrogate-Control" content="no-store" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a1a1a" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Дари" />
-    <link rel="apple-touch-icon" href="/pwa-icon.png" />
-    <link rel="manifest" href="/manifest.json" />
     <title>Дари Комерс</title>
     
     
@@ -39,27 +33,7 @@
         <div class="spinner"></div>
         <div style="letter-spacing: 2px; font-size: 10px; opacity: 0.5;">DARY COMMERCE</div>
       </div>
-      <div id="app-mounted" style="display:none"></div>
     </div>
-    <script>
-      // 🛡️ SELF-HEALING: If the app hasn't loaded in 4 seconds, clear SW and reload
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          const appMounted = document.getElementById('app-mounted');
-          if (!appMounted || appMounted.style.display === 'none') {
-            console.warn("🚀 App mount timeout. Emergency clearing service workers...");
-            if ('serviceWorker' in navigator) {
-              navigator.serviceWorker.getRegistrations().then(registrations => {
-                for (const registration of registrations) {
-                  registration.unregister();
-                }
-                window.location.reload();
-              });
-            }
-          }
-        }, 4000);
-      });
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

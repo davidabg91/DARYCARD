@@ -117,7 +117,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.30.18.39";
+  const INTERNAL_APP_VERSION = "2026.04.30.17.13";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
@@ -164,7 +164,7 @@ function App() {
                await registration.unregister();
             }
           }
-
+          
           // Small delay for logs to flush
           setTimeout(() => {
             // 🚀 RELOAD: We use reload() instead of changing the URL to keep the links clean
