@@ -18,7 +18,7 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      injectRegister: 'script',
       includeAssets: ['favicon.ico', 'favicon.png', 'pwa-icon.png', 'assets/*.png', 'assets/*.svg'],
       manifest: {
         name: 'Дари Комерс',
@@ -28,12 +28,14 @@ export default defineConfig({
         background_color: '#1a1a1a',
         display: 'standalone',
         orientation: 'portrait',
+        scope: '/',
         start_url: '/',
         icons: [
           {
             src: 'pwa-icon.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
             src: 'pwa-icon.png',
@@ -44,6 +46,9 @@ export default defineConfig({
         ]
       },
       workbox: {
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
