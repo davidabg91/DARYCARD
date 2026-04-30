@@ -561,24 +561,28 @@ const ClientProfile: React.FC = () => {
             padding: '2rem 1rem',
             position: 'relative'
         }}>
-            {/* Environment Glow - Changes based on status */}
+            {/* Modern Environment Glow */}
             <div style={{ 
                 position: 'fixed', 
-                top: '20%', 
-                left: '50%', 
-                transform: 'translate(-50%, -50%)',
-                width: '120%', 
-                height: '60%', 
-                background: `${themeColor}11`, 
+                inset: 0, 
+                background: `radial-gradient(circle at 50% 40%, ${themeColor}18 0%, #09090b 80%)`, 
                 pointerEvents: 'none',
                 zIndex: 0,
-                transition: 'background 0.5s ease'
+                transition: 'background 0.8s ease'
             }} />
             
-
-            {/* Background Decor */}
-            <div style={{ position: 'fixed', top: '-10%', left: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
-            <div style={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
+            <div style={{ 
+                position: 'fixed', 
+                bottom: '-10%', 
+                left: '50%', 
+                transform: 'translateX(-50%)',
+                width: '100%', 
+                height: '40%', 
+                background: `radial-gradient(circle at 50% 100%, ${themeColor}08 0%, transparent 70%)`, 
+                pointerEvents: 'none',
+                zIndex: 0,
+                transition: 'background 0.8s ease'
+            }} />
 
             {/* The Modern ID CARD */}
             <div className="id-card-container" style={{
@@ -599,7 +603,23 @@ const ClientProfile: React.FC = () => {
                 {/* Card Top Branding */}
                 <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 900, color: themeColor, letterSpacing: '2px' }}>DARY CARD</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)' }}>{client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}</span>
+                    <span style={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: 900, 
+                        color: client?.cardType === 'Ученическа карта' ? '#d8b4fe' : 
+                               client?.cardType === 'Пенсионерска карта' ? '#fcd34d' : 
+                               client?.cardType === 'Инвалидна карта' ? '#67e8f9' : 
+                               'rgba(255,255,255,0.3)',
+                        letterSpacing: '1px',
+                        background: client?.cardType === 'Ученическа карта' ? 'rgba(168, 85, 247, 0.15)' : 
+                                    client?.cardType === 'Пенсионерска карта' ? 'rgba(245, 158, 11, 0.15)' : 
+                                    client?.cardType === 'Инвалидна карта' ? 'rgba(6, 182, 212, 0.15)' : 
+                                    'transparent',
+                        padding: client?.cardType ? '4px 10px' : '0',
+                        borderRadius: '8px'
+                    }}>
+                        {client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}
+                    </span>
                 </div>
 
                 {/* Sub-Header Status Panel (Full Width) */}
