@@ -117,7 +117,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.30.19.30";
+  const INTERNAL_APP_VERSION = "2026.04.30.19.35";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
@@ -133,6 +133,10 @@ function App() {
         console.log(`[Version Check] Internal: ${INTERNAL_APP_VERSION} | Server: ${serverVersion}`);
 
         if (serverVersion && INTERNAL_APP_VERSION !== serverVersion) {
+          // 🛡️ STOP THE LOOP
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('v') === serverVersion) return;
+
           console.log('🚀 OUTDATED BUNDLE DETECTED. NUCLEAR REFRESH STARTING...');
           
           if ('serviceWorker' in navigator) {
@@ -142,8 +146,9 @@ function App() {
             }
           }
           
-          localStorage.clear(); // Nuke everything
-          window.location.reload();
+          localStorage.removeItem('last_tried_version'); 
+          // Redirect with version param to prevent loop
+          window.location.href = window.location.pathname + '?v=' + serverVersion + window.location.hash;
         }
       } catch (err) {
         console.error('⚠️ Version check failed:', err);

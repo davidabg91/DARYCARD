@@ -50,7 +50,13 @@ const InstallPWA: React.FC = () => {
     }
   };
 
-  if (isStandalone || !supportsPWA) {
+  if (isStandalone) {
+    return null;
+  }
+
+  // On iOS, we always show the button (until installed)
+  // On Android/Desktop, we only show if the browser supports installation
+  if (!supportsPWA && isIOS === false) {
     return null;
   }
 
