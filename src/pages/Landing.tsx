@@ -1341,50 +1341,6 @@ const Landing: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
-                <div style={{ 
-                    maxWidth: '1200px', 
-                    margin: '0 auto', 
-                    padding: '0.5rem 0 0', 
-                    borderTop: '1px solid rgba(255,255,255,0.05)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.8rem',
-                    fontSize: '0.75rem',
-                    color: 'rgba(255,255,255,0.3)'
-                }}>
-                        <div style={{ display: 'none' }}>
-                            {/* Company details removed as requested */}
-                        </div>
-                        <div style={{ 
-                            padding: '0.4rem 1.2rem', 
-                            background: 'rgba(0,173,181,0.05)', 
-                            borderRadius: '100px', 
-                            border: '1px solid rgba(0,173,181,0.1)',
-                            color: 'rgba(0,173,181,0.6)',
-                            fontSize: '0.8rem',
-                            textAlign: 'center',
-                            alignSelf: 'center'
-                        }}>
-                            Услугата се изпълнява по договор за обществен превоз с Община Плевен
-                        </div>
-
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid rgba(255,255,255,0.02)', paddingTop: '1rem' }}>
-                        <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.65rem' }}>Правна информация:</span>
-                        <Link to="/legal" style={{ color: 'inherit', textDecoration: 'underline' }}>Общи условия</Link>
-                        <span style={{ opacity: 0.3 }}>•</span>
-                        <Link to="/legal" style={{ color: 'inherit', textDecoration: 'underline' }}>Лични данни (GDPR)</Link>
-                        <span style={{ opacity: 0.3 }}>•</span>
-                        <a href="https://kzp.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>КЗП</a>
-                        <span style={{ opacity: 0.3 }}>•</span>
-                        <a href="https://www.rta.government.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>ИААА</a>
-                        <span style={{ opacity: 0.3 }}>•</span>
-                        <a href="https://cpdp.bg" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>КЗЛД</a>
-                        <span style={{ opacity: 0.3 }}>•</span>
-                        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.15)', fontWeight: 800 }}>ВЕРСИЯ: {window.__BUILD_TIME__}</div>
-                    </div>
-                </div>
             </footer>
         </div>
     );

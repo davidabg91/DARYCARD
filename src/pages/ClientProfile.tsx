@@ -145,33 +145,6 @@ const ClientProfile: React.FC = () => {
     const audioInitializedRef = useRef(false);
     const soundPendingRef = useRef<'success' | 'error' | null>(null);
 
-    const speakStatus = React.useCallback((text: string) => {
-        setTimeout(() => {
-            try {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'bg-BG';
-                utterance.rate = 1.0;
-                utterance.pitch = 1.0;
-                utterance.volume = 1.0;
-                
-                const voices = window.speechSynthesis.getVoices();
-                if (voices && voices.length > 0) {
-                    const bgVoice = voices.find(v => v.lang.startsWith('bg'));
-                    if (bgVoice) utterance.voice = bgVoice;
-                }
-                
-                window.speechSynthesis.speak(utterance);
-            } catch (e) { console.error("Speech error", e); }
-        }, 50);
-    }, []);
-
-    useEffect(() => {
-        const loadV = () => { try { window.speechSynthesis.getVoices(); } catch { /* ignore */ } };
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.onvoiceschanged = loadV;
-            loadV();
-        }
-    }, []);
 
     const playSuccessSound = React.useCallback(() => {
         const context = audioContextRef.current;
@@ -197,9 +170,8 @@ const ClientProfile: React.FC = () => {
             playTone(739.99, 0.08, 0.5);   
             playTone(880.00, 0.16, 0.6);   
             playTone(1174.66, 0.24, 0.7);  
-            setTimeout(() => speakStatus('Валидна карта'), 300);
         } catch (e) { console.error("Audio success error", e); }
-    }, [speakStatus]);
+    }, []);
 
     const playErrorSound = React.useCallback(() => {
         const context = audioContextRef.current;
@@ -230,9 +202,8 @@ const ClientProfile: React.FC = () => {
             };
             createBuzz(0, 0.5);
             createBuzz(0.6, 0.7); 
-            setTimeout(() => speakStatus('Картата не е платена'), 300);
         } catch (e) { console.error("Audio error error", e); }
-    }, [speakStatus]);
+    }, []);
 
     const initAudio = React.useCallback(() => {
         if (audioInitializedRef.current) return;

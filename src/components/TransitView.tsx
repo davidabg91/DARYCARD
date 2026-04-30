@@ -48,33 +48,6 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [renewalRoute, setRenewalRoute] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
 
-    const speakStatus = React.useCallback((text: string) => {
-        // Use a timeout to ensure this never blocks the main thread
-        setTimeout(() => {
-            try {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'bg-BG';
-                utterance.rate = 1.0;
-                utterance.volume = 1.0;
-                
-                const voices = window.speechSynthesis.getVoices();
-                if (voices && voices.length > 0) {
-                    const bgVoice = voices.find(v => v.lang.startsWith('bg'));
-                    if (bgVoice) utterance.voice = bgVoice;
-                }
-                
-                window.speechSynthesis.speak(utterance);
-            } catch (e) { console.error("Speech error", e); }
-        }, 50);
-    }, []);
-
-    useEffect(() => {
-        const loadVoices = () => { try { window.speechSynthesis.getVoices(); } catch { /* ignore */ } };
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.onvoiceschanged = loadVoices;
-            loadVoices();
-        }
-    }, []);
 
     // Ads Slideshow States
     const [showAds, setShowAds] = useState(false);
@@ -147,9 +120,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
             playTone(739.99, 0.08, 0.5);   
             playTone(880.00, 0.16, 0.6);   
             playTone(1174.66, 0.24, 0.7);  
-            speakStatus('Валидна карта');
         } catch { /* ignore */ }
-    }, [speakStatus]);
+    }, []);
 
     const playSuccessRef = useRef(playSuccessSound);
     useEffect(() => { playSuccessRef.current = playSuccessSound; }, [playSuccessSound]);
@@ -199,8 +171,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         };
         createBuzz(0, 0.2);
         createBuzz(0.25, 0.4);
-        speakStatus('Картата не е платена');
-    }, [speakStatus]);
+    }, []);
 
     const playErrorRef = useRef(playErrorSound);
     useEffect(() => { playErrorRef.current = playErrorSound; }, [playErrorSound]);

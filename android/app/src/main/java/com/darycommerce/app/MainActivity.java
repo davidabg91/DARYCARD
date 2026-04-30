@@ -41,6 +41,9 @@ public class MainActivity extends BridgeActivity {
             Log.e(TAG, "Hardware Unlock: Error " + e.getMessage());
         }
 
+        // --- WebView Configuration (Enable Voice/Audio Autoplay) ---
+        this.bridge.getWebView().getSettings().setMediaPlaybackRequiresUserGesture(false);
+
         Log.e(TAG, "--- MAIN ACTIVITY SETUP COMPLETE ---");
     }
 }
