@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { LogOut, ShieldCheck, Shield, Menu, X } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import InstallPWA from './InstallPWA';
+
 
 const Layout: React.FC = () => {
     const location = useLocation();
@@ -442,6 +444,9 @@ const Layout: React.FC = () => {
                         </div>
                     </div>
                 </a>
+                
+                <InstallPWA />
+
                 <p>© {new Date().getFullYear()} Dary Commerce. Всички права запазени.</p>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.2rem' }}>
                     <Link to="/legal" style={{ color: 'inherit', textDecoration: 'underline', opacity: 0.8 }}>Правна информация</Link>
