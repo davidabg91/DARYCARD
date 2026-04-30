@@ -112,19 +112,21 @@ const ClientProfile: React.FC = () => {
     const [regPhoto, setRegPhoto] = useState<string | null>(null);
     const [regAddress, setRegAddress] = useState('');
 
-    const [regMonth, setRegMonth] = useState<string>(() => {
+    const getSuggestedMonth = () => {
         const now = new Date();
         let targetMonth = now.getMonth() + 1;
         let targetYear = now.getFullYear();
-        if (now.getDate() >= 20) {
+        if (now.getDate() > 15) {
             targetMonth += 1;
             if (targetMonth > 12) { targetMonth = 1; targetYear += 1; }
         }
         return `${targetYear}-${targetMonth.toString().padStart(2, '0')}`;
-    });
+    };
+
+    const [regMonth, setRegMonth] = useState<string>(getSuggestedMonth());
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [paymentMonth, setPaymentMonth] = useState<string>('');
+    const [paymentMonth, setPaymentMonth] = useState<string>(getSuggestedMonth());
     const [isPaying, setIsPaying] = useState(false);
     const [paymentComplete, setPaymentComplete] = useState(false);
 
@@ -135,7 +137,7 @@ const ClientProfile: React.FC = () => {
     // Quick Renewal States
     const [showQuickRenew, setShowQuickRenew] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const [renewalMonth, setRenewalMonth] = useState('');
+    const [renewalMonth, setRenewalMonth] = useState(getSuggestedMonth());
     const [renewalAmount, setRenewalAmount] = useState(30);
     const [renewalRoute, setRenewalRoute] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
@@ -318,9 +320,7 @@ const ClientProfile: React.FC = () => {
                     hasPlayedSound.current = true;
 
                     // Sync renewal form
-                    const nextDate = new Date();
-                    nextDate.setMonth(nextDate.getMonth() + 1);
-                    setRenewalMonth(nextDate.toISOString().slice(0, 7));
+                    setRenewalMonth(getSuggestedMonth());
                     setRenewalAmount(clientData.renewalHistory?.[clientData.renewalHistory.length - 1]?.amount || 30);
                     setRenewalRoute(clientData.route || '');
                 }
@@ -703,7 +703,7 @@ const ClientProfile: React.FC = () => {
                                         <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '6px' }}>МЕСЕЦ</div>
                                         <input 
                                             type="month" 
-                                            value={paymentMonth || currentMonthStr} 
+                                            value={paymentMonth} 
                                             onChange={(e) => setPaymentMonth(e.target.value)} 
                                             style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1rem', fontWeight: 800, width: '100%', outline: 'none', colorScheme: 'dark' }} 
                                         />
@@ -715,33 +715,25 @@ const ClientProfile: React.FC = () => {
                                 </div>
 
                                 <button 
-                                    onClick={() => {
-                                        setIsPaying(true);
-                                        setTimeout(() => {
-                                            setIsPaying(false);
-                                            setPaymentComplete(true);
-                                        }, 2000);
-                                    }}
-                                    disabled={isPaying}
+                                    disabled={true}
                                     style={{ 
                                         width: '100%', 
-                                        background: '#fff', 
-                                        color: '#000', 
+                                        background: 'rgba(255,255,255,0.03)', 
+                                        color: 'rgba(255,255,255,0.2)', 
                                         padding: '1.2rem', 
                                         borderRadius: '18px', 
-                                        border: 'none', 
+                                        border: '1px solid rgba(255,255,255,0.05)', 
                                         fontWeight: 900, 
                                         fontSize: '1rem', 
-                                        cursor: 'pointer',
+                                        cursor: 'not-allowed',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        gap: '10px',
-                                        boxShadow: '0 10px 30px rgba(255,255,255,0.1)'
+                                        gap: '10px'
                                     }}
                                 >
-                                    {isPaying ? <RefreshCw size={20} className="spin" /> : <Lock size={20} />}
-                                    {isPaying ? 'ОБРАБОТКА...' : 'ПОДНОВИ АБОНАМЕНТ С КАРТА'}
+                                    <Clock size={20} />
+                                    СКОРО
                                 </button>
                             </div>
                         ) : (
@@ -749,7 +741,7 @@ const ClientProfile: React.FC = () => {
                                 <CheckCircle size={40} color="#00e676" style={{ marginBottom: '1rem' }} />
                                 <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', color: '#00e676' }}>УСПЕШНО ПЛАЩАНЕ!</h4>
                                 <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Абонаментът беше подновен успешно.</p>
-                                <button onClick={() => { setPaymentComplete(false); setPaymentMonth(''); }} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', padding: '0.8rem 1.5rem', borderRadius: '12px', marginTop: '1rem', fontWeight: 700, cursor: 'pointer' }}>ЗАТВОРИ</button>
+                                <button onClick={() => { setPaymentComplete(false); setPaymentMonth(getSuggestedMonth()); }} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', padding: '0.8rem 1.5rem', borderRadius: '12px', marginTop: '1rem', fontWeight: 700, cursor: 'pointer' }}>ЗАТВОРИ</button>
                             </div>
                         )}
                     </div>
