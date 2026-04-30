@@ -50,11 +50,29 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
     const speakStatus = React.useCallback((text: string) => {
         try {
+            // Force initialization and cancel previous
+            window.speechSynthesis.cancel();
+            
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'bg-BG';
-            utterance.rate = 1.1;
+            utterance.rate = 1.0;
+            utterance.volume = 1.0;
+            
+            // Try to find a Bulgarian voice explicitly
+            const voices = window.speechSynthesis.getVoices();
+            const bgVoice = voices.find(v => v.lang.startsWith('bg'));
+            if (bgVoice) {
+                utterance.voice = bgVoice;
+            }
+            
             window.speechSynthesis.speak(utterance);
         } catch (e) { console.error("Speech error", e); }
+    }, []);
+
+    useEffect(() => {
+        const loadVoices = () => { window.speechSynthesis.getVoices(); };
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
     }, []);
 
     // Ads Slideshow States
