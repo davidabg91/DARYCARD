@@ -18,6 +18,7 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
       includeAssets: ['favicon.ico', 'favicon.png', 'pwa-icon.png', 'assets/*.png', 'assets/*.svg'],
       manifest: {
         name: 'Дари Комерс',
@@ -29,6 +30,11 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: '/',
         icons: [
+          {
+            src: 'pwa-icon.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
           {
             src: 'pwa-icon.png',
             sizes: '512x512',
