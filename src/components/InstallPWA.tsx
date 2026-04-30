@@ -1,37 +1,46 @@
 import React, { useEffect, useState } from 'react';
 import { Download, PlusSquare, ArrowUpFromLine } from 'lucide-react';
 
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
 const InstallPWA: React.FC = () => {
   const [supportsPWA, setSupportsPWA] = useState(false);
-  const [promptInstall, setPromptInstall] = useState<any>(null);
-  const [isIOS, setIsIOS] = useState(false);
+  const [promptInstall, setPromptInstall] = useState<BeforeInstallPromptEvent | null>(null);
+  
+  const [isIOS] = useState(() => 
+    /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window)
+  );
+  
   const [showIOSModal, setShowIOSModal] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
+  
+  const [isStandalone] = useState(() => 
+    window.matchMedia('(display-mode: standalone)').matches || 
+    ('standalone' in window.navigator && (window.navigator as unknown as { standalone: boolean }).standalone === true)
+  );
+
+  const [supportsPWA, setSupportsPWA] = useState(() => 
+    isIOS && !isStandalone
+  );
 
   useEffect(() => {
-    // Check if already installed
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-    setIsStandalone(standalone);
-
-    // Detect iOS
-    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    setIsIOS(ios);
-
-    const handler = (e: any) => {
-      e.preventDefault();
+    const handler = (e: Event) => {
+      const installEvent = e as BeforeInstallPromptEvent;
+      installEvent.preventDefault();
       setSupportsPWA(true);
-      setPromptInstall(e);
+      setPromptInstall(installEvent);
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('beforeinstallprompt', handler as EventListener);
 
-    // If it's iOS and not standalone, we can show the "How to install" button
-    if (ios && !standalone) {
-      setSupportsPWA(true);
-    }
-
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+    return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
+  }, [setSupportsPWA]);
 
   const onClick = (evt: React.MouseEvent) => {
     evt.preventDefault();
