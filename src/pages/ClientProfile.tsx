@@ -604,63 +604,66 @@ const ClientProfile: React.FC = () => {
                     </div>
                         <div style={{
                         background: `${themeColor}22`,
-                        padding: '6px 12px',
-                        borderRadius: '12px',
-                        fontSize: '0.7rem',
+                        padding: '8px 16px',
+                        borderRadius: '14px',
+                        fontSize: '0.85rem',
                         fontWeight: 900,
                         color: themeColor,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px'
+                        gap: '8px',
+                        border: `1px solid ${themeColor}33`
                     }}>
-                        {isActive ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                        {isActive ? <CheckCircle size={18} /> : <XCircle size={18} />}
                         {statusText}
                     </div>
                 </div>
 
                 {/* Card Core Content */}
-                <div style={{ padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', textAlign: 'center' }}>
+                <div style={{ padding: '1.2rem 1.2rem 1.8rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem', textAlign: 'center' }}>
                     {/* Centered Photo with Glow */}
                     <div style={{ position: 'relative' }} onClick={() => setShowPhotoModal(true)}>
                         <div style={{
                             position: 'absolute',
-                            inset: '-10px',
+                            inset: '-12px',
                             background: themeColor,
                             borderRadius: '50%',
-                            opacity: 0.1,
+                            opacity: 0.15,
+                            filter: 'blur(10px)'
                         }} />
                         <img 
                             src={client.photo} 
                             style={{ 
-                                width: '160px', 
-                                height: '160px', 
+                                width: '210px', 
+                                height: '210px', 
                                 objectFit: 'cover', 
                                 borderRadius: '50.5%', 
-                                border: `3px solid ${themeColor}`,
-                                boxShadow: `0 20px 40px rgba(0,0,0,0.5)`,
+                                border: `4px solid ${themeColor}`,
+                                boxShadow: `0 15px 40px rgba(0,0,0,0.6)`,
                                 position: 'relative'
                             }} 
                             alt="Profile" 
                         />
                     </div>
 
-                    <div>
-                        <h2 style={{ fontSize: '2.2rem', fontWeight: 900, margin: '0 0 0.4rem 0', letterSpacing: '-1px' }}>{client.name.toUpperCase()}</h2>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: themeColor, opacity: 0.8 }}>{client.route}</div>
+                    <div style={{ marginBottom: '-0.5rem' }}>
+                        <h2 style={{ fontSize: '1.8rem', fontWeight: 900, margin: '0 0 0.2rem 0', letterSpacing: '-0.5px', color: '#fff' }}>{client.name.toUpperCase()}</h2>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: themeColor, textShadow: `0 0 20px ${themeColor}44` }}>{client.route.toUpperCase()}</div>
                     </div>
 
                     <div style={{
                         width: '100%',
-                        background: isActive ? 'rgba(0, 230, 118, 0.05)' : 'rgba(255, 23, 68, 0.08)',
-                        borderRadius: '20px',
-                        padding: '1.2rem',
-                        border: `1px solid ${isActive ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 23, 68, 0.3)'}`,
-                        textAlign: 'center'
+                        background: isActive ? 'rgba(0, 230, 118, 0.08)' : 'rgba(255, 23, 68, 0.12)',
+                        borderRadius: '24px',
+                        padding: '1.4rem 1rem',
+                        border: `2px solid ${isActive ? 'rgba(0, 230, 118, 0.3)' : 'rgba(255, 23, 68, 0.5)'}`,
+                        textAlign: 'center',
+                        boxShadow: `0 10px 30px rgba(0,0,0,0.3)`
                     }}>
-                        <div style={{ color: isActive ? 'rgba(255,255,255,0.3)' : '#ff5252', fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '4px' }}>
+                        <div style={{ color: isActive ? 'rgba(255,255,255,0.4)' : '#ff5252', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '3px', marginBottom: '6px' }}>
                             {isActive ? 'ВАЛИДНОСТ ДО КРАЯ НА' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
                         </div>
-                        <div style={{ fontSize: '1.6rem', fontWeight: 900, color: isActive ? '#fff' : '#ff5252' }}>
+                        <div style={{ fontSize: '1.9rem', fontWeight: 900, color: isActive ? '#fff' : '#ff5252', letterSpacing: '1px' }}>
                             {getFormattedMonth(isActive ? lastPaidMonth : currentMonthStr)}
                         </div>
                     </div>
