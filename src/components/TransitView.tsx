@@ -49,30 +49,31 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [isUpdating, setIsUpdating] = useState(false);
 
     const speakStatus = React.useCallback((text: string) => {
-        try {
-            // Force initialization and cancel previous
-            window.speechSynthesis.cancel();
-            
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'bg-BG';
-            utterance.rate = 1.0;
-            utterance.volume = 1.0;
-            
-            // Try to find a Bulgarian voice explicitly
-            const voices = window.speechSynthesis.getVoices();
-            const bgVoice = voices.find(v => v.lang.startsWith('bg'));
-            if (bgVoice) {
-                utterance.voice = bgVoice;
-            }
-            
-            window.speechSynthesis.speak(utterance);
-        } catch (e) { console.error("Speech error", e); }
+        // Use a timeout to ensure this never blocks the main thread
+        setTimeout(() => {
+            try {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'bg-BG';
+                utterance.rate = 1.0;
+                utterance.volume = 1.0;
+                
+                const voices = window.speechSynthesis.getVoices();
+                if (voices && voices.length > 0) {
+                    const bgVoice = voices.find(v => v.lang.startsWith('bg'));
+                    if (bgVoice) utterance.voice = bgVoice;
+                }
+                
+                window.speechSynthesis.speak(utterance);
+            } catch (e) { console.error("Speech error", e); }
+        }, 50);
     }, []);
 
     useEffect(() => {
-        const loadVoices = () => { window.speechSynthesis.getVoices(); };
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-        loadVoices();
+        const loadVoices = () => { try { window.speechSynthesis.getVoices(); } catch(e){} };
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+            loadVoices();
+        }
     }, []);
 
     // Ads Slideshow States
@@ -140,13 +141,18 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     };
 
     const playSuccessSound = React.useCallback(() => {
-        initAudio();
-        playTone(587.33, 0, 0.5);      // D5
-        playTone(739.99, 0.08, 0.5);   // F#5
-        playTone(880.00, 0.16, 0.6);   // A5
-        playTone(1174.66, 0.24, 0.7);  // D6
-        setTimeout(() => speakStatus('Валидна карта'), 300);
+        try {
+            initAudio();
+            playTone(587.33, 0, 0.5);      
+            playTone(739.99, 0.08, 0.5);   
+            playTone(880.00, 0.16, 0.6);   
+            playTone(1174.66, 0.24, 0.7);  
+            speakStatus('Валидна карта');
+        } catch(e) {}
     }, [speakStatus]);
+
+    const playSuccessRef = useRef(playSuccessSound);
+    useEffect(() => { playSuccessRef.current = playSuccessSound; }, [playSuccessSound]);
 
     // 📡 SMART PING: Verified internet check
     const checkActualStatus = useCallback(async () => {
@@ -193,8 +199,14 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         };
         createBuzz(0, 0.2);
         createBuzz(0.25, 0.4);
-        setTimeout(() => speakStatus('Невалидна карта'), 300);
+        speakStatus('Невалидна карта');
     }, [speakStatus]);
+
+    const playErrorRef = useRef(playErrorSound);
+    useEffect(() => { playErrorRef.current = playErrorSound; }, [playErrorSound]);
+
+    const checkStatusRef = useRef(checkActualStatus);
+    useEffect(() => { checkStatusRef.current = checkActualStatus; }, [checkActualStatus]);
 
     useEffect(() => {
         let isMounted = true;
@@ -224,13 +236,13 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     const hasPaid = (data.renewalHistory || []).some((rh) => rh.month === currentMonthStrLocal);
                     const active = !data.isCanceled && hasPaid;
                     
-                    if (active) playSuccessSound();
-                    else playErrorSound();
+                    if (active) playSuccessRef.current();
+                    else playErrorRef.current();
                     
                     // Reset activity timer on scan
                     setLastActivity(Date.now());
                 } else {
-                    playErrorSound();
+                    playErrorRef.current();
                     setUnregistered(true);
                 }
                 setLoading(false);
@@ -243,7 +255,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         return () => {
             isMounted = false;
         };
-    }, [id, playErrorSound, playSuccessSound, checkActualStatus]); 
+    }, [id]); 
 
     // IDLE DETECTION & SLIDESHOW LOGIC
     useEffect(() => {

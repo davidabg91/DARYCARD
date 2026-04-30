@@ -146,26 +146,31 @@ const ClientProfile: React.FC = () => {
     const soundPendingRef = useRef<'success' | 'error' | null>(null);
 
     const speakStatus = React.useCallback((text: string) => {
-        try {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'bg-BG';
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-            utterance.volume = 1.0;
-            
-            const voices = window.speechSynthesis.getVoices();
-            const bgVoice = voices.find(v => v.lang.startsWith('bg'));
-            if (bgVoice) utterance.voice = bgVoice;
-            
-            window.speechSynthesis.speak(utterance);
-        } catch (e) { console.error("Speech error", e); }
+        setTimeout(() => {
+            try {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'bg-BG';
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                
+                const voices = window.speechSynthesis.getVoices();
+                if (voices && voices.length > 0) {
+                    const bgVoice = voices.find(v => v.lang.startsWith('bg'));
+                    if (bgVoice) utterance.voice = bgVoice;
+                }
+                
+                window.speechSynthesis.speak(utterance);
+            } catch (e) { console.error("Speech error", e); }
+        }, 50);
     }, []);
 
     useEffect(() => {
-        const loadV = () => { window.speechSynthesis.getVoices(); };
-        window.speechSynthesis.onvoiceschanged = loadV;
-        loadV();
+        const loadV = () => { try { window.speechSynthesis.getVoices(); } catch(e){} };
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = loadV;
+            loadV();
+        }
     }, []);
 
     const playSuccessSound = React.useCallback(() => {
