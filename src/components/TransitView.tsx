@@ -148,7 +148,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
             playTone(880.00, 0.16, 0.6);   
             playTone(1174.66, 0.24, 0.7);  
             speakStatus('Валидна карта');
-        } catch {}
+        } catch { /* ignore audio error */ }
     }, [speakStatus]);
 
     const playSuccessRef = useRef(playSuccessSound);
