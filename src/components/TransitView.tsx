@@ -213,7 +213,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         return () => {
             isMounted = false;
         };
-    }, [id, playErrorSound, playSuccessSound]); 
+    }, [id, playErrorSound, playSuccessSound, checkActualStatus]); 
 
     // IDLE DETECTION & SLIDESHOW LOGIC
     useEffect(() => {

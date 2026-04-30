@@ -670,7 +670,6 @@ const ClientProfile: React.FC = () => {
                         {getFormattedMonth(isActive ? lastPaidMonth : currentMonthStr)}
                     </div>
                 </div>
-                </div>
 
                 {/* Footer Security Element */}
                 <div style={{ padding: '1rem 1.5rem', background: 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
