@@ -12,6 +12,7 @@ interface Client {
     route: string;
     photo: string;
     isCanceled?: boolean;
+    cardType?: string;
     renewalHistory?: { month: string; amount: number; date: string }[];
 }
 
@@ -267,6 +268,16 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const isValid = client && !client.isCanceled && hasPaidCurrentMonth;
     const themeColor = unregistered ? '#ff9100' : (isValid ? '#00e676' : '#ff1744');
 
+    const getCardTypeColor = (type?: string) => {
+        if (!type) return 'rgba(255,255,255,0.4)';
+        const t = type.toLowerCase();
+        if (t.includes('ученическа')) return '#ffd54f';
+        if (t.includes('пенсионерска')) return '#b39ddb';
+        if (t.includes('инвалидна')) return '#ffab91';
+        return '#81d4fa'; // Нормална
+    };
+    const cardTypeColor = getCardTypeColor(client?.cardType);
+
     if (loading && !client) {
         return (
             <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(30px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -291,15 +302,11 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
             {/* Environmental Glow */}
             <div style={{ 
                 position: 'fixed', 
-                top: '50%', 
-                left: '50%', 
-                transform: 'translate(-50%, -50%)',
-                width: '150%', 
-                height: '100%', 
-                background: `radial-gradient(circle, ${themeColor}22 0%, transparent 70%)`, 
-                filter: 'blur(100px)', 
+                inset: 0, 
+                background: `radial-gradient(circle at 50% 40%, ${themeColor}15 0%, ${themeColor}05 50%, transparent 100%)`, 
                 pointerEvents: 'none',
-                zIndex: 0
+                zIndex: 0,
+                transition: 'background 0.8s ease'
             }} />
 
             {/* Content Wrapper - SCROLLABLE CONTAINER */}
@@ -320,24 +327,20 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     gap: '1.5rem',
                     paddingBottom: '2rem' // Minimal padding to ensure look is balanced
                 }}>
-                    {/* ID Card - FULL SCALE HERO */}
                     <div style={{
                         width: '100%',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        backdropFilter: 'blur(40px)',
-                        WebkitBackdropFilter: 'blur(40px)',
+                        background: '#18181b',
                         borderRadius: '44px',
-                        border: `1px solid ${isValid ? '#00e676' : '#ff1744'}44`,
+                        border: `1px solid ${themeColor}44`,
                         boxShadow: '0 40px 120px rgba(0,0,0,0.6)',
                         position: 'relative',
                         overflow: 'hidden',
                         animation: 'cardAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
-                        zIndex: 10,
-                        padding: '3rem 2rem'
+                        zIndex: 10
                     }} onClick={(e) => e.stopPropagation()}>
                         
                         {unregistered ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', textAlign: 'center' }}>
+                            <div style={{ padding: '3rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', textAlign: 'center' }}>
                                <div style={{ background: 'rgba(255,145,0,0.1)', padding: '20px', borderRadius: '50%' }}>
                                    <XCircle size={80} color="#ff9100" />
                                </div>
@@ -353,38 +356,60 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                                )}
                             </div>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2.5rem' }}>
-                                {/* Connectivity Status Label */}
-                                <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.4, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '-2rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isActuallyOnline ? '#00e676' : '#ff5252' }} />
-                                    {isActuallyOnline ? 'СВЪРЗАН СЪС СЪРВЪРА' : 'БЕЗ ИНТЕРНЕТ (ЛОКАЛНА ПАМЕТ)'}
+                            <>
+                                {/* Card Top Branding */}
+                                <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 900, color: themeColor, letterSpacing: '2px' }}>DARY CARD</span>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 900, color: cardTypeColor, opacity: 0.9, background: `${cardTypeColor}15`, padding: '4px 12px', borderRadius: '8px', border: `1px solid ${cardTypeColor}33` }}>{client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}</span>
                                 </div>
 
-                                {/* Status Badge */}
-                                <div style={{ background: `${themeColor}22`, padding: '12px 24px', borderRadius: '20px', fontSize: '1.1rem', fontWeight: 900, color: themeColor, display: 'flex', alignItems: 'center', gap: '12px', letterSpacing: '1px' }}>
-                                    {isValid ? <CheckCircle size={24} /> : <XCircle size={24} />}
+                                {/* Sub-Header Status Panel (Full Width) */}
+                                <div style={{
+                                    width: '100%',
+                                    background: `${themeColor}22`,
+                                    padding: '10px 0',
+                                    textAlign: 'center',
+                                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
+                                    fontSize: '1rem',
+                                    fontWeight: 900,
+                                    color: themeColor,
+                                    letterSpacing: '1px'
+                                }}>
+                                    {isValid ? <CheckCircle size={20} /> : <XCircle size={20} />}
                                     {isValid ? 'ВАЛИДЕН АБОНАМЕНТ' : 'НЕВАЛИДЕН АБОНАМЕНТ'}
                                 </div>
 
-                                <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowPhotoModal(true)}>
-                                    <div style={{ position: 'absolute', inset: '-15px', background: themeColor, borderRadius: '50%', opacity: 0.2, filter: 'blur(20px)' }} />
-                                    <img src={client?.photo} style={{ width: '220px', height: '220px', objectFit: 'cover', borderRadius: '50.5%', border: `4px solid ${themeColor}`, position: 'relative', boxShadow: '0 30px 60px rgba(0,0,0,0.7)' }} alt="Profile" />
-                                </div>
-
-                                <div style={{ textAlign: 'center' }}>
-                                    <h2 style={{ fontSize: '1.7rem', fontWeight: 900, margin: '0 0 0.4rem 0', letterSpacing: '-0.5px' }}>{client?.name?.toUpperCase()}</h2>
-                                    <div style={{ fontSize: '1.4rem', fontWeight: 700, opacity: 0.6, color: themeColor }}>{client?.route}</div>
-                                </div>
-
-                                <div style={{ width: '100%', background: isValid ? 'rgba(0,230,118,0.03)' : 'rgba(255,23,68,0.05)', borderRadius: '24px', padding: '1.5rem', border: `1px solid ${isValid ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.2)'}`, textAlign: 'center' }}>
-                                    <div style={{ color: isValid ? 'rgba(255,255,255,0.3)' : '#ff5252', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>
-                                        {isValid ? 'ВАЛИДНОСТ ДО КРАЯ НА' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
+                                <div style={{ padding: '1.5rem 2rem 2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+                                    {/* Connectivity Status Label */}
+                                    <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.4, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '-0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isActuallyOnline ? '#00e676' : '#ff5252' }} />
+                                        {isActuallyOnline ? 'СВЪРЗАН СЪС СЪРВЪРА' : 'БЕЗ ИНТЕРНЕТ (ЛОКАЛНА ПАМЕТ)'}
                                     </div>
-                                    <div style={{ fontSize: '2rem', fontWeight: 900, color: isValid ? '#fff' : '#ff5252' }}>
-                                        {formatBGMonth(isValid ? lastPaidMonth : currentMonthStr)}
+
+                                    <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowPhotoModal(true)}>
+                                        <div style={{ position: 'absolute', inset: '-15px', background: themeColor, borderRadius: '28px', opacity: 0.2, filter: 'blur(25px)' }} />
+                                        <img src={client?.photo} style={{ width: '260px', height: '260px', objectFit: 'cover', borderRadius: '28px', border: `4px solid ${themeColor}`, position: 'relative', boxShadow: '0 30px 60px rgba(0,0,0,0.7)' }} alt="Profile" />
+                                    </div>
+
+                                    <div style={{ textAlign: 'center' }}>
+                                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 0.2rem 0', letterSpacing: '-0.2px', opacity: 0.6 }}>{client?.name?.toUpperCase()}</h2>
+                                        <div style={{ fontSize: '2rem', fontWeight: 900, color: themeColor, textShadow: `0 0 30px ${themeColor}66` }}>{client?.route?.toUpperCase()}</div>
+                                    </div>
+
+                                    <div style={{ width: '100%', background: isValid ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.15)', borderRadius: '28px', padding: '1.8rem 1rem', border: `1px solid ${isValid ? 'rgba(0,230,118,0.2)' : 'rgba(255,23,68,0.3)'}`, textAlign: 'center' }}>
+                                        <div style={{ color: isValid ? 'rgba(255,255,255,0.5)' : '#ff5252', fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '3px', marginBottom: '8px' }}>
+                                            {isValid ? 'ВАЛИДНОСТ ДО КРАЯ НА' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
+                                        </div>
+                                        <div style={{ fontSize: '2.4rem', fontWeight: 900, color: isValid ? '#fff' : '#ff5252', letterSpacing: '1px' }}>
+                                            {formatBGMonth(isValid ? lastPaidMonth : currentMonthStr)}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            </>
                         )}
                     </div>
                 </div>
