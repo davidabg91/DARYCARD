@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, XCircle, Ban, Clock, Settings, RefreshCw, Camera, CreditCard, Lock, Zap } from 'lucide-react';
+import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
@@ -127,7 +127,6 @@ const ClientProfile: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [paymentMonth, setPaymentMonth] = useState<string>(getSuggestedMonth());
-    const [isPaying, setIsPaying] = useState(false);
     const [paymentComplete, setPaymentComplete] = useState(false);
 
 
