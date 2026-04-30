@@ -230,7 +230,7 @@ const ClientProfile: React.FC = () => {
             };
             createBuzz(0, 0.5);
             createBuzz(0.6, 0.7); 
-            setTimeout(() => speakStatus('Невалидна карта'), 300);
+            setTimeout(() => speakStatus('Картата не е платена'), 300);
         } catch (e) { console.error("Audio error error", e); }
     }, [speakStatus]);
 

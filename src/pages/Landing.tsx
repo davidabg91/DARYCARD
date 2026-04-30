@@ -1363,11 +1363,10 @@ const Landing: React.FC = () => {
                             border: '1px solid rgba(0,173,181,0.1)',
                             color: 'rgba(0,173,181,0.6)',
                             fontWeight: 700,
-                            fontSize: '0.8rem'
                         }}>
                             Услугата се изпълнява по договор за обществен превоз с Община Плевен
                         </div>
-                    </div>
+
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid rgba(255,255,255,0.02)', paddingTop: '1rem' }}>
                         <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.65rem' }}>Правна информация:</span>

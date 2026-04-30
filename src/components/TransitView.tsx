@@ -199,7 +199,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         };
         createBuzz(0, 0.2);
         createBuzz(0.25, 0.4);
-        speakStatus('Невалидна карта');
+        speakStatus('Картата не е платена');
     }, [speakStatus]);
 
     const playErrorRef = useRef(playErrorSound);
