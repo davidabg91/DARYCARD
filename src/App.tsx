@@ -117,7 +117,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.04.30.17.13";
+  const INTERNAL_APP_VERSION = "2026.04.30.18.05";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
@@ -157,13 +157,6 @@ function App() {
           
           console.log('🚀 OUTDATED BUNDLE DETECTED. NUCLEAR REFRESH STARTING...');
           localStorage.setItem('last_tried_version', serverVersion);
-          
-          if ('serviceWorker' in navigator) {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (const registration of registrations) {
-               await registration.unregister();
-            }
-          }
           
           // Small delay for logs to flush
           setTimeout(() => {

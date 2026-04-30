@@ -166,7 +166,7 @@ const ClientProfile: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const loadV = () => { try { window.speechSynthesis.getVoices(); } catch(e){} };
+        const loadV = () => { try { window.speechSynthesis.getVoices(); } catch { /* voice synth check */ } };
         if ('speechSynthesis' in window) {
             window.speechSynthesis.onvoiceschanged = loadV;
             loadV();
