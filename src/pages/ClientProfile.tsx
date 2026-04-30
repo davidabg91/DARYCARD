@@ -547,6 +547,16 @@ const ClientProfile: React.FC = () => {
         statusText = 'ВАЛИДЕН АБОНАМЕНТ'; 
     }
 
+    const getCardTypeColor = (type?: string) => {
+        if (!type) return 'rgba(255,255,255,0.4)';
+        const t = type.toLowerCase();
+        if (t.includes('ученическа')) return '#ffd54f';
+        if (t.includes('пенсионерска')) return '#b39ddb';
+        if (t.includes('инвалидна')) return '#ffab91';
+        return '#81d4fa'; // Нормална
+    };
+    const cardTypeColor = getCardTypeColor(client?.cardType);
+
     return (
         <div style={{ 
             minHeight: '100vh', 
@@ -561,28 +571,20 @@ const ClientProfile: React.FC = () => {
             padding: '2rem 1rem',
             position: 'relative'
         }}>
-            {/* Modern Environment Glow */}
+            {/* Environment Glow - Full Screen Modern Ambient */}
             <div style={{ 
                 position: 'fixed', 
                 inset: 0, 
-                background: `radial-gradient(circle at 50% 40%, ${themeColor}18 0%, #09090b 80%)`, 
+                background: `radial-gradient(circle at 50% 40%, ${themeColor}15 0%, ${themeColor}05 50%, transparent 100%)`, 
                 pointerEvents: 'none',
                 zIndex: 0,
                 transition: 'background 0.8s ease'
             }} />
             
-            <div style={{ 
-                position: 'fixed', 
-                bottom: '-10%', 
-                left: '50%', 
-                transform: 'translateX(-50%)',
-                width: '100%', 
-                height: '40%', 
-                background: `radial-gradient(circle at 50% 100%, ${themeColor}08 0%, transparent 70%)`, 
-                pointerEvents: 'none',
-                zIndex: 0,
-                transition: 'background 0.8s ease'
-            }} />
+
+            {/* Background Ambient Layers */}
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100vh', background: `radial-gradient(circle at 20% 20%, ${themeColor}08 0%, transparent 50%)`, pointerEvents: 'none' }} />
+            <div style={{ position: 'fixed', bottom: 0, right: 0, left: 0, height: '100vh', background: `radial-gradient(circle at 80% 80%, ${themeColor}08 0%, transparent 50%)`, pointerEvents: 'none' }} />
 
             {/* The Modern ID CARD */}
             <div className="id-card-container" style={{
@@ -603,23 +605,7 @@ const ClientProfile: React.FC = () => {
                 {/* Card Top Branding */}
                 <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 900, color: themeColor, letterSpacing: '2px' }}>DARY CARD</span>
-                    <span style={{ 
-                        fontSize: '0.75rem', 
-                        fontWeight: 900, 
-                        color: client?.cardType === 'Ученическа карта' ? '#d8b4fe' : 
-                               client?.cardType === 'Пенсионерска карта' ? '#fcd34d' : 
-                               client?.cardType === 'Инвалидна карта' ? '#67e8f9' : 
-                               'rgba(255,255,255,0.3)',
-                        letterSpacing: '1px',
-                        background: client?.cardType === 'Ученическа карта' ? 'rgba(168, 85, 247, 0.15)' : 
-                                    client?.cardType === 'Пенсионерска карта' ? 'rgba(245, 158, 11, 0.15)' : 
-                                    client?.cardType === 'Инвалидна карта' ? 'rgba(6, 182, 212, 0.15)' : 
-                                    'transparent',
-                        padding: client?.cardType ? '4px 10px' : '0',
-                        borderRadius: '8px'
-                    }}>
-                        {client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}
-                    </span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 900, color: cardTypeColor, opacity: 0.9, background: `${cardTypeColor}15`, padding: '4px 10px', borderRadius: '8px', border: `1px solid ${cardTypeColor}33` }}>{client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}</span>
                 </div>
 
                 {/* Sub-Header Status Panel (Full Width) */}
