@@ -575,7 +575,7 @@ const ClientProfile: React.FC = () => {
                 transition: 'background 0.5s ease'
             }} />
             
-            <div style={{ position: 'absolute', top: '10px', right: '15px', fontSize: '10px', opacity: 0.3, zIndex: 100 }}>v5.10-SYNC-RECOVERY</div>
+
             {/* Background Decor */}
             <div style={{ position: 'fixed', top: '-10%', left: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
             <div style={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: `${themeColor}05`, borderRadius: '50%', pointerEvents: 'none' }} />
@@ -597,10 +597,11 @@ const ClientProfile: React.FC = () => {
                 {/* Holographic Animation Overlay */}
 
                 {/* Card Top Branding */}
-                <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 900, color: themeColor, letterSpacing: '3px' }}>DARY CARD</span>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>{client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}</span>
+                <div style={{ padding: '0.8rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 900, color: themeColor, letterSpacing: '2px' }}>DARY CARD</span>
+                        <span style={{ width: '1px', height: '10px', background: 'rgba(255,255,255,0.1)' }} />
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)' }}>{client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}</span>
                     </div>
                         <div style={{
                         background: `${themeColor}22`,
@@ -620,53 +621,55 @@ const ClientProfile: React.FC = () => {
                 </div>
 
                 {/* Card Core Content */}
-                <div style={{ padding: '1.2rem 1.2rem 1.8rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem', textAlign: 'center' }}>
+                <div style={{ padding: '1.2rem 1.2rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', textAlign: 'center' }}>
                     {/* Centered Photo with Glow */}
                     <div style={{ position: 'relative' }} onClick={() => setShowPhotoModal(true)}>
                         <div style={{
                             position: 'absolute',
-                            inset: '-12px',
+                            inset: '-10px',
                             background: themeColor,
-                            borderRadius: '50%',
+                            borderRadius: '28px',
                             opacity: 0.15,
-                            filter: 'blur(10px)'
+                            filter: 'blur(15px)'
                         }} />
                         <img 
                             src={client.photo} 
                             style={{ 
-                                width: '210px', 
-                                height: '210px', 
+                                width: '240px', 
+                                height: '240px', 
                                 objectFit: 'cover', 
-                                borderRadius: '50.5%', 
+                                borderRadius: '28px', 
                                 border: `4px solid ${themeColor}`,
-                                boxShadow: `0 15px 40px rgba(0,0,0,0.6)`,
+                                boxShadow: `0 20px 50px rgba(0,0,0,0.7)`,
                                 position: 'relative'
                             }} 
                             alt="Profile" 
                         />
                     </div>
 
-                    <div style={{ marginBottom: '-0.5rem' }}>
-                        <h2 style={{ fontSize: '1.8rem', fontWeight: 900, margin: '0 0 0.2rem 0', letterSpacing: '-0.5px', color: '#fff' }}>{client.name.toUpperCase()}</h2>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: themeColor, textShadow: `0 0 20px ${themeColor}44` }}>{client.route.toUpperCase()}</div>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 0.1rem 0', letterSpacing: '-0.2px', color: 'rgba(255,255,255,0.6)' }}>{client.name.toUpperCase()}</h2>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: themeColor, textShadow: `0 0 30px ${themeColor}66` }}>{client.route.toUpperCase()}</div>
                     </div>
+                </div>
 
-                    <div style={{
-                        width: '100%',
-                        background: isActive ? 'rgba(0, 230, 118, 0.08)' : 'rgba(255, 23, 68, 0.12)',
-                        borderRadius: '24px',
-                        padding: '1.4rem 1rem',
-                        border: `2px solid ${isActive ? 'rgba(0, 230, 118, 0.3)' : 'rgba(255, 23, 68, 0.5)'}`,
-                        textAlign: 'center',
-                        boxShadow: `0 10px 30px rgba(0,0,0,0.3)`
-                    }}>
-                        <div style={{ color: isActive ? 'rgba(255,255,255,0.4)' : '#ff5252', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '3px', marginBottom: '6px' }}>
-                            {isActive ? 'ВАЛИДНОСТ ДО КРАЯ НА' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
-                        </div>
-                        <div style={{ fontSize: '1.9rem', fontWeight: 900, color: isActive ? '#fff' : '#ff5252', letterSpacing: '1px' }}>
-                            {getFormattedMonth(isActive ? lastPaidMonth : currentMonthStr)}
-                        </div>
+                {/* Full Width Status Panel */}
+                <div style={{
+                    width: '100%',
+                    background: isActive ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 23, 68, 0.2)',
+                    padding: '1.5rem 1rem',
+                    borderTop: `1px solid ${isActive ? 'rgba(0, 230, 118, 0.3)' : 'rgba(255, 23, 68, 0.5)'}`,
+                    borderBottom: `1px solid ${isActive ? 'rgba(0, 230, 118, 0.3)' : 'rgba(255, 23, 68, 0.5)'}`,
+                    textAlign: 'center',
+                    boxShadow: `inset 0 0 40px ${isActive ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.1)'}`
+                }}>
+                    <div style={{ color: isActive ? 'rgba(255,255,255,0.6)' : '#ff5252', fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '4px', marginBottom: '8px' }}>
+                        {isActive ? 'ВАЛИДЕН АБОНАМЕНТ ДО' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
                     </div>
+                    <div style={{ fontSize: '2.4rem', fontWeight: 900, color: isActive ? '#fff' : '#ff5252', letterSpacing: '2px', lineHeight: 1 }}>
+                        {getFormattedMonth(isActive ? lastPaidMonth : currentMonthStr)}
+                    </div>
+                </div>
                 </div>
 
                 {/* Footer Security Element */}
