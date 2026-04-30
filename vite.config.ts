@@ -19,7 +19,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      filename: 'manifest.json',
+      filename: 'sw.js',
+      manifestFilename: 'manifest.json',
       includeAssets: ['favicon.ico', 'favicon.png', 'pwa-icon.png', 'assets/*.png', 'assets/*.svg'],
       manifest: {
         name: 'Дари Комерс',
