@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, PlusSquare, ArrowUpFromLine } from 'lucide-react';
+import { Download, PlusSquare, ArrowUpFromLine, MoreVertical } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -24,22 +24,19 @@ const InstallPWA: React.FC = () => {
     ('standalone' in window.navigator && (window.navigator as unknown as { standalone: boolean }).standalone === true)
   );
 
-  const [supportsPWA, setSupportsPWA] = useState(() => 
-    isIOS && !isStandalone
-  );
+  const [showManualModal, setShowManualModal] = useState(false);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const installEvent = e as BeforeInstallPromptEvent;
       installEvent.preventDefault();
-      setSupportsPWA(true);
       setPromptInstall(installEvent);
     };
 
     window.addEventListener('beforeinstallprompt', handler as EventListener);
 
     return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
-  }, [setSupportsPWA]);
+  }, []);
 
   const onClick = (evt: React.MouseEvent) => {
     evt.preventDefault();
@@ -47,16 +44,13 @@ const InstallPWA: React.FC = () => {
       setShowIOSModal(true);
     } else if (promptInstall) {
       promptInstall.prompt();
+    } else {
+      // If we don't have the prompt event, show manual instructions for Android/Desktop
+      setShowManualModal(true);
     }
   };
 
   if (isStandalone) {
-    return null;
-  }
-
-  // On iOS, we always show the button (until installed)
-  // On Android/Desktop, we only show if the browser supports installation
-  if (!supportsPWA && isIOS === false) {
     return null;
   }
 
@@ -143,6 +137,62 @@ const InstallPWA: React.FC = () => {
 
             <button 
                 onClick={() => setShowIOSModal(false)}
+                style={{ width: '100%', background: '#ff5252', color: '#fff', padding: '1.2rem', borderRadius: '18px', border: 'none', fontWeight: 900, fontSize: '1.1rem', marginTop: '2rem', cursor: 'pointer' }}
+            >
+                РАЗБРАХ
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showManualModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 10000,
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+          animation: 'fadeIn 0.3s ease'
+        }} onClick={() => setShowManualModal(false)}>
+          <div style={{
+            background: '#1a1a1a',
+            width: '100%',
+            maxWidth: '400px',
+            borderRadius: '28px',
+            padding: '2rem',
+            border: '1px solid rgba(255,255,255,0.1)',
+            textAlign: 'center',
+            animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'rgba(255,82,82,0.1)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                <MoreVertical size={32} color="#ff5252" />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '1rem', color: '#fff' }}>ИНСТАЛИРАНЕ</h3>
+            <p style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6', marginBottom: '2rem', fontSize: '0.95rem' }}>
+                За да инсталирате приложението ръчно:
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', textAlign: 'left' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '12px' }}>
+                        <MoreVertical size={20} color="#fff" />
+                    </div>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>1. Натиснете менюто (трите точки горе вдясно)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', textAlign: 'left' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '12px' }}>
+                        <Download size={20} color="#fff" />
+                    </div>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>2. Изберете "Инсталиране на приложение" или "Добавяне към началния екран"</span>
+                </div>
+            </div>
+
+            <button 
+                onClick={() => setShowManualModal(false)}
                 style={{ width: '100%', background: '#ff5252', color: '#fff', padding: '1.2rem', borderRadius: '18px', border: 'none', fontWeight: 900, fontSize: '1.1rem', marginTop: '2rem', cursor: 'pointer' }}
             >
                 РАЗБРАХ
