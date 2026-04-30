@@ -1254,8 +1254,8 @@ const Landing: React.FC = () => {
 
             <footer style={{ 
                 borderTop: '1px solid rgba(255,255,255,0.05)', 
-                padding: 'clamp(2rem, 8vw, 4rem) 1.5rem 2rem',
-                marginTop: 'clamp(2rem, 8vw, 4rem)'
+                padding: '1.5rem 1.5rem 0',
+                marginTop: '1.5rem'
             }}>
                 <div className="footer-content" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 'clamp(2rem, 5vw, 4rem)', justifyContent: 'space-between' }}>
                     <div className="footer-brand" style={{ maxWidth: '300px' }}>
@@ -1344,12 +1344,12 @@ const Landing: React.FC = () => {
 
                 <div style={{ 
                     maxWidth: '1200px', 
-                    margin: '3rem auto 0', 
-                    padding: '2rem 0', 
+                    margin: '0 auto', 
+                    padding: '0.5rem 0 0', 
                     borderTop: '1px solid rgba(255,255,255,0.05)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '1.5rem',
+                    gap: '0.8rem',
                     fontSize: '0.75rem',
                     color: 'rgba(255,255,255,0.3)'
                 }}>

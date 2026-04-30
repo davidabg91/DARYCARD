@@ -364,15 +364,15 @@ const Layout: React.FC = () => {
             </main>
 
             <footer style={{
-                padding: '2rem',
+                padding: '0.75rem 2rem 1.5rem',
                 textAlign: 'center',
                 color: 'rgba(255,255,255,0.5)',
-                borderTop: '1px solid var(--surface-border)',
+                borderTop: location.pathname === '/' ? 'none' : '1px solid var(--surface-border)',
                 fontSize: '0.875rem',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '0.75rem',
+                gap: '0.4rem',
             }}>
                 <a 
                     href="http://davidax.org/" 
