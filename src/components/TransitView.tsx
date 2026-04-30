@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap } from 'lucide-react';
+import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AdSlideshow from './AdSlideshow';
@@ -46,6 +46,16 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [renewalAmount, setRenewalAmount] = useState(30);
     const [renewalRoute, setRenewalRoute] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
+    const [isHighContrast, setIsHighContrast] = useState(false);
+
+    const speakStatus = React.useCallback((text: string) => {
+        try {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'bg-BG';
+            utterance.rate = 1.1;
+            window.speechSynthesis.speak(utterance);
+        } catch (e) { console.error("Speech error", e); }
+    }, []);
 
     // Ads Slideshow States
     const [showAds, setShowAds] = useState(false);
@@ -117,7 +127,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         playTone(739.99, 0.08, 0.5);   // F#5
         playTone(880.00, 0.16, 0.6);   // A5
         playTone(1174.66, 0.24, 0.7);  // D6
-    }, []);
+        setTimeout(() => speakStatus('Валидна карта'), 300);
+    }, [speakStatus]);
 
     // 📡 SMART PING: Verified internet check
     const checkActualStatus = useCallback(async () => {
@@ -164,7 +175,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         };
         createBuzz(0, 0.2);
         createBuzz(0.25, 0.4);
-    }, []);
+        setTimeout(() => speakStatus('Невалидна карта'), 300);
+    }, [speakStatus]);
 
     useEffect(() => {
         let isMounted = true;
@@ -264,17 +276,26 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         );
     }
 
+    const theme = {
+        bg: isHighContrast ? '#ffffff' : '#050505',
+        cardBg: isHighContrast ? '#f8f9fa' : 'rgba(255, 255, 255, 0.04)',
+        text: isHighContrast ? '#000000' : '#ffffff',
+        textSec: isHighContrast ? '#4b5563' : 'rgba(255,255,255,0.4)',
+        border: isHighContrast ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'
+    };
+
     return (
         <div style={{ 
             position: 'fixed', 
             inset: 0, 
             zIndex: 10000, 
-            background: '#050505', 
+            background: theme.bg, 
             display: 'block',
             overflowY: 'auto',
             fontFamily: '"Outfit", "Inter", sans-serif',
-            color: '#fff',
-            WebkitOverflowScrolling: 'touch'
+            color: theme.text,
+            WebkitOverflowScrolling: 'touch',
+            transition: 'background 0.3s ease, color 0.3s ease'
         }} onClick={onClose}>
             
             {/* Environmental Glow */}
@@ -309,21 +330,27 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     gap: '1.5rem',
                     paddingBottom: '2rem' // Minimal padding to ensure look is balanced
                 }}>
-                    {/* ID Card - FULL SCALE HERO */}
                     <div style={{
                         width: '100%',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        backdropFilter: 'blur(40px)',
-                        WebkitBackdropFilter: 'blur(40px)',
+                        background: theme.cardBg,
+                        backdropFilter: isHighContrast ? 'none' : 'blur(40px)',
+                        WebkitBackdropFilter: isHighContrast ? 'none' : 'blur(40px)',
                         borderRadius: '44px',
                         border: `1px solid ${isValid ? '#00e676' : '#ff1744'}44`,
-                        boxShadow: '0 40px 120px rgba(0,0,0,0.6)',
+                        boxShadow: isHighContrast ? '0 10px 40px rgba(0,0,0,0.1)' : '0 40px 120px rgba(0,0,0,0.6)',
                         position: 'relative',
                         overflow: 'hidden',
                         animation: 'cardAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
                         zIndex: 10,
                         padding: '3rem 2rem'
                     }} onClick={(e) => e.stopPropagation()}>
+                        
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setIsHighContrast(!isHighContrast); }}
+                            style={{ position: 'absolute', top: '25px', right: '25px', background: isHighContrast ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)', border: 'none', padding: '12px', borderRadius: '15px', color: isHighContrast ? '#ffab00' : '#ffffff', cursor: 'pointer', zIndex: 100 }}
+                        >
+                            {isHighContrast ? <Sun size={24} /> : <Moon size={24} />}
+                        </button>
                         
                         {unregistered ? (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', textAlign: 'center' }}>
@@ -344,7 +371,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2.5rem' }}>
                                 {/* Connectivity Status Label */}
-                                <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.4, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '-2rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 900, color: theme.textSec, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '-2rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isActuallyOnline ? '#00e676' : '#ff5252' }} />
                                     {isActuallyOnline ? 'СВЪРЗАН СЪС СЪРВЪРА' : 'БЕЗ ИНТЕРНЕТ (ЛОКАЛНА ПАМЕТ)'}
                                 </div>
@@ -365,11 +392,11 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                                     <div style={{ fontSize: '1.4rem', fontWeight: 700, opacity: 0.6, color: themeColor }}>{client?.route}</div>
                                 </div>
 
-                                <div style={{ width: '100%', background: isValid ? 'rgba(0,230,118,0.03)' : 'rgba(255,23,68,0.05)', borderRadius: '24px', padding: '1.5rem', border: `1px solid ${isValid ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.2)'}`, textAlign: 'center' }}>
-                                    <div style={{ color: isValid ? 'rgba(255,255,255,0.3)' : '#ff5252', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>
+                                <div style={{ width: '100%', background: isValid ? (isHighContrast ? 'rgba(0,230,118,0.1)' : 'rgba(0,230,118,0.03)') : (isHighContrast ? 'rgba(255,23,68,0.05)' : 'rgba(255,23,68,0.05)'), borderRadius: '24px', padding: '1.5rem', border: `1px solid ${isValid ? 'rgba(0,230,118,0.2)' : 'rgba(255,23,68,0.2)'}`, textAlign: 'center' }}>
+                                    <div style={{ color: isValid ? (isHighContrast ? '#007e33' : 'rgba(255,255,255,0.3)') : '#ff5252', fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>
                                         {isValid ? 'ВАЛИДНОСТ ДО КРАЯ НА' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
                                     </div>
-                                    <div style={{ fontSize: '2rem', fontWeight: 900, color: isValid ? '#fff' : '#ff5252' }}>
+                                    <div style={{ fontSize: '2.3rem', fontWeight: 900, color: isValid ? (isHighContrast ? '#007e33' : '#fff') : '#ff5252' }}>
                                         {formatBGMonth(isValid ? lastPaidMonth : currentMonthStr)}
                                     </div>
                                 </div>
