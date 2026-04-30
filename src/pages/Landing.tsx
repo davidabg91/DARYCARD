@@ -1362,7 +1362,9 @@ const Landing: React.FC = () => {
                             borderRadius: '100px', 
                             border: '1px solid rgba(0,173,181,0.1)',
                             color: 'rgba(0,173,181,0.6)',
-                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            textAlign: 'center',
+                            alignSelf: 'center'
                         }}>
                             Услугата се изпълнява по договор за обществен превоз с Община Плевен
                         </div>
