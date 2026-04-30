@@ -38,7 +38,27 @@
         <div class="spinner"></div>
         <div style="letter-spacing: 2px; font-size: 10px; opacity: 0.5;">DARY COMMERCE</div>
       </div>
+      <div id="app-mounted" style="display:none"></div>
     </div>
+    <script>
+      // 🛡️ SELF-HEALING: If the app hasn't loaded in 4 seconds, clear SW and reload
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const appMounted = document.getElementById('app-mounted');
+          if (!appMounted || appMounted.style.display === 'none') {
+            console.warn("🚀 App mount timeout. Emergency clearing service workers...");
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (const registration of registrations) {
+                  registration.unregister();
+                }
+                window.location.reload();
+              });
+            }
+          }
+        }, 4000);
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
