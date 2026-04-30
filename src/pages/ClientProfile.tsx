@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, Zap, Sun, Moon } from 'lucide-react';
+import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
@@ -140,7 +140,6 @@ const ClientProfile: React.FC = () => {
     const [renewalAmount, setRenewalAmount] = useState(30);
     const [renewalRoute, setRenewalRoute] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
-    const [isHighContrast, setIsHighContrast] = useState(false);
 
     const audioContextRef = useRef<AudioContext | null>(null);
     const audioInitializedRef = useRef(false);
@@ -571,23 +570,15 @@ const ClientProfile: React.FC = () => {
     };
     const cardTypeColor = getCardTypeColor(client?.cardType);
 
-    const theme = {
-        bg: isHighContrast ? '#ffffff' : '#09090b',
-        cardBg: isHighContrast ? '#f8f9fa' : '#18181b',
-        text: isHighContrast ? '#000000' : '#ffffff',
-        textSec: isHighContrast ? '#4b5563' : 'rgba(255,255,255,0.4)',
-        border: isHighContrast ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.06)'
-    };
-
     return (
         <div style={{ 
             minHeight: '100vh', 
-            background: theme.bg, 
+            background: '#09090b', 
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center',
             justifyContent: 'center',
-            color: theme.text, 
+            color: '#fff', 
             fontFamily: '"Outfit", "Inter", sans-serif',
             overflowX: 'hidden',
             padding: '2rem 1rem',
@@ -613,10 +604,10 @@ const ClientProfile: React.FC = () => {
             <div className="id-card-container" style={{
                 width: '100%',
                 maxWidth: '440px',
-                background: theme.cardBg,
+                background: '#18181b',
                 borderRadius: '32px',
                 border: `1px solid ${themeColor}44`,
-                boxShadow: isHighContrast ? '0 10px 30px rgba(0,0,0,0.1)' : `0 20px 60px rgba(0,0,0,0.5)`,
+                boxShadow: `0 20px 60px rgba(0,0,0,0.5)`,
                 position: 'relative',
                 overflow: 'hidden',
                 display: 'flex',
@@ -627,34 +618,26 @@ const ClientProfile: React.FC = () => {
                 {/* Holographic Animation Overlay */}
 
                 {/* Card Top Branding */}
-                <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isHighContrast ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)', borderBottom: `1px solid ${theme.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: themeColor, letterSpacing: '2px' }}>DARY CARD</span>
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); setIsHighContrast(!isHighContrast); }} 
-                            style={{ background: 'rgba(128,128,128,0.1)', border: 'none', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', color: isHighContrast ? '#ffab00' : '#ffffff' }}
-                        >
-                            {isHighContrast ? <Sun size={14} /> : <Moon size={14} />}
-                        </button>
-                    </div>
+                <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 900, color: themeColor, letterSpacing: '2px' }}>DARY CARD</span>
                     <span style={{ fontSize: '0.75rem', fontWeight: 900, color: cardTypeColor, opacity: 0.9, background: `${cardTypeColor}15`, padding: '4px 10px', borderRadius: '8px', border: `1px solid ${cardTypeColor}33` }}>{client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}</span>
                 </div>
 
                 {/* Sub-Header Status Panel (Full Width) */}
                 <div style={{
                     width: '100%',
-                    background: isHighContrast ? `${themeColor}15` : `${themeColor}22`,
+                    background: `${themeColor}22`,
                     padding: '8px 0',
                     textAlign: 'center',
-                    borderTop: isHighContrast ? `1px solid ${themeColor}22` : '1px solid rgba(255,255,255,0.06)',
-                    borderBottom: isHighContrast ? `1px solid ${themeColor}22` : '1px solid rgba(255,255,255,0.06)',
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
                     fontSize: '0.9rem',
                     fontWeight: 900,
-                    color: isHighContrast ? (isActive ? '#007e33' : '#cc0000') : themeColor,
+                    color: themeColor,
                     letterSpacing: '1px'
                 }}>
                     {isActive ? <CheckCircle size={18} /> : <XCircle size={18} />}
@@ -689,25 +672,25 @@ const ClientProfile: React.FC = () => {
                     </div>
 
                     <div style={{ marginBottom: '0.5rem' }}>
-                        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 0.1rem 0', letterSpacing: '-0.2px', color: theme.textSec }}>{client.name.toUpperCase()}</h2>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: themeColor, textShadow: isHighContrast ? 'none' : `0 0 30px ${themeColor}66` }}>{client.route.toUpperCase()}</div>
+                        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 0.1rem 0', letterSpacing: '-0.2px', color: 'rgba(255,255,255,0.6)' }}>{client.name.toUpperCase()}</h2>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: themeColor, textShadow: `0 0 30px ${themeColor}66` }}>{client.route.toUpperCase()}</div>
                     </div>
                 </div>
 
                 {/* Full Width Status Panel */}
                 <div style={{
                     width: '100%',
-                    background: isActive ? (isHighContrast ? 'rgba(0, 230, 118, 0.1)' : 'rgba(0, 230, 118, 0.15)') : (isHighContrast ? 'rgba(255, 23, 68, 0.05)' : 'rgba(255, 23, 68, 0.2)'),
+                    background: isActive ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 23, 68, 0.2)',
                     padding: '1.5rem 1rem',
-                    borderTop: `1px solid ${isActive ? 'rgba(0, 230, 118, 0.2)' : 'rgba(255, 23, 68, 0.3)'}`,
-                    borderBottom: `1px solid ${isActive ? 'rgba(0, 230, 118, 0.2)' : 'rgba(255, 23, 68, 0.3)'}`,
+                    borderTop: `1px solid ${isActive ? 'rgba(0, 230, 118, 0.3)' : 'rgba(255, 23, 68, 0.5)'}`,
+                    borderBottom: `1px solid ${isActive ? 'rgba(0, 230, 118, 0.3)' : 'rgba(255, 23, 68, 0.5)'}`,
                     textAlign: 'center',
-                    boxShadow: isHighContrast ? 'none' : `inset 0 0 40px ${isActive ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.1)'}`
+                    boxShadow: `inset 0 0 40px ${isActive ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.1)'}`
                 }}>
-                    <div style={{ color: isActive ? (isHighContrast ? '#007e33' : 'rgba(255,255,255,0.6)') : '#ff5252', fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '4px', marginBottom: '8px' }}>
+                    <div style={{ color: isActive ? 'rgba(255,255,255,0.6)' : '#ff5252', fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '4px', marginBottom: '8px' }}>
                         {isActive ? 'ВАЛИДЕН АБОНАМЕНТ ДО' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
                     </div>
-                    <div style={{ fontSize: '2.4rem', fontWeight: 900, color: isActive ? (isHighContrast ? '#007e33' : '#fff') : '#ff5252', letterSpacing: '2px', lineHeight: 1 }}>
+                    <div style={{ fontSize: '2.4rem', fontWeight: 900, color: isActive ? '#fff' : '#ff5252', letterSpacing: '2px', lineHeight: 1 }}>
                         {getFormattedMonth(isActive ? lastPaidMonth : currentMonthStr)}
                     </div>
                 </div>
