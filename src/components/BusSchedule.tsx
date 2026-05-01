@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bus } from 'lucide-react';
 import { SCHEDULES } from '../data/schedules';
 import { abbreviate } from '../data/routeMetadata';
+import { getHoliday } from '../utils/holidays';
 
 interface BusScheduleProps {
     route: string;
@@ -23,13 +24,11 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
     const isSunday = day === 0;
     const isSaturday = day === 6;
 
-    const isEasterHoliday = currentTime.getFullYear() === 2026 && 
-                            currentTime.getMonth() === 3 && 
-                            currentTime.getDate() >= 10 && 
-                            currentTime.getDate() <= 13;
+    const holiday = getHoliday(currentTime);
+    const isHoliday = !!holiday;
     
     let activeSchedule = scheduleData;
-    if ((isSunday || isEasterHoliday) && scheduleData.sunday) {
+    if ((isSunday || isHoliday) && scheduleData.sunday) {
         activeSchedule = scheduleData.sunday;
     } else if (isSaturday && scheduleData.saturday) {
         activeSchedule = scheduleData.saturday;
@@ -86,8 +85,8 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                     <Bus size={20} />
                     <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '1px' }}>РАЗПИСАНИЕ АВТОБУСИ</span>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: isEasterHoliday ? '#ff5252' : 'rgba(255,255,255,0.4)', fontWeight: 800 }}>
-                    ({isEasterHoliday ? 'ВЕЛИКДЕНСКИ ПРАЗНИЦИ: Важи неделно разписание до 13.04 включително' : 
+                <div style={{ fontSize: '0.75rem', color: isHoliday ? '#ff5252' : 'rgba(255,255,255,0.4)', fontWeight: 800 }}>
+                    ({isHoliday ? `${holiday.name.toUpperCase()}: Важи неделно разписание` : 
                       (isSunday ? 'неделя' : 
                        isSaturday ? 'събота' : 
                        (route === 'Тръстеник' ? 'понеделник-събота' : 'делнични дни'))})

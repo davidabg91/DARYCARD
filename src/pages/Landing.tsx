@@ -13,6 +13,7 @@ import { SCHEDULES } from '../data/schedules';
 import type { RouteSchedule, ScheduleTime } from '../data/schedules';
 import { ROUTE_METADATA, abbreviate } from '../data/routeMetadata';
 import PushSubscription from '../components/PushSubscription';
+import { getHoliday } from '../utils/holidays';
 
 interface Announcement {
     id: string;
@@ -34,14 +35,12 @@ const Landing: React.FC = () => {
     const [expandedNotifId, setExpandedNotifId] = useState<string | null>(null);
 
     const currentDay = currentTime.getDay();
-    const isEasterHoliday = currentTime.getFullYear() === 2026 && 
-                            currentTime.getMonth() === 3 && 
-                            currentTime.getDate() >= 10 && 
-                            currentTime.getDate() <= 13;
+    const holiday = getHoliday(currentTime);
+    const isHoliday = !!holiday;
 
-    const isSat = !isEasterHoliday && currentDay === 6;
-    const isSun = isEasterHoliday || currentDay === 0;
-    const isWorkday = !isEasterHoliday && currentDay >= 1 && currentDay <= 5;
+    const isSat = !isHoliday && currentDay === 6;
+    const isSun = isHoliday || currentDay === 0;
+    const isWorkday = !isHoliday && currentDay >= 1 && currentDay <= 5;
 
     useEffect(() => {
         const q = query(
@@ -90,8 +89,8 @@ const Landing: React.FC = () => {
     );
 
 
-    const getScheduleForDay = (d: number, isEaster: boolean, sched: RouteSchedule): RouteSchedule | ScheduleTime => {
-        if ((isEaster || d === 0) && sched.sunday) return sched.sunday;
+    const getScheduleForDay = (d: number, isHolid: boolean, sched: RouteSchedule): RouteSchedule | ScheduleTime => {
+        if ((isHolid || d === 0) && sched.sunday) return sched.sunday;
         if (d === 6 && sched.saturday) return sched.saturday;
         return sched;
     };
@@ -102,8 +101,7 @@ const Landing: React.FC = () => {
         
         const day = currentTime.getDay();
         const now = currentTime.getHours() * 60 + currentTime.getMinutes();
-        
-        const todaySched = getScheduleForDay(day, isEasterHoliday, sched);
+        const todaySched = getScheduleForDay(day, isHoliday, sched);
         const todayTimes = todaySched[direction];
         if (!todayTimes || todayTimes.length === 0) return null;
 
@@ -119,22 +117,13 @@ const Landing: React.FC = () => {
             return nextToday - now;
         }
 
-        // This is a simplified "tomorrow":
         const tomorrowDay = (day + 1) % 7;
-        // Tomorrow is easter if today is easter AND it's not the last day, 
-        // OR if today is the day before the first holiday.
-        // For 2026, April 10-13 are holidays. 
-        // If today is April 9, tomorrow (10) is holiday.
-        // If today is April 10, tomorrow (11) is holiday.
-        // If today is April 13, tomorrow (14) is NOT holiday.
         const tomorrowDate = new Date(currentTime);
         tomorrowDate.setDate(currentTime.getDate() + 1);
-        const isTomorrowEaster = tomorrowDate.getFullYear() === 2026 && 
-                                 tomorrowDate.getMonth() === 3 && 
-                                 tomorrowDate.getDate() >= 10 && 
-                                 tomorrowDate.getDate() <= 13;
+        const tomorrowHoliday = getHoliday(tomorrowDate);
+        const isTomorrowHoliday = !!tomorrowHoliday;
 
-        const tomorrowSched = getScheduleForDay(tomorrowDay, isTomorrowEaster, sched);
+        const tomorrowSched = getScheduleForDay(tomorrowDay, isTomorrowHoliday, sched);
         const tomorrowTimes = tomorrowSched[direction];
         if (!tomorrowTimes || tomorrowTimes.length === 0) return null;
 
@@ -1038,7 +1027,7 @@ const Landing: React.FC = () => {
                                                     <h4 style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                                         <Clock size={16} /> Пълно разписание на курса
                                                     </h4>
-                                                    {isEasterHoliday && (
+                                                    {isHoliday && (
                                                         <div style={{ 
                                                             marginTop: '0.8rem',
                                                             background: 'rgba(255, 82, 82, 0.1)', 
@@ -1053,7 +1042,7 @@ const Landing: React.FC = () => {
                                                             gap: '0.6rem'
                                                         }}>
                                                             <Calendar size={16} />
-                                                            ВЕЛИКДЕНСКИ ПРАЗНИЦИ: Важи неделно разписание до 13.04 включително.
+                                                            {holiday.name.toUpperCase()}: Важи неделно разписание.
                                                         </div>
                                                     )}
                                                 </div>
