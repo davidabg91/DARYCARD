@@ -51,7 +51,6 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
     // Ads Slideshow States
     const [showAds, setShowAds] = useState(false);
-    const [lastActivity, setLastActivity] = useState(Date.now());
     const [isActuallyOnline, setIsActuallyOnline] = useState(window.navigator.onLine);
 
     // Prop state synchronization to avoid cascading renders in useEffect
@@ -209,9 +208,6 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     
                     if (active) playSuccessRef.current();
                     else playErrorRef.current();
-                    
-                    // Reset activity timer on scan
-                    setLastActivity(Date.now());
                 } else {
                     playErrorRef.current();
                     setUnregistered(true);
@@ -230,8 +226,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
     // IDLE DETECTION & SLIDESHOW LOGIC
     useEffect(() => {
-        const resetActivity = () => {
-            setLastActivity(Date.now());
+        const unlockAudio = () => {
             // 🔊 AUDIO UNLOCKER: Resume context on first user gesture
             if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
                 audioContextRef.current.resume().then(() => {
@@ -239,24 +234,18 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                 });
             }
         };
-        window.addEventListener('touchstart', resetActivity);
-        window.addEventListener('mousedown', resetActivity);
+        window.addEventListener('touchstart', unlockAudio);
+        window.addEventListener('mousedown', unlockAudio);
 
-        const idleCheck = setInterval(() => {
-            if (Date.now() - lastActivity > 30000 && !showAds && !showManagementRef.current && !showPhotoModal && !showSuccessModal) {
-                setShowAds(true);
-            }
-        }, 1000);
         checkActualStatus();
         const pingInterval = setInterval(checkActualStatus, 5000); // Check every 5s
 
         return () => {
-            window.removeEventListener('touchstart', resetActivity);
-            window.removeEventListener('mousedown', resetActivity);
-            clearInterval(idleCheck);
+            window.removeEventListener('touchstart', unlockAudio);
+            window.removeEventListener('mousedown', unlockAudio);
             clearInterval(pingInterval);
         };
-    }, [lastActivity, showAds, showPhotoModal, showSuccessModal, checkActualStatus]);
+    }, [checkActualStatus]);
 
 
     const now = new Date();
@@ -616,7 +605,6 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                 <AdSlideshow 
                     onClose={() => {
                         setShowAds(false);
-                        setLastActivity(Date.now());
                     }} 
                     clientName={client?.name}
                     clientPhoto={client?.photo}

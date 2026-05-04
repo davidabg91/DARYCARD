@@ -158,6 +158,22 @@ export const SCHEDULES: Record<string, RouteSchedule> = {
   "Долни Дъбник - Садовец": {
     fromPleven: ["09:15", "11:15", "15:15"],
     fromDestination: ["07:45", "10:00", "13:45"]
+  },
+  "Каменец": {
+    fromPleven: ["07:00", "10:30", "12:30", "14:30", "18:00"],
+    fromDestination: ["06:00", "08:00", "11:20", "13:30", "16:50"],
+    saturday: {
+        fromPleven: ["10:30", "14:30", "18:00"],
+        fromDestination: ["07:50", "11:20", "16:50"]
+    },
+    sunday: {
+        fromPleven: ["18:00"],
+        fromDestination: ["16:50"]
+    }
+  },
+  "Борислав": {
+    fromPleven: ["07:30*", "13:00*", "16:30*"],
+    fromDestination: ["07:50*", "13:20*", "16:50*"]
   }
 };
 
@@ -178,3 +194,16 @@ SCHEDULES["Долна Митрополия - Славовица"] = SCHEDULES["�
 SCHEDULES["Ореховица"] = SCHEDULES["Байкал"];
 SCHEDULES["Брегаре"] = SCHEDULES["Байкал"];
 SCHEDULES["Крушовене"] = SCHEDULES["Байкал"];
+
+// New routes mappings
+SCHEDULES["Гривица"] = {
+  fromPleven: ["07:00", "07:30*", "10:30", "12:30", "13:00*", "14:30", "16:30*", "18:00"],
+  fromDestination: ["06:00", "07:50*", "08:00", "11:20", "13:20*", "13:30", "16:50*", "16:50"],
+  saturday: SCHEDULES["Каменец"].saturday,
+  sunday: SCHEDULES["Каменец"].sunday
+};
+SCHEDULES["Згалево"] = SCHEDULES["Гривица"];
+SCHEDULES["Пордим"] = SCHEDULES["Гривица"];
+SCHEDULES["Одърне"] = SCHEDULES["Каменец"];
+SCHEDULES["Вълчитрън"] = SCHEDULES["Борислав"];
+SCHEDULES["Катерица"] = SCHEDULES["Борислав"];

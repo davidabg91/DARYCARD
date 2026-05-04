@@ -830,7 +830,13 @@ const Landing: React.FC = () => {
                                 "Крушовица": "САДОВЕЦ",
                                 "Ореховица": "БАЙКАЛ",
                                 "Брегаре": "БАЙКАЛ",
-                                "Крушовене": "БАЙКАЛ"
+                                "Крушовене": "БАЙКАЛ",
+                                "Гривица": "КАМЕНЕЦ",
+                                "Згалево": "КАМЕНЕЦ",
+                                "Пордим": "КАМЕНЕЦ",
+                                "Одърне": "КАМЕНЕЦ",
+                                "Вълчитрън": "БОРИСЛАВ",
+                                "Катерица": "БОРИСЛАВ"
                             };
 
                             if (originMapping[line]) {
@@ -1177,6 +1183,65 @@ const Landing: React.FC = () => {
                         })}
                     </div>
                 )}
+
+                <section style={{ marginTop: '5rem', animation: 'fadeIn 0.8s ease-out' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                        <div style={{ 
+                            display: 'inline-flex', padding: '0.4rem 1rem', 
+                            background: 'rgba(255, 82, 82, 0.1)', borderRadius: '100px',
+                            fontSize: '0.7rem', fontWeight: 900, color: '#ff5252',
+                            marginBottom: '1rem', letterSpacing: '2px', textTransform: 'uppercase'
+                        }}>
+                            Ценоразпис
+                        </div>
+                        <h2 style={{ fontSize: 'clamp(1.8rem, 5vw, 2.8rem)', fontWeight: 950, letterSpacing: '-1px' }}>
+                            Абонаментни карти
+                        </h2>
+                    </div>
+
+                    <div style={{ 
+                        maxWidth: '900px', 
+                        margin: '0 auto',
+                        background: 'rgba(255,255,255,0.02)',
+                        borderRadius: '24px',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        overflow: 'hidden',
+                        backdropFilter: 'blur(10px)'
+                    }}>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Маршрут</th>
+                                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Стандартна</th>
+                                        <th style={{ padding: '1.2rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, color: '#ff9800', textTransform: 'uppercase' }}>Ученическа</th>
+                                    </tr>
+                                </thead>
+                                <tbody style={{ fontSize: '0.95rem' }}>
+                                    {[
+                                        { route: "Плевен – Каменец", std: "70,00 €", stud: "46,00 €" },
+                                        { route: "Плевен – Одърне", std: "65,00 €", stud: "41,00 €" },
+                                        { route: "Плевен – Пордим", std: "55,00 €", stud: "36,00 €" },
+                                        { route: "Плевен – Згалево", std: "50,00 €", stud: "30,00 €" },
+                                        { route: "Пордим – Каменец", std: "40,00 €", stud: "28,00 €" },
+                                        { route: "Пордим – Згалево", std: "30,00 €", stud: "18,00 €" }
+                                    ].map((row, i) => (
+                                        <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: '0.2s' }} className="table-row-hover">
+                                            <td style={{ padding: '1.2rem 1.5rem', fontWeight: 700 }}>{row.route}</td>
+                                            <td style={{ padding: '1.2rem 1.5rem', fontWeight: 800 }}>{row.std}</td>
+                                            <td style={{ padding: '1.2rem 1.5rem', fontWeight: 800, color: '#ff9800' }}>{row.stud}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <style>{`
+                        .table-row-hover:hover {
+                            background: rgba(255,255,255,0.02) !important;
+                        }
+                    `}</style>
+                </section>
 
                 <section id="info-section" className="mobile-info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1rem', overflowX: 'hidden' }}>
                     <div className="info-container">
