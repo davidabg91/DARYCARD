@@ -1184,8 +1184,6 @@ const Landing: React.FC = () => {
                     </div>
                 )}
 
-                )}
-
                 <section id="info-section" className="mobile-info-section" style={{ marginTop: 'clamp(3rem, 10vw, 6rem)', padding: '0 1rem', overflowX: 'hidden' }}>
                     <div className="info-container">
                         <div style={{ flex: '1', width: '100%', minWidth: 0 }}>
