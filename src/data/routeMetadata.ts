@@ -2,6 +2,7 @@ export interface RouteMetadata {
   stops: string[];
   priceSingle: string;
   priceCard: string;
+  priceCardStudent?: string;
   description?: string;
 }
 
@@ -155,22 +156,26 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Згалево": {
     stops: ["Плевен", "Гривица", "Згалево"],
     priceSingle: "2.00 €",
-    priceCard: "50.00 € (Уч: 30.00 €)"
+    priceCard: "50.00 €",
+    priceCardStudent: "30.00 €"
   },
   "Пордим": {
     stops: ["Плевен", "Гривица", "Згалево", "Пордим"],
     priceSingle: "2.50 €",
-    priceCard: "55.00 € (Уч: 36.00 €)"
+    priceCard: "55.00 €",
+    priceCardStudent: "36.00 €"
   },
   "Одърне": {
     stops: ["Плевен", "Гривица", "Згалево", "Пордим", "Одърне"],
     priceSingle: "3.00 €",
-    priceCard: "65.00 € (Уч: 41.00 €)"
+    priceCard: "65.00 €",
+    priceCardStudent: "41.00 €"
   },
   "Каменец": {
     stops: ["Плевен", "Гривица", "Згалево", "Пордим", "Одърне", "Каменец"],
     priceSingle: "3.00 €",
-    priceCard: "70.00 € (Уч: 46.00 €)"
+    priceCard: "70.00 €",
+    priceCardStudent: "46.00 €"
   },
   "Вълчитрън": {
     stops: ["Плевен", "Гривица", "Згалево", "Пордим", "Вълчитрън"],
@@ -191,11 +196,13 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Пордим - Каменец": {
     stops: ["Пордим", "Одърне", "Каменец"],
     priceSingle: "2.00 €",
-    priceCard: "40.00 € (Уч: 28.00 €)"
+    priceCard: "40.00 €",
+    priceCardStudent: "28.00 €"
   },
   "Пордим - Згалево": {
     stops: ["Пордим", "Згалево"],
     priceSingle: "---",
-    priceCard: "30.00 € (Уч: 18.00 €)"
+    priceCard: "30.00 €",
+    priceCardStudent: "18.00 €"
   }
 };

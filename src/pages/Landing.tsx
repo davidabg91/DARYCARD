@@ -1032,7 +1032,9 @@ const Landing: React.FC = () => {
                                                 <Info size={14} />
                                             </div>
                                             <p style={{ margin: 0, lineHeight: 1.4, fontWeight: 500 }}>
-                                                {[
+                                                {meta?.priceCardStudent ? (
+                                                    <>Цените за хора с увреждания над 70.99% са с <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-25%</span>, а за ученици цената е <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>{meta.priceCardStudent}</span>.</>
+                                                ) : [
                                                     "Гривица", "Згалево", "Пордим", "Одърне", "Каменец", 
                                                     "Вълчитрън", "Катерица", "Борислав", 
                                                     "Пордим - Каменец", "Пордим - Згалево"
