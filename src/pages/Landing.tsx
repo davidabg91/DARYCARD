@@ -1015,7 +1015,15 @@ const Landing: React.FC = () => {
                                                 <Info size={14} />
                                             </div>
                                             <p style={{ margin: 0, lineHeight: 1.4, fontWeight: 500 }}>
-                                                Цените за ученици и пенсионери са <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-50%</span> от тези цени, а за хора с увреждания над 70.99% са с <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-25%</span>.
+                                                {[
+                                                    "Гривица", "Згалево", "Пордим", "Одърне", "Каменец", 
+                                                    "Вълчитрън", "Катерица", "Борислав", 
+                                                    "Пордим - Каменец", "Пордим - Згалево"
+                                                ].includes(line) ? (
+                                                    <>Цените за хора с увреждания над 70.99% са с <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-25%</span>.</>
+                                                ) : (
+                                                    <>Цените за ученици и пенсионери са <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-50%</span> от тези цени, а за хора с увреждания над 70.99% са с <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-25%</span>.</>
+                                                )}
                                             </p>
                                         </div>
 
