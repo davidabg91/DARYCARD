@@ -207,3 +207,5 @@ SCHEDULES["Пордим"] = SCHEDULES["Гривица"];
 SCHEDULES["Одърне"] = SCHEDULES["Каменец"];
 SCHEDULES["Вълчитрън"] = SCHEDULES["Борислав"];
 SCHEDULES["Катерица"] = SCHEDULES["Борислав"];
+SCHEDULES["Пордим - Каменец"] = SCHEDULES["Каменец"];
+SCHEDULES["Пордим - Згалево"] = SCHEDULES["Каменец"];
