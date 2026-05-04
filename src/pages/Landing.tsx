@@ -799,8 +799,25 @@ const Landing: React.FC = () => {
                                 <div className="selection-icon">
                                     <MapPin size={18} />
                                 </div>
-                                <div style={{ overflow: 'hidden', width: '100%' }}>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{line}</h3>
+                                <div style={{ overflow: 'hidden', width: '100%', position: 'relative' }}>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {line}
+                                        {[
+                                            "Гривица", "Згалево", "Пордим", "Одърне", "Каменец", 
+                                            "Вълчитрън", "Катерица", "Борислав", 
+                                            "Пордим - Каменец", "Пордим - Згалево"
+                                        ].includes(line) && (
+                                            <span style={{ 
+                                                fontSize: '0.55rem', 
+                                                background: '#ff5252', 
+                                                color: '#fff', 
+                                                padding: '2px 6px', 
+                                                borderRadius: '4px',
+                                                letterSpacing: '1px',
+                                                fontWeight: 900
+                                            }}>НОВО</span>
+                                        )}
+                                    </h3>
                                     <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Преглед</div>
                                 </div>
                             </div>

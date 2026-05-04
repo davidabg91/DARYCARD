@@ -172,8 +172,8 @@ export const SCHEDULES: Record<string, RouteSchedule> = {
     }
   },
   "Борислав": {
-    fromPleven: ["07:30*", "13:00*", "16:30*"],
-    fromDestination: ["07:50*", "13:20*", "16:50*"]
+    fromPleven: ["07:30", "13:00", "16:30"],
+    fromDestination: ["07:50", "13:20", "16:50"]
   }
 };
 
@@ -197,8 +197,8 @@ SCHEDULES["Крушовене"] = SCHEDULES["Байкал"];
 
 // New routes mappings
 SCHEDULES["Гривица"] = {
-  fromPleven: ["07:00", "07:30*", "10:30", "12:30", "13:00*", "14:30", "16:30*", "18:00"],
-  fromDestination: ["06:00", "07:50*", "08:00", "11:20", "13:20*", "13:30", "16:50*", "16:50"],
+  fromPleven: ["07:00", "07:30", "10:30", "12:30", "13:00", "14:30", "16:30", "18:00"],
+  fromDestination: ["06:00", "07:50", "08:00", "11:20", "13:20", "13:30", "16:50", "16:50"],
   saturday: SCHEDULES["Каменец"].saturday,
   sunday: SCHEDULES["Каменец"].sunday
 };
