@@ -807,15 +807,14 @@ const Landing: React.FC = () => {
                                             "Вълчитрън", "Катерица", "Борислав", 
                                             "Пордим - Каменец", "Пордим - Згалево"
                                         ].includes(line) && (
-                                            <span style={{ 
-                                                fontSize: '0.55rem', 
-                                                background: '#ff5252', 
-                                                color: '#fff', 
-                                                padding: '2px 6px', 
-                                                borderRadius: '4px',
-                                                letterSpacing: '1px',
-                                                fontWeight: 900
-                                            }}>НОВО</span>
+                                            <div style={{ 
+                                                width: '8px', 
+                                                height: '8px', 
+                                                background: '#ff9800', 
+                                                borderRadius: '50%',
+                                                boxShadow: '0 0 10px rgba(255, 152, 0, 0.5)',
+                                                flexShrink: 0
+                                            }} title="Нова линия" />
                                         )}
                                     </h3>
                                     <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Преглед</div>
