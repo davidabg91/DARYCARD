@@ -18,7 +18,7 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-icon.png'],
+      includeAssets: [], // Files already covered by globPatterns below
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         // Ensure version.json and sitemap are never cached
