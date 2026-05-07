@@ -21,9 +21,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: [], 
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        globIgnores: ['**/version.json'],
+        globPatterns: ['**/*.{js,css,html,svg}'], // Only core files
+        globIgnores: ['**/version.json', '**/bus_rental_hero*.png', '**/favicon.ico'],
         cleanupOutdatedCaches: true,
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
         // Ensure version.json and sitemap are never cached
         runtimeCaching: [
           {
