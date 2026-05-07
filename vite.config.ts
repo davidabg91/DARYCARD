@@ -6,7 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
+  base: '/',
   plugins: [
     react(),
     legacy({
@@ -22,6 +22,8 @@ export default defineConfig({
       includeAssets: [], 
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        globIgnores: ['**/version.json'],
+        cleanupOutdatedCaches: true,
         // Ensure version.json and sitemap are never cached
         runtimeCaching: [
           {
