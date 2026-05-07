@@ -14,11 +14,12 @@ export default defineConfig({
     }),
     ViteImageOptimizer({
       test: /\.(jpe?g|png|gif|tiff|webp|svg|avif)$/i,
+      exclude: ['pwa-icon.png', 'favicon.ico', 'apple-touch-icon.png'],
       png: { quality: 80 },
     }),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: [], // Files already covered by globPatterns below
+      includeAssets: [], 
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         // Ensure version.json and sitemap are never cached
@@ -42,16 +43,6 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         icons: [
-          {
-            src: 'pwa-icon.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-icon.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
           {
             src: 'pwa-icon.png',
             sizes: '512x512',
