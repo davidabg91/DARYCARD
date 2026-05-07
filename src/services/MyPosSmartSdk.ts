@@ -9,6 +9,7 @@ export interface MyPosNfcEvent {
 export interface MyPosSmartSdkPlugin {
   startNfcScan(): Promise<void>;
   stopNfcScan(): Promise<void>;
+  triggerWarningBeep(): Promise<void>;
   addListener(eventName: 'nfcEvent', listenerFunc: (event: MyPosNfcEvent) => void): Promise<import('@capacitor/core').PluginListenerHandle>;
   addListener(eventName: 'nfcError', listenerFunc: (event: { error: string }) => void): Promise<import('@capacitor/core').PluginListenerHandle>;
   removeAllListeners(): Promise<void>;

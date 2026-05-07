@@ -5,6 +5,8 @@ import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap } from 'lucide
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AdSlideshow from './AdSlideshow';
+import MyPosSmartSdk from '../services/MyPosSmartSdk';
+import { Capacitor } from '@capacitor/core';
 
 interface Client {
     id: string;
@@ -27,8 +29,10 @@ const ROUTES = [
     "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
     "Долна Митрополия", "Ясен", "Крушовица", "Дисевица", "Търнене", "Градина",
     "Петърница", "Опанец", "Победа", "Подем", "Божурица",
-    "Ясен-Дисевица",
-    "Д. Дъбник - Садовец", "Д.Митрополия - Тръстеник", "Д.Митрополия - Славовица"
+    "Ясен-Дисевица", "Ореховица", "Брегаре", "Крушовене",
+    "Гривица", "Згалево", "Пордим", "Одърне", "Каменец", "Вълчитрън", "Катерица", "Борислав",
+    "Д. Дъбник - Садовец", "Д.Митрополия - Тръстеник", "Д.Митрополия - Славовица",
+    "Пордим - Каменец", "Пордим - Згалево"
 ];
 
 const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
@@ -113,6 +117,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     };
 
     const playSuccessSound = React.useCallback(() => {
+        console.log('🔊 TransitView: Playing SUCCESS sound');
         try {
             initAudio();
             playTone(587.33, 0, 0.5);      
@@ -146,6 +151,13 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     }, [setIsActuallyOnline]);
 
     const playErrorSound = React.useCallback(() => {
+        console.log('⚠️ TransitView: Playing ERROR sound');
+        // 🛡️ NATIVE WARNING: Use hardware beep if on Native platform
+        if (Capacitor.isNativePlatform()) {
+            console.log('📢 TransitView: Triggering NATIVE Warning Beep...');
+            MyPosSmartSdk.triggerWarningBeep().catch(err => console.error('Beep Error:', err));
+        }
+
         initAudio();
         const context = audioContextRef.current;
         if (!context) return;

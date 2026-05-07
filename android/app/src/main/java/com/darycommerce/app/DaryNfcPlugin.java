@@ -22,6 +22,7 @@ public class DaryNfcPlugin extends Plugin {
 
     private static final String TAG = "DaryScanner";
     private final AtomicBoolean isScanningEnabled = new AtomicBoolean(false);
+    private final AtomicBoolean isBound = new AtomicBoolean(false);
     private final AtomicInteger scanCounter = new AtomicInteger(0);
     private Thread scanThread = null;
     private ToneGenerator beepGenerator;
@@ -37,11 +38,19 @@ public class DaryNfcPlugin extends Plugin {
             getBridge().getActivity().runOnUiThread(() -> {
                 getBridge().getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             });
-
-            beepGenerator = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100);
+            try {
+                // Use STREAM_ALARM for maximum volume and TONE_SUP_ERROR for distinct warning
+                beepGenerator = new ToneGenerator(AudioManager.STREAM_ALARM, 100);
+            } catch (Exception e) {
+                Log.e(TAG, "ToneGenerator Error: " + e.getMessage());
+            }
+            
+            Log.d(TAG, "Initiating myPOS SDK binding...");
             UltralightManagement.getInstance().bind(getContext(), new OnBindListener() {
                 @Override
                 public void onBindComplete() {
+                    Log.d(TAG, "myPOS SDK Binding SUCCESS");
+                    isBound.set(true);
                     isScanningEnabled.set(true);
                     startScanLoop();
                 }
@@ -65,39 +74,73 @@ public class DaryNfcPlugin extends Plugin {
         call.resolve();
     }
 
-    private void startScanLoop() {
+    @PluginMethod
+    public void triggerWarningBeep(PluginCall call) {
+        Log.d(TAG, "🚨 AGGRESSIVE NATIVE WARNING TRIGGERED");
+        try {
+            // Wait for the initial detection beep to finish
+            Thread.sleep(500);
+            
+            if (beepGenerator != null) {
+                // Triple aggressive error tone
+                for (int i = 0; i < 3; i++) {
+                    beepGenerator.startTone(ToneGenerator.TONE_SUP_ERROR, 300);
+                    Thread.sleep(400);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Warning Beep Error: " + e.getMessage());
+        }
+        call.resolve();
+    }
+
+    private synchronized void startScanLoop() {
         if (scanThread != null && scanThread.isAlive()) return;
         
-        // Ensure flag is always true
         isScanningEnabled.set(true);
         
         scanThread = new Thread(() -> {
             Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
             Log.d(TAG, "⚡ ETERNAL HARDWARE LOOP STARTED ⚡");
-            try {
-                UltralightManagement.getInstance().open(1000);
-                // We keep running as long as the process is alive (while true)
-                while (true) { 
-                    try {
-                        if (UltralightManagement.getInstance().detect(10)) {
-                            processCardStable();
-                            
-                            UltralightManagement.getInstance().close(50);
-                            Thread.sleep(50);
-                            UltralightManagement.getInstance().open(300);
-                        }
-                        Thread.sleep(10); 
-                    } catch (Exception e) {
-                        try {
-                            UltralightManagement.getInstance().close(50);
-                            Thread.sleep(50);
-                            UltralightManagement.getInstance().open(300);
-                        } catch (Exception ignored) {}
+            
+            while (isScanningEnabled.get()) {
+                try {
+                    if (!isBound.get()) {
+                        Log.w(TAG, "Waiting for SDK binding...");
+                        Thread.sleep(1000);
+                        continue;
                     }
+
+                    UltralightManagement.getInstance().open(1000);
+                    
+                    // Detection Loop
+                    while (isScanningEnabled.get() && isBound.get()) {
+                        try {
+                            if (UltralightManagement.getInstance().detect(10)) {
+                                processCardStable();
+                                
+                                UltralightManagement.getInstance().close(50);
+                                Thread.sleep(50);
+                                UltralightManagement.getInstance().open(300);
+                            }
+                            Thread.sleep(10); 
+                        } catch (Exception e) {
+                            Log.e(TAG, "Detection Error: " + e.getMessage());
+                            break; 
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Hardware Loop Error: " + e.getMessage());
+                } finally {
+                    try {
+                        UltralightManagement.getInstance().close(50);
+                    } catch (Exception ignored) {}
                 }
-            } catch (Exception e) {
-                Log.e(TAG, "Hardware Loop Error: " + e.getMessage());
+                
+                // Backoff before retry if loop failed or binding lost
+                try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
             }
+            Log.d(TAG, "⚡ ETERNAL HARDWARE LOOP STOPPED ⚡");
         }, "DaryNfcEternalThread");
         scanThread.start();
     }

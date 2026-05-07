@@ -89,8 +89,10 @@ const ROUTES = [
     "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
     "Долна Митрополия", "Ясен", "Крушовица", "Дисевица", "Търнене", "Градина",
     "Петърница", "Опанец", "Победа", "Подем", "Божурица",
-    "Горни Дъбник", "Ясен-Дисевица",
-    "Долни Дъбник - Садовец", "Долна Митрополия - Тръстеник", "Долна Митрополия - Славовица"
+    "Горни Дъбник", "Ясен-Дисевица", "Ореховица", "Брегаре", "Крушовене",
+    "Гривица", "Згалево", "Пордим", "Одърне", "Каменец", "Вълчитрън", "Катерица", "Борислав",
+    "Долни Дъбник - Садовец", "Долна Митрополия - Тръстеник", "Долна Митрополия - Славовица",
+    "Пордим - Каменец", "Пордим - Згалево"
 ];
 const SCHOOLS = [
     "ДФСГ",
@@ -313,6 +315,73 @@ const AdminPanel: React.FC = () => {
     const [photoError, setPhotoError] = useState<string | null>(null);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Auto-price logic
+    useEffect(() => {
+        if (selectedRoute && ROUTE_METADATA[selectedRoute]) {
+            const meta = ROUTE_METADATA[selectedRoute];
+            let priceStr = meta.priceCard;
+            
+            if (cardType === 'Ученическа карта') {
+                if (meta.priceCardStudent) {
+                    priceStr = meta.priceCardStudent;
+                } else if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) {
+                        setAmountPaid((normal / 2).toFixed(2));
+                        return;
+                    }
+                }
+            } else if (cardType === 'Пенсионерска карта') {
+                if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) {
+                        setAmountPaid((normal / 2).toFixed(2));
+                        return;
+                    }
+                }
+            }
+
+            if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                const numericPrice = priceStr.replace(' €', '').trim();
+                setAmountPaid(numericPrice);
+            }
+        }
+    }, [selectedRoute, cardType]);
+
+    // Auto-price logic for renewal modal
+    useEffect(() => {
+        if (newRoute && ROUTE_METADATA[newRoute] && selectedClient) {
+            const meta = ROUTE_METADATA[newRoute];
+            let priceStr = meta.priceCard;
+            const cType = selectedClient.cardType;
+            
+            if (cType === 'Ученическа карта') {
+                if (meta.priceCardStudent) {
+                    priceStr = meta.priceCardStudent;
+                } else if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) {
+                        setNewAmount((normal / 2).toFixed(2));
+                        return;
+                    }
+                }
+            } else if (cType === 'Пенсионерска карта') {
+                if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) {
+                        setNewAmount((normal / 2).toFixed(2));
+                        return;
+                    }
+                }
+            }
+
+            if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                const numericPrice = priceStr.replace(' €', '').trim();
+                setNewAmount(numericPrice);
+            }
+        }
+    }, [newRoute, selectedClient]);
 
 
 

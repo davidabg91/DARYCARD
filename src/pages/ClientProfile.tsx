@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
 import LoadingScreen from '../components/LoadingScreen';
+import { ROUTE_METADATA } from '../data/routeMetadata';
 
 interface Client {
     id: string;
@@ -28,8 +29,10 @@ const ROUTES = [
     "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
     "Долна Митрополия", "Ясен", "Крушовица", "Дисевица", "Търнене", "Градина",
     "Петърница", "Опанец", "Победа", "Подем", "Божурица",
-    "Ясен-Дисевица",
-    "Д. Дъбник - Садовец", "Д.Митрополия - Тръстеник", "Д.Митрополия - Славовица"
+    "Ясен-Дисевица", "Ореховица", "Брегаре", "Крушовене",
+    "Гривица", "Згалево", "Пордим", "Одърне", "Каменец", "Вълчитрън", "Катерица", "Борислав",
+    "Д. Дъбник - Садовец", "Д.Митрополия - Тръстеник", "Д.Митрополия - Славовица",
+    "Пордим - Каменец", "Пордим - Згалево"
 ];
 const SCHOOLS = [
     "ДФСГ",
@@ -204,6 +207,39 @@ const ClientProfile: React.FC = () => {
             createBuzz(0.6, 0.7); 
         } catch (e) { console.error("Audio error error", e); }
     }, []);
+
+    // Auto-price logic for registration
+    useEffect(() => {
+        if (regRoute && ROUTE_METADATA[regRoute]) {
+            const meta = ROUTE_METADATA[regRoute];
+            let priceStr = meta.priceCard;
+            
+            if (regCardType === 'Ученическа карта') {
+                if (meta.priceCardStudent) {
+                    priceStr = meta.priceCardStudent;
+                } else if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) {
+                        setRegAmount((normal / 2).toFixed(2));
+                        return;
+                    }
+                }
+            } else if (regCardType === 'Пенсионерска карта') {
+                if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) {
+                        setRegAmount((normal / 2).toFixed(2));
+                        return;
+                    }
+                }
+            }
+
+            if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                const numericPrice = priceStr.replace(' €', '').trim();
+                setRegAmount(numericPrice);
+            }
+        }
+    }, [regRoute, regCardType]);
 
     const initAudio = React.useCallback(() => {
         if (audioInitializedRef.current) return;
