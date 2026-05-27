@@ -122,23 +122,51 @@ const sanitizeId = (id: string | null | undefined): string => {
     if (!id) return '';
     let trimmed = id.trim();
     
+    // Map Bulgarian Cyrillic characters (from Phonetic & BDS layouts) to English Latin hex characters (A-F)
+    const phoneticMap: Record<string, string> = {
+        'а': 'a', 'б': 'b', 'ц': 'c', 'д': 'd', 'е': 'e', 'ф': 'f',
+        'А': 'A', 'Б': 'B', 'Ц': 'C', 'Д': 'D', 'Е': 'E', 'Ф': 'F'
+    };
+    
+    const bdsMap: Record<string, string> = {
+        'ь': 'a', 'ф': 'b', 'ц': 'c', 'в': 'd', 'е': 'e', 'а': 'f',
+        'Ь': 'A', 'Ф': 'B', 'Ц': 'C', 'В': 'D', 'Е': 'E', 'А': 'F'
+    };
+    
+    // Detect layout based on presence of layout-specific Cyrillic letters
+    let isBds = false;
+    for (const char of trimmed) {
+        if (['в', 'В', 'ь', 'Ь'].includes(char)) {
+            isBds = true;
+            break;
+        }
+    }
+    
+    const mapToUse = isBds ? bdsMap : phoneticMap;
+    
+    // Translate Cyrillic characters to Latin
+    let translated = '';
+    for (const char of trimmed) {
+        translated += mapToUse[char] || char;
+    }
+    
     // Remove query parameters
-    trimmed = trimmed.split('?')[0];
+    translated = translated.split('?')[0];
     
     // Split by both / and # to get all path segments
-    const parts = trimmed.split(/[/#]/);
+    const parts = translated.split(/[/#]/);
     
     // Filter out empty parts and known URL segments that aren't IDs
-    const cleanParts = parts.filter(p => 
-        p.length > 0 && 
-        !['http:', 'https:', 'davidabg91.github.io', 'darycard', 'client'].includes(p.toLowerCase())
-    );
+    const cleanParts = parts.filter(p => {
+        const cleaned = p.trim().toLowerCase();
+        return cleaned.length > 0 && 
+            !['http:', 'https:', 'davidabg91.github.io', 'darycard', 'client'].includes(cleaned);
+    });
     
-    if (cleanParts.length === 0) return trimmed.toUpperCase();
+    const lastPart = cleanParts.length > 0 ? cleanParts[cleanParts.length - 1] : translated;
     
-    // The last part is our ID
-    const lastPart = cleanParts[cleanParts.length - 1];
-    return lastPart.toUpperCase();
+    // Remove all whitespace and convert to uppercase
+    return lastPart.replace(/\s+/g, '').toUpperCase();
 };
 
 const getDefaultExpiryMonth = () => {
@@ -832,6 +860,7 @@ const AdminPanel: React.FC = () => {
         const matchesSearch = !searchTerm || 
             c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.id.toLowerCase().includes(sanitizeId(searchTerm).toLowerCase()) ||
             c.route.toLowerCase().includes(searchTerm.toLowerCase());
         
         const matchesRoute = filterRoute === 'all' || c.route === filterRoute;
