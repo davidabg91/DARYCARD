@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
@@ -22,6 +22,7 @@ interface Client {
     cardType?: string;
     address?: string;
     school?: string;
+    nfcUid?: string;
 }
 
 const ROUTES = [
@@ -138,6 +139,9 @@ const compressImage = (dataUrl: string, maxWidth: number, maxHeight: number, qua
 const ClientProfile: React.FC = () => {
     const { id: rawId } = useParams<{ id: string }>();
     const id = sanitizeId(rawId);
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const urlUid = queryParams.get('uid') || '';
     const { currentUser } = useAuth();
     const [client, setClient] = useState<Client | null>(null);
     const [loading, setLoading] = useState(true);
@@ -334,6 +338,7 @@ const ClientProfile: React.FC = () => {
         const expiryMonth = regMonth;
         const newClient: Client = {
             id,
+            nfcUid: urlUid.toUpperCase(),
             name: regName,
             route: regRoute,
             cardType: regCardType,
@@ -384,6 +389,12 @@ const ClientProfile: React.FC = () => {
             if (docSnap.exists()) {
                 const data = docSnap.data() as Record<string, unknown>;
                 const clientData: Client = { ...data, id: docSnap.id } as Client;
+                
+                if (urlUid && clientData.nfcUid !== urlUid.toUpperCase()) {
+                    updateDoc(doc(db, 'clients', id), { nfcUid: urlUid.toUpperCase() }).catch(console.error);
+                    clientData.nfcUid = urlUid.toUpperCase();
+                }
+
                 setClient(clientData);
                 if (!hasPlayedSound.current) {
                     initAudio();

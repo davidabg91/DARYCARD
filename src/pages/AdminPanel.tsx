@@ -49,6 +49,7 @@ interface Client {
     scanHistory?: string[];
     cardType?: string;
     address?: string;
+    nfcUid?: string;
     school?: string;
 }
 
@@ -857,11 +858,15 @@ const AdminPanel: React.FC = () => {
 
 
     const filteredClientsByFilters = clients.filter(c => {
+        const sTerm = searchTerm.toLowerCase();
+        const sSanitized = sanitizeId(searchTerm).toLowerCase();
         const matchesSearch = !searchTerm || 
-            c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.id.toLowerCase().includes(sanitizeId(searchTerm).toLowerCase()) ||
-            c.route.toLowerCase().includes(searchTerm.toLowerCase());
+            c.name.toLowerCase().includes(sTerm) ||
+            c.id.toLowerCase().includes(sTerm) ||
+            c.id.toLowerCase().includes(sSanitized) ||
+            (c.nfcUid && c.nfcUid.toLowerCase().includes(sTerm)) ||
+            (c.nfcUid && c.nfcUid.toLowerCase().includes(sSanitized)) ||
+            c.route.toLowerCase().includes(sTerm);
         
         const matchesRoute = filterRoute === 'all' || c.route === filterRoute;
         
