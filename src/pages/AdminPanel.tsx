@@ -673,8 +673,6 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
-        setLoading(true);
-
         // Fetch link from mapping
         let mappedLinkId = '';
         try {
@@ -683,13 +681,11 @@ const AdminPanel: React.FC = () => {
                 mappedLinkId = mapDoc.data().linkId;
             } else {
                 setMessage({ text: `Грешка: Не е намерен линк за пластика с номер ${cardNumber}. Моля, импортирайте CSV файла!`, type: 'error' });
-                setLoading(false);
                 return;
             }
         } catch (err) {
             console.error("Грешка при проверка на номера", err);
             setMessage({ text: 'Възникна грешка при проверката на поредния номер в базата.', type: 'error' });
-            setLoading(false);
             return;
         }
 
@@ -699,7 +695,6 @@ const AdminPanel: React.FC = () => {
         if (existingClient && !showDuplicateWarning) {
             setDuplicateCheckClient(existingClient);
             setShowDuplicateWarning(true);
-            setLoading(false);
             return;
         }
 
@@ -712,7 +707,6 @@ const AdminPanel: React.FC = () => {
                 text: `Тази карта (ID: ${mappedLinkId}) вече е присвоена на ${idOccupied.name}. Моля, използвайте друга карта или първо изтрийте стария профил.`, 
                 type: 'error' 
             });
-            setLoading(false);
             return;
         }
 
