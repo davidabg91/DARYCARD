@@ -18,6 +18,7 @@ import {
     onSnapshot,
     updateDoc,
     deleteDoc,
+    getDoc,
     query
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -304,6 +305,7 @@ const AdminPanel: React.FC = () => {
     const [expiryDate, setExpiryDate] = useState(getDefaultExpiryMonth());
     const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
     const [nfcLinkId, setNfcLinkId] = useState('');
+    const [cardNumber, setCardNumber] = useState('');
     const [address, setAddress] = useState('');
     const [selectedSchool, setSelectedSchool] = useState('');
     const [customSchool, setCustomSchool] = useState('');
@@ -618,6 +620,41 @@ const AdminPanel: React.FC = () => {
         setPhotoDataURL(null);
     };
 
+    const handleCsvImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const text = e.target?.result as string;
+            const lines = text.split('\n');
+            let count = 0;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const parts = line.split(/[,;]/);
+                if (parts.length >= 2) {
+                    const urlPart = parts[0].trim();
+                    const numberPart = parts[1].trim();
+                    
+                    const match = urlPart.match(/client\/([A-Za-z0-9_-]+)/);
+                    if (match && match[1] && numberPart) {
+                        const linkId = match[1];
+                        try {
+                            await setDoc(doc(db, 'card_mappings', numberPart), { linkId });
+                            count++;
+                        } catch(err) {
+                            console.error("Error saving mapping", err);
+                        }
+                    }
+                }
+            }
+            alert(`Успешно импортирани ${count} карти!`);
+        };
+        reader.readAsText(file);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -627,7 +664,32 @@ const AdminPanel: React.FC = () => {
         }
 
         if (!nfcLinkId) {
-            setMessage({ text: 'Моля, свържете карта (Сканирайте или въведете ID), преди да запишете.', type: 'error' });
+            setMessage({ text: 'Моля, сканирайте картата на четеца.', type: 'error' });
+            return;
+        }
+
+        if (!cardNumber) {
+            setMessage({ text: 'Моля, въведете Пореден номер от пластиката.', type: 'error' });
+            return;
+        }
+
+        setLoading(true);
+
+        // Fetch link from mapping
+        let mappedLinkId = '';
+        try {
+            const mapDoc = await getDoc(doc(db, 'card_mappings', cardNumber));
+            if (mapDoc.exists()) {
+                mappedLinkId = mapDoc.data().linkId;
+            } else {
+                setMessage({ text: `Грешка: Не е намерен линк за пластика с номер ${cardNumber}. Моля, импортирайте CSV файла!`, type: 'error' });
+                setLoading(false);
+                return;
+            }
+        } catch (err) {
+            console.error("Грешка при проверка на номера", err);
+            setMessage({ text: 'Възникна грешка при проверката на поредния номер в базата.', type: 'error' });
+            setLoading(false);
             return;
         }
 
@@ -637,24 +699,26 @@ const AdminPanel: React.FC = () => {
         if (existingClient && !showDuplicateWarning) {
             setDuplicateCheckClient(existingClient);
             setShowDuplicateWarning(true);
+            setLoading(false);
             return;
         }
 
         const sanitizedNfcId = nfcLinkId ? sanitizeId(nfcLinkId) : '';
         
-        // Card ID Occupied Check - Hard stop if ID exists
-        const idOccupied = clients.find(c => c.id === sanitizedNfcId);
+        // Card ID Occupied Check
+        const idOccupied = clients.find(c => c.id === mappedLinkId);
         if (idOccupied) {
             setMessage({ 
-                text: `Тази карта (ID: ${sanitizedNfcId}) вече е присвоена на ${idOccupied.name}. Моля, използвайте друга карта или първо изтрийте стария профил.`, 
+                text: `Тази карта (ID: ${mappedLinkId}) вече е присвоена на ${idOccupied.name}. Моля, използвайте друга карта или първо изтрийте стария профил.`, 
                 type: 'error' 
             });
+            setLoading(false);
             return;
         }
 
-        const generatedId = sanitizedNfcId || generateClientId();
         const newClient: Client = {
-            id: generatedId,
+            id: mappedLinkId,
+            nfcUid: sanitizedNfcId,
             name: clientName,
             route: selectedRoute,
             cardType: cardType,
@@ -1739,9 +1803,20 @@ const AdminPanel: React.FC = () => {
 
             {activeTab === 'register' && (
                 <div style={{ marginBottom: '2rem', animation: 'fadeIn 0.4s ease' }}>
-                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#00c853', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <PlusCircle size={24} /> ДОБАВЯНЕ НА КАРТА
-                    </h2>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#00c853', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <PlusCircle size={24} /> ДОБАВЯНЕ НА КАРТА
+                        </h2>
+                        
+                        <label style={{ 
+                            padding: '0.6rem 1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', 
+                            borderRadius: '8px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            fontSize: '0.85rem', fontWeight: 600
+                        }}>
+                            <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvImport} />
+                            <RefreshCw size={16} /> Импорт CSV Карти
+                        </label>
+                    </div>
                     
                     {registrationSuccess ? (
                         <Card style={{ 
@@ -1904,22 +1979,32 @@ const AdminPanel: React.FC = () => {
                                         </div>
                                     </div>
                                     <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-                                        <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Свързване на Карта (NFC/Link)</label>
-                                        <div className="nfc-connect-container" style={{ display: 'flex', gap: '0.75rem' }}>
-                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Свързване на Карта</label>
+                                        
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Отпечатан номер</label>
                                                 <input 
                                                     type="text" 
-                                                    placeholder="ID от Карта (напр. ABC123)" 
+                                                    placeholder="Напр. 1 или 001" 
+                                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--surface-border)', color: 'var(--primary-color)', fontWeight: 700 }} 
+                                                    value={cardNumber} 
+                                                    onChange={e => setCardNumber(e.target.value.trim())} 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Сканирай (UID)</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="UID от четеца" 
                                                     style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--surface-border)', color: 'var(--primary-color)', fontWeight: 700, fontFamily: 'monospace' }} 
                                                     value={nfcLinkId} 
                                                     onChange={e => setNfcLinkId(e.target.value.toUpperCase())} 
                                                 />
-                                                {nfcLinkId && nfcLinkId.includes('/') && (
-                                                    <div style={{ fontSize: '0.65rem', color: 'var(--success-color)', padding: '2px 4px' }}>
-                                                        Разпознат ID: <b>{sanitizeId(nfcLinkId)}</b>
-                                                    </div>
-                                                )}
                                             </div>
+                                        </div>
+                                        
+                                        <div className="nfc-connect-container" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                                             <button 
                                                 type="button"
                                                 onClick={toggleWaitingForScan}
