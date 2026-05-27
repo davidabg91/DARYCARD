@@ -120,7 +120,7 @@ const generateClientId = () => Math.random().toString(36).substr(2, 9).toUpperCa
 
 const sanitizeId = (id: string | null | undefined): string => {
     if (!id) return '';
-    let trimmed = id.trim();
+    const trimmed = id.trim();
     
     // Map Bulgarian Cyrillic characters (from Phonetic & BDS layouts) to English Latin hex characters (A-F)
     const phoneticMap: Record<string, string> = {
