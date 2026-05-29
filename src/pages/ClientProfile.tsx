@@ -3,7 +3,7 @@ import { useParams, Link, useLocation } from 'react-router-dom';
 import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection, writeBatch } from 'firebase/firestore';
 import LoadingScreen from '../components/LoadingScreen';
 import { ROUTE_METADATA } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
@@ -528,11 +528,19 @@ const ClientProfile: React.FC = () => {
                 scannedRef.current = id;
                 const clientRef = doc(db, 'clients', id);
                 const isoNow = new Date().toISOString();
-                await updateDoc(clientRef, {
+                // Each scan is its own document in the clients/{id}/scans subcollection,
+                // so the client doc never grows toward the 1MB limit. The bounded
+                // scanCount / lastScanAt stay on the main doc for quick reads.
+                const batch = writeBatch(db);
+                batch.update(clientRef, {
                     scanCount: increment(1),
                     lastScanAt: isoNow,
-                    scanHistory: arrayUnion(isoNow)
                 });
+                batch.set(doc(collection(clientRef, 'scans')), {
+                    at: isoNow,
+                    route: client?.route ?? '',
+                });
+                await batch.commit();
                 sessionStorage.setItem(scanKey, now.toString());
             } catch (e) {
                 console.error("Error tracking scan:", e);
@@ -540,7 +548,7 @@ const ClientProfile: React.FC = () => {
             }
         };
         performTrackScan();
-    }, [id, currentUser, loading, hasClient]);
+    }, [id, currentUser, loading, hasClient, client?.route]);
 
     useEffect(() => {
         const resetIdleTimer = () => {

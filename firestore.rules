@@ -39,6 +39,15 @@ service cloud.firestore {
       allow list: if isStaff();
       allow create, update: if isStaff();
       allow delete: if isAdmin();
+
+      // Per-scan records (moved out of the unbounded scanHistory array on the
+      // client doc). Written by staff when a card is scanned; read by staff for
+      // analytics/abuse detection. The public `get` above does NOT expose this
+      // subcollection — subcollection rules are independent.
+      match /scans/{scanId} {
+        allow read, create: if isStaff();
+        allow update, delete: if isAdmin();
+      }
     }
 
     // ---- Public intake forms ----

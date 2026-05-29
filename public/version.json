@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.29.14.08",
-  "buildDate": "2026-05-29T14:08:00Z",
-  "notes": "Remove the orange 'new line' dots from the destination tabs on the landing page."
+  "version": "2026.05.30.12.00",
+  "buildDate": "2026-05-30T12:00:00Z",
+  "notes": "Scans moved to clients/{id}/scans subcollection (no more unbounded scanHistory); audit log + client list now paginate in batches of 20."
 }

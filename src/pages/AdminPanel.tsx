@@ -50,7 +50,6 @@ interface Client {
     history?: ClientLog[];
     scanCount?: number;
     lastScanAt?: string;
-    scanHistory?: string[];
     cardType?: string;
     address?: string;
     nfcUid?: string;
@@ -294,6 +293,7 @@ const AdminPanel: React.FC = () => {
     const [notifBody, setNotifBody] = useState('');
     const [selectedNotifRoutes, setSelectedNotifRoutes] = useState<string[]>(['all']);
     const [searchTerm, setSearchTerm] = useState('');
+    const [visibleClients, setVisibleClients] = useState(20);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -354,6 +354,13 @@ const AdminPanel: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
     const [filterRoute, setFilterRoute] = useState<string>('all');
+
+    // Reset the visible-client window whenever the filters change, so a new
+    // search always starts from the first 20 matches.
+    useEffect(() => {
+        setVisibleClients(20);
+    }, [searchTerm, filterRoute, filterMonth]);
+
     const [reportMonth, setReportMonth] = useState<string>('all');
     const [reportCardType, setReportCardType] = useState<string>('all');
     const [reportRoute, setReportRoute] = useState<string>('all');
@@ -1722,7 +1729,7 @@ const AdminPanel: React.FC = () => {
                                 </thead>
                                 <tbody>
                                     {filteredClientsByFilters.length > 0 ? (
-                                        filteredClientsByFilters.map(client => {
+                                        filteredClientsByFilters.slice(0, visibleClients).map(client => {
                                             const status = getClientStatusForMonth(client, filterMonth);
                                             return (
                                                 <tr key={client.id}>
@@ -1801,7 +1808,7 @@ const AdminPanel: React.FC = () => {
 
                     <div className="mobile-cards">
                         {filteredClientsByFilters.length > 0 ? (
-                            filteredClientsByFilters.map(client => {
+                            filteredClientsByFilters.slice(0, visibleClients).map(client => {
                                 const status = getClientStatusForMonth(client, filterMonth);
                                 const isMonthPaid = getMonthPayment(client, filterMonth) > 0;
                                 return (
@@ -1865,6 +1872,17 @@ const AdminPanel: React.FC = () => {
                             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Няма намерени клиенти.</div>
                         )}
                     </div>
+
+                    {filteredClientsByFilters.length > visibleClients && (
+                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
+                            <button
+                                onClick={() => setVisibleClients(n => n + 20)}
+                                style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid var(--surface-border)', borderRadius: '50px', padding: '0.8rem 2rem', fontWeight: 800, cursor: 'pointer' }}
+                            >
+                                Зареди още ({filteredClientsByFilters.length - visibleClients})
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 

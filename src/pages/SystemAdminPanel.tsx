@@ -5,7 +5,7 @@ import {
     RefreshCw, Search, Clock, Shield,
     UserPlus, Trash2
 } from 'lucide-react';
-import { collection, query, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { collection, collectionGroup, query, where, orderBy, limit, onSnapshot, updateDoc, doc, writeBatch, deleteField } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
@@ -33,9 +33,16 @@ interface Client {
     renewalHistory?: { date: string, amount: number, month: string }[];
     scanCount?: number;
     lastScanAt?: string;
-    scanHistory?: string[];
     createdAt: string;
     abuseReviewedAt?: string;
+}
+
+// One scan record from the clients/{id}/scans subcollection, flattened with its
+// parent client id for in-memory grouping.
+interface ScanRecord {
+    clientId: string;
+    at: string;
+    route: string;
 }
 
 interface GlobalLog {
@@ -76,9 +83,15 @@ const SystemAdminPanel: React.FC = () => {
 
     // Global Data
     const [clients, setClients] = useState<Client[]>([]);
+    const [scans, setScans] = useState<ScanRecord[]>([]);
     const [globalLogs, setGlobalLogs] = useState<GlobalLog[]>([]);
+    const [logLimit, setLogLimit] = useState(20);
     const [loading, setLoading] = useState(true);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    // One-off maintenance (delete legacy scanHistory arrays)
+    const [cleanupRunning, setCleanupRunning] = useState(false);
+    const [cleanupMsg, setCleanupMsg] = useState<string | null>(null);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -104,29 +117,47 @@ const SystemAdminPanel: React.FC = () => {
     // Audit State
     const [auditSearch, setAuditSearch] = useState('');
 
+    // Clients — loaded in full because the dashboard aggregates (revenue, route
+    // stats, abuse) need every client.
     useEffect(() => {
-        // Listen for Clients
-        const qClients = query(collection(db, 'clients'));
-        const unsubClients = onSnapshot(qClients, (snap) => {
+        const unsub = onSnapshot(query(collection(db, 'clients')), (snap) => {
             const list: Client[] = [];
-            snap.forEach(doc => list.push({ id: doc.id, ...doc.data() } as Client));
+            snap.forEach(d => list.push({ id: d.id, ...d.data() } as Client));
             setClients(list);
-        });
-
-        // Listen for Audit Logs
-        const qLogs = query(collection(db, 'activity_logs'));
-        const unsubLogs = onSnapshot(qLogs, (snap) => {
-            const logs: GlobalLog[] = [];
-            snap.forEach(doc => logs.push({ id: doc.id, ...doc.data() } as GlobalLog));
-            setGlobalLogs(() => {
-                const newList = [...logs];
-                return newList.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-            });
             setLoading(false);
         });
-
-        return () => { unsubClients(); unsubLogs(); };
+        return () => unsub();
     }, []);
+
+    // Scans — read from the clients/{id}/scans subcollection via a collection-group
+    // query, bounded to a recent window (covers the abuse detector's ~60 days and
+    // the selected day for the hourly chart). Requires the scans.at collection-group
+    // index in firestore.indexes.json.
+    useEffect(() => {
+        const sixtyDaysAgo = new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0];
+        const windowStart = selectedDate < sixtyDaysAgo ? selectedDate : sixtyDaysAgo;
+        const qScans = query(collectionGroup(db, 'scans'), where('at', '>=', windowStart));
+        const unsub = onSnapshot(qScans, (snap) => {
+            const list: ScanRecord[] = snap.docs.map(d => ({
+                clientId: d.ref.parent.parent?.id ?? '',
+                at: (d.data().at as string) ?? '',
+                route: (d.data().route as string) ?? '',
+            }));
+            setScans(list);
+        }, (err) => console.error('Scans listener error:', err));
+        return () => unsub();
+    }, [selectedDate]);
+
+    // Audit logs — newest first, paginated in batches of 20.
+    useEffect(() => {
+        const qLogs = query(collection(db, 'activity_logs'), orderBy('timestamp', 'desc'), limit(logLimit));
+        const unsub = onSnapshot(qLogs, (snap) => {
+            const logs: GlobalLog[] = [];
+            snap.forEach(d => logs.push({ id: d.id, ...d.data() } as GlobalLog));
+            setGlobalLogs(logs);
+        });
+        return () => unsub();
+    }, [logLimit]);
 
     // --- Helper Functions ---
     const isExpired = (monthStr: string | undefined, client?: Client) => {
@@ -183,15 +214,12 @@ const SystemAdminPanel: React.FC = () => {
 
     const hourlyDistribution = (() => {
         const dist = Array(24).fill(0);
-        clients.forEach(c => {
-            (c.scanHistory || []).forEach(ts => {
-                if (ts.startsWith(selectedDate)) {
-                    if (chartRoute === 'all_routes' || c.route === chartRoute) {
-                        const hr = new Date(ts).getHours();
-                        dist[hr]++;
-                    }
+        scans.forEach(s => {
+            if (s.at.startsWith(selectedDate)) {
+                if (chartRoute === 'all_routes' || s.route === chartRoute) {
+                    dist[new Date(s.at).getHours()]++;
                 }
-            });
+            }
         });
         return dist;
     })();
@@ -221,14 +249,26 @@ const SystemAdminPanel: React.FC = () => {
         return { route, count, revenue };
     }).sort((a, b) => b.revenue - a.revenue);
 
-    // Suspicious Activity (Abuse detection)
+    // Suspicious Activity (Abuse detection) — group the recent-window scans by
+    // client, then flag days with more than 3 scans on the same card.
+    const scansByClient = (() => {
+        const map: Record<string, string[]> = {};
+        scans.forEach(s => {
+            if (!s.clientId) return;
+            if (!map[s.clientId]) map[s.clientId] = [];
+            map[s.clientId].push(s.at);
+        });
+        return map;
+    })();
+
     const suspiciousClientsData = clients.map(c => {
-        if (!c.scanHistory) return null;
+        const allScans = scansByClient[c.id];
+        if (!allScans || allScans.length === 0) return null;
 
         // Filter out scans before last review
         const relevantScans = c.abuseReviewedAt
-            ? c.scanHistory.filter(ts => ts > c.abuseReviewedAt!)
-            : c.scanHistory;
+            ? allScans.filter(ts => ts > c.abuseReviewedAt!)
+            : allScans;
 
         if (relevantScans.length === 0) return null;
 
@@ -240,7 +280,7 @@ const SystemAdminPanel: React.FC = () => {
         }, {} as Record<string, string[]>);
 
         const abuseDays = Object.entries(byDate)
-            .filter(([, scans]) => scans.length > 3)
+            .filter(([, dayScans]) => dayScans.length > 3)
             .sort((a, b) => b[0].localeCompare(a[0]));
 
         if (abuseDays.length === 0) return null;
@@ -256,6 +296,31 @@ const SystemAdminPanel: React.FC = () => {
             });
         } catch (err) {
             console.error("Error clearing abuse:", err);
+        }
+    };
+
+    // One-off maintenance: scans now live in the clients/{id}/scans subcollection,
+    // so the legacy inline scanHistory arrays are dead weight. This deletes them in
+    // write batches. Safe to remove this button once it has been run.
+    const handleCleanupScanHistory = async () => {
+        if (!window.confirm('Изтриване на старите scanHistory масиви от всички клиенти? Това освобождава място и не може да се върне.')) return;
+        setCleanupRunning(true);
+        setCleanupMsg(null);
+        try {
+            const targets = clients.filter(c => Array.isArray((c as { scanHistory?: unknown }).scanHistory));
+            for (let i = 0; i < targets.length; i += 400) {
+                const batch = writeBatch(db);
+                targets.slice(i, i + 400).forEach(c => {
+                    batch.update(doc(db, 'clients', c.id), { scanHistory: deleteField() });
+                });
+                await batch.commit();
+            }
+            setCleanupMsg(`Готово. Изчистени ${targets.length} клиента.`);
+        } catch (err) {
+            console.error('Cleanup error:', err);
+            setCleanupMsg('Грешка при изчистване.');
+        } finally {
+            setCleanupRunning(false);
         }
     };
 
@@ -583,6 +648,22 @@ const SystemAdminPanel: React.FC = () => {
                             ))}
                         </div>
                     </Card>
+
+                    {/* One-off maintenance — remove after running once */}
+                    <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
+                        <h3 style={{ marginBottom: '0.75rem', fontSize: isMobile ? '1.1rem' : '1.3rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Trash2 size={isMobile ? 18 : 22} color="#ff9800" /> Поддръжка</h3>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: 1.5 }}>
+                            Сканиранията вече се пазят в отделна подколекция. Този бутон изтрива старите <code>scanHistory</code> масиви от документите на клиентите, за да освободи място. Изпълнява се еднократно.
+                        </p>
+                        <button
+                            onClick={handleCleanupScanHistory}
+                            disabled={cleanupRunning}
+                            style={{ background: 'rgba(255,152,0,0.12)', color: '#ff9800', border: '1px solid rgba(255,152,0,0.3)', borderRadius: '10px', padding: '0.75rem 1.5rem', fontWeight: 800, cursor: cleanupRunning ? 'default' : 'pointer', opacity: cleanupRunning ? 0.6 : 1 }}
+                        >
+                            {cleanupRunning ? 'Изчистване...' : 'Изчисти стари scanHistory данни'}
+                        </button>
+                        {cleanupMsg && <div style={{ marginTop: '1rem', fontSize: '0.85rem', fontWeight: 700, color: '#00c853' }}>{cleanupMsg}</div>}
+                    </Card>
                 </div>
             )}
 
@@ -610,7 +691,7 @@ const SystemAdminPanel: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredLogs.slice(0, 100).map(log => (
+                                        {filteredLogs.map(log => (
                                             <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
                                                 <td style={{ padding: '1.25rem', fontSize: '0.8rem', opacity: 0.5 }}>{new Date(log.timestamp).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                                                 <td style={{ padding: '1.25rem' }}><span style={{ padding: '4px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>{log.performedBy.split('@')[0]}</span></td>
@@ -625,7 +706,7 @@ const SystemAdminPanel: React.FC = () => {
                             </div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'rgba(255,255,255,0.05)' }}>
-                                {filteredLogs.slice(0, 50).map(log => (
+                                {filteredLogs.map(log => (
                                     <div key={log.id} style={{ padding: '1rem', background: '#1a1a1a', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>{new Date(log.timestamp).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
@@ -649,6 +730,16 @@ const SystemAdminPanel: React.FC = () => {
                             </div>
                         )}
                     </Card>
+                    {globalLogs.length >= logLimit && (
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <button
+                                onClick={() => setLogLimit(n => n + 20)}
+                                style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid var(--surface-border)', borderRadius: '50px', padding: '0.8rem 2rem', fontWeight: 800, cursor: 'pointer' }}
+                            >
+                                Зареди още
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
