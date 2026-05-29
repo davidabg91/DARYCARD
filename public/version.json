@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.29.13.47",
-  "buildDate": "2026-05-29T13:47:00Z",
-  "notes": "Failed-login monitoring: capture IP/geolocation of failed attempts, log them, and push a security alert to admin devices on repeated attempts from the same IP."
+  "version": "2026.05.29.14.08",
+  "buildDate": "2026-05-29T14:08:00Z",
+  "notes": "Remove the orange 'new line' dots from the destination tabs on the landing page."
 }

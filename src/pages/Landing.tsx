@@ -800,22 +800,8 @@ const Landing: React.FC = () => {
                                     <MapPin size={18} />
                                 </div>
                                 <div style={{ overflow: 'hidden', width: '100%', position: 'relative' }}>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {line}
-                                        {[
-                                            "Гривица", "Згалево", "Пордим", "Одърне", "Каменец", 
-                                            "Вълчитрън", "Катерица", "Борислав", 
-                                            "Пордим - Каменец", "Пордим - Згалево"
-                                        ].includes(line) && (
-                                            <div style={{ 
-                                                width: '8px', 
-                                                height: '8px', 
-                                                background: '#ff9800', 
-                                                borderRadius: '50%',
-                                                boxShadow: '0 0 10px rgba(255, 152, 0, 0.5)',
-                                                flexShrink: 0
-                                            }} title="Нова линия" />
-                                        )}
                                     </h3>
                                     <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Преглед</div>
                                 </div>
