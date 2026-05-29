@@ -7,6 +7,7 @@ import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, coll
 import LoadingScreen from '../components/LoadingScreen';
 import { ROUTE_METADATA } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
+import ClientPhoto from '../components/ClientPhoto';
 
 interface Client {
     id: string;
@@ -24,6 +25,7 @@ interface Client {
     address?: string;
     school?: string;
     nfcUid?: string;
+    photoThumb?: string;
 }
 
 const ROUTES = [
@@ -347,6 +349,14 @@ const ClientProfile: React.FC = () => {
             console.error('Photo upload failed, falling back to inline image:', uploadErr);
         }
 
+        // Tiny inline thumbnail (~few KB) kept in the document for instant/offline display.
+        let photoThumb = '';
+        try {
+            photoThumb = await compressImage(regPhoto, 96, 96, 0.5);
+        } catch (thumbErr) {
+            console.error('Thumbnail generation failed:', thumbErr);
+        }
+
         const newClient: Client = {
             id,
             nfcUid: urlUid.toUpperCase(),
@@ -357,6 +367,7 @@ const ClientProfile: React.FC = () => {
             school: regCardType === 'Ученическа карта' ? (regSelectedSchool === 'custom' ? regCustomSchool : regSelectedSchool) : '',
             expiryDate: expiryMonth,
             photo: photoValue,
+            photoThumb,
             createdAt: now.toISOString(),
             amountPaid: Number(regAmount),
             renewalHistory: [{ date: now.toISOString(), amount: Number(regAmount), month: expiryMonth }],
@@ -742,18 +753,18 @@ const ClientProfile: React.FC = () => {
                             opacity: 0.15,
                             filter: 'blur(15px)'
                         }} />
-                        <img 
-                            src={client.photo} 
-                            style={{ 
-                                width: '240px', 
-                                height: '240px', 
-                                objectFit: 'cover', 
-                                borderRadius: '28px', 
+                        <ClientPhoto
+                            src={client.photo}
+                            thumb={client.photoThumb}
+                            alt="Profile"
+                            style={{
+                                width: '240px',
+                                height: '240px',
+                                borderRadius: '28px',
                                 border: `4px solid ${themeColor}`,
                                 boxShadow: `0 20px 50px rgba(0,0,0,0.7)`,
                                 position: 'relative'
-                            }} 
-                            alt="Profile" 
+                            }}
                         />
                     </div>
 

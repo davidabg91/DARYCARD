@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.29.12.43",
-  "buildDate": "2026-05-29T12:43:00Z",
-  "notes": "New client photos are stored in Firebase Storage (URL in the document) instead of inline base64, shrinking client documents and real-time downloads."
+  "version": "2026.05.29.13.14",
+  "buildDate": "2026-05-29T13:14:00Z",
+  "notes": "Offline photo resilience: service-worker caching of Storage photos + tiny inline thumbnail in the document for instant/offline display on the driver and card-scan views."
 }

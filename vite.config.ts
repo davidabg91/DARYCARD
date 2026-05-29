@@ -34,6 +34,22 @@ export default defineConfig({
           {
             urlPattern: /\/version\.json/i,
             handler: 'NetworkOnly',
+          },
+          {
+            // Cache client photos from Firebase Storage so each photo, once viewed
+            // online, is available instantly and offline on later scans.
+            urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'client-photos',
+              expiration: {
+                maxEntries: 2000,
+                maxAgeSeconds: 60 * 60 * 24 * 90, // 90 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
           }
         ]
       },

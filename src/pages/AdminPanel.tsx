@@ -55,6 +55,7 @@ interface Client {
     address?: string;
     nfcUid?: string;
     school?: string;
+    photoThumb?: string;
 }
 
 interface Signal {
@@ -681,6 +682,14 @@ const AdminPanel: React.FC = () => {
             console.error('Photo upload failed, falling back to inline image:', err);
         }
 
+        // Tiny inline thumbnail kept in the document for instant/offline display.
+        let photoThumb = '';
+        try {
+            if (photoDataURL) photoThumb = await compressImage(photoDataURL, 96, 96, 0.5);
+        } catch (err) {
+            console.error('Thumbnail generation failed:', err);
+        }
+
         const newClient: Client = {
             id: generatedId,
             name: clientName,
@@ -689,6 +698,7 @@ const AdminPanel: React.FC = () => {
             amountPaid: Number(amountPaid),
             expiryDate: expiryDate,
             photo: photoValue,
+            photoThumb,
             address: cardType === 'Пенсионерска карта' ? address : '',
             school: cardType === 'Ученическа карта' ? (selectedSchool === 'custom' ? customSchool : selectedSchool) : '',
             createdAt: new Date().toISOString(),

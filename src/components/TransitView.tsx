@@ -5,6 +5,7 @@ import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap } from 'lucide
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AdSlideshow from './AdSlideshow';
+import ClientPhoto from './ClientPhoto';
 import MyPosSmartSdk from '../services/MyPosSmartSdk';
 import { Capacitor } from '@capacitor/core';
 
@@ -16,6 +17,7 @@ interface Client {
     isCanceled?: boolean;
     cardType?: string;
     renewalHistory?: { month: string; amount: number; date: string }[];
+    photoThumb?: string;
 }
 
 interface TransitViewProps {
@@ -394,7 +396,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
                                     <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowPhotoModal(true)}>
                                         <div style={{ position: 'absolute', inset: '-15px', background: themeColor, borderRadius: '28px', opacity: 0.2, filter: 'blur(25px)' }} />
-                                        <img src={client?.photo} style={{ width: '260px', height: '260px', objectFit: 'cover', borderRadius: '28px', border: `4px solid ${themeColor}`, position: 'relative', boxShadow: '0 30px 60px rgba(0,0,0,0.7)' }} alt="Profile" />
+                                        <ClientPhoto src={client?.photo} thumb={client?.photoThumb} alt="Profile" style={{ width: '260px', height: '260px', borderRadius: '28px', border: `4px solid ${themeColor}`, position: 'relative', boxShadow: '0 30px 60px rgba(0,0,0,0.7)' }} />
                                     </div>
 
                                     <div style={{ textAlign: 'center' }}>
