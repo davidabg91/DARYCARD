@@ -15,6 +15,12 @@ dist-ssr
 # Cloud Functions build output
 functions/lib
 
+# Maintenance scripts: secrets and backups must never be committed
+serviceAccountKey.json
+**/serviceAccountKey.json
+photo-backup-*.jsonl
+scripts/node_modules
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

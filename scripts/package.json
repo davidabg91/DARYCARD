@@ -1,0 +1,9 @@
+{
+  "name": "dary-scripts",
+  "private": true,
+  "type": "module",
+  "description": "One-off maintenance scripts (photo migration to Firebase Storage).",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}
