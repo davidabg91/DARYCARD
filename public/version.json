@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.29.13.14",
-  "buildDate": "2026-05-29T13:14:00Z",
-  "notes": "Offline photo resilience: service-worker caching of Storage photos + tiny inline thumbnail in the document for instant/offline display on the driver and card-scan views."
+  "version": "2026.05.29.13.47",
+  "buildDate": "2026-05-29T13:47:00Z",
+  "notes": "Failed-login monitoring: capture IP/geolocation of failed attempts, log them, and push a security alert to admin devices on repeated attempts from the same IP."
 }

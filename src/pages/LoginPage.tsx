@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useAuth } from '../context/AuthContext';
+import app from '../firebase';
 import logo from '../assets/logo_main.png';
+
+// Codes that represent a real failed sign-in attempt worth reporting.
+const REPORTABLE_AUTH_CODES = [
+    'auth/wrong-password',
+    'auth/user-not-found',
+    'auth/invalid-credential',
+    'auth/too-many-requests',
+];
 
 const LoginPage: React.FC = () => {
     const { login, currentUser } = useAuth();
@@ -32,6 +42,19 @@ const LoginPage: React.FC = () => {
                 setError('Грешно потребителско име или парола.');
             } else {
                 setError('Възникна грешка при вход. Моля, опитайте пак.');
+            }
+
+            // Report the failed attempt (fire-and-forget). The server enriches it
+            // with IP/geolocation and alerts admins on repeated attempts.
+            if (error.code && REPORTABLE_AUTH_CODES.includes(error.code)) {
+                try {
+                    const reportFailedLogin = httpsCallable(getFunctions(app), 'reportFailedLogin');
+                    reportFailedLogin({
+                        email: username.trim(),
+                        errorCode: error.code,
+                        ua: navigator.userAgent,
+                    }).catch(() => { /* ignore reporting errors */ });
+                } catch { /* ignore */ }
             }
         } finally {
             setLoading(false);

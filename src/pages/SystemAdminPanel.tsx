@@ -9,6 +9,8 @@ import { collection, query, onSnapshot, updateDoc, doc } from 'firebase/firestor
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
+import AdminAlertsButton from '../components/AdminAlertsButton';
+import SecurityLog from '../components/SecurityLog';
 import type { UserRole } from '../types/auth';
 
 // Custom icons since they weren't in common lists or were problematic in older versions
@@ -506,6 +508,10 @@ const SystemAdminPanel: React.FC = () => {
             {/* Users Tab */}
             {activeTab === 'users' && (
                 <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.3s ease' }}>
+                    <AdminAlertsButton />
+                    <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
+                        <SecurityLog />
+                    </Card>
                     <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
                         <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: isMobile ? '1.2rem' : '1.5rem' }}><UserPlus size={isMobile ? 20 : 24} color="var(--primary-color)" /> Добави Нов Персонал</h3>
                         <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

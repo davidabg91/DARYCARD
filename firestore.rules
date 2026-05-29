@@ -71,6 +71,22 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ---- Failed-login monitoring ----
+    // Only the reportFailedLogin Cloud Function (Admin SDK) writes attempts and
+    // counters; staff can read the attempt log. Admin devices register their FCM
+    // push token here to receive security alerts.
+    match /login_attempts/{attemptId} {
+      allow read: if isStaff();
+      allow write: if false;
+    }
+    match /login_attempt_counters/{counterId} {
+      allow read, write: if false;
+    }
+    match /admin_push_tokens/{tokenId} {
+      allow read, create, delete: if isStaff();
+      allow update: if isStaff();
+    }
+
     // ---- NFC registration hand-shake ----
     // NOTE: an external NFC reader (C2 integration) writes the scanned card id here.
     // If that reader signs in as a staff account, tighten this to `isStaff()`.
