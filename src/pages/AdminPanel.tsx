@@ -10,16 +10,18 @@ import {
 } from 'lucide-react';
 import Card from '../components/Card';
 import { db } from '../firebase';
-import { 
+import {
     addDoc,
-    doc, 
-    setDoc, 
-    collection, 
+    doc,
+    setDoc,
+    collection,
     onSnapshot,
     updateDoc,
     deleteDoc,
-    getDoc,
-    query
+    query,
+    increment,
+    arrayUnion,
+    runTransaction
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { ROUTE_METADATA } from '../data/routeMetadata';
@@ -118,7 +120,20 @@ const SCHOOLS = [
     "СУ „СТ. ЗАИМОВ“"
 ].sort((a, b) => a.localeCompare(b, 'bg'));
 
-const generateClientId = () => Math.random().toString(36).substr(2, 9).toUpperCase();
+const generateClientId = () => {
+    // Collision-resistant: prefer crypto.randomUUID, fall back to crypto.getRandomValues.
+    // (The old Math.random().substr(2,9) was both deprecated and prone to duplicates
+    // when generating large NFC batches.)
+    const cryptoObj = typeof crypto !== 'undefined' ? crypto : undefined;
+    if (cryptoObj?.randomUUID) {
+        return cryptoObj.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
+    }
+    if (cryptoObj?.getRandomValues) {
+        const bytes = cryptoObj.getRandomValues(new Uint8Array(8));
+        return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+    return (Date.now().toString(36) + Math.random().toString(36).slice(2, 11)).toUpperCase();
+};
 
 const sanitizeId = (id: string | null | undefined): string => {
     if (!id) return '';
@@ -305,7 +320,6 @@ const AdminPanel: React.FC = () => {
     const [expiryDate, setExpiryDate] = useState(getDefaultExpiryMonth());
     const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
     const [nfcLinkId, setNfcLinkId] = useState('');
-    const [cardNumber, setCardNumber] = useState('');
     const [address, setAddress] = useState('');
     const [selectedSchool, setSelectedSchool] = useState('');
     const [customSchool, setCustomSchool] = useState('');
@@ -620,41 +634,6 @@ const AdminPanel: React.FC = () => {
         setPhotoDataURL(null);
     };
 
-    const handleCsvImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const text = e.target?.result as string;
-            const lines = text.split('\n');
-            let count = 0;
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                
-                const parts = line.split(/[,;]/);
-                if (parts.length >= 2) {
-                    const urlPart = parts[0].trim();
-                    const numberPart = parts[1].trim();
-                    
-                    const match = urlPart.match(/client\/([A-Za-z0-9_-]+)/);
-                    if (match && match[1] && numberPart) {
-                        const linkId = match[1];
-                        try {
-                            await setDoc(doc(db, 'card_mappings', numberPart), { linkId });
-                            count++;
-                        } catch(err) {
-                            console.error("Error saving mapping", err);
-                        }
-                    }
-                }
-            }
-            alert(`Успешно импортирани ${count} карти!`);
-        };
-        reader.readAsText(file);
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -664,28 +643,7 @@ const AdminPanel: React.FC = () => {
         }
 
         if (!nfcLinkId) {
-            setMessage({ text: 'Моля, сканирайте картата на четеца.', type: 'error' });
-            return;
-        }
-
-        if (!cardNumber) {
-            setMessage({ text: 'Моля, въведете Пореден номер от пластиката.', type: 'error' });
-            return;
-        }
-
-        // Fetch link from mapping
-        let mappedLinkId = '';
-        try {
-            const mapDoc = await getDoc(doc(db, 'card_mappings', cardNumber));
-            if (mapDoc.exists()) {
-                mappedLinkId = mapDoc.data().linkId;
-            } else {
-                setMessage({ text: `Грешка: Не е намерен линк за пластика с номер ${cardNumber}. Моля, импортирайте CSV файла!`, type: 'error' });
-                return;
-            }
-        } catch (err) {
-            console.error("Грешка при проверка на номера", err);
-            setMessage({ text: 'Възникна грешка при проверката на поредния номер в базата.', type: 'error' });
+            setMessage({ text: 'Моля, свържете карта (Сканирайте или въведете ID), преди да запишете.', type: 'error' });
             return;
         }
 
@@ -700,19 +658,19 @@ const AdminPanel: React.FC = () => {
 
         const sanitizedNfcId = nfcLinkId ? sanitizeId(nfcLinkId) : '';
         
-        // Card ID Occupied Check
-        const idOccupied = clients.find(c => c.id === mappedLinkId);
+        // Card ID Occupied Check - Hard stop if ID exists
+        const idOccupied = clients.find(c => c.id === sanitizedNfcId);
         if (idOccupied) {
             setMessage({ 
-                text: `Тази карта (ID: ${mappedLinkId}) вече е присвоена на ${idOccupied.name}. Моля, използвайте друга карта или първо изтрийте стария профил.`, 
+                text: `Тази карта (ID: ${sanitizedNfcId}) вече е присвоена на ${idOccupied.name}. Моля, използвайте друга карта или първо изтрийте стария профил.`, 
                 type: 'error' 
             });
             return;
         }
 
+        const generatedId = sanitizedNfcId || generateClientId();
         const newClient: Client = {
-            id: mappedLinkId,
-            nfcUid: sanitizedNfcId,
+            id: generatedId,
             name: clientName,
             route: selectedRoute,
             cardType: cardType,
@@ -767,35 +725,42 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
-        const history = selectedClient.history || [];
-        const renewalHistory = selectedClient.renewalHistory || [];
         const routeChanged = newRoute !== selectedClient.route;
-        
-        const updatedClient: Client = {
-            ...selectedClient,
-            route: newRoute,
-            expiryDate: newMonth,
-            amountPaid: selectedClient.amountPaid + Number(newAmount),
-            isCanceled: false,
-            renewalHistory: [...renewalHistory, { 
-                date: new Date().toISOString(), 
-                amount: Number(newAmount), 
-                month: newMonth 
-            }],
-            history: [...history, {
-                date: new Date().toISOString(),
-                action: 'Подновяване',
-                details: `Нов месец: ${newMonth}${routeChanged ? ` | Променен курс: ${selectedClient.route} -> ${newRoute}` : ''}`,
-                amount: Number(newAmount),
-                performedBy: currentUser?.username || 'Админ'
-            }]
-        };
+        const isoNow = new Date().toISOString();
 
-        await saveClient(updatedClient, false);
+        // Atomic update: appending to history/renewalHistory and bumping the running
+        // total with arrayUnion + increment instead of overwriting the whole document.
+        // This prevents two moderators renewing the same client from clobbering each
+        // other's payment (lost-update race).
+        try {
+            await updateDoc(doc(db, 'clients', selectedClient.id), {
+                route: newRoute,
+                expiryDate: newMonth,
+                isCanceled: false,
+                amountPaid: increment(Number(newAmount)),
+                renewalHistory: arrayUnion({
+                    date: isoNow,
+                    amount: Number(newAmount),
+                    month: newMonth
+                }),
+                history: arrayUnion({
+                    date: isoNow,
+                    action: 'Подновяване',
+                    details: `Нов месец: ${newMonth}${routeChanged ? ` | Променен курс: ${selectedClient.route} -> ${newRoute}` : ''}`,
+                    amount: Number(newAmount),
+                    performedBy: currentUser?.username || 'Админ'
+                })
+            });
+        } catch (err) {
+            console.error(err);
+            setModalMessage({ text: 'Грешка при подновяване.', type: 'error' });
+            return;
+        }
+
         await logGlobalActivity('Подновяване', selectedClient.name, `Месец: ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курс: ${newRoute}` : ''}`, Number(newAmount));
-        setModalMessage({ 
-            text: `Успешно подновен абонамент за ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курсът е сменен на ${newRoute}.` : ''}`, 
-            type: 'success' 
+        setModalMessage({
+            text: `Успешно подновен абонамент за ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курсът е сменен на ${newRoute}.` : ''}`,
+            type: 'success'
         });
         setNewMonth('');
         setNewAmount('');
@@ -807,29 +772,51 @@ const AdminPanel: React.FC = () => {
         if (!window.confirm('Сигурни ли сте, че искате да изтриете това плащане? Това ще промени общата сума и валидността на картата.')) return;
 
         const entryToDelete = client.renewalHistory[index];
-        const newRenewalHistory = client.renewalHistory.filter((_, i) => i !== index);
-        
-        // Recalculate expiry date - find the latest month in the remaining history
-        let newExpiryDate = client.expiryDate;
-        if (newRenewalHistory.length > 0) {
-            const sortedByMonth = [...newRenewalHistory].sort((a, b) => b.month.localeCompare(a.month));
-            newExpiryDate = sortedByMonth[0].month;
+
+        // Run inside a transaction: read the freshest document, recompute the
+        // remaining history / total / expiry from it, then write. Recomputing from
+        // the live data (not the stale in-memory copy) avoids resurrecting a payment
+        // that another moderator added or deleted in the meantime.
+        try {
+            await runTransaction(db, async (tx) => {
+                const ref = doc(db, 'clients', client.id);
+                const snap = await tx.get(ref);
+                if (!snap.exists()) throw new Error('Клиентът не съществува.');
+                const data = snap.data() as Client;
+                const rh = data.renewalHistory || [];
+
+                let removed = false;
+                const newRenewalHistory = rh.filter(e => {
+                    if (!removed && e.month === entryToDelete.month && e.amount === entryToDelete.amount && e.date === entryToDelete.date) {
+                        removed = true;
+                        return false;
+                    }
+                    return true;
+                });
+
+                let newExpiryDate = data.expiryDate;
+                if (newRenewalHistory.length > 0) {
+                    newExpiryDate = [...newRenewalHistory].sort((a, b) => b.month.localeCompare(a.month))[0].month;
+                }
+
+                tx.update(ref, {
+                    renewalHistory: newRenewalHistory,
+                    amountPaid: (data.amountPaid || 0) - entryToDelete.amount,
+                    expiryDate: newExpiryDate,
+                    history: [...(data.history || []), {
+                        date: new Date().toISOString(),
+                        action: 'Изтрито плащане',
+                        details: `Изтрито плащане за месец ${entryToDelete.month} (${entryToDelete.amount} €)`,
+                        performedBy: currentUser?.username || 'Админ'
+                    }]
+                });
+            });
+        } catch (err) {
+            console.error(err);
+            setMessage({ text: 'Грешка при изтриване на плащане.', type: 'error' });
+            return;
         }
 
-        const updatedClient: Client = {
-            ...client,
-            renewalHistory: newRenewalHistory,
-            amountPaid: client.amountPaid - entryToDelete.amount,
-            expiryDate: newExpiryDate,
-            history: [...(client.history || []), {
-                date: new Date().toISOString(),
-                action: 'Изтрито плащане',
-                details: `Изтрито плащане за месец ${entryToDelete.month} (${entryToDelete.amount} €)`,
-                performedBy: currentUser?.username || 'Админ'
-            }]
-        };
-
-        await saveClient(updatedClient, false);
         await logGlobalActivity('Изтриване на плащане', client.name, `Месец: ${entryToDelete.month} (${entryToDelete.amount} €).`, -entryToDelete.amount);
         setModalMessage({ 
             text: `Изтрито плащане за месец ${entryToDelete.month} (${entryToDelete.amount} €). Общата сума и валидността бяха преизчислени.`, 
@@ -857,20 +844,23 @@ const AdminPanel: React.FC = () => {
     const cancelClient = async () => {
         if (!selectedClient || !cancelReason) return;
         
-        const history = selectedClient.history || [];
-        const updatedClient: Client = {
-            ...selectedClient,
-            isCanceled: true,
-            cancelReason,
-            history: [...history, {
-                date: new Date().toISOString(),
-                action: 'Анулиране',
-                details: cancelReason,
-                performedBy: currentUser?.username || 'Админ'
-            }]
-        };
+        try {
+            await updateDoc(doc(db, 'clients', selectedClient.id), {
+                isCanceled: true,
+                cancelReason,
+                history: arrayUnion({
+                    date: new Date().toISOString(),
+                    action: 'Анулиране',
+                    details: cancelReason,
+                    performedBy: currentUser?.username || 'Админ'
+                })
+            });
+        } catch (err) {
+            console.error(err);
+            setModalMessage({ text: 'Грешка при анулиране.', type: 'error' });
+            return;
+        }
 
-        await saveClient(updatedClient, false);
         await logGlobalActivity('Анулиране', selectedClient.name, `Анулирана карта. Причина: ${cancelReason}`);
         setModalMessage({ 
             text: `Картата бе анулирана успешно. Причина: ${cancelReason}`, 
@@ -1797,20 +1787,9 @@ const AdminPanel: React.FC = () => {
 
             {activeTab === 'register' && (
                 <div style={{ marginBottom: '2rem', animation: 'fadeIn 0.4s ease' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-                        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#00c853', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <PlusCircle size={24} /> ДОБАВЯНЕ НА КАРТА
-                        </h2>
-                        
-                        <label style={{ 
-                            padding: '0.6rem 1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', 
-                            borderRadius: '8px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
-                            fontSize: '0.85rem', fontWeight: 600
-                        }}>
-                            <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvImport} />
-                            <RefreshCw size={16} /> Импорт CSV Карти
-                        </label>
-                    </div>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#00c853', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <PlusCircle size={24} /> ДОБАВЯНЕ НА КАРТА
+                    </h2>
                     
                     {registrationSuccess ? (
                         <Card style={{ 
@@ -1973,32 +1952,22 @@ const AdminPanel: React.FC = () => {
                                         </div>
                                     </div>
                                     <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-                                        <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Свързване на Карта</label>
-                                        
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                                            <div>
-                                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Отпечатан номер</label>
+                                        <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Свързване на Карта (NFC/Link)</label>
+                                        <div className="nfc-connect-container" style={{ display: 'flex', gap: '0.75rem' }}>
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                                 <input 
                                                     type="text" 
-                                                    placeholder="Напр. 1 или 001" 
-                                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--surface-border)', color: 'var(--primary-color)', fontWeight: 700 }} 
-                                                    value={cardNumber} 
-                                                    onChange={e => setCardNumber(e.target.value.trim())} 
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Сканирай (UID)</label>
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="UID от четеца" 
+                                                    placeholder="ID от Карта (напр. ABC123)" 
                                                     style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--surface-border)', color: 'var(--primary-color)', fontWeight: 700, fontFamily: 'monospace' }} 
                                                     value={nfcLinkId} 
                                                     onChange={e => setNfcLinkId(e.target.value.toUpperCase())} 
                                                 />
+                                                {nfcLinkId && nfcLinkId.includes('/') && (
+                                                    <div style={{ fontSize: '0.65rem', color: 'var(--success-color)', padding: '2px 4px' }}>
+                                                        Разпознат ID: <b>{sanitizeId(nfcLinkId)}</b>
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
-                                        
-                                        <div className="nfc-connect-container" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                                             <button 
                                                 type="button"
                                                 onClick={toggleWaitingForScan}

@@ -2,8 +2,86 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ---- Helpers ----
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function hasProfile() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isStaff() {
+      return hasProfile() && (userRole() == 'admin' || userRole() == 'moderator');
+    }
+    function isAdmin() {
+      return hasProfile() && userRole() == 'admin';
+    }
+
+    // ---- Users (staff accounts) ----
+    // Anyone signed in can read the staff list (only emails + roles, low sensitivity).
+    // Writes are admin-only. New users are created via the createStaffUser Cloud
+    // Function (Admin SDK), which bypasses these rules.
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---- Clients ----
+    // A single card can be read publicly by ID (needed when a passenger/controller
+    // scans an NFC card and opens /client/<id>). Listing the whole collection,
+    // creating and editing require staff. Permanent deletion requires admin.
+    match /clients/{clientId} {
+      allow get: if true;
+      allow list: if isStaff();
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    // ---- Public intake forms ----
+    // Anonymous visitors can submit a complaint/suggestion or a rental inquiry,
+    // but only staff may read or manage them.
+    match /signals/{signalId} {
+      allow create: if true;
+      allow read, update, delete: if isStaff();
+    }
+    match /rentals/{rentalId} {
+      allow create: if true;
+      allow read, update, delete: if isStaff();
+    }
+
+    // ---- Push subscriptions ----
+    // Anonymous visitors subscribe/unsubscribe to route notifications, so create,
+    // read (the dedup query) and delete (unsubscribe) stay public. No edits.
+    match /push_subscriptions/{subId} {
+      allow create, read, delete: if true;
+      allow update: if isStaff();
+    }
+
+    // ---- Staff-only operational data ----
+    match /push_notifications/{notifId} {
+      allow read, create: if isStaff();
+      allow update, delete: if isAdmin();
+    }
+    match /activity_logs/{logId} {
+      allow read, create: if isStaff();
+      allow update, delete: if isAdmin();
+    }
+
+    // ---- NFC registration hand-shake ----
+    // NOTE: an external NFC reader (C2 integration) writes the scanned card id here.
+    // If that reader signs in as a staff account, tighten this to `isStaff()`.
+    // Left open because the doc holds no personal data (only a transient card id).
+    match /admin_actions/{actionId} {
+      allow read, write: if true;
+    }
+
+    // ---- Default deny ----
     match /{document=**} {
-      allow read, write: if true; // Note: For production, you should restrict this to authenticated admins
+      allow read, write: if false;
     }
   }
 }

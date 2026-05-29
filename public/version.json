@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.07.22.28",
-  "buildDate": "2026-05-07T22:28:00Z",
-  "notes": "Update transit routes and fix PWA icon conflicts."
+  "version": "2026.05.29.12.20",
+  "buildDate": "2026-05-29T12:20:00Z",
+  "notes": "Security: locked Firestore rules with roles, atomic renewals/cancel/delete, staff creation via Cloud Function, global error boundary."
 }

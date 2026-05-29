@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import LoadingScreen from './components/LoadingScreen';
 import ClientProfile from './pages/ClientProfile';
 import LoginPage from './pages/LoginPage';
@@ -117,7 +118,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.05.07.22.28";
+  const INTERNAL_APP_VERSION = "2026.05.29.12.20";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
@@ -198,6 +199,7 @@ function App() {
   }, []);
 
   return (
+    <ErrorBoundary>
     <AuthProvider>
       <HashRouter>
         <DeepLinkHandler />
@@ -236,6 +238,7 @@ function App() {
         </Suspense>
       </HashRouter>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

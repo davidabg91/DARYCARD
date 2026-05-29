@@ -1,23 +1,22 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-    onAuthStateChanged, 
-    signInWithEmailAndPassword, 
-    signOut, 
-    createUserWithEmailAndPassword,
+import {
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    signOut,
     type User as FirebaseUser
 } from 'firebase/auth';
-import { 
-    doc, 
-    getDoc, 
-    setDoc, 
-    collection, 
+import {
+    doc,
+    getDoc,
+    collection,
     onSnapshot,
     updateDoc,
     deleteDoc,
     query
 } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import app, { auth, db } from '../firebase';
 import type { AppUser, UserRole } from '../types/auth';
 
 interface AuthContextType {
@@ -122,24 +121,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const addUser = async (username: string, password: string, role: UserRole) => {
-        // In Firebase, we usually create users via Auth. 
-        // For a simple management system, we create them with a dummy email if only username is provided
+        // Created via the createStaffUser Cloud Function (Admin SDK). This keeps the
+        // current admin signed in (the client SDK's createUserWithEmailAndPassword
+        // would switch the active session to the new user) and lets Firestore rules
+        // keep `users` writes admin-only.
         const email = username.includes('@') ? username : `${username}@dary.com`;
-        
-        // Note: This creates the user and SIGNS IN as them. 
-        // In a real admin panel, you'd use Firebase Admin SDK or a cloud function.
-        // For this simple app, we'll just handle the Firestore part if the user is already created,
-        // or let the user handle signups.
-        
-        // However, for this project, let's assume we use createUserWithEmailAndPassword
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const fbUser = userCredential.user;
-        
-        await setDoc(doc(db, 'users', fbUser.uid), {
-            username: email,
-            role,
-            createdAt: new Date().toISOString()
-        });
+        const fns = getFunctions(app);
+        const createStaffUser = httpsCallable(fns, 'createStaffUser');
+        await createStaffUser({ email, password, role });
     };
 
     const updateUserRole = async (userId: string, role: UserRole) => {
