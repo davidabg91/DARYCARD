@@ -175,6 +175,67 @@ const ClientProfile: React.FC = () => {
 
     const [regMonth, setRegMonth] = useState<string>(getSuggestedMonth());
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isCapturing, setIsCapturing] = useState(false);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+
+    const startWebcam = async () => {
+        setIsCapturing(true);
+        setError(null);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } },
+                audio: false
+            });
+            streamRef.current = stream;
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                videoRef.current.play().catch(err => console.error("Error playing video:", err));
+            }
+        } catch (err: any) {
+            console.error("Error accessing webcam:", err);
+            setError("Неуспешно свързване с камерата. Моля, проверете разрешенията.");
+            setIsCapturing(false);
+        }
+    };
+
+    const capturePhoto = () => {
+        if (videoRef.current) {
+            const video = videoRef.current;
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 640;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                compressImage(dataUrl, 500, 500, 0.8).then(compressed => {
+                    setRegPhoto(compressed);
+                    stopWebcam();
+                }).catch(err => {
+                    console.error("Compression error:", err);
+                    setRegPhoto(dataUrl);
+                    stopWebcam();
+                });
+            }
+        }
+    };
+
+    const stopWebcam = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        setIsCapturing(false);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, []);
 
     const [paymentMonth, setPaymentMonth] = useState<string>(getSuggestedMonth());
     const [paymentComplete, setPaymentComplete] = useState(false);
@@ -565,8 +626,63 @@ const ClientProfile: React.FC = () => {
                         <div style={{ animation: 'fadeIn 0.4s ease', textAlign: 'left', background: 'rgba(255,255,255,0.03)', padding: '2rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.08)' }}>
                             <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', textAlign: 'center' }}>Регистрация на Карта</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                                <div onClick={() => fileInputRef.current?.click()} style={{ width: '120px', height: '120px', borderRadius: '24px', background: 'rgba(255,255,255,0.05)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(255,255,255,0.2)', cursor: 'pointer', overflow: 'hidden', position: 'relative' }}>
-                                    {regPhoto ? <img src={regPhoto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ textAlign: 'center' }}><Camera size={24} color="var(--primary-color)" /><div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.4rem' }}>СНИМКА</div></div>}
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{ width: '150px', height: '150px', borderRadius: '24px', background: 'rgba(255,255,255,0.05)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(255,255,255,0.2)', overflow: 'hidden', position: 'relative' }}>
+                                        {regPhoto ? (
+                                            <>
+                                                <img src={regPhoto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setRegPhoto(null)} 
+                                                    style={{ position: 'absolute', top: '0.3rem', right: '0.3rem', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.8rem' }}
+                                                >
+                                                    ✕
+                                                </button>
+                                            </>
+                                        ) : isCapturing ? (
+                                            <>
+                                                <video 
+                                                    ref={videoRef} 
+                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                                    playsInline 
+                                                    muted 
+                                                />
+                                                <div style={{ position: 'absolute', bottom: '0.4rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={capturePhoto} 
+                                                        style={{ background: '#22c55e', color: '#fff', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                                                    >
+                                                        Снимай
+                                                    </button>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={stopWebcam} 
+                                                        style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                                                    >
+                                                        Отказ
+                                                    </button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div 
+                                                onClick={startWebcam} 
+                                                style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                            >
+                                                <Camera size={28} color="var(--primary-color)" />
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--primary-color)', marginTop: '0.4rem', fontWeight: 800 }}>ПУСНИ КАМЕРАТА</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {!regPhoto && !isCapturing && (
+                                        <button 
+                                            type="button" 
+                                            onClick={() => fileInputRef.current?.click()} 
+                                            style={{ background: 'transparent', color: 'rgba(255,255,255,0.4)', border: 'none', cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' }}
+                                        >
+                                            или качете файл от компютъра
+                                        </button>
+                                    )}
                                     <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handlePhotoUpload} style={{ display: 'none' }} />
                                 </div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>ИМЕ НА КЛИЕНТА</label><input value={regName} onChange={e => setRegName(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} placeholder="Име Фамилия..." /></div>

@@ -362,6 +362,67 @@ const AdminPanel: React.FC = () => {
     const [photoError, setPhotoError] = useState<string | null>(null);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isCapturing, setIsCapturing] = useState(false);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+
+    const startWebcam = async () => {
+        setIsCapturing(true);
+        setPhotoError(null);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } },
+                audio: false
+            });
+            streamRef.current = stream;
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                videoRef.current.play().catch(err => console.error("Error playing video:", err));
+            }
+        } catch (err: any) {
+            console.error("Error accessing webcam:", err);
+            setPhotoError("Неуспешно свързване с камерата. Моля, проверете разрешенията.");
+            setIsCapturing(false);
+        }
+    };
+
+    const capturePhoto = () => {
+        if (videoRef.current) {
+            const video = videoRef.current;
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 640;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                compressImage(dataUrl, 500, 500, 0.8).then(compressed => {
+                    setPhotoDataURL(compressed);
+                    stopWebcam();
+                }).catch(err => {
+                    console.error("Compression error:", err);
+                    setPhotoDataURL(dataUrl);
+                    stopWebcam();
+                });
+            }
+        }
+    };
+
+    const stopWebcam = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        setIsCapturing(false);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, []);
 
     // Auto-price logic
     useEffect(() => {
@@ -1870,13 +1931,50 @@ const AdminPanel: React.FC = () => {
                                     <h3 style={{ margin: 0 }}>Снимка на Клиента</h3>
                                 </div>
 
-                                {!photoDataURL && (
+                                {!photoDataURL && isCapturing && (
+                                    <div style={{ width: '100%', aspectRatio: '1', background: '#000', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', border: '2px solid var(--primary-color)' }}>
+                                        <video 
+                                            ref={videoRef} 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                            playsInline 
+                                            muted
+                                        />
+                                        <div style={{ position: 'absolute', bottom: '1rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                                            <button 
+                                                type="button" 
+                                                onClick={capturePhoto} 
+                                                style={{ background: '#22c55e', color: '#fff', padding: '0.6rem 1.2rem', borderRadius: '50px', fontWeight: 600, border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                                            >
+                                                Снимай
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                onClick={stopWebcam} 
+                                                style={{ background: '#ef4444', color: '#fff', padding: '0.6rem 1.2rem', borderRadius: '50px', fontWeight: 600, border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                                            >
+                                                Отказ
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {!photoDataURL && !isCapturing && (
                                     <div style={{ width: '100%', aspectRatio: '1', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', border: '2px dashed var(--surface-border)' }}>
                                         <PlusCircle size={40} color="var(--primary-color)" style={{ marginBottom: '1rem', opacity: 0.6 }} />
-                                        <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.8rem 1.5rem', borderRadius: '50px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Camera size={18} /> Направи Снимка
+                                        <button 
+                                            type="button" 
+                                            onClick={startWebcam} 
+                                            style={{ background: 'var(--primary-color)', color: '#fff', padding: '0.8rem 1.5rem', borderRadius: '50px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', cursor: 'pointer' }}
+                                        >
+                                            <Camera size={18} /> Пусни Камерата
                                         </button>
-                                        <p style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>или изберете файл от галерията</p>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => fileInputRef.current?.click()} 
+                                            style={{ background: 'transparent', color: 'var(--text-secondary)', marginTop: '1rem', border: 'none', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}
+                                        >
+                                            или качете файл от компютъра
+                                        </button>
                                         <p style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>Макс. 10MB (Samsung Galaxy/iPhone OK)</p>
                                         <input 
                                             type="file" 
