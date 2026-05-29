@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { initializeFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import { getMessaging, isSupported, type Messaging } from 'firebase/messaging';
 
 const firebaseConfig = {
@@ -24,6 +25,7 @@ export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+export const storage = getStorage(app);
 
 let messagingInstance: Messaging | null = null;
 export const getSafeMessaging = async (): Promise<Messaging | null> => {

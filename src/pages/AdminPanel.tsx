@@ -25,6 +25,7 @@ import {
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { ROUTE_METADATA } from '../data/routeMetadata';
+import { uploadClientPhoto } from '../utils/photoStorage';
 
 interface ClientLog {
     date: string;
@@ -669,6 +670,17 @@ const AdminPanel: React.FC = () => {
         }
 
         const generatedId = sanitizedNfcId || generateClientId();
+
+        // Upload the photo to Storage and keep only its URL in the document.
+        // Falls back to the inline base64 if the upload fails, so registration never
+        // breaks just because of a transient Storage error.
+        let photoValue = photoDataURL || '';
+        try {
+            if (photoDataURL) photoValue = await uploadClientPhoto(photoDataURL, generatedId);
+        } catch (err) {
+            console.error('Photo upload failed, falling back to inline image:', err);
+        }
+
         const newClient: Client = {
             id: generatedId,
             name: clientName,
@@ -676,7 +688,7 @@ const AdminPanel: React.FC = () => {
             cardType: cardType,
             amountPaid: Number(amountPaid),
             expiryDate: expiryDate,
-            photo: photoDataURL || '',
+            photo: photoValue,
             address: cardType === 'Пенсионерска карта' ? address : '',
             school: cardType === 'Ученическа карта' ? (selectedSchool === 'custom' ? customSchool : selectedSchool) : '',
             createdAt: new Date().toISOString(),

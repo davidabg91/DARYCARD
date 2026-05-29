@@ -6,6 +6,7 @@ import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
 import LoadingScreen from '../components/LoadingScreen';
 import { ROUTE_METADATA } from '../data/routeMetadata';
+import { uploadClientPhoto } from '../utils/photoStorage';
 
 interface Client {
     id: string;
@@ -336,6 +337,16 @@ const ClientProfile: React.FC = () => {
         }
         const now = new Date();
         const expiryMonth = regMonth;
+
+        // Upload the photo to Storage; keep only the URL in the document. Fall back to
+        // the inline base64 image if the upload fails so activation never breaks.
+        let photoValue = regPhoto;
+        try {
+            photoValue = await uploadClientPhoto(regPhoto, id);
+        } catch (uploadErr) {
+            console.error('Photo upload failed, falling back to inline image:', uploadErr);
+        }
+
         const newClient: Client = {
             id,
             nfcUid: urlUid.toUpperCase(),
@@ -345,7 +356,7 @@ const ClientProfile: React.FC = () => {
             address: regCardType === 'Пенсионерска карта' ? regAddress : '',
             school: regCardType === 'Ученическа карта' ? (regSelectedSchool === 'custom' ? regCustomSchool : regSelectedSchool) : '',
             expiryDate: expiryMonth,
-            photo: regPhoto,
+            photo: photoValue,
             createdAt: now.toISOString(),
             amountPaid: Number(regAmount),
             renewalHistory: [{ date: now.toISOString(), amount: Number(regAmount), month: expiryMonth }],
