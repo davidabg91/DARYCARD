@@ -192,7 +192,7 @@ const ClientProfile: React.FC = () => {
                 videoRef.current.srcObject = stream;
                 videoRef.current.play().catch(err => console.error("Error playing video:", err));
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error("Error accessing webcam:", err);
             setError("Неуспешно свързване с камерата. Моля, проверете разрешенията.");
             setIsCapturing(false);
@@ -509,7 +509,7 @@ const ClientProfile: React.FC = () => {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, [id, initAudio, playSuccessSound, playErrorSound]); // Removed cloudSyncStatus to prevent re-subscription flicker
+    }, [id, initAudio, playSuccessSound, playErrorSound, urlUid]); // Removed cloudSyncStatus to prevent re-subscription flicker
 
     const scannedRef = useRef<string | null>(null);
     const hasClient = !!client;

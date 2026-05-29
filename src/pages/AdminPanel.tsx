@@ -379,7 +379,7 @@ const AdminPanel: React.FC = () => {
                 videoRef.current.srcObject = stream;
                 videoRef.current.play().catch(err => console.error("Error playing video:", err));
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error("Error accessing webcam:", err);
             setPhotoError("Неуспешно свързване с камерата. Моля, проверете разрешенията.");
             setIsCapturing(false);
