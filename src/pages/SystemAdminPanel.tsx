@@ -445,7 +445,7 @@ const SystemAdminPanel: React.FC = () => {
                                                 🔍 ДИАГНОСТИКА: Заредени сканирания: {scans.length}
                                             </div>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '110px', overflowY: 'auto' }}>
-                                                {scans.slice(0, 10).map((s, idx) => {
+                                                {[...scans].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10).map((s, idx) => {
                                                     const matchesDate = s.at.startsWith(selectedDate);
                                                     const matchesRoute = chartRoute === 'all_routes' || s.route === chartRoute;
                                                     return (
