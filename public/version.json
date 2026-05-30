@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.30.15.00",
-  "buildDate": "2026-05-30T15:00:00Z",
-  "notes": "Scans are now recorded even when no staff is logged in (drivers don't log in), so traffic analysis fills correctly. Anonymous writes are restricted to the scan counters + scans subcollection only."
+  "version": "2026.05.30.16.30",
+  "buildDate": "2026-05-30T16:30:00Z",
+  "notes": "Scan recording added to the TransitView scan overlay (the real scan path), so physical card scans now count toward traffic analysis - not just opening a profile via ВИЖ."
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, increment, writeBatch, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -207,7 +207,25 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                 if (snap.exists()) {
                     const data = snap.data() as Client;
                     setClient({ ...data, id: snap.id });
-                    
+
+                    // Record the scan. This is the real scan path (the reader shows
+                    // TransitView, not ClientProfile). Drivers are NOT logged in, so
+                    // there is no auth gate — the rules allow an anonymous write to
+                    // only scanCount/lastScanAt + the scans subcollection. Deduped per
+                    // card for 1h via sessionStorage so a re-scan doesn't double-count.
+                    const scanKey = `scanned_${snap.id}`;
+                    const lastScan = sessionStorage.getItem(scanKey);
+                    const nowMs = Date.now();
+                    if (!lastScan || (nowMs - parseInt(lastScan)) >= 3600000) {
+                        const isoNow = new Date().toISOString();
+                        const batch = writeBatch(db);
+                        batch.update(doc(db, 'clients', snap.id), { scanCount: increment(1), lastScanAt: isoNow });
+                        batch.set(doc(collection(db, 'clients', snap.id, 'scans')), { at: isoNow, route: data.route ?? '' });
+                        batch.commit()
+                            .then(() => sessionStorage.setItem(scanKey, nowMs.toString()))
+                            .catch(err => console.error('Transit scan tracking error:', err));
+                    }
+
                     // Preset Renewal Form
                     const nextDate = new Date();
                     nextDate.setMonth(nextDate.getMonth() + 1);
