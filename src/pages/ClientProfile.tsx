@@ -474,7 +474,7 @@ const ClientProfile: React.FC = () => {
                 const data = docSnap.data() as Record<string, unknown>;
                 const clientData: Client = { ...data, id: docSnap.id } as Client;
                 
-                if (urlUid && clientData.nfcUid !== urlUid.toUpperCase()) {
+                if (currentUser && urlUid && clientData.nfcUid !== urlUid.toUpperCase()) {
                     updateDoc(doc(db, 'clients', id), { nfcUid: urlUid.toUpperCase() }).catch(console.error);
                     clientData.nfcUid = urlUid.toUpperCase();
                 }

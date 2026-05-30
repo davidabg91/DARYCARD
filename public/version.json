@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.30.22.30",
-  "buildDate": "2026-05-30T22:30:00Z",
-  "notes": "Visible scan feedback on the profile page: green 'СКАНИРАНЕТО Е ЗАПИСАНО' when a scan is counted, yellow 'ВЕЧЕ СКАНИРАНА' anti-passback banner when the same card is opened within 60s. Anti-passback now works on the profile view, not just the TransitView reader overlay."
+  "version": "2026.05.30.23.00",
+  "buildDate": "2026-05-30T23:00:00Z",
+  "notes": "Fix: restrict auto-linking of nfcUid to logged-in staff members to prevent permission loops on anonymous scans. Bumped version to force update clients."
 }
