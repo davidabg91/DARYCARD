@@ -49,7 +49,7 @@ service cloud.firestore {
       // logged in. Read by staff only (analytics/abuse). The public `get` on the
       // parent doc does NOT expose this subcollection (rules are independent).
       match /scans/{scanId} {
-        allow read: if true;
+        allow read: if isStaff();
         allow create: if request.resource.data.keys().hasOnly(['at', 'route'])
           && request.resource.data.at is string;
         allow update, delete: if isAdmin();
