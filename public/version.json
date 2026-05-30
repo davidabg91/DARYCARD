@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.30.21.00",
-  "buildDate": "2026-05-30T21:00:00Z",
-  "notes": "ClientProfile scan de-dup lowered from 1 hour to 60s (matches TransitView anti-passback), so repeat opens/boardings more than a minute apart are counted instead of being silently suppressed for an hour."
+  "version": "2026.05.30.22.30",
+  "buildDate": "2026-05-30T22:30:00Z",
+  "notes": "Visible scan feedback on the profile page: green 'СКАНИРАНЕТО Е ЗАПИСАНО' when a scan is counted, yellow 'ВЕЧЕ СКАНИРАНА' anti-passback banner when the same card is opened within 60s. Anti-passback now works on the profile view, not just the TransitView reader overlay."
 }

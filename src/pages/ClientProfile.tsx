@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
-import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, Zap } from 'lucide-react';
+import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, Zap, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
@@ -514,6 +514,8 @@ const ClientProfile: React.FC = () => {
 
     const scannedRef = useRef<string | null>(null);
     const hasClient = !!client;
+    // Visible scan feedback shown on the profile: green "recorded" / yellow "passback".
+    const [scanFeedback, setScanFeedback] = useState<{ type: 'recorded' | 'passback'; secs?: number } | null>(null);
 
     useEffect(() => {
         // Record the scan for everyone who opens a registered card — drivers do NOT
@@ -521,11 +523,15 @@ const ClientProfile: React.FC = () => {
         // an anonymous write to ONLY scanCount/lastScanAt + the scans subcollection.
         if (!id || loading || !hasClient || scannedRef.current === id) return;
         scannedRef.current = id;
-        // Anti-passback (same 60s window as TransitView): skip only if this card was
-        // scanned < 60s ago. Beyond that, EVERY open counts — no long per-session
-        // lock that would hide legitimate repeat boardings (or confuse testing).
+        // Anti-passback (same 60s window as TransitView): if this card was scanned
+        // < 60s ago, show a yellow warning and do NOT count it again. Beyond that,
+        // EVERY open counts (a later boarding should count).
         const lastMs = client?.lastScanAt ? new Date(client.lastScanAt).getTime() : 0;
-        if (lastMs && (Date.now() - lastMs) < 60000) return;
+        const secsSince = lastMs ? Math.round((Date.now() - lastMs) / 1000) : Infinity;
+        if (secsSince < 60) {
+            setScanFeedback({ type: 'passback', secs: secsSince });
+            return;
+        }
         const clientRef = doc(db, 'clients', id);
         const isoNow = new Date().toISOString();
         // TWO INDEPENDENT writes (NOT an atomic batch): the scan document is what the
@@ -536,6 +542,7 @@ const ClientProfile: React.FC = () => {
             .catch(err => console.error('Scan record failed:', err));
         updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow })
             .catch(err => console.error('Scan counter update failed:', err));
+        setScanFeedback({ type: 'recorded' });
     }, [id, loading, hasClient, client?.route, client?.lastScanAt]);
 
     useEffect(() => {
@@ -794,6 +801,35 @@ const ClientProfile: React.FC = () => {
             position: 'relative',
             transition: 'background 0.3s ease, color 0.3s ease'
         }}>
+            {/* SCAN FEEDBACK BANNER (fixed, top) */}
+            {scanFeedback && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
+                    padding: '1rem 1.25rem', textAlign: 'center',
+                    color: scanFeedback.type === 'passback' ? '#1a1500' : '#04210f',
+                    background: scanFeedback.type === 'passback'
+                        ? 'linear-gradient(135deg, #ffd600 0%, #ff9100 100%)'
+                        : 'linear-gradient(135deg, #00e676 0%, #00b248 100%)',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.35)',
+                    animation: scanFeedback.type === 'passback' ? 'pulse 1.3s ease-in-out infinite' : 'none'
+                }}>
+                    {scanFeedback.type === 'passback'
+                        ? <AlertTriangle size={28} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+                        : <CheckCircle size={28} strokeWidth={2.5} style={{ flexShrink: 0 }} />}
+                    <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>
+                            {scanFeedback.type === 'passback' ? 'ВЕЧЕ СКАНИРАНА' : 'СКАНИРАНЕТО Е ЗАПИСАНО'}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, opacity: 0.85 }}>
+                            {scanFeedback.type === 'passback'
+                                ? `Сканирана преди ${scanFeedback.secs} сек. Изчакайте 1 минута.`
+                                : 'Сканирането е отчетено успешно.'}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Environment Glow - Full Screen Modern Ambient */}
             <div style={{ 
                 position: 'fixed', 
