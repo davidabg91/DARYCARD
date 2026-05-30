@@ -3,7 +3,7 @@ import { useParams, Link, useLocation } from 'react-router-dom';
 import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection, writeBatch } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
 import LoadingScreen from '../components/LoadingScreen';
 import { ROUTE_METADATA } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
@@ -531,19 +531,14 @@ const ClientProfile: React.FC = () => {
                 scannedRef.current = id;
                 const clientRef = doc(db, 'clients', id);
                 const isoNow = new Date().toISOString();
-                // Each scan is its own document in the clients/{id}/scans subcollection,
-                // so the client doc never grows toward the 1MB limit. The bounded
-                // scanCount / lastScanAt stay on the main doc for quick reads.
-                const batch = writeBatch(db);
-                batch.update(clientRef, {
-                    scanCount: increment(1),
-                    lastScanAt: isoNow,
-                });
-                batch.set(doc(collection(clientRef, 'scans')), {
-                    at: isoNow,
-                    route: client?.route ?? '',
-                });
-                await batch.commit();
+                // TWO INDEPENDENT writes (NOT an atomic batch): the scan document is
+                // what the traffic analysis reads, so it must not be taken down if the
+                // counter update is rejected. Drivers are not logged in; the rules
+                // allow the anonymous scan-create + the scanCount/lastScanAt bump.
+                setDoc(doc(collection(clientRef, 'scans')), { at: isoNow, route: client?.route ?? '' })
+                    .catch(err => console.error('Scan record failed:', err));
+                updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow })
+                    .catch(err => console.error('Scan counter update failed:', err));
                 sessionStorage.setItem(scanKey, now.toString());
             } catch (e) {
                 console.error("Error tracking scan:", e);

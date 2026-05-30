@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { doc, getDoc, updateDoc, arrayUnion, increment, writeBatch, collection } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, increment, setDoc, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -225,10 +225,13 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
 
                     if (!passback) {
                         const isoNow = new Date().toISOString();
-                        const batch = writeBatch(db);
-                        batch.update(doc(db, 'clients', snap.id), { scanCount: increment(1), lastScanAt: isoNow });
-                        batch.set(doc(collection(db, 'clients', snap.id, 'scans')), { at: isoNow, route: data.route ?? '' });
-                        batch.commit().catch(err => console.error('Transit scan tracking error:', err));
+                        // Two independent writes (NOT a batch): the scan doc drives the
+                        // traffic analysis and must not be taken down if the counter
+                        // update is rejected for an anonymous (not-logged-in) device.
+                        setDoc(doc(collection(db, 'clients', snap.id, 'scans')), { at: isoNow, route: data.route ?? '' })
+                            .catch(err => console.error('Transit scan record failed:', err));
+                        updateDoc(doc(db, 'clients', snap.id), { scanCount: increment(1), lastScanAt: isoNow })
+                            .catch(err => console.error('Transit scan counter update failed:', err));
                     }
 
                     // Preset Renewal Form

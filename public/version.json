@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.30.18.00",
-  "buildDate": "2026-05-30T18:00:00Z",
-  "notes": "Anti-passback: scanning the same card twice within 1 minute shows a yellow 'ВЕЧЕ СКАНИРАНА' warning and does not double-count. Each scan now remounts the scan overlay."
+  "version": "2026.05.30.19.30",
+  "buildDate": "2026-05-30T19:30:00Z",
+  "notes": "Fix: scans from not-logged-in devices now count. The scan record and the counter update are written separately (no longer one atomic batch), so a rejected anonymous counter update can no longer block the scan record that feeds traffic analysis."
 }
