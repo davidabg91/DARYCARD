@@ -439,6 +439,24 @@ const SystemAdminPanel: React.FC = () => {
                                             </div>
                                         </div>
 
+                                        {/* Diagnostic Info */}
+                                        <div style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.8rem 1.25rem', borderRadius: '14px', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <div style={{ fontWeight: 800, color: 'var(--primary-color)', marginBottom: '0.4rem' }}>
+                                                🔍 ДИАГНОСТИКА: Заредени сканирания: {scans.length}
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '110px', overflowY: 'auto' }}>
+                                                {scans.slice(0, 10).map((s, idx) => {
+                                                    const matchesDate = s.at.startsWith(selectedDate);
+                                                    const matchesRoute = chartRoute === 'all_routes' || s.route === chartRoute;
+                                                    return (
+                                                        <div key={idx} style={{ color: matchesDate && matchesRoute ? '#00e676' : 'rgba(255,255,255,0.4)', fontFamily: 'monospace', fontSize: '0.7rem' }}>
+                                                            [{idx + 1}] {s.at} | {s.route} | Дата ({selectedDate}): {matchesDate ? '✅' : '❌'} | Маршрут ({chartRoute}): {matchesRoute ? '✅' : '❌'}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
                                         <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'thin' }}>
                                             <div style={{ height: '240px', display: 'flex', alignItems: 'flex-end', gap: isMobile ? '3px' : '6px', padding: '1rem 0', minWidth: isMobile ? '600px' : 'auto' }}>
                                                 {hourlyDistribution.map((count, hr) => (

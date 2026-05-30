@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.30.23.30",
-  "buildDate": "2026-05-30T23:30:00Z",
-  "notes": "Fix clock skew bug in anti-passback timing and disable caching in the PC reader app."
+  "version": "2026.05.30.23.40",
+  "buildDate": "2026-05-30T23:40:00Z",
+  "notes": "Add real-time diagnostics section to SystemAdminPanel.tsx."
 }
