@@ -515,7 +515,10 @@ const ClientProfile: React.FC = () => {
     const hasClient = !!client;
 
     useEffect(() => {
-        if (!id || !currentUser || loading || !hasClient || scannedRef.current === id) return;
+        // Record the scan for everyone who opens a registered card — drivers do NOT
+        // log in, so we must not gate this on currentUser. The Firestore rules allow
+        // an anonymous write to ONLY scanCount/lastScanAt + the scans subcollection.
+        if (!id || loading || !hasClient || scannedRef.current === id) return;
         const performTrackScan = async () => {
             const scanKey = `scanned_${id}`;
             const lastSessionScan = sessionStorage.getItem(scanKey);
@@ -548,7 +551,7 @@ const ClientProfile: React.FC = () => {
             }
         };
         performTrackScan();
-    }, [id, currentUser, loading, hasClient, client?.route]);
+    }, [id, loading, hasClient, client?.route]);
 
     useEffect(() => {
         const resetIdleTimer = () => {

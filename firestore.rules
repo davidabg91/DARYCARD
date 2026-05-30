@@ -37,15 +37,21 @@ service cloud.firestore {
     match /clients/{clientId} {
       allow get: if true;
       allow list: if isStaff();
-      allow create, update: if isStaff();
+      allow create: if isStaff();
+      // Staff may edit anything. Anonymous devices (drivers do NOT log in) may
+      // bump ONLY the scan counters — never route/expiry/name/photo/etc.
+      allow update: if isStaff()
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount', 'lastScanAt']);
       allow delete: if isAdmin();
 
       // Per-scan records (moved out of the unbounded scanHistory array on the
-      // client doc). Written by staff when a card is scanned; read by staff for
-      // analytics/abuse detection. The public `get` above does NOT expose this
-      // subcollection — subcollection rules are independent.
+      // client doc). Created on every scan — public, because drivers are not
+      // logged in. Read by staff only (analytics/abuse). The public `get` on the
+      // parent doc does NOT expose this subcollection (rules are independent).
       match /scans/{scanId} {
-        allow read, create: if isStaff();
+        allow read: if isStaff();
+        allow create: if request.resource.data.keys().hasOnly(['at', 'route'])
+          && request.resource.data.at is string;
         allow update, delete: if isAdmin();
       }
     }

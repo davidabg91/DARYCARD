@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.30.12.00",
-  "buildDate": "2026-05-30T12:00:00Z",
-  "notes": "Scans moved to clients/{id}/scans subcollection (no more unbounded scanHistory); audit log + client list now paginate in batches of 20."
+  "version": "2026.05.30.15.00",
+  "buildDate": "2026-05-30T15:00:00Z",
+  "notes": "Scans are now recorded even when no staff is logged in (drivers don't log in), so traffic analysis fills correctly. Anonymous writes are restricted to the scan counters + scans subcollection only."
 }
