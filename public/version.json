@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.30.19.30",
-  "buildDate": "2026-05-30T19:30:00Z",
-  "notes": "Fix: scans from not-logged-in devices now count. The scan record and the counter update are written separately (no longer one atomic batch), so a rejected anonymous counter update can no longer block the scan record that feeds traffic analysis."
+  "version": "2026.05.30.21.00",
+  "buildDate": "2026-05-30T21:00:00Z",
+  "notes": "ClientProfile scan de-dup lowered from 1 hour to 60s (matches TransitView anti-passback), so repeat opens/boardings more than a minute apart are counted instead of being silently suppressed for an hour."
 }

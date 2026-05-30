@@ -26,6 +26,7 @@ interface Client {
     school?: string;
     nfcUid?: string;
     photoThumb?: string;
+    lastScanAt?: string;
 }
 
 const ROUTES = [
@@ -519,34 +520,23 @@ const ClientProfile: React.FC = () => {
         // log in, so we must not gate this on currentUser. The Firestore rules allow
         // an anonymous write to ONLY scanCount/lastScanAt + the scans subcollection.
         if (!id || loading || !hasClient || scannedRef.current === id) return;
-        const performTrackScan = async () => {
-            const scanKey = `scanned_${id}`;
-            const lastSessionScan = sessionStorage.getItem(scanKey);
-            const now = new Date().getTime();
-            if (lastSessionScan && (now - parseInt(lastSessionScan)) < 3600000) {
-                scannedRef.current = id;
-                return;
-            }
-            try {
-                scannedRef.current = id;
-                const clientRef = doc(db, 'clients', id);
-                const isoNow = new Date().toISOString();
-                // TWO INDEPENDENT writes (NOT an atomic batch): the scan document is
-                // what the traffic analysis reads, so it must not be taken down if the
-                // counter update is rejected. Drivers are not logged in; the rules
-                // allow the anonymous scan-create + the scanCount/lastScanAt bump.
-                setDoc(doc(collection(clientRef, 'scans')), { at: isoNow, route: client?.route ?? '' })
-                    .catch(err => console.error('Scan record failed:', err));
-                updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow })
-                    .catch(err => console.error('Scan counter update failed:', err));
-                sessionStorage.setItem(scanKey, now.toString());
-            } catch (e) {
-                console.error("Error tracking scan:", e);
-                scannedRef.current = null; 
-            }
-        };
-        performTrackScan();
-    }, [id, loading, hasClient, client?.route]);
+        scannedRef.current = id;
+        // Anti-passback (same 60s window as TransitView): skip only if this card was
+        // scanned < 60s ago. Beyond that, EVERY open counts — no long per-session
+        // lock that would hide legitimate repeat boardings (or confuse testing).
+        const lastMs = client?.lastScanAt ? new Date(client.lastScanAt).getTime() : 0;
+        if (lastMs && (Date.now() - lastMs) < 60000) return;
+        const clientRef = doc(db, 'clients', id);
+        const isoNow = new Date().toISOString();
+        // TWO INDEPENDENT writes (NOT an atomic batch): the scan document is what the
+        // traffic analysis reads, so it must not be taken down if the counter update
+        // is rejected. Drivers are not logged in; the rules allow the anonymous
+        // scan-create + the scanCount/lastScanAt bump.
+        setDoc(doc(collection(clientRef, 'scans')), { at: isoNow, route: client?.route ?? '' })
+            .catch(err => console.error('Scan record failed:', err));
+        updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow })
+            .catch(err => console.error('Scan counter update failed:', err));
+    }, [id, loading, hasClient, client?.route, client?.lastScanAt]);
 
     useEffect(() => {
         const resetIdleTimer = () => {
