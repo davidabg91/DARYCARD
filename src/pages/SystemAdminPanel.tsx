@@ -84,10 +84,6 @@ const SystemAdminPanel: React.FC = () => {
     // Global Data
     const [clients, setClients] = useState<Client[]>([]);
     const [scans, setScans] = useState<ScanRecord[]>([]);
-    const [scansError, setScansError] = useState<string | null>(null);
-    const [scansMetadata, setScansMetadata] = useState<{ fromCache: boolean; hasPendingWrites: boolean; count: number } | null>(null);
-    const [scansLoadingState, setScansLoadingState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-    const [windowStartDateStr, setWindowStartDateStr] = useState<string>('');
 
     const [globalLogs, setGlobalLogs] = useState<GlobalLog[]>([]);
     const [logLimit, setLogLimit] = useState(20);
@@ -139,31 +135,18 @@ const SystemAdminPanel: React.FC = () => {
     // the selected day for the hourly chart). Requires the scans.at collection-group
     // index in firestore.indexes.json.
     useEffect(() => {
-        setScansLoadingState('loading');
-        setScansError(null);
         const sixtyDaysAgo = new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0];
         const windowStart = selectedDate < sixtyDaysAgo ? selectedDate : sixtyDaysAgo;
-        setWindowStartDateStr(windowStart);
 
         const qScans = query(collectionGroup(db, 'scans'), where('at', '>=', windowStart));
-        const unsub = onSnapshot(qScans, { includeMetadataChanges: true }, (snap) => {
+        const unsub = onSnapshot(qScans, (snap) => {
             const list: ScanRecord[] = snap.docs.map(d => ({
                 clientId: d.ref.parent.parent?.id ?? '',
                 at: (d.data().at as string) ?? '',
                 route: (d.data().route as string) ?? '',
             }));
             setScans(list);
-            setScansMetadata({
-                fromCache: snap.metadata.fromCache,
-                hasPendingWrites: snap.metadata.hasPendingWrites,
-                count: snap.size
-            });
-            setScansLoadingState('success');
-        }, (err) => {
-            console.error('Scans listener error:', err);
-            setScansError(err.message || String(err));
-            setScansLoadingState('error');
-        });
+        }, (err) => console.error('Scans listener error:', err));
         return () => unsub();
     }, [selectedDate]);
 
@@ -458,31 +441,6 @@ const SystemAdminPanel: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        {/* Diagnostic Info */}
-                                        <div style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.8rem 1.25rem', borderRadius: '14px', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                            <div style={{ fontWeight: 800, color: 'var(--primary-color)', marginBottom: '0.4rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                                <span>🔍 ДИАГНОСТИКА:</span>
-                                                <span>Брой в стейта: {scans.length}</span>
-                                                <span>| БД брой: {scansMetadata ? scansMetadata.count : '...'}</span>
-                                                <span>| Източник: {scansMetadata?.fromCache ? '⚠️ Кеш (Офлайн)' : '✅ Сървър (Онлайн)'}</span>
-                                                <span>| Браузър: {navigator.onLine ? '🌐 Онлайн' : '🔌 Офлайн'}</span>
-                                            </div>
-                                            <div style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '0.4rem', fontSize: '0.7rem' }}>
-                                                Статус: {scansLoadingState} | Филтър от: {windowStartDateStr}
-                                                {scansError && <div style={{ color: '#ff5252', fontWeight: 'bold' }}>Грешка: {scansError}</div>}
-                                            </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '110px', overflowY: 'auto' }}>
-                                                {[...scans].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10).map((s, idx) => {
-                                                    const matchesDate = s.at.startsWith(selectedDate);
-                                                    const matchesRoute = chartRoute === 'all_routes' || s.route === chartRoute;
-                                                    return (
-                                                        <div key={idx} style={{ color: matchesDate && matchesRoute ? '#00e676' : 'rgba(255,255,255,0.4)', fontFamily: 'monospace', fontSize: '0.7rem' }}>
-                                                            [{idx + 1}] {s.at} | {s.route} | Дата ({selectedDate}): {matchesDate ? '✅' : '❌'} | Маршрут ({chartRoute}): {matchesRoute ? '✅' : '❌'}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
 
                                         <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'thin' }}>
                                             <div style={{ height: '240px', display: 'flex', alignItems: 'flex-end', gap: isMobile ? '3px' : '6px', padding: '1rem 0', minWidth: isMobile ? '600px' : 'auto' }}>

@@ -802,29 +802,24 @@ const ClientProfile: React.FC = () => {
             transition: 'background 0.3s ease, color 0.3s ease'
         }}>
             {/* SCAN FEEDBACK BANNER (fixed, top) */}
-            {scanFeedback && (
+            {scanFeedback && scanFeedback.type === 'passback' && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
-                    padding: '1rem 1.25rem', textAlign: 'center',
-                    color: scanFeedback.type === 'passback' ? '#1a1500' : '#04210f',
-                    background: scanFeedback.type === 'passback'
-                        ? 'linear-gradient(135deg, #ffd600 0%, #ff9100 100%)'
-                        : 'linear-gradient(135deg, #00e676 0%, #00b248 100%)',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.35)',
-                    animation: scanFeedback.type === 'passback' ? 'pulse 1.3s ease-in-out infinite' : 'none'
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px',
+                    padding: '2.5rem 2rem', textAlign: 'center',
+                    color: '#1a1500',
+                    background: 'linear-gradient(135deg, #ffd600 0%, #ff9100 100%)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+                    animation: 'pulse 1.3s ease-in-out infinite',
+                    borderBottom: '4px solid #ff5252'
                 }}>
-                    {scanFeedback.type === 'passback'
-                        ? <AlertTriangle size={28} strokeWidth={2.5} style={{ flexShrink: 0 }} />
-                        : <CheckCircle size={28} strokeWidth={2.5} style={{ flexShrink: 0 }} />}
-                    <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>
-                            {scanFeedback.type === 'passback' ? 'ВЕЧЕ СКАНИРАНА' : 'СКАНИРАНЕТО Е ЗАПИСАНО'}
+                    <AlertTriangle size={48} strokeWidth={3} style={{ flexShrink: 0 }} />
+                    <div style={{ textAlign: 'left', lineHeight: 1.3 }}>
+                        <div style={{ fontSize: '2.2rem', fontWeight: 950, letterSpacing: '1px' }}>
+                            ВЕЧЕ СКАНИРАНА КАРТА!
                         </div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 700, opacity: 0.85 }}>
-                            {scanFeedback.type === 'passback'
-                                ? `Сканирана преди ${scanFeedback.secs} сек. Изчакайте 1 минута.`
-                                : 'Сканирането е отчетено успешно.'}
+                        <div style={{ fontSize: '1.3rem', fontWeight: 800, opacity: 0.9 }}>
+                            Сканирана преди {scanFeedback.secs} сек. Изчакайте 1 минута.
                         </div>
                     </div>
                 </div>
