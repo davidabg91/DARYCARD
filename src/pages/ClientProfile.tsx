@@ -801,29 +801,6 @@ const ClientProfile: React.FC = () => {
             position: 'relative',
             transition: 'background 0.3s ease, color 0.3s ease'
         }}>
-            {/* SCAN FEEDBACK BANNER (fixed, top) */}
-            {scanFeedback && scanFeedback.type === 'passback' && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px',
-                    padding: '2.5rem 2rem', textAlign: 'center',
-                    color: '#1a1500',
-                    background: 'linear-gradient(135deg, #ffd600 0%, #ff9100 100%)',
-                    boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
-                    animation: 'pulse 1.3s ease-in-out infinite',
-                    borderBottom: '4px solid #ff5252'
-                }}>
-                    <AlertTriangle size={48} strokeWidth={3} style={{ flexShrink: 0 }} />
-                    <div style={{ textAlign: 'left', lineHeight: 1.3 }}>
-                        <div style={{ fontSize: '2.2rem', fontWeight: 950, letterSpacing: '1px' }}>
-                            ВЕЧЕ СКАНИРАНА КАРТА!
-                        </div>
-                        <div style={{ fontSize: '1.3rem', fontWeight: 800, opacity: 0.9 }}>
-                            Сканирана преди {scanFeedback.secs} сек. Изчакайте 1 минута.
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Environment Glow - Full Screen Modern Ambient */}
             <div style={{ 
@@ -857,32 +834,60 @@ const ClientProfile: React.FC = () => {
             }}>
                 {/* Holographic Animation Overlay */}
 
-                {/* Card Top Branding */}
-                <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 900, color: themeColor, letterSpacing: '2px' }}>DARY CARD</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 900, color: cardTypeColor, opacity: 0.9, background: `${cardTypeColor}15`, padding: '4px 10px', borderRadius: '8px', border: `1px solid ${cardTypeColor}33` }}>{client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}</span>
-                </div>
+                {scanFeedback && scanFeedback.type === 'passback' ? (
+                    <div style={{
+                        width: '100%',
+                        background: 'linear-gradient(135deg, #ffd600 0%, #ff9100 100%)',
+                        padding: '1.5rem 1rem',
+                        textAlign: 'center',
+                        color: '#1a1500',
+                        borderBottom: '4px solid #ff5252',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '12px',
+                        animation: 'pulse 1.3s ease-in-out infinite'
+                    }}>
+                        <AlertTriangle size={36} strokeWidth={3} style={{ flexShrink: 0, color: '#cc0000' }} />
+                        <div style={{ textAlign: 'left', lineHeight: 1.25 }}>
+                            <div style={{ fontSize: '1.6rem', fontWeight: 950, letterSpacing: '0.5px', color: '#cc0000' }}>
+                                ВЕЧЕ СКАНИРАНА!
+                            </div>
+                            <div style={{ fontSize: '1.05rem', fontWeight: 800 }}>
+                                Сканирана преди {scanFeedback.secs} сек. Изчакайте 1 мин.
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {/* Card Top Branding */}
+                        <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 900, color: themeColor, letterSpacing: '2px' }}>DARY CARD</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 900, color: cardTypeColor, opacity: 0.9, background: `${cardTypeColor}15`, padding: '4px 10px', borderRadius: '8px', border: `1px solid ${cardTypeColor}33` }}>{client?.cardType?.toUpperCase() || 'УДОСТОВЕРЕНИЕ'}</span>
+                        </div>
 
-                {/* Sub-Header Status Panel (Full Width) */}
-                <div style={{
-                    width: '100%',
-                    background: `${themeColor}22`,
-                    padding: '8px 0',
-                    textAlign: 'center',
-                    borderTop: '1px solid rgba(255,255,255,0.06)',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    fontSize: '0.9rem',
-                    fontWeight: 900,
-                    color: themeColor,
-                    letterSpacing: '1px'
-                }}>
-                    {isActive ? <CheckCircle size={18} /> : <XCircle size={18} />}
-                    {statusText.toUpperCase()}
-                </div>
+                        {/* Sub-Header Status Panel (Full Width) */}
+                        <div style={{
+                            width: '100%',
+                            background: `${themeColor}22`,
+                            padding: '8px 0',
+                            textAlign: 'center',
+                            borderTop: '1px solid rgba(255,255,255,0.06)',
+                            borderBottom: '1px solid rgba(255,255,255,0.06)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            fontSize: '0.9rem',
+                            fontWeight: 900,
+                            color: themeColor,
+                            letterSpacing: '1px'
+                        }}>
+                            {isActive ? <CheckCircle size={18} /> : <XCircle size={18} />}
+                            {statusText.toUpperCase()}
+                        </div>
+                    </>
+                )}
 
                 {/* Card Core Content */}
                 <div style={{ padding: '1.2rem 1.2rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', textAlign: 'center' }}>
