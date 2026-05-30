@@ -389,15 +389,13 @@ class MainWindow(QMainWindow):
         self.browser = QWebEngineView()
         self.browser.page().featurePermissionRequested.connect(self.handle_permission_requested)
         
-        # Disable cache and clear it to prevent running stale React bundles
+        # Disable cache to prevent running stale React bundles
         try:
             from PyQt6.QtWebEngineCore import QWebEngineProfile
             profile = self.browser.page().profile()
             profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.NoCache)
-            profile.clearHttpCache()
-            profile.clearAllVisitedLinks()
         except Exception as e:
-            print("Failed to configure QWebEngine profile/cache settings:", e)
+            print("Failed to configure QWebEngine profile settings:", e)
             
         self.browser.setUrl(QUrl("https://darycommerce.com"))
         right_layout.addWidget(self.browser)
