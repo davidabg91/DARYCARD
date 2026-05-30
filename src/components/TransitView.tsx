@@ -220,7 +220,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     // scanCount/lastScanAt + the scans subcollection.
                     const lastMs = data.lastScanAt ? new Date(data.lastScanAt).getTime() : 0;
                     const secsSinceLast = lastMs ? Math.round((Date.now() - lastMs) / 1000) : Infinity;
-                    const passback = secsSinceLast < 60;
+                    const passback = secsSinceLast >= 0 && secsSinceLast < 60;
                     setPassbackSecs(passback ? secsSinceLast : null);
 
                     if (!passback) {

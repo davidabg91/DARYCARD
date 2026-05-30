@@ -528,7 +528,7 @@ const ClientProfile: React.FC = () => {
         // EVERY open counts (a later boarding should count).
         const lastMs = client?.lastScanAt ? new Date(client.lastScanAt).getTime() : 0;
         const secsSince = lastMs ? Math.round((Date.now() - lastMs) / 1000) : Infinity;
-        if (secsSince < 60) {
+        if (secsSince >= 0 && secsSince < 60) {
             setScanFeedback({ type: 'passback', secs: secsSince });
             return;
         }

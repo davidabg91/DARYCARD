@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.30.23.00",
-  "buildDate": "2026-05-30T23:00:00Z",
-  "notes": "Fix: restrict auto-linking of nfcUid to logged-in staff members to prevent permission loops on anonymous scans. Bumped version to force update clients."
+  "version": "2026.05.30.23.30",
+  "buildDate": "2026-05-30T23:30:00Z",
+  "notes": "Fix clock skew bug in anti-passback timing and disable caching in the PC reader app."
 }
