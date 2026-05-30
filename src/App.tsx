@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, useCallback } from 'react';
+import { lazy, Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { NFCService } from './services/NFCService';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -30,7 +30,21 @@ function DeepLinkHandler() {
   const navigate = useNavigate();
   const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
   const [transitId, setTransitId] = useState<string | null>(null);
-  
+  // Bumped on every scan so TransitView remounts even when the SAME card is
+  // scanned twice in a row — required for anti-passback to fire on a re-scan.
+  const [scanNonce, setScanNonce] = useState(0);
+  const lastTriggerRef = useRef<{ id: string; t: number }>({ id: '', t: 0 });
+
+  const triggerScan = useCallback((finalId: string) => {
+    if (!finalId) return;
+    const now = Date.now();
+    // Ignore duplicate events from the same physical tap (some readers fire twice).
+    if (lastTriggerRef.current.id === finalId && now - lastTriggerRef.current.t < 2000) return;
+    lastTriggerRef.current = { id: finalId, t: now };
+    setTransitId(finalId);
+    setScanNonce(n => n + 1);
+  }, []);
+
   useEffect(() => {
     window.onNfcRawEvent = (tagId: string, url: string) => {
       console.log('🚀 NUCLEAR INJECTION:', { tagId, url });
@@ -39,11 +53,10 @@ function DeepLinkHandler() {
         const parts = url.split('/');
         idFromUrl = parts[parts.length - 1];
       }
-      const finalId = idFromUrl || tagId;
-      if (finalId) setTransitId(finalId);
+      triggerScan(idFromUrl || tagId);
     };
     return () => { delete window.onNfcRawEvent; };
-  }, []);
+  }, [triggerScan]);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -69,13 +82,12 @@ function DeepLinkHandler() {
         idFromUrl = parts[parts.length - 1];
       }
       
-      const finalId = idFromUrl || id;
-      if (finalId) setTransitId(finalId);
+      triggerScan(idFromUrl || id);
     };
 
     window.addEventListener('dary-nfc-scan', handleInjectedScan as EventListener);
     return () => window.removeEventListener('dary-nfc-scan', handleInjectedScan as EventListener);
-  }, []);
+  }, [triggerScan]);
 
   const handleTransitClose = useCallback(() => setTransitId(null), []);
   const handleTransitUnregistered = useCallback((id: string) => {
@@ -86,9 +98,10 @@ function DeepLinkHandler() {
   return (
     <div id="transit-id-setter">
       {transitId && (
-        <TransitView 
-            id={transitId} 
-            onClose={handleTransitClose} 
+        <TransitView
+            key={scanNonce}
+            id={transitId}
+            onClose={handleTransitClose}
             onUnregistered={handleTransitUnregistered}
         />
       )}
@@ -118,7 +131,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.05.30.16.30";
+  const INTERNAL_APP_VERSION = "2026.05.30.18.00";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function

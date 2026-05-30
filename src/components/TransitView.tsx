@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { doc, getDoc, updateDoc, arrayUnion, increment, writeBatch, collection } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap } from 'lucide-react';
+import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AdSlideshow from './AdSlideshow';
@@ -18,6 +18,7 @@ interface Client {
     cardType?: string;
     renewalHistory?: { month: string; amount: number; date: string }[];
     photoThumb?: string;
+    lastScanAt?: string;
 }
 
 interface TransitViewProps {
@@ -45,6 +46,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [showManagement, setShowManagement] = useState(false);
     const [unregistered, setUnregistered] = useState(false);
     const [showPhotoModal, setShowPhotoModal] = useState(false);
+    // Anti-passback: seconds since the previous scan when it was < 60s ago (null = ok)
+    const [passbackSecs, setPassbackSecs] = useState<number | null>(null);
 
     // Quick Renewal States
     const [showQuickRenew, setShowQuickRenew] = useState(false);
@@ -67,6 +70,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         setUnregistered(false);
         setClient(null);
         setShowAds(false); // INTERRUPT ADS ON NEW SCAN
+        setPassbackSecs(null);
     }
 
     // Use refs for values needed in the effect timer to avoid dependency loops
@@ -208,22 +212,23 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     const data = snap.data() as Client;
                     setClient({ ...data, id: snap.id });
 
-                    // Record the scan. This is the real scan path (the reader shows
-                    // TransitView, not ClientProfile). Drivers are NOT logged in, so
-                    // there is no auth gate — the rules allow an anonymous write to
-                    // only scanCount/lastScanAt + the scans subcollection. Deduped per
-                    // card for 1h via sessionStorage so a re-scan doesn't double-count.
-                    const scanKey = `scanned_${snap.id}`;
-                    const lastScan = sessionStorage.getItem(scanKey);
-                    const nowMs = Date.now();
-                    if (!lastScan || (nowMs - parseInt(lastScan)) >= 3600000) {
+                    // ANTI-PASSBACK: if this card was scanned less than 60s ago, flag
+                    // it (yellow warning) and do NOT record another scan — this is the
+                    // same card being passed back to a second passenger. Otherwise
+                    // record the scan. Drivers are NOT logged in, so there is no auth
+                    // gate: the rules allow an anonymous write to only
+                    // scanCount/lastScanAt + the scans subcollection.
+                    const lastMs = data.lastScanAt ? new Date(data.lastScanAt).getTime() : 0;
+                    const secsSinceLast = lastMs ? Math.round((Date.now() - lastMs) / 1000) : Infinity;
+                    const passback = secsSinceLast < 60;
+                    setPassbackSecs(passback ? secsSinceLast : null);
+
+                    if (!passback) {
                         const isoNow = new Date().toISOString();
                         const batch = writeBatch(db);
                         batch.update(doc(db, 'clients', snap.id), { scanCount: increment(1), lastScanAt: isoNow });
                         batch.set(doc(collection(db, 'clients', snap.id, 'scans')), { at: isoNow, route: data.route ?? '' });
-                        batch.commit()
-                            .then(() => sessionStorage.setItem(scanKey, nowMs.toString()))
-                            .catch(err => console.error('Transit scan tracking error:', err));
+                        batch.commit().catch(err => console.error('Transit scan tracking error:', err));
                     }
 
                     // Preset Renewal Form
@@ -237,9 +242,10 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     const currentMonthStrLocal = `${nowLocal.getFullYear()}-${(nowLocal.getMonth() + 1).toString().padStart(2, '0')}`;
                     const hasPaid = (data.renewalHistory || []).some((rh) => rh.month === currentMonthStrLocal);
                     const active = !data.isCanceled && hasPaid;
-                    
-                    if (active) playSuccessRef.current();
-                    else playErrorRef.current();
+
+                    // Passback always buzzes a warning; otherwise success/expired sound.
+                    if (passback || !active) playErrorRef.current();
+                    else playSuccessRef.current();
                 } else {
                     playErrorRef.current();
                     setUnregistered(true);
@@ -379,6 +385,29 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                             </div>
                         ) : (
                             <>
+                                {/* ANTI-PASSBACK WARNING */}
+                                {passbackSecs !== null && (
+                                    <div style={{
+                                        width: '100%',
+                                        background: 'linear-gradient(135deg, #ffd600 0%, #ff9100 100%)',
+                                        color: '#1a1500',
+                                        padding: '1.25rem 1.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '14px',
+                                        boxShadow: '0 8px 30px rgba(255,170,0,0.35)',
+                                        animation: 'pulse 1.3s ease-in-out infinite'
+                                    }}>
+                                        <AlertTriangle size={36} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+                                        <div style={{ textAlign: 'left', lineHeight: 1.25 }}>
+                                            <div style={{ fontSize: '1.3rem', fontWeight: 900, letterSpacing: '0.5px' }}>ВЕЧЕ СКАНИРАНА</div>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 700, opacity: 0.85 }}>
+                                                Сканирана преди {passbackSecs} сек. Изчакайте 1 минута преди ново сканиране.
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Card Top Branding */}
                                 <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                                     <span style={{ fontSize: '0.8rem', fontWeight: 900, color: themeColor, letterSpacing: '2px' }}>DARY CARD</span>
