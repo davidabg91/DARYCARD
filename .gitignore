@@ -31,3 +31,13 @@ scripts/node_modules
 *.njsproj
 *.sln
 *.sw?
+
+# Python PyInstaller / Cache
+nfc-bridge/__pycache__/
+nfc-bridge/build/
+nfc-bridge/dist/
+__pycache__/
+*.pyc
+
+# Local NFC Program EXE
+DARY PROGRAM EXE/

@@ -7,15 +7,45 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QTimer, QRectF
 from PyQt6.QtGui import QIcon, QFont, QTextCursor, QColor, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QTextEdit, QSplitter, QMessageBox)
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEnginePage
+# Globally loaded dependencies placeholder
+QWebEngineView = None
+QWebEnginePage = None
+CustomWebPage = None
+readers = None
+toHexString = None
+smartcard_available = False
 
-try:
-    from smartcard.System import readers
-    from smartcard.scard import *
-    from smartcard.util import toHexString
-except ImportError:
-    pass # Will handle gracefully in main
+def load_dependencies():
+    global QWebEngineView, QWebEnginePage, CustomWebPage, readers, toHexString, smartcard_available
+    
+    # Import PyQt6 WebEngine
+    from PyQt6.QtWebEngineWidgets import QWebEngineView as _QWebEngineView
+    from PyQt6.QtWebEngineCore import QWebEnginePage as _QWebEnginePage
+    QWebEngineView = _QWebEngineView
+    QWebEnginePage = _QWebEnginePage
+    
+    class _CustomWebPage(QWebEnginePage):
+        def __init__(self, console_signal, parent=None):
+            super().__init__(parent)
+            self.console_signal = console_signal
+
+        def javaScriptConsoleMessage(self, level, message, line, sourceID):
+            if message.startswith("[DARY_BRIDGE_LOG]:"):
+                log_content = message[len("[DARY_BRIDGE_LOG]:"):]
+                self.console_signal.emit(log_content)
+            super().javaScriptConsoleMessage(level, message, line, sourceID)
+            
+    CustomWebPage = _CustomWebPage
+    
+    # Try importing smartcard (pyscard)
+    try:
+        from smartcard.System import readers as _readers
+        from smartcard.util import toHexString as _toHexString
+        readers = _readers
+        toHexString = _toHexString
+        smartcard_available = True
+    except ImportError:
+        smartcard_available = False
 
 def read_ndef_url(connection):
     raw_bytes = bytearray()
@@ -156,7 +186,6 @@ class NFCThread(QThread):
         self.running = False
         self.wait()
 
-
 class DarySplashScreen(QWidget):
     def __init__(self):
         super().__init__()
@@ -174,7 +203,7 @@ class DarySplashScreen(QWidget):
             base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
             ico = os.path.join(base, "true_icon.ico")
             if os.path.exists(ico):
-                self.logo_pixmap = QPixmap(ico)
+                self.logo_pixmap = QIcon(ico).pixmap(256, 256)
         except:
             pass
             
@@ -210,23 +239,7 @@ class DarySplashScreen(QWidget):
             logo_rect = QRectF(100, 100, 100, 100)
             painter.drawPixmap(logo_rect.toRect(), self.logo_pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         
-        # Draw text below logo
-        painter.setPen(QColor("#ffffff"))
-        font = QFont("Segoe UI", 12, QFont.Weight.Bold)
-        painter.setFont(font)
         painter.drawText(QRectF(10, 220, 280, 40), Qt.AlignmentFlag.AlignCenter, "Зареждане...")
-
-
-class CustomWebPage(QWebEnginePage):
-    def __init__(self, console_signal, parent=None):
-        super().__init__(parent)
-        self.console_signal = console_signal
-
-    def javaScriptConsoleMessage(self, level, message, line, sourceID):
-        if message.startswith("[DARY_BRIDGE_LOG]:"):
-            log_content = message[len("[DARY_BRIDGE_LOG]:"):]
-            self.console_signal.emit(log_content)
-        super().javaScriptConsoleMessage(level, message, line, sourceID)
 
 
 class MainWindow(QMainWindow):
@@ -555,7 +568,11 @@ def main():
     splash.show()
     app.processEvents() # Изрисува го веднага на екрана
 
-    if "smartcard" not in sys.modules:
+    # Зареждане на тежките библиотеки докато се показва зареждащия екран
+    load_dependencies()
+    app.processEvents()
+
+    if not smartcard_available:
         splash.close()
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Icon.Critical)
