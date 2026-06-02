@@ -558,6 +558,23 @@ const AdminPanel: React.FC = () => {
                 details,
                 amount: amount || 0
             });
+
+            // Format and log to bridge
+            let bridgeMsg = "";
+            if (action === 'Създаване') {
+                bridgeMsg = `Нов профил на ${targetName} - ${details}`;
+            } else if (action === 'Подновяване') {
+                bridgeMsg = `Подновяване на ${targetName} - ${details}`;
+            } else if (action === 'Изтриване на плащане') {
+                bridgeMsg = `Изтрито плащане за ${targetName} - ${details}`;
+            } else if (action === 'Анулиране') {
+                bridgeMsg = `Анулиран профил на ${targetName} - ${details}`;
+            } else if (action === 'Изтриване на клиент') {
+                bridgeMsg = `Изтрит профил на ${targetName} - ${details}`;
+            } else {
+                bridgeMsg = `${action}: ${targetName} - ${details}`;
+            }
+            console.log(`[DARY_BRIDGE_LOG]: ${bridgeMsg}`);
         } catch (err) {
             console.error("Error logging global activity:", err);
         }

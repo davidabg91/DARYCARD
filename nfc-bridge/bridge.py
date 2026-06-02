@@ -8,6 +8,7 @@ from PyQt6.QtGui import QIcon, QFont, QTextCursor, QColor
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QTextEdit, QSplitter, QMessageBox)
 from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWebEngineCore import QWebEnginePage
 
 try:
     from smartcard.System import readers
@@ -156,7 +157,21 @@ class NFCThread(QThread):
         self.wait()
 
 
+class CustomWebPage(QWebEnginePage):
+    def __init__(self, console_signal, parent=None):
+        super().__init__(parent)
+        self.console_signal = console_signal
+
+    def javaScriptConsoleMessage(self, level, message, line, sourceID):
+        if message.startswith("[DARY_BRIDGE_LOG]:"):
+            log_content = message[len("[DARY_BRIDGE_LOG]:"):]
+            self.console_signal.emit(log_content)
+        super().javaScriptConsoleMessage(level, message, line, sourceID)
+
+
 class MainWindow(QMainWindow):
+    browser_log = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DARY NFC Четец - Премиум (Вграден Браузър)")
@@ -189,6 +204,7 @@ class MainWindow(QMainWindow):
         self.nfc_thread.main_status.connect(self.update_main_status)
         self.nfc_thread.history_add.connect(self.add_history_entry)
         self.nfc_thread.card_scanned.connect(self.load_url)
+        self.browser_log.connect(self.add_browser_history_entry)
         self.nfc_thread.start()
 
     def load_cards_database(self):
@@ -240,7 +256,7 @@ class MainWindow(QMainWindow):
         
         # Хедър
         header = QWidget()
-        header.setStyleSheet("background-color: #991b1b; border-bottom: 2px solid #ef4444;")
+        header.setStyleSheet("background-color: #ffffff; border-bottom: 2px solid #e4e4e7;")
         header_layout = QVBoxLayout(header)
         header_layout.setContentsMargins(20, 20, 20, 20)
         
@@ -262,14 +278,14 @@ class MainWindow(QMainWindow):
 
         title = QLabel("DARY CARD")
         title.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
-        title.setStyleSheet("color: #ffffff;")
+        title.setStyleSheet("color: #dc2626;")
         
         title_layout.addWidget(logo_label)
         title_layout.addWidget(title)
         
         subtitle = QLabel("Професионален NFC Терминал")
         subtitle.setFont(QFont("Segoe UI", 11))
-        subtitle.setStyleSheet("color: #fecaca;")
+        subtitle.setStyleSheet("color: #000000;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         header_layout.addLayout(title_layout)
@@ -387,6 +403,8 @@ class MainWindow(QMainWindow):
         right_layout.setContentsMargins(0, 0, 0, 0)
         
         self.browser = QWebEngineView()
+        self.browser_page = CustomWebPage(self.browser_log, self.browser)
+        self.browser.setPage(self.browser_page)
         self.browser.page().featurePermissionRequested.connect(self.handle_permission_requested)
         
         # Disable cache to prevent running stale React bundles
@@ -439,6 +457,17 @@ class MainWindow(QMainWindow):
         time_str = time.strftime('%H:%M:%S')
         icon = "✅" if is_success else "❌"
         color = "#4ade80" if is_success else "#f87171"
+        
+        full_text = f"{icon} [{time_str}]\n{text}\n\n"
+        
+        self.txt_history.moveCursor(QTextCursor.MoveOperation.Start)
+        self.txt_history.setTextColor(QColor(color))
+        self.txt_history.insertPlainText(full_text)
+        
+    def add_browser_history_entry(self, text):
+        time_str = time.strftime('%H:%M:%S')
+        icon = "💻"
+        color = "#c084fc"
         
         full_text = f"{icon} [{time_str}]\n{text}\n\n"
         

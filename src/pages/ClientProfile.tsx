@@ -555,6 +555,7 @@ const ClientProfile: React.FC = () => {
                     details: `Нова карта (NFC): ${id}. Сума: ${regAmount} €. Регион: ${regRoute}`,
                     amount: Number(regAmount)
                 });
+                console.log(`[DARY_BRIDGE_LOG]: Нов профил на ${regName} (${regRoute}) - Сума: ${regAmount} €`);
             } catch (logErr) {
                 console.error("Error logging activity:", logErr);
             }
@@ -1338,6 +1339,7 @@ const ClientProfile: React.FC = () => {
                                                         details: `Бързо подновяване за месец ${renewalMonth}. Сума: ${renewalAmount} €. Маршрут: ${renewalRoute}`,
                                                         amount: Number(renewalAmount)
                                                     });
+                                                    console.log(`[DARY_BRIDGE_LOG]: Подновяване на ${client?.name || 'Клиент'} за месец ${renewalMonth} - Сума: ${renewalAmount} €`);
                                                 } catch (logErr) { console.error("Log error", logErr); }
 
                                                 playSuccessSound();
