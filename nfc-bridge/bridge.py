@@ -3,8 +3,8 @@ import time
 import re
 import os
 
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QTimer
-from PyQt6.QtGui import QIcon, QFont, QTextCursor, QColor
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QTimer, QRectF
+from PyQt6.QtGui import QIcon, QFont, QTextCursor, QColor, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QTextEdit, QSplitter, QMessageBox)
 from PyQt6.QtWebEngineWidgets import QWebEngineView
@@ -157,6 +157,66 @@ class NFCThread(QThread):
         self.wait()
 
 
+class DarySplashScreen(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.SplashScreen)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.resize(300, 300)
+        
+        # Center on screen
+        screen = QApplication.primaryScreen().geometry()
+        self.move((screen.width() - self.width()) // 2, (screen.height() - self.height()) // 2)
+        
+        # Load logo
+        self.logo_pixmap = QPixmap()
+        try:
+            base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+            ico = os.path.join(base, "true_icon.ico")
+            if os.path.exists(ico):
+                self.logo_pixmap = QPixmap(ico)
+        except:
+            pass
+            
+        self.angle = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.rotate)
+        self.timer.start(16) # ~60 FPS
+        
+    def rotate(self):
+        self.angle = (self.angle + 4) % 360
+        self.update()
+        
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        # Draw semi-transparent dark background card
+        painter.setBrush(QColor(18, 18, 20, 245)) # matching app background #121214
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRoundedRect(QRectF(10, 10, 280, 280), 24, 24)
+        
+        # Draw loading arc
+        pen = QPen(QColor("#dc2626")) # Red spinner
+        pen.setWidth(4)
+        painter.setPen(pen)
+        
+        # Draw rotating arc (Qt draws arc in 1/16th of a degree)
+        rect = QRectF(60, 60, 180, 180)
+        painter.drawArc(rect, self.angle * 16, 120 * 16)
+        
+        # Draw logo in the center
+        if not self.logo_pixmap.isNull():
+            logo_rect = QRectF(100, 100, 100, 100)
+            painter.drawPixmap(logo_rect.toRect(), self.logo_pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        
+        # Draw text below logo
+        painter.setPen(QColor("#ffffff"))
+        font = QFont("Segoe UI", 12, QFont.Weight.Bold)
+        painter.setFont(font)
+        painter.drawText(QRectF(10, 220, 280, 40), Qt.AlignmentFlag.AlignCenter, "Зареждане...")
+
+
 class CustomWebPage(QWebEnginePage):
     def __init__(self, console_signal, parent=None):
         super().__init__(parent)
@@ -256,7 +316,7 @@ class MainWindow(QMainWindow):
         
         # Хедър
         header = QWidget()
-        header.setStyleSheet("background-color: #ffffff; border-bottom: 2px solid #e4e4e7;")
+        header.setStyleSheet("background-color: #121214; border-bottom: 2px solid #27272a;")
         header_layout = QVBoxLayout(header)
         header_layout.setContentsMargins(20, 20, 20, 20)
         
@@ -285,7 +345,7 @@ class MainWindow(QMainWindow):
         
         subtitle = QLabel("Професионален NFC Терминал")
         subtitle.setFont(QFont("Segoe UI", 11))
-        subtitle.setStyleSheet("color: #000000;")
+        subtitle.setStyleSheet("color: #ffffff;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         header_layout.addLayout(title_layout)
@@ -487,19 +547,28 @@ class MainWindow(QMainWindow):
         event.accept()
 
 def main():
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion") # Модерен стил
+
+    # Показване на зареждащия екран веднага
+    splash = DarySplashScreen()
+    splash.show()
+    app.processEvents() # Изрисува го веднага на екрана
+
     if "smartcard" not in sys.modules:
-        # Pyscard not found error handled with PyQt
-        app = QApplication(sys.argv)
+        splash.close()
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Icon.Critical)
         msg.setText("Липсва библиотеката 'pyscard'!\nНапишете в CMD: pip install pyscard")
         msg.exec()
         sys.exit(1)
         
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion") # Модерен стил
     window = MainWindow()
     window.show()
+    
+    # Скриване на зареждащия екран след като главният прозорец е зареден и показан
+    splash.close()
+    
     sys.exit(app.exec())
 
 if __name__ == '__main__':
