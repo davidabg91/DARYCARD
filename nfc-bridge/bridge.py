@@ -3,7 +3,7 @@ import time
 import re
 import os
 
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QTimer, QRectF
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QTimer, QRectF, QCoreApplication
 from PyQt6.QtGui import QIcon, QFont, QTextCursor, QColor, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QTextEdit, QSplitter, QMessageBox)
@@ -560,6 +560,7 @@ class MainWindow(QMainWindow):
         event.accept()
 
 def main():
+    QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
     app = QApplication(sys.argv)
     app.setStyle("Fusion") # Модерен стил
 
