@@ -630,7 +630,20 @@ const ClientProfile: React.FC = () => {
                             <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', textAlign: 'center' }}>Регистрация на Карта</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                                    <div style={{ width: '150px', height: '150px', borderRadius: '24px', background: 'rgba(255,255,255,0.05)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(255,255,255,0.2)', overflow: 'hidden', position: 'relative' }}>
+                                    <div style={{ 
+                                        width: isCapturing ? '320px' : '150px', 
+                                        height: isCapturing ? '320px' : '150px', 
+                                        borderRadius: '24px', 
+                                        background: 'rgba(255,255,255,0.05)', 
+                                        margin: '0 auto', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        justifyContent: 'center', 
+                                        border: '2px dashed rgba(255,255,255,0.2)', 
+                                        overflow: 'hidden', 
+                                        position: 'relative',
+                                        transition: 'width 0.3s ease, height 0.3s ease'
+                                    }}>
                                         {regPhoto ? (
                                             <>
                                                 <img src={regPhoto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
