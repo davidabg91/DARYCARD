@@ -180,6 +180,98 @@ const ClientProfile: React.FC = () => {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
+    // States for cropping tool
+    const [tempPhoto, setTempPhoto] = useState<string | null>(null);
+    const [isCropping, setIsCropping] = useState(false);
+    const [zoom, setZoom] = useState(1);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartRef = useRef({ x: 0, y: 0 });
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!isCropping) return;
+        setIsDragging(true);
+        dragStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isCropping || !isDragging) return;
+        setPan({
+            x: e.clientX - dragStartRef.current.x,
+            y: e.clientY - dragStartRef.current.y
+        });
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (!isCropping || e.touches.length !== 1) return;
+        setIsDragging(true);
+        dragStartRef.current = { x: e.touches[0].clientX - pan.x, y: e.touches[0].clientY - pan.y };
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!isCropping || !isDragging || e.touches.length !== 1) return;
+        setPan({
+            x: e.touches[0].clientX - dragStartRef.current.x,
+            y: e.touches[0].clientY - dragStartRef.current.y
+        });
+    };
+
+    const handleCropConfirm = () => {
+        if (!tempPhoto) return;
+        const img = new Image();
+        img.src = tempPhoto;
+        img.onload = () => {
+            const canvas320 = document.createElement('canvas');
+            canvas320.width = 320;
+            canvas320.height = 320;
+            const ctx320 = canvas320.getContext('2d');
+            if (ctx320) {
+                ctx320.fillStyle = '#000';
+                ctx320.fillRect(0, 0, 320, 320);
+                
+                ctx320.save();
+                ctx320.translate(160, 160);
+                ctx320.translate(pan.x, pan.y);
+                ctx320.scale(zoom, zoom);
+                
+                const imgRatio = img.width / img.height;
+                let dw, dh;
+                if (imgRatio > 1) {
+                    dh = 320;
+                    dw = 320 * imgRatio;
+                } else {
+                    dw = 320;
+                    dh = 320 / imgRatio;
+                }
+                const dx = -dw / 2;
+                const dy = -dh / 2;
+                ctx320.drawImage(img, dx, dy, dw, dh);
+                ctx320.restore();
+            }
+
+            const cropCanvas = document.createElement('canvas');
+            cropCanvas.width = 500;
+            cropCanvas.height = 500;
+            const cropCtx = cropCanvas.getContext('2d');
+            if (cropCtx) {
+                cropCtx.drawImage(canvas320, 60, 60, 200, 200, 0, 0, 500, 500);
+                const croppedDataUrl = cropCanvas.toDataURL('image/jpeg', 0.85);
+                setRegPhoto(croppedDataUrl);
+                setTempPhoto(null);
+                setIsCropping(false);
+            }
+        };
+    };
+
+    const handleCropCancel = () => {
+        setTempPhoto(null);
+        setIsCropping(false);
+    };
+
     const startWebcam = async () => {
         setIsCapturing(true);
         setError(null);
@@ -210,12 +302,18 @@ const ClientProfile: React.FC = () => {
             if (ctx) {
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-                compressImage(dataUrl, 500, 500, 0.8).then(compressed => {
-                    setRegPhoto(compressed);
+                compressImage(dataUrl, 600, 600, 0.85).then(compressed => {
+                    setTempPhoto(compressed);
+                    setIsCropping(true);
+                    setZoom(1);
+                    setPan({ x: 0, y: 0 });
                     stopWebcam();
                 }).catch(err => {
                     console.error("Compression error:", err);
-                    setRegPhoto(dataUrl);
+                    setTempPhoto(dataUrl);
+                    setIsCropping(true);
+                    setZoom(1);
+                    setPan({ x: 0, y: 0 });
                     stopWebcam();
                 });
             }
@@ -387,8 +485,11 @@ const ClientProfile: React.FC = () => {
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const base64 = reader.result as string;
-                const compressed = await compressImage(base64, 500, 500, 0.8);
-                setRegPhoto(compressed);
+                const compressed = await compressImage(base64, 600, 600, 0.85);
+                setTempPhoto(compressed);
+                setIsCropping(true);
+                setZoom(1);
+                setPan({ x: 0, y: 0 });
             };
             reader.readAsDataURL(file);
         }
@@ -630,30 +731,79 @@ const ClientProfile: React.FC = () => {
                             <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', textAlign: 'center' }}>Регистрация на Карта</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                                    <div style={{ 
-                                        width: isCapturing ? '320px' : '150px', 
-                                        height: isCapturing ? '320px' : '150px', 
-                                        borderRadius: '24px', 
-                                        background: 'rgba(255,255,255,0.05)', 
-                                        margin: '0 auto', 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        justifyContent: 'center', 
-                                        border: '2px dashed rgba(255,255,255,0.2)', 
-                                        overflow: 'hidden', 
-                                        position: 'relative',
-                                        transition: 'width 0.3s ease, height 0.3s ease'
-                                    }}>
+                                    <div 
+                                        style={{ 
+                                            width: (isCapturing || isCropping) ? '320px' : '150px', 
+                                            height: (isCapturing || isCropping) ? '320px' : '150px', 
+                                            borderRadius: '24px', 
+                                            background: 'rgba(255,255,255,0.05)', 
+                                            margin: '0 auto', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            border: '2px dashed rgba(255,255,255,0.2)', 
+                                            overflow: 'hidden', 
+                                            position: 'relative',
+                                            transition: 'width 0.3s ease, height 0.3s ease',
+                                            cursor: isCropping ? 'grab' : 'default'
+                                        }}
+                                        onMouseDown={handleMouseDown}
+                                        onMouseMove={handleMouseMove}
+                                        onMouseUp={handleMouseUp}
+                                        onMouseLeave={handleMouseUp}
+                                        onTouchStart={handleTouchStart}
+                                        onTouchMove={handleTouchMove}
+                                        onTouchEnd={handleMouseUp}
+                                    >
                                         {regPhoto ? (
                                             <>
                                                 <img src={regPhoto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => setRegPhoto(null)} 
-                                                    style={{ position: 'absolute', top: '0.3rem', right: '0.3rem', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.8rem' }}
+                                                    style={{ position: 'absolute', top: '0.3rem', right: '0.3rem', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.8rem', zIndex: 10 }}
                                                 >
                                                     ✕
                                                 </button>
+                                            </>
+                                        ) : isCropping && tempPhoto ? (
+                                            <>
+                                                <img 
+                                                    src={tempPhoto} 
+                                                    style={{ 
+                                                        position: 'absolute',
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        objectFit: 'cover',
+                                                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                                                        transformOrigin: 'center center',
+                                                        userSelect: 'none',
+                                                        pointerEvents: 'none'
+                                                    }} 
+                                                />
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: 0,
+                                                    left: 0,
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    pointerEvents: 'none',
+                                                    border: '60px solid rgba(0, 0, 0, 0.6)',
+                                                    boxSizing: 'border-box',
+                                                    zIndex: 2
+                                                }} />
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: '60px',
+                                                    left: '60px',
+                                                    width: '200px',
+                                                    height: '200px',
+                                                    border: '2px dashed var(--primary-color)',
+                                                    borderRadius: '20px',
+                                                    boxSizing: 'border-box',
+                                                    pointerEvents: 'none',
+                                                    zIndex: 3
+                                                }} />
                                             </>
                                         ) : isCapturing ? (
                                             <>
@@ -663,7 +813,7 @@ const ClientProfile: React.FC = () => {
                                                     playsInline 
                                                     muted 
                                                 />
-                                                <div style={{ position: 'absolute', bottom: '0.4rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+                                                <div style={{ position: 'absolute', bottom: '0.4rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '0.5rem', zIndex: 10 }}>
                                                     <button 
                                                         type="button" 
                                                         onClick={capturePhoto} 
@@ -690,7 +840,45 @@ const ClientProfile: React.FC = () => {
                                             </div>
                                         )}
                                     </div>
-                                    {!regPhoto && !isCapturing && (
+                                    {isCropping && tempPhoto && (
+                                        <div style={{ width: '280px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', marginTop: '0.4rem', animation: 'fadeIn 0.3s ease' }}>
+                                            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>
+                                                    <span>МАЩАБ (ZOOM)</span>
+                                                    <span>{zoom.toFixed(1)}x</span>
+                                                </div>
+                                                <input 
+                                                    type="range" 
+                                                    min="1" 
+                                                    max="3" 
+                                                    step="0.02" 
+                                                    value={zoom} 
+                                                    onChange={e => setZoom(parseFloat(e.target.value))} 
+                                                    style={{ width: '100%', accentColor: 'var(--primary-color)', cursor: 'pointer', height: '6px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', outline: 'none' }}
+                                                />
+                                            </div>
+                                            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontStyle: 'italic' }}>
+                                                Влачете снимката, за да центрирате главата
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={handleCropConfirm} 
+                                                    style={{ flex: 1, background: '#22c55e', color: '#fff', border: 'none', padding: '0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 12px rgba(34, 197, 94, 0.2)' }}
+                                                >
+                                                    ✓ Изрежи главата
+                                                </button>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={handleCropCancel} 
+                                                    style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.6rem 1rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}
+                                                >
+                                                    Отказ
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {!regPhoto && !isCapturing && !isCropping && (
                                         <button 
                                             type="button" 
                                             onClick={() => fileInputRef.current?.click()} 
