@@ -35,6 +35,7 @@ interface Client {
     lastScanAt?: string;
     createdAt: string;
     abuseReviewedAt?: string;
+    cardNumber?: string;
 }
 
 // One scan record from the clients/{id}/scans subcollection, flattened with its

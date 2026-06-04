@@ -8,6 +8,7 @@ import AdSlideshow from './AdSlideshow';
 import ClientPhoto from './ClientPhoto';
 import MyPosSmartSdk from '../services/MyPosSmartSdk';
 import { Capacitor } from '@capacitor/core';
+import { CARDS_MAPPING } from '../data/cardsMapping';
 
 interface Client {
     id: string;
@@ -19,6 +20,7 @@ interface Client {
     renewalHistory?: { month: string; amount: number; date: string }[];
     photoThumb?: string;
     lastScanAt?: string;
+    cardNumber?: string;
 }
 
 interface TransitViewProps {
@@ -450,6 +452,11 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                                     </div>
 
                                     <div style={{ textAlign: 'center' }}>
+                                        {client && (client.cardNumber || CARDS_MAPPING[client.id]) && (
+                                            <div style={{ fontSize: '0.95rem', color: themeColor, fontWeight: 900, marginBottom: '0.3rem', letterSpacing: '1px' }}>
+                                                КАРТА № {client.cardNumber || CARDS_MAPPING[client.id]}
+                                            </div>
+                                        )}
                                         <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 0.2rem 0', letterSpacing: '-0.2px', opacity: 0.6 }}>{client?.name?.toUpperCase()}</h2>
                                         <div style={{ fontSize: '2rem', fontWeight: 900, color: themeColor, textShadow: `0 0 30px ${themeColor}66` }}>{client?.route?.toUpperCase()}</div>
                                     </div>

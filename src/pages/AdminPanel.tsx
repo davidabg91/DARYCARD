@@ -26,6 +26,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { ROUTE_METADATA } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
+import { CARDS_MAPPING } from '../data/cardsMapping';
 
 interface ClientLog {
     date: string;
@@ -55,6 +56,7 @@ interface Client {
     nfcUid?: string;
     school?: string;
     photoThumb?: string;
+    cardNumber?: string;
 }
 
 interface Signal {
@@ -185,6 +187,10 @@ const sanitizeId = (id: string | null | undefined): string => {
     
     // Remove all whitespace and convert to uppercase
     return lastPart.replace(/\s+/g, '').toUpperCase();
+};
+
+const getClientCardNumber = (c: Client): string => {
+    return c.cardNumber || CARDS_MAPPING[c.id] || '';
 };
 
 const getDefaultExpiryMonth = () => {
@@ -786,6 +792,7 @@ const AdminPanel: React.FC = () => {
             photoThumb,
             address: cardType === 'Пенсионерска карта' ? address : '',
             school: cardType === 'Ученическа карта' ? (selectedSchool === 'custom' ? customSchool : selectedSchool) : '',
+            cardNumber: CARDS_MAPPING[sanitizedNfcId] || '',
             createdAt: new Date().toISOString(),
             renewalHistory: [{ date: new Date().toISOString(), amount: Number(amountPaid), month: expiryDate }],
             history: [{
@@ -1015,13 +1022,16 @@ const AdminPanel: React.FC = () => {
     const filteredClientsByFilters = clients.filter(c => {
         const sTerm = searchTerm.toLowerCase();
         const sSanitized = sanitizeId(searchTerm).toLowerCase();
+        const cCardNum = getClientCardNumber(c).toLowerCase();
         const matchesSearch = !searchTerm || 
             c.name.toLowerCase().includes(sTerm) ||
             c.id.toLowerCase().includes(sTerm) ||
             c.id.toLowerCase().includes(sSanitized) ||
             (c.nfcUid && c.nfcUid.toLowerCase().includes(sTerm)) ||
             (c.nfcUid && c.nfcUid.toLowerCase().includes(sSanitized)) ||
-            c.route.toLowerCase().includes(sTerm);
+            c.route.toLowerCase().includes(sTerm) ||
+            cCardNum.includes(sTerm) ||
+            cCardNum.includes(sSanitized);
         
         const matchesRoute = filterRoute === 'all' || c.route === filterRoute;
         
@@ -1539,7 +1549,9 @@ const AdminPanel: React.FC = () => {
                                     const distancePart = reportDistanceFilter === 'all' ? '' : ` (${distStr})`;
                                     const addressPart = (reportCardType === 'Пенсионерска карта' && c.address) ? ` - Адрес: ${c.address}` : '';
                                     const schoolPart = (reportCardType === 'Ученическа карта' && c.school) ? ` (${c.school})` : '';
-                                    return `${c.name}${schoolPart}${addressPart} - ${c.cardType || 'Нормална карта'} - ${c.route}${distancePart} - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
+                                    const cardNum = getClientCardNumber(c);
+                                    const cardNumPart = cardNum ? ` (Карта № ${cardNum})` : '';
+                                    return `${c.name}${cardNumPart}${schoolPart}${addressPart} - ${c.cardType || 'Нормална карта'} - ${c.route}${distancePart} - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
                                 }).join('\n');
                                 const footer = `\n---\nОбщо: ${totalReportRevenue.toFixed(2)} €`;
                                 const shareText = header + rows + footer;
@@ -1635,6 +1647,7 @@ const AdminPanel: React.FC = () => {
                                                     <thead>
                                                         <tr>
                                                             <th>Име на Клиент</th>
+                                                            <th>Номер Карта</th>
                                                             <th>Вид Карта</th>
                                                             <th>Курс</th>
                                                             {reportDistanceFilter !== 'all' && <th>Разстояние</th>}
@@ -1647,6 +1660,7 @@ const AdminPanel: React.FC = () => {
                                                         {filteredReportClients.length > 0 ? filteredReportClients.map(c => (
                                                             <tr key={c.id}>
                                                                 <td style={{ fontWeight: 600 }}>{c.name}</td>
+                                                                <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{getClientCardNumber(c) || '---'}</td>
                                                                 <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>{c.cardType || 'Нормална карта'}</span></td>
                                                                 <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
                                                                 {reportDistanceFilter !== 'all' && (
@@ -1660,7 +1674,7 @@ const AdminPanel: React.FC = () => {
                                                             </tr>
                                                         )) : (
                                                             <tr>
-                                                                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма данни за избраните филтри</td>
+                                                                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма данни за избраните филтри</td>
                                                             </tr>
                                                         )}
                                                     </tbody>
@@ -1735,7 +1749,7 @@ const AdminPanel: React.FC = () => {
                     <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexDirection: isMobile ? 'column' : 'row' }}>
                         <div style={{ flex: 1 }}>
                             <input
-                                type="text" placeholder="Търсене по име, ID или курс..."
+                                type="text" placeholder="Търсене по име, ID, № карта или курс..."
                                 style={{ width: '100%', padding: '0.8rem 1.5rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.9rem' }}
                                 value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -1787,7 +1801,22 @@ const AdminPanel: React.FC = () => {
                                                         <img src={client.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
                                                         <div>
                                                             <div style={{ fontWeight: 600 }}>{client.name}</div>
-                                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{client.id}</div>
+                                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>ID: {client.id}</span>
+                                                                {getClientCardNumber(client) && (
+                                                                    <span style={{ 
+                                                                        fontSize: '0.7rem', 
+                                                                        fontWeight: 700, 
+                                                                        background: 'rgba(0, 173, 181, 0.1)', 
+                                                                        color: 'var(--primary-color)', 
+                                                                        padding: '1px 5px', 
+                                                                        borderRadius: '4px',
+                                                                        border: '1px solid rgba(0, 173, 181, 0.3)'
+                                                                    }}>
+                                                                        Карта № {getClientCardNumber(client)}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </td>
                                                     <td>
@@ -1868,7 +1897,22 @@ const AdminPanel: React.FC = () => {
                                                 <img src={client.photo} style={{ width: '50px', height: '50px', borderRadius: '12px', objectFit: 'cover' }} />
                                                 <div>
                                                     <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{client.name}</div>
-                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>ID: {client.id}</div>
+                                                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>ID: {client.id}</span>
+                                                        {getClientCardNumber(client) && (
+                                                            <span style={{ 
+                                                                fontSize: '0.65rem', 
+                                                                fontWeight: 700, 
+                                                                background: 'rgba(0, 173, 181, 0.1)', 
+                                                                color: 'var(--primary-color)', 
+                                                                padding: '1px 4px', 
+                                                                borderRadius: '4px',
+                                                                border: '1px solid rgba(0, 173, 181, 0.3)'
+                                                            }}>
+                                                                Карта № {getClientCardNumber(client)}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <span style={{ 
@@ -2150,11 +2194,19 @@ const AdminPanel: React.FC = () => {
                                                     value={nfcLinkId} 
                                                     onChange={e => setNfcLinkId(e.target.value.toUpperCase())} 
                                                 />
-                                                {nfcLinkId && nfcLinkId.includes('/') && (
-                                                    <div style={{ fontSize: '0.65rem', color: 'var(--success-color)', padding: '2px 4px' }}>
-                                                        Разпознат ID: <b>{sanitizeId(nfcLinkId)}</b>
-                                                    </div>
-                                                )}
+                                                {(() => {
+                                                    const mappedCard = CARDS_MAPPING[sanitizeId(nfcLinkId)];
+                                                    if (!nfcLinkId) return null;
+                                                    return (
+                                                        <div style={{ fontSize: '0.75rem', color: mappedCard ? '#00e676' : 'var(--text-secondary)', padding: '2px 4px', fontWeight: mappedCard ? 800 : 500 }}>
+                                                            {mappedCard ? (
+                                                                <span>Автоматично разпозната Карта № <b>{mappedCard}</b></span>
+                                                            ) : (
+                                                                <span>Разпознат ID: <b>{sanitizeId(nfcLinkId)}</b></span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                             <button 
                                                 type="button"

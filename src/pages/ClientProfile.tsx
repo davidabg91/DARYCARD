@@ -8,6 +8,7 @@ import LoadingScreen from '../components/LoadingScreen';
 import { ROUTE_METADATA } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import ClientPhoto from '../components/ClientPhoto';
+import { CARDS_MAPPING } from '../data/cardsMapping';
 
 interface Client {
     id: string;
@@ -27,6 +28,7 @@ interface Client {
     nfcUid?: string;
     photoThumb?: string;
     lastScanAt?: string;
+    cardNumber?: string;
 }
 
 const ROUTES = [
@@ -528,6 +530,7 @@ const ClientProfile: React.FC = () => {
             cardType: regCardType,
             address: regCardType === 'Пенсионерска карта' ? regAddress : '',
             school: regCardType === 'Ученическа карта' ? (regSelectedSchool === 'custom' ? regCustomSchool : regSelectedSchool) : '',
+            cardNumber: CARDS_MAPPING[id] || '',
             expiryDate: expiryMonth,
             photo: photoValue,
             photoThumb,
@@ -729,7 +732,12 @@ const ClientProfile: React.FC = () => {
                         </>
                     ) : (
                         <div style={{ animation: 'fadeIn 0.4s ease', textAlign: 'left', background: 'rgba(255,255,255,0.03)', padding: '2rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                            <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', textAlign: 'center' }}>Регистрация на Карта</h3>
+                            <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', textAlign: 'center' }}>Регистрация на Карта</h3>
+                            {CARDS_MAPPING[id] && (
+                                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-color)', textAlign: 'center', marginBottom: '1.5rem' }}>
+                                    Номер на Карта: {CARDS_MAPPING[id]}
+                                </div>
+                            )}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                                     <div 
@@ -1144,7 +1152,10 @@ const ClientProfile: React.FC = () => {
 
                 {/* Footer Security Element */}
                 <div style={{ padding: '1rem 1.5rem', background: 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace' }}>#{client.id.substring(0,8).toUpperCase()}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>
+                        #{client.id.substring(0,8).toUpperCase()}
+                        {(client.cardNumber || CARDS_MAPPING[client.id]) && ` | КАРТА: ${client.cardNumber || CARDS_MAPPING[client.id]}`}
+                    </span>
                     <Settings size={16} style={{ opacity: 0.1 }} />
                 </div>
             </div>
