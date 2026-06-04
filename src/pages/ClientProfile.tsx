@@ -9,6 +9,7 @@ import { ROUTE_METADATA } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import ClientPhoto from '../components/ClientPhoto';
 import { CARDS_MAPPING } from '../data/cardsMapping';
+import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY } from '../data/municipalities';
 
 interface Client {
     id: string;
@@ -25,6 +26,7 @@ interface Client {
     cardType?: string;
     address?: string;
     school?: string;
+    municipality?: string;
     nfcUid?: string;
     photoThumb?: string;
     lastScanAt?: string;
@@ -160,6 +162,8 @@ const ClientProfile: React.FC = () => {
     const [regCardType, setRegCardType] = useState('Нормална карта');
     const [regSelectedSchool, setRegSelectedSchool] = useState('');
     const [regCustomSchool, setRegCustomSchool] = useState('');
+    const [regMunicipality, setRegMunicipality] = useState('');
+    const [regCustomMunicipality, setRegCustomMunicipality] = useState('');
     const [regRoute, setRegRoute] = useState('');
     const [regAmount, setRegAmount] = useState('50');
     const [regPhoto, setRegPhoto] = useState<string | null>(null);
@@ -530,6 +534,9 @@ const ClientProfile: React.FC = () => {
             cardType: regCardType,
             address: regCardType === 'Пенсионерска карта' ? regAddress : '',
             school: regCardType === 'Ученическа карта' ? (regSelectedSchool === 'custom' ? regCustomSchool : regSelectedSchool) : '',
+            municipality: (regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта')
+                ? (regMunicipality === MUNICIPALITY_CUSTOM ? regCustomMunicipality.trim() : regMunicipality)
+                : '',
             cardNumber: CARDS_MAPPING[id] || '',
             expiryDate: expiryMonth,
             photo: photoValue,
@@ -907,7 +914,13 @@ const ClientProfile: React.FC = () => {
                                     <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handlePhotoUpload} style={{ display: 'none' }} />
                                 </div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>ИМЕ НА КЛИЕНТА</label><input value={regName} onChange={e => setRegName(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} placeholder="Име Фамилия..." /></div>
-                                <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>ВИД КАРТА</label><select value={regCardType} onChange={e => setRegCardType(e.target.value)} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}>
+                                <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>ВИД КАРТА</label><select value={regCardType} onChange={e => {
+                                    const val = e.target.value;
+                                    setRegCardType(val);
+                                    if (val === 'Пенсионерска карта') { setRegMunicipality(DEFAULT_MUNICIPALITY); setRegCustomMunicipality(''); }
+                                    else if (val === 'Ученическа карта') { setRegMunicipality(regSelectedSchool && regSelectedSchool !== 'custom' ? DEFAULT_MUNICIPALITY : ''); setRegCustomMunicipality(''); }
+                                    else { setRegMunicipality(''); setRegCustomMunicipality(''); }
+                                }} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}>
                                     <option value="Нормална карта">Нормална карта</option>
                                     <option value="Ученическа карта">Ученическа карта</option>
                                     <option value="Пенсионерска карта">Пенсионерска карта</option>
@@ -917,9 +930,15 @@ const ClientProfile: React.FC = () => {
                                     <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--primary-color)', marginBottom: '0.4rem', display: 'block', fontWeight: 800 }}>УЧИЛИЩЕ</label>
-                                            <select 
-                                                value={regSelectedSchool} 
-                                                onChange={e => setRegSelectedSchool(e.target.value)} 
+                                            <select
+                                                value={regSelectedSchool}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setRegSelectedSchool(val);
+                                                    if (val === 'custom' || val === '') setRegMunicipality('');
+                                                    else setRegMunicipality(DEFAULT_MUNICIPALITY);
+                                                    setRegCustomMunicipality('');
+                                                }}
                                                 style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid var(--primary-color)', borderRadius: '12px', color: '#fff', outline: 'none' }}
                                                 required={regCardType === 'Ученическа карта'}
                                             >
@@ -952,6 +971,35 @@ const ClientProfile: React.FC = () => {
                                             placeholder="напр. гр. Плевен, ул. Свобода 1..." 
                                             required={regCardType === 'Пенсионерска карта'}
                                         />
+                                    </div>
+                                )}
+                                {(regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта') && (
+                                    <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: '#7dd3fc', marginBottom: '0.4rem', display: 'block', fontWeight: 800 }}>ОБЩИНА</label>
+                                            <select
+                                                value={regMunicipality}
+                                                onChange={e => { setRegMunicipality(e.target.value); if (e.target.value !== MUNICIPALITY_CUSTOM) setRegCustomMunicipality(''); }}
+                                                style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(125,211,252,0.5)', borderRadius: '12px', color: '#fff', outline: 'none' }}
+                                                required={regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта'}
+                                            >
+                                                <option value="">Избери община...</option>
+                                                {MUNICIPALITIES.map(m => <option key={m} value={m}>{m}</option>)}
+                                                <option value={MUNICIPALITY_CUSTOM}>Друго (въведи ръчно)...</option>
+                                            </select>
+                                        </div>
+                                        {regMunicipality === MUNICIPALITY_CUSTOM && (
+                                            <div style={{ animation: 'slideDown 0.3s ease' }}>
+                                                <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>ИМЕ НА ОБЩИНА</label>
+                                                <input
+                                                    value={regCustomMunicipality}
+                                                    onChange={e => setRegCustomMunicipality(e.target.value)}
+                                                    style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}
+                                                    placeholder="Въведи община..."
+                                                    required={regMunicipality === MUNICIPALITY_CUSTOM}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МАРШРУТ (КУРС)</label><select value={regRoute} onChange={e => setRegRoute(e.target.value)} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}><option value="">Избери маршрут...</option>{ROUTES.map(r => <option key={r} value={r}>{r}</option>)}</select></div>

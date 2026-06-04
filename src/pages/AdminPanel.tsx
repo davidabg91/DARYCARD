@@ -27,6 +27,7 @@ import { useAuth } from '../context/AuthContext';
 import { ROUTE_METADATA } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import { CARDS_MAPPING } from '../data/cardsMapping';
+import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY } from '../data/municipalities';
 
 interface ClientLog {
     date: string;
@@ -55,6 +56,7 @@ interface Client {
     address?: string;
     nfcUid?: string;
     school?: string;
+    municipality?: string;
     photoThumb?: string;
     cardNumber?: string;
 }
@@ -331,6 +333,11 @@ const AdminPanel: React.FC = () => {
     const [address, setAddress] = useState('');
     const [selectedSchool, setSelectedSchool] = useState('');
     const [customSchool, setCustomSchool] = useState('');
+    // Municipality (община) for student & pensioner cards. `municipality` holds a
+    // value from MUNICIPALITIES, '' (none) or MUNICIPALITY_CUSTOM; when custom,
+    // the manual text lives in `customMunicipality`.
+    const [municipality, setMunicipality] = useState('');
+    const [customMunicipality, setCustomMunicipality] = useState('');
     const [isWaitingForScan, setIsWaitingForScan] = useState(false);
 
     // Modal/Action State
@@ -371,6 +378,7 @@ const AdminPanel: React.FC = () => {
     const [reportCardType, setReportCardType] = useState<string>('all');
     const [reportRoute, setReportRoute] = useState<string>('all');
     const [reportDistanceFilter, setReportDistanceFilter] = useState<string>('all');
+    const [reportMunicipality, setReportMunicipality] = useState<string>('all');
 
     const [photoError, setPhotoError] = useState<string | null>(null);
     
@@ -792,6 +800,9 @@ const AdminPanel: React.FC = () => {
             photoThumb,
             address: cardType === 'Пенсионерска карта' ? address : '',
             school: cardType === 'Ученическа карта' ? (selectedSchool === 'custom' ? customSchool : selectedSchool) : '',
+            municipality: (cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта')
+                ? (municipality === MUNICIPALITY_CUSTOM ? customMunicipality.trim() : municipality)
+                : '',
             cardNumber: CARDS_MAPPING[sanitizedNfcId] || '',
             createdAt: new Date().toISOString(),
             renewalHistory: [{ date: new Date().toISOString(), amount: Number(amountPaid), month: expiryDate }],
@@ -816,7 +827,7 @@ const AdminPanel: React.FC = () => {
             
             if (isNew) {
                 setRegistrationSuccess(client);
-                setClientName(''); setCardType('Нормална карта'); setAddress(''); setSelectedSchool(''); setCustomSchool(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
+                setClientName(''); setCardType('Нормална карта'); setAddress(''); setSelectedSchool(''); setCustomSchool(''); setMunicipality(''); setCustomMunicipality(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
                 setShowActionModal(false);
                 setSelectedClient(null);
             } else {
@@ -1198,6 +1209,7 @@ const AdminPanel: React.FC = () => {
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th, td { padding: 1rem; border-bottom: 1px solid var(--surface-border); }
         th { color: var(--text-secondary); font-weight: 500; }
+        .register-print { display: none; }
         @media print {
             body * { visibility: hidden; }
             #printable-report, #printable-report * { visibility: visible !important; color: #000 !important; }
@@ -1205,6 +1217,11 @@ const AdminPanel: React.FC = () => {
             #printable-report .no-print { display: none !important; }
             #printable-report table, #printable-report th, #printable-report td { border: 1px solid #ddd !important; border-collapse: collapse; padding: 8px; }
             #printable-report th { background: #f5f5f5 !important; }
+            /* Регистър на издадените карти: show the register layout, hide the on-screen
+               financial table when printing a student/pensioner report. */
+            #printable-report .register-print { display: block !important; }
+            #printable-report .screen-only-report { display: none !important; }
+            #printable-report .register-print th, #printable-report .register-print td { text-align: left; }
         }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
         .modal-content { background: var(--bg-color); border: 1px solid var(--surface-border); border-radius: 20px; width: 100%; maxWidth: 500px; padding: 2rem; position: relative; }
@@ -1539,6 +1556,7 @@ const AdminPanel: React.FC = () => {
                                     if (cType !== reportCardType) match = false;
                                 }
                                 if (reportRoute !== 'all' && c.route !== reportRoute) match = false;
+                                if (reportMunicipality !== 'all' && (c.municipality || '') !== reportMunicipality) match = false;
                                 if (reportMonth !== 'all' && getMonthPayment(c, reportMonth) <= 0) match = false;
                                 
                                 // Distance Filter Logic
@@ -1550,18 +1568,61 @@ const AdminPanel: React.FC = () => {
                             });
                             
                             const totalReportRevenue = filteredReportClients.reduce((sum, c) => sum + (reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)), 0);
+
+                            // Община column shows for student/pensioner reports or whenever a
+                            // municipality filter is applied. Empty-row colSpan is derived so it
+                            // always spans the exact number of visible columns.
+                            const showMunicipalityCol = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportMunicipality !== 'all';
+                            const reportColSpan = 5 /* name, card no, type, route, amount */
+                                + (reportDistanceFilter !== 'all' ? 1 : 0)
+                                + (reportCardType === 'Пенсионерска карта' ? 1 : 0)
+                                + (reportCardType === 'Ученическа карта' ? 1 : 0)
+                                + (showMunicipalityCol ? 1 : 0);
+
+                            // --- Регистър на издадените карти (special print layout) ---
+                            // Used when printing a STUDENT or PENSIONER report. Renders a formal
+                            // register header + a 7-column table; replaces the on-screen financial
+                            // table in print only (see .register-print / .screen-only-report CSS).
+                            const useRegisterPrint = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта';
+                            const SHORT_ROUTES = ["Ясен", "Опанец", "Ясен-Дисевица"];
+                            const registerMonthLabel = reportMonth === 'all'
+                                ? 'ВСИЧКИ МЕСЕЦИ'
+                                : (() => {
+                                    const [y, m] = reportMonth.split('-');
+                                    const bg = ["ЯНУАРИ", "ФЕВРУАРИ", "МАРТ", "АПРИЛ", "МАЙ", "ЮНИ", "ЮЛИ", "АВГУСТ", "СЕПТЕМВРИ", "ОКТОМВРИ", "НОЕМВРИ", "ДЕКЕМВРИ"];
+                                    return `${bg[parseInt(m, 10) - 1] || ''} ${y}`.trim();
+                                })();
+                            const registerDistanceLabel = reportDistanceFilter === 'under10' ? 'ПОД 10 КМ' : reportDistanceFilter === 'over10' ? 'НАД 10 КМ' : 'ВСИЧКИ';
+                            const registerCategoryLabel = reportCardType === 'Пенсионерска карта' ? 'ПЕНСИОНЕРИ' : 'УЧЕНИЦИ';
+                            const registerLines = (reportRoute !== 'all'
+                                ? [reportRoute]
+                                : reportDistanceFilter === 'under10' ? SHORT_ROUTES
+                                : reportDistanceFilter === 'over10' ? ROUTES.filter(r => !SHORT_ROUTES.includes(r))
+                                : ROUTES).join(', ');
+                            const registerMunicipalityLabel = reportMunicipality === 'all' ? 'ВСИЧКИ' : reportMunicipality;
+                            const getRegisterDate = (c: Client) => {
+                                let iso = c.createdAt;
+                                if (reportMonth !== 'all') {
+                                    const rh = (c.renewalHistory || []).find(r => r.month === reportMonth);
+                                    if (rh?.date) iso = rh.date;
+                                }
+                                if (!iso) return '---';
+                                const d = new Date(iso);
+                                return isNaN(d.getTime()) ? '---' : d.toLocaleDateString('bg-BG');
+                            };
                             
                             const handleShareReport = async () => {
-                                const header = `Финансов Отчет DARY COMMERCE\nМесец: ${reportMonth === 'all' ? 'Всички' : reportMonth} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute} | Дистанция: ${reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}\n---\n`;
+                                const header = `Финансов Отчет DARY COMMERCE\nМесец: ${reportMonth === 'all' ? 'Всички' : reportMonth} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute} | Община: ${reportMunicipality === 'all' ? 'Всички' : reportMunicipality} | Дистанция: ${reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}\n---\n`;
                                 const rows = filteredReportClients.map(c => {
                                     const isShort = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
                                     const distStr = isShort ? "До 10 км" : "Над 10 км";
                                     const distancePart = reportDistanceFilter === 'all' ? '' : ` (${distStr})`;
                                     const addressPart = (reportCardType === 'Пенсионерска карта' && c.address) ? ` - Адрес: ${c.address}` : '';
                                     const schoolPart = (reportCardType === 'Ученическа карта' && c.school) ? ` (${c.school})` : '';
+                                    const municipalityPart = ((c.cardType === 'Ученическа карта' || c.cardType === 'Пенсионерска карта') && c.municipality) ? ` - Община: ${c.municipality}` : '';
                                     const cardNum = getClientCardNumber(c);
                                     const cardNumPart = cardNum ? ` (Карта № ${cardNum})` : '';
-                                    return `${c.name}${cardNumPart}${schoolPart}${addressPart} - ${c.cardType || 'Нормална карта'} - ${c.route}${distancePart} - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
+                                    return `${c.name}${cardNumPart}${schoolPart}${addressPart}${municipalityPart} - ${c.cardType || 'Нормална карта'} - ${c.route}${distancePart} - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
                                 }).join('\n');
                                 const footer = `\n---\nОбщо: ${totalReportRevenue.toFixed(2)} €`;
                                 const shareText = header + rows + footer;
@@ -1637,15 +1698,67 @@ const AdminPanel: React.FC = () => {
                                                 {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
                                             </select>
                                         </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Община</label>
+                                            <select value={reportMunicipality} onChange={e => setReportMunicipality(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                                <option value="all">Всички Общини</option>
+                                                {MUNICIPALITIES.map(m => <option key={m} value={m}>{m}</option>)}
+                                            </select>
+                                        </div>
                                     </div>
 
-                                    <>
+                                    {useRegisterPrint && (
+                                        <div className="register-print" style={{ color: '#000' }}>
+                                            <div style={{ marginBottom: '14px', lineHeight: 1.55 }}>
+                                                <div style={{ fontSize: '15px', fontWeight: 700 }}>ОБЩИНА: {registerMunicipalityLabel}</div>
+                                                <div style={{ fontSize: '18px', fontWeight: 900, textAlign: 'center', margin: '6px 0' }}>РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ {registerMonthLabel}</div>
+                                                <div style={{ fontSize: '15px', fontWeight: 700 }}>{registerCategoryLabel}: {registerDistanceLabel}</div>
+                                                <div style={{ fontSize: '14px' }}><b>ЛИНИИ:</b> {registerLines}</div>
+                                                <div style={{ fontSize: '14px', marginTop: '8px' }}>СЪСТАВИЛ: К. ВАСИЛЕВА &nbsp;&nbsp;.................................</div>
+                                            </div>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                                                <thead>
+                                                    <tr>
+                                                        <th>№</th>
+                                                        <th>ИМЕ</th>
+                                                        <th>Община</th>
+                                                        <th>{reportCardType === 'Пенсионерска карта' ? 'Адрес' : 'Училище'}</th>
+                                                        <th>КАРТА №</th>
+                                                        <th>ДАТА</th>
+                                                        <th>Направление</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {filteredReportClients.length > 0 ? filteredReportClients.map((c, i) => (
+                                                        <tr key={c.id}>
+                                                            <td>{i + 1}</td>
+                                                            <td>{c.name}</td>
+                                                            <td>{c.municipality || '---'}</td>
+                                                            <td>{(reportCardType === 'Пенсионерска карта' ? c.address : c.school) || '---'}</td>
+                                                            <td>{getClientCardNumber(c) || '---'}</td>
+                                                            <td>{getRegisterDate(c)}</td>
+                                                            <td>{c.route}</td>
+                                                        </tr>
+                                                    )) : (
+                                                        <tr><td colSpan={7} style={{ textAlign: 'center', padding: '12px' }}>Няма данни за избраните филтри</td></tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                            <div style={{ marginTop: '10px', fontSize: '14px', fontWeight: 700, textAlign: 'right' }}>
+                                                Общо издадени карти: {filteredReportClients.length}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className={useRegisterPrint ? 'screen-only-report' : undefined}>
                                         <div style={{ display: 'none' }} className="print-only-header">
                                             <h2 style={{ marginBottom: '1rem', color: 'black' }}>Финансов Отчет DARY COMMERCE</h2>
                                             <p style={{ marginBottom: '1.5rem', fontSize: '14px', color: '#555' }}>
                                                 <strong>Месец:</strong> {reportMonth === 'all' ? 'Всички' : reportMonth} | 
                                                 <strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички' : reportCardType} | 
                                                 <strong> Маршрут:</strong> {reportRoute === 'all' ? 'Всички' : reportRoute}
+                                                {reportMunicipality !== 'all' && (
+                                                    <> | <strong>Община:</strong> {reportMunicipality}</>
+                                                )}
                                                 {reportDistanceFilter !== 'all' && (
                                                     <> | <strong>Разстояние:</strong> {reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км'}</>
                                                 )}
@@ -1663,6 +1776,7 @@ const AdminPanel: React.FC = () => {
                                                             {reportDistanceFilter !== 'all' && <th>Разстояние</th>}
                                                             {reportCardType === 'Пенсионерска карта' && <th>Адрес</th>}
                                                             {reportCardType === 'Ученическа карта' && <th>Училище</th>}
+                                                            {showMunicipalityCol && <th>Община</th>}
                                                             <th>Платена Сума</th>
                                                         </tr>
                                                     </thead>
@@ -1680,11 +1794,12 @@ const AdminPanel: React.FC = () => {
                                                                 )}
                                                                 {reportCardType === 'Пенсионерска карта' && <td style={{ fontSize: '0.8rem' }}>{c.address || '---'}</td>}
                                                                 {reportCardType === 'Ученическа карта' && <td style={{ fontSize: '0.8rem' }}>{c.school || '---'}</td>}
+                                                                {showMunicipalityCol && <td style={{ fontSize: '0.8rem' }}>{c.municipality || '---'}</td>}
                                                                 <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €</td>
                                                             </tr>
                                                         )) : (
                                                             <tr>
-                                                                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма данни за избраните филтри</td>
+                                                                <td colSpan={reportColSpan} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма данни за избраните филтри</td>
                                                             </tr>
                                                         )}
                                                     </tbody>
@@ -1730,6 +1845,11 @@ const AdminPanel: React.FC = () => {
                                                                     <b>Училище:</b> {c.school || 'Няма въведено училище'}
                                                                 </div>
                                                             )}
+                                                            {(c.cardType === 'Ученическа карта' || c.cardType === 'Пенсионерска карта') && (
+                                                                <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--accent-color)', fontStyle: 'italic' }}>
+                                                                    <b>Община:</b> {c.municipality || 'Няма въведена община'}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 )) : (
@@ -1744,7 +1864,7 @@ const AdminPanel: React.FC = () => {
                                                 Общо: <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#00e676', marginLeft: '1rem' }}>{totalReportRevenue.toFixed(2)} €</span>
                                             </div>
                                         </div>
-                                    </>
+                                    </div>
                                 </Card>
                             );
                         })()}
@@ -2126,7 +2246,22 @@ const AdminPanel: React.FC = () => {
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Вид Карта</label>
-                                        <select style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }} value={cardType} onChange={e => setCardType(e.target.value)} required>
+                                        <select style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }} value={cardType} onChange={e => {
+                                            const val = e.target.value;
+                                            setCardType(val);
+                                            // Pensioners default to Плевен; students get their община from the
+                                            // school choice; other card types carry no община.
+                                            if (val === 'Пенсионерска карта') {
+                                                setMunicipality(DEFAULT_MUNICIPALITY);
+                                                setCustomMunicipality('');
+                                            } else if (val === 'Ученическа карта') {
+                                                setMunicipality(selectedSchool && selectedSchool !== 'custom' ? DEFAULT_MUNICIPALITY : '');
+                                                setCustomMunicipality('');
+                                            } else {
+                                                setMunicipality('');
+                                                setCustomMunicipality('');
+                                            }
+                                        }} required>
                                             <option value="Нормална карта">Нормална карта</option>
                                             <option value="Ученическа карта">Ученическа карта</option>
                                             <option value="Пенсионерска карта">Пенсионерска карта</option>
@@ -2152,8 +2287,19 @@ const AdminPanel: React.FC = () => {
                                                 <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--primary-color)', fontWeight: 700 }}>Училище</label>
                                                 <select 
                                                     style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--primary-color)', color: 'white' }} 
-                                                    value={selectedSchool} 
-                                                    onChange={e => setSelectedSchool(e.target.value)}
+                                                    value={selectedSchool}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        setSelectedSchool(val);
+                                                        // Predefined (Pleven) school → auto Плевен. Custom school → leave
+                                                        // empty so the operator picks/enters the община manually.
+                                                        if (val === 'custom' || val === '') {
+                                                            setMunicipality('');
+                                                        } else {
+                                                            setMunicipality(DEFAULT_MUNICIPALITY);
+                                                        }
+                                                        setCustomMunicipality('');
+                                                    }}
                                                     required={cardType === 'Ученическа карта'}
                                                 >
                                                     <option value="">-- Изберете Училище --</option>
@@ -2171,6 +2317,36 @@ const AdminPanel: React.FC = () => {
                                                         onChange={e => setCustomSchool(e.target.value)} 
                                                         placeholder="Въведете училище тук..."
                                                         required={selectedSchool === 'custom'}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {(cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта') && (
+                                        <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-color)', fontWeight: 700 }}>Община</label>
+                                                <select
+                                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }}
+                                                    value={municipality}
+                                                    onChange={e => { setMunicipality(e.target.value); if (e.target.value !== MUNICIPALITY_CUSTOM) setCustomMunicipality(''); }}
+                                                    required={cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта'}
+                                                >
+                                                    <option value="">-- Изберете Община --</option>
+                                                    {MUNICIPALITIES.map(m => <option key={m} value={m}>{m}</option>)}
+                                                    <option value={MUNICIPALITY_CUSTOM}>Друго (въведи ръчно)...</option>
+                                                </select>
+                                            </div>
+                                            {municipality === MUNICIPALITY_CUSTOM && (
+                                                <div style={{ animation: 'slideDown 0.3s ease' }}>
+                                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Име на Община</label>
+                                                    <input
+                                                        type="text"
+                                                        style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }}
+                                                        value={customMunicipality}
+                                                        onChange={e => setCustomMunicipality(e.target.value)}
+                                                        placeholder="Въведете община тук..."
+                                                        required={municipality === MUNICIPALITY_CUSTOM}
                                                     />
                                                 </div>
                                             )}
