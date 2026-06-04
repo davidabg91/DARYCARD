@@ -1668,14 +1668,14 @@ const AdminPanel: React.FC = () => {
                                     <div className="no-print" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Месец</label>
-                                            <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                            <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
                                                 <option value="all">Всички Месеци</option>
                                                 {allMonths.map(m => <option key={m} value={m}>{m}</option>)}
                                             </select>
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Вид Карта</label>
-                                            <select value={reportCardType} onChange={e => setReportCardType(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                            <select value={reportCardType} onChange={e => setReportCardType(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
                                                 <option value="all">Всички Видове</option>
                                                 <option value="Нормална карта">Нормална карта</option>
                                                 <option value="Ученическа карта">Ученическа карта</option>
@@ -1685,7 +1685,7 @@ const AdminPanel: React.FC = () => {
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Разстояние</label>
-                                            <select value={reportDistanceFilter} onChange={e => setReportDistanceFilter(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                            <select value={reportDistanceFilter} onChange={e => setReportDistanceFilter(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
                                                 <option value="all">Всички</option>
                                                 <option value="under10">До 10 км</option>
                                                 <option value="over10">Над 10 км</option>
@@ -1693,14 +1693,14 @@ const AdminPanel: React.FC = () => {
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Маршрут</label>
-                                            <select value={reportRoute} onChange={e => setReportRoute(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                            <select value={reportRoute} onChange={e => setReportRoute(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
                                                 <option value="all">Всички Маршрути</option>
                                                 {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
                                             </select>
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Община</label>
-                                            <select value={reportMunicipality} onChange={e => setReportMunicipality(e.target.value)} style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
+                                            <select value={reportMunicipality} onChange={e => setReportMunicipality(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
                                                 <option value="all">Всички Общини</option>
                                                 {MUNICIPALITIES.map(m => <option key={m} value={m}>{m}</option>)}
                                             </select>
