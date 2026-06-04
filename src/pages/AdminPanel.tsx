@@ -805,7 +805,9 @@ const AdminPanel: React.FC = () => {
         };
 
         await saveClient(newClient);
-        await logGlobalActivity('Създаване', newClient.name, `Нова карта: ${newClient.id}. Сума: ${amountPaid} €. Регион: ${selectedRoute}`, Number(amountPaid));
+        const cardNum = getClientCardNumber(newClient);
+        const nameWithCard = cardNum ? `${newClient.name} (Карта № ${cardNum})` : newClient.name;
+        await logGlobalActivity('Създаване', nameWithCard, `Нова карта: ${newClient.id}. Сума: ${amountPaid} €. Регион: ${selectedRoute}`, Number(amountPaid));
     };
 
     const saveClient = async (client: Client, isNew: boolean = true) => {
@@ -871,7 +873,9 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
-        await logGlobalActivity('Подновяване', selectedClient.name, `Месец: ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курс: ${newRoute}` : ''}`, Number(newAmount));
+        const cardNum = getClientCardNumber(selectedClient);
+        const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
+        await logGlobalActivity('Подновяване', nameWithCard, `Месец: ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курс: ${newRoute}` : ''}`, Number(newAmount));
         setModalMessage({
             text: `Успешно подновен абонамент за ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курсът е сменен на ${newRoute}.` : ''}`,
             type: 'success'
@@ -931,7 +935,9 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
-        await logGlobalActivity('Изтриване на плащане', client.name, `Месец: ${entryToDelete.month} (${entryToDelete.amount} €).`, -entryToDelete.amount);
+        const cardNum = getClientCardNumber(client);
+        const nameWithCard = cardNum ? `${client.name} (Карта № ${cardNum})` : client.name;
+        await logGlobalActivity('Изтриване на плащане', nameWithCard, `Месец: ${entryToDelete.month} (${entryToDelete.amount} €).`, -entryToDelete.amount);
         setModalMessage({ 
             text: `Изтрито плащане за месец ${entryToDelete.month} (${entryToDelete.amount} €). Общата сума и валидността бяха преизчислени.`, 
             type: 'success' 
@@ -975,7 +981,9 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
-        await logGlobalActivity('Анулиране', selectedClient.name, `Анулирана карта. Причина: ${cancelReason}`);
+        const cardNum = getClientCardNumber(selectedClient);
+        const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
+        await logGlobalActivity('Анулиране', nameWithCard, `Анулирана карта. Причина: ${cancelReason}`);
         setModalMessage({ 
             text: `Картата бе анулирана успешно. Причина: ${cancelReason}`, 
             type: 'success' 
@@ -989,7 +997,9 @@ const AdminPanel: React.FC = () => {
             try {
                 await deleteDoc(doc(db, 'clients', id));
                 setMessage({ text: `Клиентът "${name}" бе изтрит постоянно.`, type: 'success' });
-                await logGlobalActivity('Изтриване на клиент', name, `Клиентът "${name}" (ID: ${id}) беше изтрит постоянно.`);
+                const cardNum = CARDS_MAPPING[id] || '';
+                const nameWithCard = cardNum ? `${name} (Карта № ${cardNum})` : name;
+                await logGlobalActivity('Изтриване на клиент', nameWithCard, `Клиентът "${name}" (ID: ${id}) беше изтрит постоянно.`);
                 if (selectedClient?.id === id) {
                     setShowActionModal(false);
                     setSelectedClient(null);

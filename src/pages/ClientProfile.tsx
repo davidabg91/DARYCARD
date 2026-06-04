@@ -558,7 +558,9 @@ const ClientProfile: React.FC = () => {
                     details: `Нова карта (NFC): ${id}. Сума: ${regAmount} €. Регион: ${regRoute}`,
                     amount: Number(regAmount)
                 });
-                console.log(`[DARY_BRIDGE_LOG]: Нов профил на ${regName} (${regRoute}) - Сума: ${regAmount} €`);
+                const cardNum = CARDS_MAPPING[id] || '';
+                const nameWithCard = cardNum ? `${regName} (Карта № ${cardNum})` : regName;
+                console.log(`[DARY_BRIDGE_LOG]: Нов профил на ${nameWithCard} (${regRoute}) - Сума: ${regAmount} €`);
             } catch (logErr) {
                 console.error("Error logging activity:", logErr);
             }
@@ -593,6 +595,12 @@ const ClientProfile: React.FC = () => {
                     const isActive = !clientData.isCanceled && hasPaidCurrentMonth;
                     if (isActive) playSuccessSound();
                     else playErrorSound();
+                    
+                    const cardNum = clientData.cardNumber || CARDS_MAPPING[clientData.id] || '';
+                    const cardPart = cardNum ? ` (Карта № ${cardNum})` : '';
+                    const statusStr = clientData.isCanceled ? 'Анулиран' : (hasPaidCurrentMonth ? 'Платен' : 'Неплатен');
+                    console.log(`[DARY_BRIDGE_LOG]: Сканиран профил: ${clientData.name}${cardPart} - Статус: ${statusStr}`);
+                    
                     hasPlayedSound.current = true;
 
                     // Sync renewal form
@@ -1350,7 +1358,9 @@ const ClientProfile: React.FC = () => {
                                                         details: `Бързо подновяване за месец ${renewalMonth}. Сума: ${renewalAmount} €. Маршрут: ${renewalRoute}`,
                                                         amount: Number(renewalAmount)
                                                     });
-                                                    console.log(`[DARY_BRIDGE_LOG]: Подновяване на ${client?.name || 'Клиент'} за месец ${renewalMonth} - Сума: ${renewalAmount} €`);
+                                                    const cardNum = client ? (client.cardNumber || CARDS_MAPPING[client.id] || '') : '';
+                                                    const nameWithCard = cardNum ? `${client?.name} (Карта № ${cardNum})` : (client?.name || 'Клиент');
+                                                    console.log(`[DARY_BRIDGE_LOG]: Подновяване на ${nameWithCard} за месец ${renewalMonth} - Сума: ${renewalAmount} €`);
                                                 } catch (logErr) { console.error("Log error", logErr); }
 
                                                 playSuccessSound();
