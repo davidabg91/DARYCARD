@@ -1101,6 +1101,39 @@ const AdminPanel: React.FC = () => {
                             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#00e676' : '#ff9800', boxShadow: isOnline ? '0 0 8px #00e676' : 'none' }} />
                             {isOnline ? 'ОНЛАЙН' : 'ОФЛАЙН'}
                         </div>
+                        {isAdmin && (
+                            <a 
+                                href="https://drive.google.com/drive/folders/1r666nS3BCGAV9WVNm69aiOTtdyyAp4IB?usp=sharing"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '0.4rem', 
+                                    fontSize: '0.7rem', 
+                                    padding: '2px 10px', 
+                                    borderRadius: '50px', 
+                                    background: 'rgba(0,145,234,0.1)',
+                                    color: '#0091ea',
+                                    border: '1px solid rgba(0,145,234,0.2)',
+                                    fontWeight: 800,
+                                    textDecoration: 'none',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(0,145,234,0.2)';
+                                    e.currentTarget.style.border = '1px solid rgba(0,145,234,0.4)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(0,145,234,0.1)';
+                                    e.currentTarget.style.border = '1px solid rgba(0,145,234,0.2)';
+                                }}
+                            >
+                                <ExternalLink size={12} />
+                                ИЗТЕГЛИ PC ПРИЛОЖЕНИЕ
+                            </a>
+                        )}
                     </div>
                 </div>
                 <div style={{ 
