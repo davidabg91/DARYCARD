@@ -71,10 +71,11 @@ Name: "bulgarian"; MessagesFile: "compiler:Languages\Bulgarian.isl"
 
 [Files]
 Source: "$installerDir\DaryCard PC\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "$workDir\nfc-bridge\true_icon.ico"; DestDir: "{app}"
 Source: "$workDir\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
-Name: "{group}\DaryCard PC"; Filename: "{app}\DARY-NFC-Chetec.exe"
+Name: "{group}\DaryCard PC"; Filename: "{app}\DARY-NFC-Chetec.exe"; IconFilename: "{app}\true_icon.ico"
 Name: "{autodesktop}\DaryCard PC"; Filename: "{app}\DARY-NFC-Chetec.exe"; IconFilename: "{app}\true_icon.ico"
 
 [Run]

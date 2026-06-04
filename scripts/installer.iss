@@ -19,10 +19,11 @@ Name: "bulgarian"; MessagesFile: "compiler:Languages\Bulgarian.isl"
 
 [Files]
 Source: "D:\DARY\DARY PROGRAM EXE\DaryCard PC\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "D:\DARY\nfc-bridge\true_icon.ico"; DestDir: "{app}"
 Source: "D:\DARY\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
-Name: "{group}\DaryCard PC"; Filename: "{app}\DARY-NFC-Chetec.exe"
+Name: "{group}\DaryCard PC"; Filename: "{app}\DARY-NFC-Chetec.exe"; IconFilename: "{app}\true_icon.ico"
 Name: "{autodesktop}\DaryCard PC"; Filename: "{app}\DARY-NFC-Chetec.exe"; IconFilename: "{app}\true_icon.ico"
 
 [Run]
