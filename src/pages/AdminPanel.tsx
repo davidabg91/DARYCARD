@@ -28,6 +28,7 @@ import { ROUTE_METADATA } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY } from '../data/municipalities';
+import { SCHOOLS, SCHOOL_MUNICIPALITY } from '../data/schools';
 
 interface ClientLog {
     date: string;
@@ -103,27 +104,6 @@ const ROUTES = [
     "Долни Дъбник - Садовец", "Долна Митрополия - Тръстеник", "Долна Митрополия - Славовица",
     "Пордим - Каменец", "Пордим - Згалево"
 ];
-const SCHOOLS = [
-    "ДФСГ",
-    "МГ ГЕО МИЛЕВ",
-    "МЕД. УНИВЕРСИТЕТ",
-    "ОУ „Д-Р ПЕТЪР БЕРОН“",
-    "ОУ „ЦВ СПАСОВ“",
-    "ПГ ЕХТ",
-    "ПГ ЛВ",
-    "ПГ МЕТ",
-    "ПГ ОТ „ХР БОЯДЖИЕВ“",
-    "ПГ ПССТ",
-    "ПГ ПЧЕ",
-    "ПГ САГ",
-    "ПГ Т „ЦВ ЛАЗАРОВ“",
-    "ПГ ТУРИЗЪМ",
-    "ПГ ХВТ",
-    "СУ „АН. ДИМИТРОВА“",
-    "СУ „Г. БЕНКОВСКИ“",
-    "СУ „ИВ. ВАЗОВ“",
-    "СУ „СТ. ЗАИМОВ“"
-].sort((a, b) => a.localeCompare(b, 'bg'));
 
 const generateClientId = () => {
     // Collision-resistant: prefer crypto.randomUUID, fall back to crypto.getRandomValues.
@@ -2255,7 +2235,7 @@ const AdminPanel: React.FC = () => {
                                                 setMunicipality(DEFAULT_MUNICIPALITY);
                                                 setCustomMunicipality('');
                                             } else if (val === 'Ученическа карта') {
-                                                setMunicipality(selectedSchool && selectedSchool !== 'custom' ? DEFAULT_MUNICIPALITY : '');
+                                                setMunicipality(selectedSchool && selectedSchool !== 'custom' ? (SCHOOL_MUNICIPALITY[selectedSchool] || DEFAULT_MUNICIPALITY) : '');
                                                 setCustomMunicipality('');
                                             } else {
                                                 setMunicipality('');
@@ -2296,7 +2276,7 @@ const AdminPanel: React.FC = () => {
                                                         if (val === 'custom' || val === '') {
                                                             setMunicipality('');
                                                         } else {
-                                                            setMunicipality(DEFAULT_MUNICIPALITY);
+                                                            setMunicipality(SCHOOL_MUNICIPALITY[val] || DEFAULT_MUNICIPALITY);
                                                         }
                                                         setCustomMunicipality('');
                                                     }}

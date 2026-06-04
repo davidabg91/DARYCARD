@@ -10,6 +10,7 @@ import { uploadClientPhoto } from '../utils/photoStorage';
 import ClientPhoto from '../components/ClientPhoto';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY } from '../data/municipalities';
+import { SCHOOLS, SCHOOL_MUNICIPALITY } from '../data/schools';
 
 interface Client {
     id: string;
@@ -43,27 +44,6 @@ const ROUTES = [
     "Д. Дъбник - Садовец", "Д.Митрополия - Тръстеник", "Д.Митрополия - Славовица",
     "Пордим - Каменец", "Пордим - Згалево"
 ];
-const SCHOOLS = [
-    "ДФСГ",
-    "МГ ГЕО МИЛЕВ",
-    "МЕД. УНИВЕРСИТЕТ",
-    "ОУ „Д-Р ПЕТЪР БЕРОН“",
-    "ОУ „ЦВ СПАСОВ“",
-    "ПГ ЕХТ",
-    "ПГ ЛВ",
-    "ПГ МЕТ",
-    "ПГ ОТ „ХР БОЯДЖИЕВ“",
-    "ПГ ПССТ",
-    "ПГ ПЧЕ",
-    "ПГ САГ",
-    "ПГ Т „ЦВ ЛАЗАРОВ“",
-    "ПГ ТУРИЗЪМ",
-    "ПГ ХВТ",
-    "СУ „АН. ДИМИТРОВА“",
-    "СУ „Г. БЕНКОВСКИ“",
-    "СУ „ИВ. ВАЗОВ“",
-    "СУ „СТ. ЗАИМОВ“"
-].sort((a, b) => a.localeCompare(b, 'bg'));
 
 const sanitizeId = (id: string | null | undefined): string => {
     if (!id) return '';
@@ -918,7 +898,7 @@ const ClientProfile: React.FC = () => {
                                     const val = e.target.value;
                                     setRegCardType(val);
                                     if (val === 'Пенсионерска карта') { setRegMunicipality(DEFAULT_MUNICIPALITY); setRegCustomMunicipality(''); }
-                                    else if (val === 'Ученическа карта') { setRegMunicipality(regSelectedSchool && regSelectedSchool !== 'custom' ? DEFAULT_MUNICIPALITY : ''); setRegCustomMunicipality(''); }
+                                    else if (val === 'Ученическа карта') { setRegMunicipality(regSelectedSchool && regSelectedSchool !== 'custom' ? (SCHOOL_MUNICIPALITY[regSelectedSchool] || DEFAULT_MUNICIPALITY) : ''); setRegCustomMunicipality(''); }
                                     else { setRegMunicipality(''); setRegCustomMunicipality(''); }
                                 }} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}>
                                     <option value="Нормална карта">Нормална карта</option>
@@ -936,7 +916,7 @@ const ClientProfile: React.FC = () => {
                                                     const val = e.target.value;
                                                     setRegSelectedSchool(val);
                                                     if (val === 'custom' || val === '') setRegMunicipality('');
-                                                    else setRegMunicipality(DEFAULT_MUNICIPALITY);
+                                                    else setRegMunicipality(SCHOOL_MUNICIPALITY[val] || DEFAULT_MUNICIPALITY);
                                                     setRegCustomMunicipality('');
                                                 }}
                                                 style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid var(--primary-color)', borderRadius: '12px', color: '#fff', outline: 'none' }}
