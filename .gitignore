@@ -41,3 +41,7 @@ __pycache__/
 
 # Local NFC Program EXE
 DARY PROGRAM EXE/
+
+# Installer binaries
+vc_redist.x64.exe
+innosetup-setup.exe
