@@ -1206,10 +1206,31 @@ const AdminPanel: React.FC = () => {
         th { color: var(--text-secondary); font-weight: 500; }
         .register-print { display: none; }
         .print-only-header { display: none; }
+        @page {
+            size: auto;
+            margin: 0mm;
+        }
         @media print {
             body * { visibility: hidden; }
             #printable-report, #printable-report * { visibility: visible !important; color: #000 !important; }
-            #printable-report { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; background: white; }
+            #printable-report { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 100%; 
+                margin: 0; 
+                padding: 12mm 15mm 12mm 15mm; 
+                background: white; 
+                box-sizing: border-box; 
+            }
+            #printable-report .glass {
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+            }
             #printable-report .no-print { display: none !important; }
             #printable-report .print-only-header { display: block !important; }
             #printable-report table, #printable-report th, #printable-report td { border: 1px solid #ddd !important; border-collapse: collapse; padding: 8px; }
