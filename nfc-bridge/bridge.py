@@ -66,6 +66,10 @@ def load_dependencies():
                 new_window.setWindowTitle("DARY CARD - Профил на Клиент")
                 new_window.resize(1000, 750)
                 
+                # Keep explicit references to prevent PyQt6 garbage collection
+                new_window.browser_view = new_view
+                new_window.browser_page = new_page
+                
                 new_window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
                 self._extra_windows.append(new_window)
                 new_window.destroyed.connect(lambda: self._extra_windows.remove(new_window) if new_window in self._extra_windows else None)
@@ -568,12 +572,10 @@ class MainWindow(QMainWindow):
         try:
             from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
             
-            sender = self.sender()
-            if sender and hasattr(sender, 'browser_view'):
-                view = sender.browser_view
-            else:
-                view = self.browser
-                
+            sender = self.sender() # This is the QWebEnginePage that requested printing
+            page = sender if sender else self.browser.page()
+            view = page.view() if page else self.browser
+            
             if not view:
                 view = self.browser
                 
@@ -581,9 +583,17 @@ class MainWindow(QMainWindow):
             dialog = QPrintDialog(printer, view)
             
             if dialog.exec() == QPrintDialog.DialogCode.Accepted:
-                view.print(printer)
+                # Keep reference on view to prevent garbage collection
+                view._printer = printer
+                def print_callback(success):
+                    self.browser_log.emit(f"[DARY_BRIDGE_LOG]: Печатът приключи със статус: {'Успешен' if success else 'Неуспешен'}")
+                    if hasattr(view, '_printer'):
+                        del view._printer
+                page.print(printer, print_callback)
         except Exception as e:
-            print("Error handling print request:", e)
+            err_msg = f"Грешка при печат: {e}"
+            print(err_msg)
+            self.browser_log.emit(err_msg)
 
     def update_reader_status(self, text, color):
         self.lbl_reader.setText(text)

@@ -57,6 +57,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [renewalMonth, setRenewalMonth] = useState('');
     const [renewalAmount, setRenewalAmount] = useState(30);
     const [renewalRoute, setRenewalRoute] = useState('');
+    const [renewalPaymentMethod, setRenewalPaymentMethod] = useState('В брой');
     const [isUpdating, setIsUpdating] = useState(false);
 
 
@@ -242,6 +243,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     setRenewalMonth(nextDate.toISOString().slice(0, 7));
                     setRenewalAmount(data.renewalHistory?.[data.renewalHistory.length - 1]?.amount || 30);
                     setRenewalRoute(data.route || '');
+                    setRenewalPaymentMethod('В брой');
 
                     const nowLocal = new Date();
                     const currentMonthStrLocal = `${nowLocal.getFullYear()}-${(nowLocal.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -529,6 +531,66 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                                             </select>
                                         </div>
 
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 900 }}>НАЧИН НА ПЛАЩАНЕ</label>
+                                            <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setRenewalPaymentMethod('В брой')} 
+                                                    style={{ 
+                                                        flex: 1, 
+                                                        padding: '10px', 
+                                                        borderRadius: '8px', 
+                                                        border: 'none', 
+                                                        background: renewalPaymentMethod === 'В брой' ? '#00e676' : 'transparent', 
+                                                        color: renewalPaymentMethod === 'В брой' ? '#000' : '#fff', 
+                                                        fontWeight: 700, 
+                                                        fontSize: '0.9rem',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                >
+                                                    💵 В брой
+                                                </button>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setRenewalPaymentMethod('С карта')} 
+                                                    style={{ 
+                                                        flex: 1, 
+                                                        padding: '10px', 
+                                                        borderRadius: '8px', 
+                                                        border: 'none', 
+                                                        background: renewalPaymentMethod === 'С карта' ? '#00e676' : 'transparent', 
+                                                        color: renewalPaymentMethod === 'С карта' ? '#000' : '#fff', 
+                                                        fontWeight: 700, 
+                                                        fontSize: '0.9rem',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                >
+                                                    💳 С карта
+                                                </button>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setRenewalPaymentMethod('Банка')} 
+                                                    style={{ 
+                                                        flex: 1, 
+                                                        padding: '10px', 
+                                                        borderRadius: '8px', 
+                                                        border: 'none', 
+                                                        background: renewalPaymentMethod === 'Банка' ? '#00e676' : 'transparent', 
+                                                        color: renewalPaymentMethod === 'Банка' ? '#000' : '#fff', 
+                                                        fontWeight: 700, 
+                                                        fontSize: '0.9rem',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                >
+                                                    🏛️ Банка
+                                                </button>
+                                            </div>
+                                        </div>
+
                                         <button 
                                             disabled={isUpdating}
                                             onClick={async () => {
@@ -541,7 +603,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                                                         renewalHistory: arrayUnion({ 
                                                             date: new Date().toISOString(), 
                                                             amount: renewalAmount, 
-                                                            month: renewalMonth 
+                                                            month: renewalMonth,
+                                                            paymentMethod: renewalPaymentMethod
                                                         }),
                                                         history: arrayUnion({ 
                                                             date: new Date().toISOString(), 
@@ -549,6 +612,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                                                             amount: renewalAmount, 
                                                             month: renewalMonth,
                                                             route: renewalRoute,
+                                                            paymentMethod: renewalPaymentMethod,
                                                             performedBy: currentUser?.username 
                                                         })
                                                     });

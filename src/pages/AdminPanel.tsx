@@ -1634,7 +1634,6 @@ const AdminPanel: React.FC = () => {
                                         return `${bg[parseInt(m, 10) - 1] || ''} ${y}`.trim();
                                     })())
                                 : reportDate;
-                            const registerDistanceLabel = reportDistanceFilter === 'under10' ? 'ПОД 10 КМ' : reportDistanceFilter === 'over10' ? 'НАД 10 КМ' : 'ВСИЧКИ';
                             const registerCategoryLabel = reportCardType === 'Пенсионерска карта' ? 'ПЕНСИОНЕРИ' : 'УЧЕНИЦИ';
                             const registerLines = (reportRoute !== 'all'
                                 ? [reportRoute]
@@ -1694,29 +1693,45 @@ const AdminPanel: React.FC = () => {
                                 <Card>
                                     {/* 🖨️ Professional Print Header Summary */}
                                     <div style={{ display: 'none' }} className="print-only-header">
-                                        <div style={{ borderBottom: '2px solid #333', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-                                            <h1 style={{ fontSize: '20px', fontWeight: 900, color: '#000', margin: '0 0 0.5rem 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                                Финансов Отчет DARY COMMERCE
+                                        <div style={{ borderBottom: '3px double #222', paddingBottom: '1.25rem', marginBottom: '1.5rem', fontFamily: 'sans-serif' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#666', letterSpacing: '1px' }}>DARY COMMERCE</span>
+                                                <span style={{ fontSize: '11px', color: '#666' }}>Дата на съставяне: {new Date().toLocaleDateString('bg-BG')} г.</span>
+                                            </div>
+                                            <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#000', margin: '0 0 1rem 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
+                                                {useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : "ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ"}
                                             </h1>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '12px', color: '#333', marginTop: '1rem' }}>
+                                            
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '12px', color: '#111', marginTop: '1rem', background: '#fafafa', padding: '10px 15px', borderRadius: '8px', border: '1px solid #eee' }}>
                                                 <div><strong>Период:</strong> {reportPeriodType === 'month' ? (reportMonth === 'all' ? 'Всички месеци' : reportMonth) : (() => {
                                                     if (!reportDate) return '---';
                                                     const d = new Date(reportDate);
                                                     return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG');
                                                 })()}</div>
                                                 <div><strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички видове' : reportCardType}</div>
-                                                <div><strong>Маршрут:</strong> {reportRoute === 'all' ? 'Всички маршрути' : reportRoute}</div>
                                                 <div><strong>Начин на плащане:</strong> {reportPaymentMethod === 'all' ? 'Всички методи' : reportPaymentMethod}</div>
-                                                {reportMunicipality !== 'all' && <div><strong>Община:</strong> {reportMunicipality}</div>}
-                                                {reportDistanceFilter !== 'all' && <div><strong>Разстояние:</strong> {reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км'}</div>}
+                                                <div><strong>Маршрут:</strong> {reportRoute === 'all' ? 'Всички маршрути' : reportRoute}</div>
+                                                <div><strong>Община:</strong> {reportMunicipality === 'all' ? 'Всички общини' : reportMunicipality}</div>
+                                                <div><strong>Разстояние:</strong> {reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}</div>
+                                                {useRegisterPrint && <div style={{ gridColumn: 'span 3' }}><strong>Линии/Курсове:</strong> {registerLines}</div>}
                                             </div>
                                         </div>
                                         
-                                        <div style={{ background: '#f5f5f5', border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '13px', lineHeight: '1.5', color: 'black' }}>
-                                            <h4 style={{ margin: '0 0 0.5rem 0', color: '#000', fontSize: '14px', fontWeight: 700 }}>ОБОБЩЕНИЕ НА ДАННИТЕ</h4>
-                                            Генерираният отчет обхваща общо <strong>{filteredReportClients.length}</strong> транзакции/клиенти, съвпадащи с избраните филтри. 
-                                            Общата инкасирана сума за филтрирания период възлиза на <strong>{totalReportRevenue.toFixed(2)} €</strong>.
-                                            Отчетът е съставен на {new Date().toLocaleDateString('bg-BG')} г. и е предназначен за служебна справка.
+                                        <div style={{ background: '#f8f9fa', borderLeft: '4px solid #000', borderTop: '1px solid #e9ecef', borderRight: '1px solid #e9ecef', borderBottom: '1px solid #e9ecef', padding: '1.2rem', borderRadius: '4px', marginBottom: '1.8rem', fontSize: '13px', lineHeight: '1.6', color: '#222' }}>
+                                            <h4 style={{ margin: '0 0 0.4rem 0', color: '#000', fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ОФИЦИАЛНО ОБОБЩЕНИЕ</h4>
+                                            {useRegisterPrint ? (
+                                                <span>
+                                                    Генерираният регистър за община <strong>{registerMunicipalityLabel}</strong> обхваща общо <strong>{filteredReportClients.length}</strong> издадени карти за периода <strong>{registerPeriodLabel}</strong>. 
+                                                    Общата стойност на издадените абонаментни карти възлиза на <strong>{totalReportRevenue.toFixed(2)} €</strong>. 
+                                                    Данните са извлечени директно от електронната система и служат за официално отчитане на превозните документи.
+                                                </span>
+                                            ) : (
+                                                <span>
+                                                    Официалният финансов отчет обхваща общо <strong>{filteredReportClients.length}</strong> регистрирани транзакции/плащания, съответстващи на посочените по-горе критерии и филтри. 
+                                                    Общата инкасирана сума за отчетения период възлиза на <strong>{totalReportRevenue.toFixed(2)} €</strong>. 
+                                                    Документът е генериран за нуждите на вътрешния счетоводен контрол и финансово отчитане.
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -1818,13 +1833,7 @@ const AdminPanel: React.FC = () => {
 
                                     {useRegisterPrint && (
                                         <div className="register-print" style={{ color: '#000' }}>
-                                            <div style={{ marginBottom: '14px', lineHeight: 1.55 }}>
-                                                <div style={{ fontSize: '15px', fontWeight: 700 }}>ОБЩИНА: {registerMunicipalityLabel}</div>
-                                                <div style={{ fontSize: '18px', fontWeight: 900, textAlign: 'center', margin: '6px 0' }}>РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ - {registerPeriodLabel}</div>
-                                                <div style={{ fontSize: '15px', fontWeight: 700 }}>{registerCategoryLabel}: {registerDistanceLabel}</div>
-                                                <div style={{ fontSize: '14px' }}><b>ЛИНИИ:</b> {registerLines}</div>
-                                                <div style={{ fontSize: '14px', marginTop: '8px' }}>СЪСТАВИЛ: К. ВАСИЛЕВА &nbsp;&nbsp;.................................</div>
-                                            </div>
+                                            
                                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                                                 <thead>
                                                     <tr>
@@ -1853,8 +1862,9 @@ const AdminPanel: React.FC = () => {
                                                     )}
                                                 </tbody>
                                             </table>
-                                            <div style={{ marginTop: '10px', fontSize: '14px', fontWeight: 700, textAlign: 'right' }}>
-                                                Общо издадени карти: {filteredReportClients.length}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', borderTop: '2px solid #333', paddingTop: '10px', fontSize: '13px', color: '#000' }}>
+                                                <div><b>СЪСТАВИЛ:</b> К. ВАСИЛЕВА &nbsp;&nbsp;.................................</div>
+                                                <div style={{ fontWeight: 700 }}><b>Общо издадени карти:</b> {filteredReportClients.length}</div>
                                             </div>
                                         </div>
                                     )}
