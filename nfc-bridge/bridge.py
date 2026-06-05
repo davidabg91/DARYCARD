@@ -570,7 +570,8 @@ class MainWindow(QMainWindow):
 
     def handle_print_requested(self, *args, **kwargs):
         try:
-            from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+            from PyQt6.QtPrintSupport import QPrinter, QPrintPreviewDialog
+            from PyQt6.QtCore import QEventLoop, QTimer
             
             sender = self.sender() # This is the QWebEnginePage that requested printing
             page = sender if sender else self.browser.page()
@@ -580,18 +581,53 @@ class MainWindow(QMainWindow):
                 view = self.browser
                 
             printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-            dialog = QPrintDialog(printer, view)
+            preview = QPrintPreviewDialog(printer, view)
+            preview.setWindowTitle("Преглед преди печат")
             
-            if dialog.exec() == QPrintDialog.DialogCode.Accepted:
-                # Keep reference on view to prevent garbage collection
-                view._printer = printer
+            # Maximize preview window so it's easy to read
+            preview.showMaximized()
+            
+            # Keep references to prevent garbage collection
+            view._printer = printer
+            view._preview = preview
+            
+            def handle_paint_requested(p):
+                loop = QEventLoop()
+                
+                # Setup timeout timer to prevent hangs
+                timeout_timer = QTimer()
+                timeout_timer.setSingleShot(True)
+                timeout_timer.setInterval(15000) # 15 seconds max timeout
+                timeout_timer.timeout.connect(loop.quit)
+                
                 def print_callback(success):
-                    self.browser_log.emit(f"[DARY_BRIDGE_LOG]: Печатът приключи със статус: {'Успешен' if success else 'Неуспешен'}")
-                    if hasattr(view, '_printer'):
-                        del view._printer
-                page.print(printer, print_callback)
+                    timeout_timer.stop()
+                    self.browser_log.emit(f"[DARY_BRIDGE_LOG]: Рендерирането за преглед приключи със статус: {'Успешен' if success else 'Неуспешен'}")
+                    loop.quit()
+                
+                try:
+                    timeout_timer.start()
+                    page.print(p, print_callback)
+                except Exception as e_print:
+                    timeout_timer.stop()
+                    self.browser_log.emit(f"[DARY_BRIDGE_LOG]: Грешка при стартиране на печат: {e_print}")
+                    loop.quit()
+                    
+                loop.exec()
+                
+            preview.paintRequested.connect(handle_paint_requested)
+            
+            # Show modal preview dialog
+            preview.exec()
+            
+            # Clean up references after dialog closes
+            if hasattr(view, '_printer'):
+                del view._printer
+            if hasattr(view, '_preview'):
+                del view._preview
+                
         except Exception as e:
-            err_msg = f"Грешка при печат: {e}"
+            err_msg = f"Грешка при преглед/печат: {e}"
             print(err_msg)
             self.browser_log.emit(err_msg)
 
