@@ -574,7 +574,7 @@ class MainWindow(QMainWindow):
             
             sender = self.sender() # This is the QWebEnginePage that requested printing
             page = sender if sender else self.browser.page()
-            view = page.view() if page else self.browser
+            view = page.browser_view if (page and hasattr(page, 'browser_view')) else self.browser
             
             if not view:
                 view = self.browser
