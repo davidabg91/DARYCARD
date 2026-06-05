@@ -1625,22 +1625,14 @@ const AdminPanel: React.FC = () => {
 
                             const useRegisterPrint = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта';
                             const SHORT_ROUTES = ["Ясен", "Опанец", "Ясен-Дисевица"];
-                            const registerPeriodLabel = reportPeriodType === 'month'
-                                ? (reportMonth === 'all'
-                                    ? 'ВСИЧКИ МЕСЕЦИ'
-                                    : (() => {
-                                        const [y, m] = reportMonth.split('-');
-                                        const bg = ["ЯНУАРИ", "ФЕВРУАРИ", "МАРТ", "АПРИЛ", "МАЙ", "ЮНИ", "ЮЛИ", "АВГУСТ", "СЕПТЕМВРИ", "ОКТОМВРИ", "НОЕМВРИ", "ДЕКЕМВРИ"];
-                                        return `${bg[parseInt(m, 10) - 1] || ''} ${y}`.trim();
-                                    })())
-                                : reportDate;
+
                             const registerCategoryLabel = reportCardType === 'Пенсионерска карта' ? 'ПЕНСИОНЕРИ' : 'УЧЕНИЦИ';
                             const registerLines = (reportRoute !== 'all'
                                 ? [reportRoute]
                                 : reportDistanceFilter === 'under10' ? SHORT_ROUTES
                                 : reportDistanceFilter === 'over10' ? ROUTES.filter(r => !SHORT_ROUTES.includes(r))
                                 : ROUTES).join(', ');
-                            const registerMunicipalityLabel = reportMunicipality === 'all' ? 'ВСИЧКИ' : reportMunicipality;
+
                             const getRegisterDate = (c: Client) => {
                                 let iso = c.createdAt;
                                 if (reportPeriodType === 'month') {
@@ -1717,22 +1709,7 @@ const AdminPanel: React.FC = () => {
                                             </div>
                                         </div>
                                         
-                                        <div style={{ background: '#f8f9fa', borderLeft: '4px solid #000', borderTop: '1px solid #e9ecef', borderRight: '1px solid #e9ecef', borderBottom: '1px solid #e9ecef', padding: '1.2rem', borderRadius: '4px', marginBottom: '1.8rem', fontSize: '13px', lineHeight: '1.6', color: '#222' }}>
-                                            <h4 style={{ margin: '0 0 0.4rem 0', color: '#000', fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ОФИЦИАЛНО ОБОБЩЕНИЕ</h4>
-                                            {useRegisterPrint ? (
-                                                <span>
-                                                    Генерираният регистър за община <strong>{registerMunicipalityLabel}</strong> обхваща общо <strong>{filteredReportClients.length}</strong> издадени карти за периода <strong>{registerPeriodLabel}</strong>. 
-                                                    Общата стойност на издадените абонаментни карти възлиза на <strong>{totalReportRevenue.toFixed(2)} €</strong>. 
-                                                    Данните са извлечени директно от електронната система и служат за официално отчитане на превозните документи.
-                                                </span>
-                                            ) : (
-                                                <span>
-                                                    Официалният финансов отчет обхваща общо <strong>{filteredReportClients.length}</strong> регистрирани транзакции/плащания, съответстващи на посочените по-горе критерии и филтри. 
-                                                    Общата инкасирана сума за отчетения период възлиза на <strong>{totalReportRevenue.toFixed(2)} €</strong>. 
-                                                    Документът е генериран за нуждите на вътрешния счетоводен контрол и финансово отчитане.
-                                                </span>
-                                            )}
-                                        </div>
+                                        
                                     </div>
                                     <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                                         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--primary-color)' }}>
