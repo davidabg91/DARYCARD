@@ -1688,7 +1688,7 @@ const AdminPanel: React.FC = () => {
                                     <div style={{ display: 'none' }} className="print-only-header">
                                         <div style={{ borderBottom: '3px double #222', paddingBottom: '1.25rem', marginBottom: '1.5rem', fontFamily: 'sans-serif' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                                <img src={logoMain} alt="Dary Commerce" style={{ height: '22px', width: 'auto', objectFit: 'contain', display: 'block', margin: '0' }} />
+                                                <img src={logoMain} alt="Dary Commerce" style={{ height: '44px', width: 'auto', objectFit: 'contain', display: 'block', margin: '0' }} />
                                                 <span style={{ fontSize: '11px', color: '#666' }}>Дата на съставяне: {new Date().toLocaleDateString('bg-BG')} г.</span>
                                             </div>
                                             <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#000', margin: '0 0 1rem 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
