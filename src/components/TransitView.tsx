@@ -17,7 +17,7 @@ interface Client {
     photo: string;
     isCanceled?: boolean;
     cardType?: string;
-    renewalHistory?: { month: string; amount: number; date: string }[];
+    renewalHistory?: { month: string; amount: number; date: string; paymentMethod?: string }[];
     photoThumb?: string;
     lastScanAt?: string;
     cardNumber?: string;

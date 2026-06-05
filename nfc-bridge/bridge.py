@@ -28,12 +28,59 @@ def load_dependencies():
         def __init__(self, console_signal, parent=None):
             super().__init__(parent)
             self.console_signal = console_signal
+            self.browser_view = parent  # Explicit reference to the QWebEngineView
+            self._extra_windows = []
 
         def javaScriptConsoleMessage(self, level, message, line, sourceID):
             if message.startswith("[DARY_BRIDGE_LOG]:"):
                 log_content = message[len("[DARY_BRIDGE_LOG]:"):]
                 self.console_signal.emit(log_content)
             super().javaScriptConsoleMessage(level, message, line, sourceID)
+
+        def createWindow(self, window_type):
+            try:
+                self.console_signal.emit("[DARY_BRIDGE_LOG]: Отваряне на нов прозорец за клиент...")
+                # Use the saved view reference since QWebEnginePage has no .view() in PyQt6
+                view = self.browser_view if self.browser_view else self.view()
+                main_win = view.window()
+                
+                # Create a top-level window without a parent so it opens separately
+                new_window = QMainWindow()
+                new_view = QWebEngineView(new_window)
+                
+                # Use custom page type for logging and recursively handling createWindow
+                new_page = _CustomWebPage(self.console_signal, new_view)
+                new_view.setPage(new_page)
+                
+                # Connect signals to MainWindow handlers
+                if hasattr(main_win, 'handle_permission_requested'):
+                    new_page.featurePermissionRequested.connect(main_win.handle_permission_requested)
+                if hasattr(main_win, 'handle_print_requested'):
+                    new_page.printRequested.connect(main_win.handle_print_requested)
+                
+                # Log new window events for debugging
+                new_page.urlChanged.connect(lambda url: self.console_signal.emit(f"[DARY_BRIDGE_LOG]: Нов прозорец URL: {url.toString()}"))
+                new_page.loadFinished.connect(lambda ok: self.console_signal.emit(f"[DARY_BRIDGE_LOG]: Нов прозорец зареждане: {'Успешно' if ok else 'Грешка'}"))
+                
+                new_window.setCentralWidget(new_view)
+                new_window.setWindowTitle("DARY CARD - Профил на Клиент")
+                new_window.resize(1000, 750)
+                
+                new_window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+                self._extra_windows.append(new_window)
+                new_window.destroyed.connect(lambda: self._extra_windows.remove(new_window) if new_window in self._extra_windows else None)
+                
+                new_window.show()
+                new_window.raise_()
+                new_window.activateWindow()
+                return new_page
+            except Exception as e:
+                print("Error creating window in QWebEnginePage:", e)
+                try:
+                    self.console_signal.emit(f"[DARY_BRIDGE_LOG]: Грешка при отваряне на прозорец: {e}")
+                except:
+                    pass
+                return None
             
     CustomWebPage = _CustomWebPage
     
@@ -479,6 +526,7 @@ class MainWindow(QMainWindow):
         self.browser_page = CustomWebPage(self.browser_log, self.browser)
         self.browser.setPage(self.browser_page)
         self.browser.page().featurePermissionRequested.connect(self.handle_permission_requested)
+        self.browser.page().printRequested.connect(self.handle_print_requested)
         
         # Disable cache to prevent running stale React bundles
         try:
@@ -515,6 +563,27 @@ class MainWindow(QMainWindow):
                 feature,
                 QWebEnginePage.PermissionPolicy.PermissionDeniedByUser
             )
+
+    def handle_print_requested(self, *args, **kwargs):
+        try:
+            from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+            
+            sender = self.sender()
+            if sender and hasattr(sender, 'browser_view'):
+                view = sender.browser_view
+            else:
+                view = self.browser
+                
+            if not view:
+                view = self.browser
+                
+            printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+            dialog = QPrintDialog(printer, view)
+            
+            if dialog.exec() == QPrintDialog.DialogCode.Accepted:
+                view.print(printer)
+        except Exception as e:
+            print("Error handling print request:", e)
 
     def update_reader_status(self, text, color):
         self.lbl_reader.setText(text)

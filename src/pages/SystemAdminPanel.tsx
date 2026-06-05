@@ -30,7 +30,7 @@ interface Client {
     amountPaid: number;
     expiryDate: string;
     isCanceled?: boolean;
-    renewalHistory?: { date: string, amount: number, month: string }[];
+    renewalHistory?: { date: string, amount: number, month: string, paymentMethod?: string }[];
     scanCount?: number;
     lastScanAt?: string;
     createdAt: string;

@@ -49,7 +49,7 @@ interface Client {
     createdAt: string;
     isCanceled?: boolean;
     cancelReason?: string;
-    renewalHistory?: { date: string, amount: number, month: string }[];
+    renewalHistory?: { date: string, amount: number, month: string, paymentMethod?: string }[];
     history?: ClientLog[];
     scanCount?: number;
     lastScanAt?: string;
@@ -308,6 +308,7 @@ const AdminPanel: React.FC = () => {
     const [selectedRoute, setSelectedRoute] = useState('');
     const [amountPaid, setAmountPaid] = useState('');
     const [expiryDate, setExpiryDate] = useState(getDefaultExpiryMonth());
+    const [paymentMethod, setPaymentMethod] = useState('В брой');
     const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
     const [nfcLinkId, setNfcLinkId] = useState('');
     const [address, setAddress] = useState('');
@@ -326,6 +327,7 @@ const AdminPanel: React.FC = () => {
     const [cancelReason, setCancelReason] = useState('');
     const [newMonth, setNewMonth] = useState('');
     const [newAmount, setNewAmount] = useState('');
+    const [newPaymentMethod, setNewPaymentMethod] = useState('В брой');
     const [newRoute, setNewRoute] = useState('');
 
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
@@ -354,6 +356,9 @@ const AdminPanel: React.FC = () => {
         setVisibleClients(20);
     }, [searchTerm, filterRoute, filterMonth]);
 
+    const [reportPeriodType, setReportPeriodType] = useState<'month' | 'day'>('month');
+    const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+    const [reportPaymentMethod, setReportPaymentMethod] = useState<string>('all');
     const [reportMonth, setReportMonth] = useState<string>('all');
     const [reportCardType, setReportCardType] = useState<string>('all');
     const [reportRoute, setReportRoute] = useState<string>('all');
@@ -535,6 +540,13 @@ const AdminPanel: React.FC = () => {
     const getMonthPayment = (client: Client, month: string) => {
         const payment = (client.renewalHistory || []).find(rh => rh.month === month);
         return payment ? payment.amount : 0;
+    };
+
+    const getDayPayment = (client: Client, dateStr: string) => {
+        const rhList = client.renewalHistory || [];
+        return rhList
+            .filter(rh => rh.date && rh.date.startsWith(dateStr))
+            .reduce((sum, rh) => sum + rh.amount, 0);
     };
 
     // Derived data for reports and filters
@@ -785,11 +797,11 @@ const AdminPanel: React.FC = () => {
                 : '',
             cardNumber: CARDS_MAPPING[sanitizedNfcId] || '',
             createdAt: new Date().toISOString(),
-            renewalHistory: [{ date: new Date().toISOString(), amount: Number(amountPaid), month: expiryDate }],
+            renewalHistory: [{ date: new Date().toISOString(), amount: Number(amountPaid), month: expiryDate, paymentMethod: paymentMethod }],
             history: [{
                 date: new Date().toISOString(),
                 action: 'Създаване',
-                details: `Първоначално плащане: ${amountPaid} € за месец ${expiryDate}`,
+                details: `Първоначално плащане: ${amountPaid} € за месец ${expiryDate} | Начин на плащане: ${paymentMethod}`,
                 amount: Number(amountPaid),
                 performedBy: currentUser?.username || 'Админ'
             }]
@@ -798,7 +810,7 @@ const AdminPanel: React.FC = () => {
         await saveClient(newClient);
         const cardNum = getClientCardNumber(newClient);
         const nameWithCard = cardNum ? `${newClient.name} (Карта № ${cardNum})` : newClient.name;
-        await logGlobalActivity('Създаване', nameWithCard, `Нова карта: ${newClient.id}. Сума: ${amountPaid} €. Регион: ${selectedRoute}`, Number(amountPaid));
+        await logGlobalActivity('Създаване', nameWithCard, `Нова карта: ${newClient.id}. Сума: ${amountPaid} €. Регион: ${selectedRoute} | Начин на плащане: ${paymentMethod}`, Number(amountPaid));
     };
 
     const saveClient = async (client: Client, isNew: boolean = true) => {
@@ -807,7 +819,7 @@ const AdminPanel: React.FC = () => {
             
             if (isNew) {
                 setRegistrationSuccess(client);
-                setClientName(''); setCardType('Нормална карта'); setAddress(''); setSelectedSchool(''); setCustomSchool(''); setMunicipality(''); setCustomMunicipality(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPhotoDataURL(null); setNfcLinkId('');
+                setClientName(''); setCardType('Нормална карта'); setAddress(''); setSelectedSchool(''); setCustomSchool(''); setMunicipality(''); setCustomMunicipality(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPaymentMethod('В брой'); setPhotoDataURL(null); setNfcLinkId('');
                 setShowActionModal(false);
                 setSelectedClient(null);
             } else {
@@ -848,12 +860,13 @@ const AdminPanel: React.FC = () => {
                 renewalHistory: arrayUnion({
                     date: isoNow,
                     amount: Number(newAmount),
-                    month: newMonth
+                    month: newMonth,
+                    paymentMethod: newPaymentMethod
                 }),
                 history: arrayUnion({
                     date: isoNow,
                     action: 'Подновяване',
-                    details: `Нов месец: ${newMonth}${routeChanged ? ` | Променен курс: ${selectedClient.route} -> ${newRoute}` : ''}`,
+                    details: `Нов месец: ${newMonth}${routeChanged ? ` | Променен курс: ${selectedClient.route} -> ${newRoute}` : ''} | Начин на плащане: ${newPaymentMethod}`,
                     amount: Number(newAmount),
                     performedBy: currentUser?.username || 'Админ'
                 })
@@ -866,13 +879,14 @@ const AdminPanel: React.FC = () => {
 
         const cardNum = getClientCardNumber(selectedClient);
         const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
-        await logGlobalActivity('Подновяване', nameWithCard, `Месец: ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курс: ${newRoute}` : ''}`, Number(newAmount));
+        await logGlobalActivity('Подновяване', nameWithCard, `Месец: ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курс: ${newRoute}` : ''} | Начин на плащане: ${newPaymentMethod}`, Number(newAmount));
         setModalMessage({
             text: `Успешно подновен абонамент за ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курсът е сменен на ${newRoute}.` : ''}`,
             type: 'success'
         });
         setNewMonth('');
         setNewAmount('');
+        setNewPaymentMethod('В брой');
     };
 
     const deleteRenewal = async (client: Client, index: number) => {
@@ -1190,11 +1204,13 @@ const AdminPanel: React.FC = () => {
         th, td { padding: 1rem; border-bottom: 1px solid var(--surface-border); }
         th { color: var(--text-secondary); font-weight: 500; }
         .register-print { display: none; }
+        .print-only-header { display: none; }
         @media print {
             body * { visibility: hidden; }
             #printable-report, #printable-report * { visibility: visible !important; color: #000 !important; }
             #printable-report { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; background: white; }
             #printable-report .no-print { display: none !important; }
+            #printable-report .print-only-header { display: block !important; }
             #printable-report table, #printable-report th, #printable-report td { border: 1px solid #ddd !important; border-collapse: collapse; padding: 8px; }
             #printable-report th { background: #f5f5f5 !important; }
             /* Регистър на издадените карти: show the register layout, hide the on-screen
@@ -1529,6 +1545,26 @@ const AdminPanel: React.FC = () => {
                     {/* --- DETAILS REPORT EXPORT SECTION --- */}
                     <div style={{ marginTop: '1rem' }} id="printable-report">
                         {(() => {
+                            const getReportAmount = (c: Client) => {
+                                if (reportPeriodType === 'month') {
+                                    if (reportMonth === 'all') {
+                                        if (reportPaymentMethod !== 'all') {
+                                            return (c.renewalHistory || [])
+                                                .filter(rh => (rh.paymentMethod || 'В брой') === reportPaymentMethod)
+                                                .reduce((sum, rh) => sum + rh.amount, 0);
+                                        }
+                                        return c.amountPaid || 0;
+                                    }
+                                    return (c.renewalHistory || [])
+                                        .filter(rh => rh.month === reportMonth && (reportPaymentMethod === 'all' || (rh.paymentMethod || 'В брой') === reportPaymentMethod))
+                                        .reduce((sum, rh) => sum + rh.amount, 0);
+                                } else {
+                                    return (c.renewalHistory || [])
+                                        .filter(rh => rh.date && rh.date.startsWith(reportDate) && (reportPaymentMethod === 'all' || (rh.paymentMethod || 'В брой') === reportPaymentMethod))
+                                        .reduce((sum, rh) => sum + rh.amount, 0);
+                                }
+                            };
+
                             const filteredReportClients = clients.filter(c => {
                                 let match = true;
                                 if (reportCardType !== 'all') {
@@ -1537,9 +1573,40 @@ const AdminPanel: React.FC = () => {
                                 }
                                 if (reportRoute !== 'all' && c.route !== reportRoute) match = false;
                                 if (reportMunicipality !== 'all' && (c.municipality || '') !== reportMunicipality) match = false;
-                                if (reportMonth !== 'all' && getMonthPayment(c, reportMonth) <= 0) match = false;
                                 
-                                // Distance Filter Logic
+                                if (reportPeriodType === 'month') {
+                                    if (reportMonth !== 'all') {
+                                        const monthAmount = getMonthPayment(c, reportMonth);
+                                        if (monthAmount <= 0) match = false;
+                                        
+                                        if (reportPaymentMethod !== 'all') {
+                                            const hasMatchingPayment = (c.renewalHistory || []).some(rh => 
+                                                rh.month === reportMonth && 
+                                                (rh.paymentMethod || 'В брой') === reportPaymentMethod
+                                            );
+                                            if (!hasMatchingPayment) match = false;
+                                        }
+                                    } else {
+                                        if (reportPaymentMethod !== 'all') {
+                                            const hasMatchingPayment = (c.renewalHistory || []).some(rh => 
+                                                (rh.paymentMethod || 'В брой') === reportPaymentMethod
+                                            );
+                                            if (!hasMatchingPayment) match = false;
+                                        }
+                                    }
+                                } else {
+                                    const dayAmount = getDayPayment(c, reportDate);
+                                    if (dayAmount <= 0) match = false;
+                                    
+                                    if (reportPaymentMethod !== 'all') {
+                                        const hasMatchingPayment = (c.renewalHistory || []).some(rh => 
+                                            rh.date && rh.date.startsWith(reportDate) && 
+                                            (rh.paymentMethod || 'В брой') === reportPaymentMethod
+                                        );
+                                        if (!hasMatchingPayment) match = false;
+                                    }
+                                }
+                                
                                 const isShortDistance = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
                                 if (reportDistanceFilter === 'under10' && !isShortDistance) match = false;
                                 if (reportDistanceFilter === 'over10' && isShortDistance) match = false;
@@ -1547,11 +1614,8 @@ const AdminPanel: React.FC = () => {
                                 return match;
                             });
                             
-                            const totalReportRevenue = filteredReportClients.reduce((sum, c) => sum + (reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)), 0);
+                            const totalReportRevenue = filteredReportClients.reduce((sum, c) => sum + getReportAmount(c), 0);
 
-                            // Община column shows for student/pensioner reports or whenever a
-                            // municipality filter is applied. Empty-row colSpan is derived so it
-                            // always spans the exact number of visible columns.
                             const showMunicipalityCol = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportMunicipality !== 'all';
                             const reportColSpan = 5 /* name, card no, type, route, amount */
                                 + (reportDistanceFilter !== 'all' ? 1 : 0)
@@ -1559,19 +1623,17 @@ const AdminPanel: React.FC = () => {
                                 + (reportCardType === 'Ученическа карта' ? 1 : 0)
                                 + (showMunicipalityCol ? 1 : 0);
 
-                            // --- Регистър на издадените карти (special print layout) ---
-                            // Used when printing a STUDENT or PENSIONER report. Renders a formal
-                            // register header + a 7-column table; replaces the on-screen financial
-                            // table in print only (see .register-print / .screen-only-report CSS).
                             const useRegisterPrint = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта';
                             const SHORT_ROUTES = ["Ясен", "Опанец", "Ясен-Дисевица"];
-                            const registerMonthLabel = reportMonth === 'all'
-                                ? 'ВСИЧКИ МЕСЕЦИ'
-                                : (() => {
-                                    const [y, m] = reportMonth.split('-');
-                                    const bg = ["ЯНУАРИ", "ФЕВРУАРИ", "МАРТ", "АПРИЛ", "МАЙ", "ЮНИ", "ЮЛИ", "АВГУСТ", "СЕПТЕМВРИ", "ОКТОМВРИ", "НОЕМВРИ", "ДЕКЕМВРИ"];
-                                    return `${bg[parseInt(m, 10) - 1] || ''} ${y}`.trim();
-                                })();
+                            const registerPeriodLabel = reportPeriodType === 'month'
+                                ? (reportMonth === 'all'
+                                    ? 'ВСИЧКИ МЕСЕЦИ'
+                                    : (() => {
+                                        const [y, m] = reportMonth.split('-');
+                                        const bg = ["ЯНУАРИ", "ФЕВРУАРИ", "МАРТ", "АПРИЛ", "МАЙ", "ЮНИ", "ЮЛИ", "АВГУСТ", "СЕПТЕМВРИ", "ОКТОМВРИ", "НОЕМВРИ", "ДЕКЕМВРИ"];
+                                        return `${bg[parseInt(m, 10) - 1] || ''} ${y}`.trim();
+                                    })())
+                                : reportDate;
                             const registerDistanceLabel = reportDistanceFilter === 'under10' ? 'ПОД 10 КМ' : reportDistanceFilter === 'over10' ? 'НАД 10 КМ' : 'ВСИЧКИ';
                             const registerCategoryLabel = reportCardType === 'Пенсионерска карта' ? 'ПЕНСИОНЕРИ' : 'УЧЕНИЦИ';
                             const registerLines = (reportRoute !== 'all'
@@ -1582,8 +1644,13 @@ const AdminPanel: React.FC = () => {
                             const registerMunicipalityLabel = reportMunicipality === 'all' ? 'ВСИЧКИ' : reportMunicipality;
                             const getRegisterDate = (c: Client) => {
                                 let iso = c.createdAt;
-                                if (reportMonth !== 'all') {
-                                    const rh = (c.renewalHistory || []).find(r => r.month === reportMonth);
+                                if (reportPeriodType === 'month') {
+                                    if (reportMonth !== 'all') {
+                                        const rh = (c.renewalHistory || []).find(r => r.month === reportMonth);
+                                        if (rh?.date) iso = rh.date;
+                                    }
+                                } else {
+                                    const rh = (c.renewalHistory || []).find(r => r.date && r.date.startsWith(reportDate));
                                     if (rh?.date) iso = rh.date;
                                 }
                                 if (!iso) return '---';
@@ -1592,7 +1659,8 @@ const AdminPanel: React.FC = () => {
                             };
                             
                             const handleShareReport = async () => {
-                                const header = `Финансов Отчет DARY COMMERCE\nМесец: ${reportMonth === 'all' ? 'Всички' : reportMonth} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute} | Община: ${reportMunicipality === 'all' ? 'Всички' : reportMunicipality} | Дистанция: ${reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}\n---\n`;
+                                const periodStr = reportPeriodType === 'month' ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}` : `Ден: ${reportDate}`;
+                                const header = `Финансов Отчет DARY COMMERCE\n${periodStr} | Начин на плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute} | Община: ${reportMunicipality === 'all' ? 'Всички' : reportMunicipality} | Дистанция: ${reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}\n---\n`;
                                 const rows = filteredReportClients.map(c => {
                                     const isShort = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
                                     const distStr = isShort ? "До 10 км" : "Над 10 км";
@@ -1602,7 +1670,7 @@ const AdminPanel: React.FC = () => {
                                     const municipalityPart = ((c.cardType === 'Ученическа карта' || c.cardType === 'Пенсионерска карта') && c.municipality) ? ` - Община: ${c.municipality}` : '';
                                     const cardNum = getClientCardNumber(c);
                                     const cardNumPart = cardNum ? ` (Карта № ${cardNum})` : '';
-                                    return `${c.name}${cardNumPart}${schoolPart}${addressPart}${municipalityPart} - ${c.cardType || 'Нормална карта'} - ${c.route}${distancePart} - ${reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €`;
+                                    return `${c.name}${cardNumPart}${schoolPart}${addressPart}${municipalityPart} - ${c.cardType || 'Нормална карта'} - ${c.route}${distancePart} - ${getReportAmount(c)} €`;
                                 }).join('\n');
                                 const footer = `\n---\nОбщо: ${totalReportRevenue.toFixed(2)} €`;
                                 const shareText = header + rows + footer;
@@ -1624,6 +1692,33 @@ const AdminPanel: React.FC = () => {
 
                             return (
                                 <Card>
+                                    {/* 🖨️ Professional Print Header Summary */}
+                                    <div style={{ display: 'none' }} className="print-only-header">
+                                        <div style={{ borderBottom: '2px solid #333', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+                                            <h1 style={{ fontSize: '20px', fontWeight: 900, color: '#000', margin: '0 0 0.5rem 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                                Финансов Отчет DARY COMMERCE
+                                            </h1>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '12px', color: '#333', marginTop: '1rem' }}>
+                                                <div><strong>Период:</strong> {reportPeriodType === 'month' ? (reportMonth === 'all' ? 'Всички месеци' : reportMonth) : (() => {
+                                                    if (!reportDate) return '---';
+                                                    const d = new Date(reportDate);
+                                                    return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG');
+                                                })()}</div>
+                                                <div><strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички видове' : reportCardType}</div>
+                                                <div><strong>Маршрут:</strong> {reportRoute === 'all' ? 'Всички маршрути' : reportRoute}</div>
+                                                <div><strong>Начин на плащане:</strong> {reportPaymentMethod === 'all' ? 'Всички методи' : reportPaymentMethod}</div>
+                                                {reportMunicipality !== 'all' && <div><strong>Община:</strong> {reportMunicipality}</div>}
+                                                {reportDistanceFilter !== 'all' && <div><strong>Разстояние:</strong> {reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км'}</div>}
+                                            </div>
+                                        </div>
+                                        
+                                        <div style={{ background: '#f5f5f5', border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '13px', lineHeight: '1.5', color: 'black' }}>
+                                            <h4 style={{ margin: '0 0 0.5rem 0', color: '#000', fontSize: '14px', fontWeight: 700 }}>ОБОБЩЕНИЕ НА ДАННИТЕ</h4>
+                                            Генерираният отчет обхваща общо <strong>{filteredReportClients.length}</strong> транзакции/клиенти, съвпадащи с избраните филтри. 
+                                            Общата инкасирана сума за филтрирания период възлиза на <strong>{totalReportRevenue.toFixed(2)} €</strong>.
+                                            Отчетът е съставен на {new Date().toLocaleDateString('bg-BG')} г. и е предназначен за служебна справка.
+                                        </div>
+                                    </div>
                                     <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                                         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--primary-color)' }}>
                                             <List size={20} /> Подробни Отчети и Експорт
@@ -1645,15 +1740,46 @@ const AdminPanel: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="no-print" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Месец</label>
-                                            <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
-                                                <option value="all">Всички Месеци</option>
-                                                {allMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                                    <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '16px', border: '1px solid var(--surface-border)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Тип отчет</label>
+                                            <select value={reportPeriodType} onChange={e => setReportPeriodType(e.target.value as 'month' | 'day')} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
+                                                <option value="month">Месечен Отчет</option>
+                                                <option value="day">Дневен Отчет</option>
                                             </select>
                                         </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                        
+                                        {reportPeriodType === 'month' ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Месец</label>
+                                                <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
+                                                    <option value="all">Всички Месеци</option>
+                                                    {allMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                                                </select>
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Дата (Ден)</label>
+                                                <input 
+                                                    type="date" 
+                                                    value={reportDate} 
+                                                    onChange={e => setReportDate(e.target.value)} 
+                                                    style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600, height: '38px', boxSizing: 'border-box' }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Вид Плащане</label>
+                                            <select value={reportPaymentMethod} onChange={e => setReportPaymentMethod(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
+                                                <option value="all">Всички Методи</option>
+                                                <option value="В брой">В брой</option>
+                                                <option value="С карта">С карта</option>
+                                                <option value="Банка">Банка</option>
+                                            </select>
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Вид Карта</label>
                                             <select value={reportCardType} onChange={e => setReportCardType(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
                                                 <option value="all">Всички Видове</option>
@@ -1663,7 +1789,8 @@ const AdminPanel: React.FC = () => {
                                                 <option value="Инвалидна карта">Инвалидна карта</option>
                                             </select>
                                         </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                        
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Разстояние</label>
                                             <select value={reportDistanceFilter} onChange={e => setReportDistanceFilter(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
                                                 <option value="all">Всички</option>
@@ -1671,14 +1798,16 @@ const AdminPanel: React.FC = () => {
                                                 <option value="over10">Над 10 км</option>
                                             </select>
                                         </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                        
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Маршрут</label>
                                             <select value={reportRoute} onChange={e => setReportRoute(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
                                                 <option value="all">Всички Маршрути</option>
                                                 {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
                                             </select>
                                         </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+                                        
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Община</label>
                                             <select value={reportMunicipality} onChange={e => setReportMunicipality(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
                                                 <option value="all">Всички Общини</option>
@@ -1691,7 +1820,7 @@ const AdminPanel: React.FC = () => {
                                         <div className="register-print" style={{ color: '#000' }}>
                                             <div style={{ marginBottom: '14px', lineHeight: 1.55 }}>
                                                 <div style={{ fontSize: '15px', fontWeight: 700 }}>ОБЩИНА: {registerMunicipalityLabel}</div>
-                                                <div style={{ fontSize: '18px', fontWeight: 900, textAlign: 'center', margin: '6px 0' }}>РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ {registerMonthLabel}</div>
+                                                <div style={{ fontSize: '18px', fontWeight: 900, textAlign: 'center', margin: '6px 0' }}>РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ - {registerPeriodLabel}</div>
                                                 <div style={{ fontSize: '15px', fontWeight: 700 }}>{registerCategoryLabel}: {registerDistanceLabel}</div>
                                                 <div style={{ fontSize: '14px' }}><b>ЛИНИИ:</b> {registerLines}</div>
                                                 <div style={{ fontSize: '14px', marginTop: '8px' }}>СЪСТАВИЛ: К. ВАСИЛЕВА &nbsp;&nbsp;.................................</div>
@@ -1730,20 +1859,6 @@ const AdminPanel: React.FC = () => {
                                         </div>
                                     )}
                                     <div className={useRegisterPrint ? 'screen-only-report' : undefined}>
-                                        <div style={{ display: 'none' }} className="print-only-header">
-                                            <h2 style={{ marginBottom: '1rem', color: 'black' }}>Финансов Отчет DARY COMMERCE</h2>
-                                            <p style={{ marginBottom: '1.5rem', fontSize: '14px', color: '#555' }}>
-                                                <strong>Месец:</strong> {reportMonth === 'all' ? 'Всички' : reportMonth} | 
-                                                <strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички' : reportCardType} | 
-                                                <strong> Маршрут:</strong> {reportRoute === 'all' ? 'Всички' : reportRoute}
-                                                {reportMunicipality !== 'all' && (
-                                                    <> | <strong>Община:</strong> {reportMunicipality}</>
-                                                )}
-                                                {reportDistanceFilter !== 'all' && (
-                                                    <> | <strong>Разстояние:</strong> {reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км'}</>
-                                                )}
-                                            </p>
-                                        </div>
                                         {!isMobile ? (
                                             <div style={{ overflowX: 'auto' }}>
                                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
@@ -1775,7 +1890,7 @@ const AdminPanel: React.FC = () => {
                                                                 {reportCardType === 'Пенсионерска карта' && <td style={{ fontSize: '0.8rem' }}>{c.address || '---'}</td>}
                                                                 {reportCardType === 'Ученическа карта' && <td style={{ fontSize: '0.8rem' }}>{c.school || '---'}</td>}
                                                                 {showMunicipalityCol && <td style={{ fontSize: '0.8rem' }}>{c.municipality || '---'}</td>}
-                                                                <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €</td>
+                                                                <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{getReportAmount(c)} €</td>
                                                             </tr>
                                                         )) : (
                                                             <tr>
@@ -1800,7 +1915,7 @@ const AdminPanel: React.FC = () => {
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                                             <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff' }}>{c.name}</div>
                                                             <div style={{ fontWeight: 900, color: '#00e676', fontSize: '1.1rem' }}>
-                                                                {reportMonth === 'all' ? (c.amountPaid || 0) : getMonthPayment(c, reportMonth)} €
+                                                                {getReportAmount(c)} €
                                                             </div>
                                                         </div>
                                                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1849,7 +1964,6 @@ const AdminPanel: React.FC = () => {
                             );
                         })()}
                     </div>
-
                 </div>
             )}
 
@@ -2347,6 +2461,62 @@ const AdminPanel: React.FC = () => {
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Месец</label>
                                             <input type="month" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', colorScheme: 'dark' }} value={expiryDate} onChange={e => setExpiryDate(e.target.value)} required />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Начин на плащане</label>
+                                        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setPaymentMethod('В брой')} 
+                                                style={{ 
+                                                    flex: 1, 
+                                                    padding: '0.6rem', 
+                                                    borderRadius: '6px', 
+                                                    border: 'none', 
+                                                    background: paymentMethod === 'В брой' ? 'var(--primary-color)' : 'transparent', 
+                                                    color: '#fff', 
+                                                    fontWeight: 600, 
+                                                    cursor: 'pointer',
+                                                    transition: 'background 0.2s ease'
+                                                }}
+                                            >
+                                                💵 В брой
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setPaymentMethod('С карта')} 
+                                                style={{ 
+                                                    flex: 1, 
+                                                    padding: '0.6rem', 
+                                                    borderRadius: '6px', 
+                                                    border: 'none', 
+                                                    background: paymentMethod === 'С карта' ? 'var(--primary-color)' : 'transparent', 
+                                                    color: '#fff', 
+                                                    fontWeight: 600, 
+                                                    cursor: 'pointer',
+                                                    transition: 'background 0.2s ease'
+                                                }}
+                                            >
+                                                💳 С карта
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setPaymentMethod('Банка')} 
+                                                style={{ 
+                                                    flex: 1, 
+                                                    padding: '0.6rem', 
+                                                    borderRadius: '6px', 
+                                                    border: 'none', 
+                                                    background: paymentMethod === 'Банка' ? 'var(--primary-color)' : 'transparent', 
+                                                    color: '#fff', 
+                                                    fontWeight: 600, 
+                                                    cursor: 'pointer',
+                                                    transition: 'background 0.2s ease'
+                                                }}
+                                            >
+                                                🏛️ Банка
+                                            </button>
                                         </div>
                                     </div>
                                     <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
@@ -2954,6 +3124,65 @@ const AdminPanel: React.FC = () => {
                                                     >
                                                         {ROUTES.map(r => <option key={r} value={r} style={{ background: '#222' }}>{r}</option>)}
                                                     </select>
+                                                </div>
+                                                <div style={{ gridColumn: 'span 2' }}>
+                                                    <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Начин на плащане</label>
+                                                    <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(0,0,0,0.2)', padding: '3px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => setNewPaymentMethod('В брой')} 
+                                                            style={{ 
+                                                                flex: 1, 
+                                                                padding: '0.5rem', 
+                                                                borderRadius: '6px', 
+                                                                border: 'none', 
+                                                                background: newPaymentMethod === 'В брой' ? 'var(--success-color)' : 'transparent', 
+                                                                color: '#fff', 
+                                                                fontWeight: 600, 
+                                                                fontSize: '0.85rem',
+                                                                cursor: 'pointer',
+                                                                transition: 'background 0.2s ease'
+                                                            }}
+                                                        >
+                                                            💵 В брой
+                                                        </button>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => setNewPaymentMethod('С карта')} 
+                                                            style={{ 
+                                                                flex: 1, 
+                                                                padding: '0.5rem', 
+                                                                borderRadius: '6px', 
+                                                                border: 'none', 
+                                                                background: newPaymentMethod === 'С карта' ? 'var(--success-color)' : 'transparent', 
+                                                                color: '#fff', 
+                                                                fontWeight: 600, 
+                                                                fontSize: '0.85rem',
+                                                                cursor: 'pointer',
+                                                                transition: 'background 0.2s ease'
+                                                            }}
+                                                        >
+                                                            💳 С карта
+                                                        </button>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => setNewPaymentMethod('Банка')} 
+                                                            style={{ 
+                                                                flex: 1, 
+                                                                padding: '0.5rem', 
+                                                                borderRadius: '6px', 
+                                                                border: 'none', 
+                                                                background: newPaymentMethod === 'Банка' ? 'var(--success-color)' : 'transparent', 
+                                                                color: '#fff', 
+                                                                fontWeight: 600, 
+                                                                fontSize: '0.85rem',
+                                                                cursor: 'pointer',
+                                                                transition: 'background 0.2s ease'
+                                                            }}
+                                                        >
+                                                            🏛️ Банка
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>

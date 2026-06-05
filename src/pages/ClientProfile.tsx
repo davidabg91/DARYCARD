@@ -22,7 +22,7 @@ interface Client {
     amountPaid?: number;
     isCanceled?: boolean;
     cancelReason?: string;
-    renewalHistory?: { date: string, amount: number, month: string }[];
+    renewalHistory?: { date: string, amount: number, month: string, paymentMethod?: string }[];
     history?: { date: string; action: string; details?: string; amount?: number; performedBy?: string; }[];
     cardType?: string;
     address?: string;
