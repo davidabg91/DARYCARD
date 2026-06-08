@@ -23,6 +23,8 @@ interface Client {
     cardNumber?: string;
     lastScanCounter?: number;
     nfcUid?: string;
+    dailyScanCount?: number;
+    lastScanDate?: string;
 }
 
 interface TransitViewProps {
@@ -66,6 +68,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     // Anti-passback: seconds since the previous scan when it was < 300s (5 min) ago (null = ok)
     const [passbackSecs, setPassbackSecs] = useState<number | null>(null);
     const [isCloned, setIsCloned] = useState(false);
+    const [showDailyWarning, setShowDailyWarning] = useState(false);
+    const [dailyWarningDismissed, setDailyWarningDismissed] = useState(false);
 
     // Quick Renewal States
     const [showQuickRenew, setShowQuickRenew] = useState(false);
@@ -233,15 +237,24 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                     setClient({ ...data, id: snap.id });
 
                     // PHYSICAL CARD CLONE PROTECTION (UID VERIFICATION):
+                    // - If nfcUid is not set yet → auto-register the physical UID now (first scan)
+                    // - If nfcUid is already set AND differs from the scanned card → clone detected
                     const registeredNfcUid = (data.nfcUid || '').toUpperCase();
                     const scannedNfcUid = (physicalUid || '').toUpperCase();
                     let clonedVal = false;
-                    if (registeredNfcUid && scannedNfcUid && registeredNfcUid !== scannedNfcUid) {
+
+                    if (scannedNfcUid && !registeredNfcUid) {
+                        // First time this card is scanned — bind the physical UID to this profile
+                        updateDoc(doc(db, 'clients', snap.id), { nfcUid: scannedNfcUid })
+                            .catch(err => console.error('Failed to register nfcUid:', err));
+                        console.log('🔗 Physical UID registered for client', snap.id, '→', scannedNfcUid);
+                    } else if (registeredNfcUid && scannedNfcUid && registeredNfcUid !== scannedNfcUid) {
                         clonedVal = true;
                         setIsCloned(true);
                         
                         // Log clone alert in Firestore for the Admin
-                        setDoc(doc(collection(db, 'clone_alerts')), {
+                        const alertRef = doc(collection(db, 'clone_alerts'));
+                        setDoc(alertRef, {
                             timestamp: new Date().toISOString(),
                             clientId: snap.id,
                             clientName: data.name,
@@ -249,6 +262,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                             registeredUid: registeredNfcUid,
                             scannedUid: scannedNfcUid,
                             resolved: false
+                        }).then(() => {
+                            console.log('🚨 Clone alert logged:', alertRef.id);
                         }).catch(err => console.error('Failed to log clone alert:', err));
                     }
 
@@ -284,6 +299,26 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                             passback = secsSinceLast >= 0 && secsSinceLast < 180;
                             showWarning = secsSinceLast >= 0 && secsSinceLast < 300;
                             setPassbackSecs(showWarning ? secsSinceLast : null);
+                        }
+                    }
+
+                    // DAILY FREQUENCY WARNING:
+                    // Count EVERY scan attempt (including passback ones) toward the daily total.
+                    // This catches cards passed between multiple people on the same day.
+                    const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+                    const isSameDay = data.lastScanDate === todayStr;
+                    const todayCount = isSameDay ? (data.dailyScanCount || 0) : 0;
+                    const newDailyCount = isSameDay ? (data.dailyScanCount || 0) + 1 : 1;
+
+                    // Always update daily counter (regardless of passback)
+                    if (!clonedVal) {
+                        updateDoc(doc(db, 'clients', snap.id), {
+                            lastScanDate: todayStr,
+                            dailyScanCount: newDailyCount,
+                        }).catch(err => console.error('Daily counter update failed:', err));
+
+                        if (todayCount >= 2) {
+                            setShowDailyWarning(true);
                         }
                     }
 
@@ -386,6 +421,129 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
             </div>
         );
     }
+
+    // ── DAILY FREQUENCY WARNING ──────────────────────────────────────────────
+    // Show before the normal profile when this profile was scanned 2+ times today.
+    if (showDailyWarning && !dailyWarningDismissed) {
+        return (
+            <div style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 10001,
+                background: 'linear-gradient(160deg, #f5a800 0%, #ff8c00 40%, #e65c00 100%)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '1.4rem',
+                padding: '2rem',
+                fontFamily: '"Outfit", "Inter", sans-serif',
+                textAlign: 'center',
+                animation: 'cardAppear 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}>
+
+                {/* Large client photo */}
+                {client && (client.photoThumb || client.photo) ? (
+                    <img
+                        src={client.photoThumb || client.photo}
+                        alt={client.name}
+                        style={{
+                            width: 220,
+                            height: 220,
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: '5px solid rgba(255,255,255,0.75)',
+                            boxShadow: '0 12px 48px rgba(0,0,0,0.35)',
+                            flexShrink: 0,
+                        }}
+                    />
+                ) : (
+                    /* Fallback if no photo */
+                    <div style={{
+                        width: 220,
+                        height: 220,
+                        borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.18)',
+                        border: '5px solid rgba(255,255,255,0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                    }}>
+                        <AlertTriangle size={80} color="#fff" strokeWidth={2} />
+                    </div>
+                )}
+
+                {/* Name in red */}
+                {client && (
+                    <div style={{
+                        fontSize: '1.9rem',
+                        fontWeight: 900,
+                        color: '#c0000a',
+                        textShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                        letterSpacing: '-0.5px',
+                        lineHeight: 1.1,
+                    }}>
+                        {client.name}
+                    </div>
+                )}
+
+                {/* Warning message */}
+                <div style={{ maxWidth: 340 }}>
+                    <div style={{
+                        fontSize: '1.5rem',
+                        fontWeight: 900,
+                        color: '#fff',
+                        lineHeight: 1.2,
+                        textShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                        marginBottom: '0.6rem',
+                        letterSpacing: '-0.3px',
+                    }}>
+                        ВНИМАНИЕ — РИСКОВ ПЪТНИК
+                    </div>
+                    <div style={{
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                        color: 'rgba(255,255,255,0.92)',
+                        lineHeight: 1.55,
+                    }}>
+                        Тази карта е сканирана <strong>повече от 2 пъти днес</strong>.
+                        Моля, <strong>сравни снимката и името</strong> с лицето
+                        пред теб, за да се увериш, че е същият пътник.
+                    </div>
+                </div>
+
+                {/* Acknowledge button */}
+                <button
+                    onClick={(e) => { e.stopPropagation(); setDailyWarningDismissed(true); }}
+                    style={{
+                        marginTop: '0.3rem',
+                        background: 'rgba(0,0,0,0.22)',
+                        border: '2.5px solid rgba(255,255,255,0.55)',
+                        color: '#fff',
+                        borderRadius: '20px',
+                        padding: '1.1rem 2.8rem',
+                        fontSize: '1.15rem',
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                        letterSpacing: '0.4px',
+                        transition: 'background 0.2s, transform 0.15s',
+                        fontFamily: '"Outfit", "Inter", sans-serif',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                        WebkitTapHighlightColor: 'transparent',
+                    }}
+                    onTouchStart={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
+                    onTouchEnd={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                >
+                    ✓ РАЗБРАХ — ПРОДЪЛЖИ
+                </button>
+            </div>
+        );
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+
+
 
     return (
         <div style={{ 

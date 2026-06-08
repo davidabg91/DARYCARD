@@ -41,7 +41,7 @@ service cloud.firestore {
       // Staff may edit anything. Anonymous devices (drivers do NOT log in) may
       // bump ONLY the scan counters — never route/expiry/name/photo/etc.
       allow update: if isStaff()
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount', 'lastScanAt', 'lastScanCounter']);
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount', 'lastScanAt', 'lastScanCounter', 'nfcUid', 'dailyScanCount', 'lastScanDate']);
       allow delete: if isAdmin();
 
     }
@@ -111,6 +111,16 @@ service cloud.firestore {
     // Left open because the doc holds no personal data (only a transient card id).
     match /admin_actions/{actionId} {
       allow read, write: if true;
+    }
+
+    // ---- Clone / duplicate-card alerts ----
+    // Any device (including anonymous driver terminals) may create an alert when
+    // it detects a UID mismatch. Staff may read and delete alerts.
+    match /clone_alerts/{alertId} {
+      allow create: if true;
+      allow read: if isStaff();
+      allow delete: if isStaff();
+      allow update: if isAdmin();
     }
 
     // ---- Default deny ----
