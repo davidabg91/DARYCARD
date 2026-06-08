@@ -40,6 +40,17 @@ const ROUTES = [
     "Пордим - Каменец", "Пордим - Згалево"
 ];
 
+const formatTimeAgo = (totalSecs: number) => {
+    if (totalSecs < 60) {
+        return `Сканирана преди ${totalSecs} сек.`;
+    }
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return secs > 0 
+        ? `Сканирана преди ${mins} мин. ${secs} сек.` 
+        : `Сканирана преди ${mins} мин.`;
+};
+
 const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
@@ -48,7 +59,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
     const [showManagement, setShowManagement] = useState(false);
     const [unregistered, setUnregistered] = useState(false);
     const [showPhotoModal, setShowPhotoModal] = useState(false);
-    // Anti-passback: seconds since the previous scan when it was < 60s ago (null = ok)
+    // Anti-passback: seconds since the previous scan when it was < 300s (5 min) ago (null = ok)
     const [passbackSecs, setPassbackSecs] = useState<number | null>(null);
 
     // Quick Renewal States
@@ -215,16 +226,14 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     const data = snap.data() as Client;
                     setClient({ ...data, id: snap.id });
 
-                    // ANTI-PASSBACK: if this card was scanned less than 60s ago, flag
-                    // it (yellow warning) and do NOT record another scan — this is the
-                    // same card being passed back to a second passenger. Otherwise
-                    // record the scan. Drivers are NOT logged in, so there is no auth
-                    // gate: the rules allow an anonymous write to only
-                    // scanCount/lastScanAt + the scans subcollection.
+                    // ANTI-PASSBACK: if this card was scanned less than 180s (3 min) ago, flag
+                    // it (yellow warning) and do NOT record another scan. Beyond that,
+                    // if it was scanned < 300s (5 min) ago, show the warning but DO record the scan.
                     const lastMs = data.lastScanAt ? new Date(data.lastScanAt).getTime() : 0;
                     const secsSinceLast = lastMs ? Math.round((Date.now() - lastMs) / 1000) : Infinity;
-                    const passback = secsSinceLast >= 0 && secsSinceLast < 60;
-                    setPassbackSecs(passback ? secsSinceLast : null);
+                    const passback = secsSinceLast >= 0 && secsSinceLast < 180;
+                    const showWarning = secsSinceLast >= 0 && secsSinceLast < 300;
+                    setPassbackSecs(showWarning ? secsSinceLast : null);
 
                     if (!passback) {
                         const isoNow = new Date().toISOString();
@@ -409,7 +418,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                                         <div style={{ textAlign: 'left', lineHeight: 1.25 }}>
                                             <div style={{ fontSize: '1.3rem', fontWeight: 900, letterSpacing: '0.5px' }}>ВЕЧЕ СКАНИРАНА</div>
                                             <div style={{ fontSize: '0.85rem', fontWeight: 700, opacity: 0.85 }}>
-                                                Сканирана преди {passbackSecs} сек. Изчакайте 1 минута преди ново сканиране.
+                                                {formatTimeAgo(passbackSecs)}
                                             </div>
                                         </div>
                                     </div>

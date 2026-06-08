@@ -45,6 +45,17 @@ const ROUTES = [
     "Пордим - Каменец", "Пордим - Згалево"
 ];
 
+const formatTimeAgo = (totalSecs: number) => {
+    if (totalSecs < 60) {
+        return `Сканирана преди ${totalSecs} сек.`;
+    }
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return secs > 0 
+        ? `Сканирана преди ${mins} мин. ${secs} сек.` 
+        : `Сканирана преди ${mins} мин.`;
+};
+
 const sanitizeId = (id: string | null | undefined): string => {
     if (!id) return '';
     const trimmed = id.trim();
@@ -580,8 +591,17 @@ const ClientProfile: React.FC = () => {
                     const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
                     const hasPaidCurrentMonth = (clientData.renewalHistory || []).some(rh => rh.month === currentMonthStr);
                     const isActive = !clientData.isCanceled && hasPaidCurrentMonth;
-                    if (isActive) playSuccessSound();
-                    else playErrorSound();
+                    const lastMs = clientData.lastScanAt ? new Date(clientData.lastScanAt).getTime() : 0;
+                    const secsSince = lastMs ? Math.round((Date.now() - lastMs) / 1000) : Infinity;
+                    const isPassback = secsSince >= 0 && secsSince < 180; // 3 min passback
+
+                    if (isPassback) {
+                        playErrorSound();
+                    } else if (isActive) {
+                        playSuccessSound();
+                    } else {
+                        playErrorSound();
+                    }
                     
                     const cardNum = clientData.cardNumber || CARDS_MAPPING[clientData.id] || '';
                     const cardPart = cardNum ? ` (Карта № ${cardNum})` : '';
@@ -615,7 +635,7 @@ const ClientProfile: React.FC = () => {
     const scannedRef = useRef<string | null>(null);
     const hasClient = !!client;
     // Visible scan feedback shown on the profile: green "recorded" / yellow "passback".
-    const [scanFeedback, setScanFeedback] = useState<{ type: 'recorded' | 'passback'; secs?: number } | null>(null);
+    const [scanFeedback, setScanFeedback] = useState<{ type: 'recorded' | 'passback' | 'recent'; secs?: number } | null>(null);
 
     useEffect(() => {
         // Record the scan for everyone who opens a registered card — drivers do NOT
@@ -623,14 +643,19 @@ const ClientProfile: React.FC = () => {
         // an anonymous write to ONLY scanCount/lastScanAt + the scans subcollection.
         if (!id || loading || !hasClient || scannedRef.current === id) return;
         scannedRef.current = id;
-        // Anti-passback (same 60s window as TransitView): if this card was scanned
-        // < 60s ago, show a yellow warning and do NOT count it again. Beyond that,
-        // EVERY open counts (a later boarding should count).
+        // Anti-passback: if this card was scanned less than 180s (3 min) ago, flag
+        // it (yellow warning) and do NOT record another scan. Beyond that,
+        // if it was scanned < 300s (5 min) ago, show the warning but DO record the scan.
         const lastMs = client?.lastScanAt ? new Date(client.lastScanAt).getTime() : 0;
         const secsSince = lastMs ? Math.round((Date.now() - lastMs) / 1000) : Infinity;
-        if (secsSince >= 0 && secsSince < 60) {
+        if (secsSince >= 0 && secsSince < 180) {
             setScanFeedback({ type: 'passback', secs: secsSince });
             return;
+        }
+        if (secsSince >= 180 && secsSince < 300) {
+            setScanFeedback({ type: 'recent', secs: secsSince });
+        } else {
+            setScanFeedback({ type: 'recorded' });
         }
         const clientRef = doc(db, 'clients', id);
         const isoNow = new Date().toISOString();
@@ -642,7 +667,6 @@ const ClientProfile: React.FC = () => {
             .catch(err => console.error('Scan record failed:', err));
         updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow })
             .catch(err => console.error('Scan counter update failed:', err));
-        setScanFeedback({ type: 'recorded' });
     }, [id, loading, hasClient, client?.route, client?.lastScanAt]);
 
     useEffect(() => {
@@ -1080,7 +1104,7 @@ const ClientProfile: React.FC = () => {
             }}>
                 {/* Holographic Animation Overlay */}
 
-                {scanFeedback && scanFeedback.type === 'passback' ? (
+                {scanFeedback && (scanFeedback.type === 'passback' || scanFeedback.type === 'recent') ? (
                     <div style={{
                         width: '100%',
                         background: 'linear-gradient(135deg, #ffd600 0%, #ff9100 100%)',
@@ -1100,7 +1124,7 @@ const ClientProfile: React.FC = () => {
                                 ВЕЧЕ СКАНИРАНА!
                             </div>
                             <div style={{ fontSize: '1.05rem', fontWeight: 800 }}>
-                                Сканирана преди {scanFeedback.secs} сек. Изчакайте 1 мин.
+                                {formatTimeAgo(scanFeedback.secs ?? 0)}
                             </div>
                         </div>
                     </div>
