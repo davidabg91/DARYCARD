@@ -492,7 +492,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, nfcCounter, onClose }) =>
                                     <div style={{ textAlign: 'center' }}>
                                         {client && (client.cardNumber || CARDS_MAPPING[client.id]) && (
                                             <div style={{ fontSize: '0.95rem', color: themeColor, fontWeight: 900, marginBottom: '0.3rem', letterSpacing: '1px' }}>
-                                                КАРТА № {client.cardNumber || CARDS_MAPPING[client.id]}
+                                                КАРТА № {client.cardNumber || CARDS_MAPPING[client.id]} {nfcCounter !== undefined && nfcCounter !== null && `(Брояч: ${nfcCounter})`}
                                             </div>
                                         )}
                                         <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 0.2rem 0', letterSpacing: '-0.2px', opacity: 0.6 }}>{client?.name?.toUpperCase()}</h2>
