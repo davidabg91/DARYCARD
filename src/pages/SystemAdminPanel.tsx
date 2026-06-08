@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import AdminAlertsButton from '../components/AdminAlertsButton';
 import SecurityLog from '../components/SecurityLog';
+import CloneAlertsLog from '../components/CloneAlertsLog';
 import type { UserRole } from '../types/auth';
 
 // Custom icons since they weren't in common lists or were problematic in older versions
@@ -526,46 +527,54 @@ const SystemAdminPanel: React.FC = () => {
                                         </Card>
                                     </div>
 
-                                    {/* Suspicious Activity */}
-                                    <div>
-                                        <h2 style={{ fontSize: isMobile ? '1.1rem' : '1.4rem', fontWeight: 800, color: '#ff5252', display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
-                                            <Shield size={20} /> КОНТРОЛ НА ЗЛОУПОТРЕБИ
-                                        </h2>
-                                        <Card style={{ padding: isMobile ? '1rem' : '2.5rem', background: 'rgba(255,82,82,0.02)' }}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                                {suspiciousClients.length > 0 ? suspiciousClients.map(c => (
-                                                    <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,82,82,0.05)', borderRadius: '16px', border: '1px solid rgba(255,82,82,0.1)', position: 'relative' }}>
-                                                        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: '1rem', marginBottom: '1.25rem' }}>
-                                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                                <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff' }}>{c.name}</div>
-                                                                <div style={{ color: '#ff5252', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase' }}>{c.abuseDays.length} дни с аномалии</div>
-                                                            </div>
-                                                            <button
-                                                                onClick={() => handleClearAbuse(c.id)}
-                                                                style={{ background: '#ff5252', color: '#fff', padding: '0.6rem 1.25rem', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 900, border: 'none', boxShadow: '0 4px 12px rgba(255,82,82,0.2)' }}
-                                                            >
-                                                                <Trash2 size={14} /> ИЗЧИСТИ
-                                                            </button>
-                                                        </div>
-
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                                                            {c.abuseDays.slice(0, 3).map(([date, scans], idx) => (
-                                                                <div key={idx} style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '10px' }}>
-                                                                    <div style={{ fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem', opacity: 0.8 }}>{date}</div>
-                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                                                        {scans.map((ts, sIdx) => (
-                                                                            <span key={sIdx} style={{ fontSize: '0.65rem', padding: '3px 8px', background: 'rgba(255,82,82,0.15)', borderRadius: '6px', color: '#ff8a80', border: '1px solid rgba(255,82,82,0.1)' }}>
-                                                                                {new Date(ts).toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
+                                    {/* Suspicious Activity & Clone Alerts */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                                        <div>
+                                            <h2 style={{ fontSize: isMobile ? '1.1rem' : '1.4rem', fontWeight: 800, color: '#ff5252', display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
+                                                <Shield size={20} /> КОНТРОЛ НА ЗЛОУПОТРЕБИ
+                                            </h2>
+                                            <Card style={{ padding: isMobile ? '1rem' : '2.5rem', background: 'rgba(255,82,82,0.02)' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                    {suspiciousClients.length > 0 ? suspiciousClients.map(c => (
+                                                        <div key={c.id} style={{ padding: '1rem', background: 'rgba(255,82,82,0.05)', borderRadius: '16px', border: '1px solid rgba(255,82,82,0.1)', position: 'relative' }}>
+                                                            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+                                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                                    <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff' }}>{c.name}</div>
+                                                                    <div style={{ color: '#ff5252', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase' }}>{c.abuseDays.length} дни с аномалии</div>
                                                                 </div>
-                                                            ))}
+                                                                <button
+                                                                    onClick={() => handleClearAbuse(c.id)}
+                                                                    style={{ background: '#ff5252', color: '#fff', padding: '0.6rem 1.25rem', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 900, border: 'none', boxShadow: '0 4px 12px rgba(255,82,82,0.2)' }}
+                                                                >
+                                                                    <Trash2 size={14} /> ИЗЧИСТИ
+                                                                </button>
+                                                            </div>
+
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                                                {c.abuseDays.slice(0, 3).map(([date, scans], idx) => (
+                                                                    <div key={idx} style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '10px' }}>
+                                                                        <div style={{ fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem', opacity: 0.8 }}>{date}</div>
+                                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                                            {scans.map((ts, sIdx) => (
+                                                                                <span key={sIdx} style={{ fontSize: '0.65rem', padding: '3px 8px', background: 'rgba(255,82,82,0.15)', borderRadius: '6px', color: '#ff8a80', border: '1px solid rgba(255,82,82,0.1)' }}>
+                                                                                    {new Date(ts).toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                )) : <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.3, fontWeight: 700 }}>Няма засечени нарушения към момента.</div>}
-                                            </div>
-                                        </Card>
+                                                    )) : <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.3, fontWeight: 700 }}>Няма засечени нарушения към момента.</div>}
+                                                </div>
+                                            </Card>
+                                        </div>
+
+                                        <div>
+                                            <Card style={{ padding: isMobile ? '1rem' : '2.5rem', background: 'rgba(255,23,68,0.02)', border: '1px solid rgba(255,23,68,0.15)' }}>
+                                                <CloneAlertsLog />
+                                            </Card>
+                                        </div>
                                     </div>
                                 </div>
                             </section>

@@ -239,6 +239,17 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                     if (registeredNfcUid && scannedNfcUid && registeredNfcUid !== scannedNfcUid) {
                         clonedVal = true;
                         setIsCloned(true);
+                        
+                        // Log clone alert in Firestore for the Admin
+                        setDoc(doc(collection(db, 'clone_alerts')), {
+                            timestamp: new Date().toISOString(),
+                            clientId: snap.id,
+                            clientName: data.name,
+                            route: data.route || '',
+                            registeredUid: registeredNfcUid,
+                            scannedUid: scannedNfcUid,
+                            resolved: false
+                        }).catch(err => console.error('Failed to log clone alert:', err));
                     }
 
                     // ANTI-PASSBACK & CLONE PROTECTION (NFC COUNTER):
@@ -485,9 +496,9 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                     }}>
                                         <AlertTriangle size={36} strokeWidth={2.5} style={{ flexShrink: 0 }} />
                                         <div style={{ textAlign: 'left', lineHeight: 1.25 }}>
-                                            <div style={{ fontSize: '1.3rem', fontWeight: 900, letterSpacing: '0.5px' }}>ДУБЛИРАНА КАРТА</div>
-                                            <div style={{ fontSize: '0.85rem', fontWeight: 700, opacity: 0.85 }}>
-                                                Хардуерният UID не съвпада с регистрирания!
+                                            <div style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.5px' }}>ОПИТ ЗА ИЗМАМА!</div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, opacity: 0.95 }}>
+                                                Шофьор: Вземи картата незабавно!
                                             </div>
                                         </div>
                                     </div>
