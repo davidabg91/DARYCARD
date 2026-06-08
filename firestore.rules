@@ -81,7 +81,8 @@ service cloud.firestore {
 
     // ---- Staff-only operational data ----
     match /push_notifications/{notifId} {
-      allow read, create: if isStaff();
+      allow read: if true;
+      allow create: if isStaff();
       allow update, delete: if isAdmin();
     }
     match /activity_logs/{logId} {
