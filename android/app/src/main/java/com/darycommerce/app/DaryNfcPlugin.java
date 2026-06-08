@@ -193,16 +193,47 @@ public class DaryNfcPlugin extends Plugin {
             }
             if (!readError) url = extractUrl(buffer);
 
+            // STAGE 2.5: Read hardware NFC counter
+            int nfcCounter = -1;
+            try {
+                // Probe NTAG216 counter (page 230)
+                byte[] b230 = null;
+                try { b230 = UltralightManagement.getInstance().readBlock((byte) 230, 150); } catch (Exception ignored) {}
+                if (b230 != null && b230.length >= 3) {
+                    nfcCounter = (b230[0] & 0xFF) | ((b230[1] & 0xFF) << 8) | ((b230[2] & 0xFF) << 16);
+                } else {
+                    // Probe NTAG215 counter (page 134)
+                    byte[] b134 = null;
+                    try { b134 = UltralightManagement.getInstance().readBlock((byte) 134, 150); } catch (Exception ignored) {}
+                    if (b134 != null && b134.length >= 3) {
+                        nfcCounter = (b134[0] & 0xFF) | ((b134[1] & 0xFF) << 8) | ((b134[2] & 0xFF) << 16);
+                    } else {
+                        // Probe NTAG213 counter (page 44)
+                        byte[] b44 = null;
+                        try { b44 = UltralightManagement.getInstance().readBlock((byte) 44, 150); } catch (Exception ignored) {}
+                        if (b44 != null && b44.length >= 3) {
+                            nfcCounter = (b44[0] & 0xFF) | ((b44[1] & 0xFF) << 8) | ((b44[2] & 0xFF) << 16);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Hardware counter read failure: " + e.getMessage());
+            }
+
             // STAGE 3: RELIABLE EMISSION
             final String fId = tagId;
             final String fUrl = url != null ? url : "";
             final int fCount = scanCounter.incrementAndGet();
+            final int fNfcCounter = nfcCounter;
             
             getBridge().getActivity().runOnUiThread(() -> {
                 JSObject ret = new JSObject();
                 ret.put("tagId", fId);
                 ret.put("url", fUrl);
                 ret.put("count", fCount);
+                if (fNfcCounter != -1) {
+                    ret.put("nfcCounter", fNfcCounter);
+                }
                 notifyListeners("nfcEvent", ret);
             });
         } catch (Exception e) {

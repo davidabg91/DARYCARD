@@ -30,18 +30,20 @@ function DeepLinkHandler() {
   const navigate = useNavigate();
   const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
   const [transitId, setTransitId] = useState<string | null>(null);
+  const [transitNfcCounter, setTransitNfcCounter] = useState<number | undefined>(undefined);
   // Bumped on every scan so TransitView remounts even when the SAME card is
   // scanned twice in a row — required for anti-passback to fire on a re-scan.
   const [scanNonce, setScanNonce] = useState(0);
   const lastTriggerRef = useRef<{ id: string; t: number }>({ id: '', t: 0 });
 
-  const triggerScan = useCallback((finalId: string) => {
+  const triggerScan = useCallback((finalId: string, nfcCounter?: number) => {
     if (!finalId) return;
     const now = Date.now();
     // Ignore duplicate events from the same physical tap (some readers fire twice).
     if (lastTriggerRef.current.id === finalId && now - lastTriggerRef.current.t < 2000) return;
     lastTriggerRef.current = { id: finalId, t: now };
     setTransitId(finalId);
+    setTransitNfcCounter(nfcCounter);
     setScanNonce(n => n + 1);
   }, []);
 
@@ -53,7 +55,7 @@ function DeepLinkHandler() {
         const parts = url.split('/');
         idFromUrl = parts[parts.length - 1];
       }
-      triggerScan(idFromUrl || tagId);
+      triggerScan(idFromUrl || tagId, undefined);
     };
     return () => { delete window.onNfcRawEvent; };
   }, [triggerScan]);
@@ -72,9 +74,9 @@ function DeepLinkHandler() {
   }, []);
 
   useEffect(() => {
-    const handleInjectedScan = (e: CustomEvent<{ id: string; url: string }>) => {
-      const { id, url } = e.detail || {};
-      console.log('🛡️ IRON GUARD SIGNAL RECEIVED:', { id, url });
+    const handleInjectedScan = (e: CustomEvent<{ id: string; url: string; nfcCounter?: number }>) => {
+      const { id, url, nfcCounter } = e.detail || {};
+      console.log('🛡️ IRON GUARD SIGNAL RECEIVED:', { id, url, nfcCounter });
       
       let idFromUrl = null;
       if (url && url.includes('darycommerce.com') && url.includes('client/')) {
@@ -82,7 +84,7 @@ function DeepLinkHandler() {
         idFromUrl = parts[parts.length - 1];
       }
       
-      triggerScan(idFromUrl || id);
+      triggerScan(idFromUrl || id, nfcCounter);
     };
 
     window.addEventListener('dary-nfc-scan', handleInjectedScan as EventListener);
@@ -101,6 +103,7 @@ function DeepLinkHandler() {
         <TransitView
             key={scanNonce}
             id={transitId}
+            nfcCounter={transitNfcCounter}
             onClose={handleTransitClose}
             onUnregistered={handleTransitUnregistered}
         />
@@ -190,11 +193,13 @@ function App() {
 
     // 🛡️ IRON GUARD: Initialize NFC at the ROOF level. Never stops.
     NFCService.init(
-      (tagId, url) => {
+      (tagId, url, nfcCounter) => {
         // Find the global entry point or local state update
         const transitView = document.getElementById('transit-id-setter');
         if (transitView) {
-           const event = new CustomEvent('dary-nfc-scan', { detail: { id: tagId, url: url } });
+           const event = new CustomEvent('dary-nfc-scan', { 
+               detail: { id: tagId, url: url, nfcCounter: nfcCounter } 
+           });
            window.dispatchEvent(event);
         }
       },

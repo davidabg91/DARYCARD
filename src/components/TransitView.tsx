@@ -21,10 +21,12 @@ interface Client {
     photoThumb?: string;
     lastScanAt?: string;
     cardNumber?: string;
+    lastScanCounter?: number;
 }
 
 interface TransitViewProps {
     id: string;
+    nfcCounter?: number;
     onClose: () => void;
     onUnregistered: (id: string) => void;
 }
@@ -51,7 +53,7 @@ const formatTimeAgo = (totalSecs: number) => {
         : `Сканирана преди ${mins} мин.`;
 };
 
-const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
+const TransitView: React.FC<TransitViewProps> = ({ id, nfcCounter, onClose }) => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
     const [client, setClient] = useState<Client | null>(null);
@@ -226,23 +228,47 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
                     const data = snap.data() as Client;
                     setClient({ ...data, id: snap.id });
 
-                    // ANTI-PASSBACK: if this card was scanned less than 180s (3 min) ago, flag
-                    // it (yellow warning) and do NOT record another scan. Beyond that,
-                    // if it was scanned < 300s (5 min) ago, show the warning but DO record the scan.
+                    // ANTI-PASSBACK & CLONE PROTECTION:
+                    // 1. If we have a hardware NFC counter, check if it's <= last recorded counter.
+                    // 2. Otherwise (or as a fallback), use the time-based anti-passback.
                     const lastMs = data.lastScanAt ? new Date(data.lastScanAt).getTime() : 0;
                     const secsSinceLast = lastMs ? Math.round((Date.now() - lastMs) / 1000) : Infinity;
-                    const passback = secsSinceLast >= 0 && secsSinceLast < 180;
-                    const showWarning = secsSinceLast >= 0 && secsSinceLast < 300;
-                    setPassbackSecs(showWarning ? secsSinceLast : null);
+                    
+                    let passback = false;
+                    let showWarning = false;
+                    
+                    const dbCounter = data.lastScanCounter ?? 0;
+                    if (nfcCounter !== undefined && nfcCounter !== null) {
+                        if (nfcCounter <= dbCounter) {
+                            passback = true;
+                            showWarning = true;
+                            // Set passbackSecs to time since last scan so we show the "Scanned X ago" message
+                            setPassbackSecs(secsSinceLast !== Infinity ? secsSinceLast : 0);
+                        } else {
+                            // Valid counter, but check time-based warning/block just in case
+                            passback = secsSinceLast >= 0 && secsSinceLast < 180;
+                            showWarning = secsSinceLast >= 0 && secsSinceLast < 300;
+                            setPassbackSecs(showWarning ? secsSinceLast : null);
+                        }
+                    } else {
+                        // Fallback to purely time-based
+                        passback = secsSinceLast >= 0 && secsSinceLast < 180;
+                        showWarning = secsSinceLast >= 0 && secsSinceLast < 300;
+                        setPassbackSecs(showWarning ? secsSinceLast : null);
+                    }
 
                     if (!passback) {
                         const isoNow = new Date().toISOString();
+                        const updateData: any = { scanCount: increment(1), lastScanAt: isoNow };
+                        if (nfcCounter !== undefined && nfcCounter !== null) {
+                            updateData.lastScanCounter = nfcCounter;
+                        }
                         // Two independent writes (NOT a batch): the scan doc drives the
                         // traffic analysis and must not be taken down if the counter
                         // update is rejected for an anonymous (not-logged-in) device.
                         setDoc(doc(collection(db, 'clients', snap.id, 'scans')), { at: isoNow, route: data.route ?? '' })
                             .catch(err => console.error('Transit scan record failed:', err));
-                        updateDoc(doc(db, 'clients', snap.id), { scanCount: increment(1), lastScanAt: isoNow })
+                        updateDoc(doc(db, 'clients', snap.id), updateData)
                             .catch(err => console.error('Transit scan counter update failed:', err));
                     }
 
@@ -276,7 +302,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, onClose }) => {
         return () => {
             isMounted = false;
         };
-    }, [id, checkActualStatus]); 
+    }, [id, nfcCounter, checkActualStatus]); 
 
     // IDLE DETECTION & SLIDESHOW LOGIC
     useEffect(() => {

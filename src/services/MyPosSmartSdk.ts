@@ -4,6 +4,7 @@ export interface MyPosNfcEvent {
   tagId: string;
   url?: string;
   error?: string;
+  nfcCounter?: number;
 }
 
 export interface MyPosSmartSdkPlugin {

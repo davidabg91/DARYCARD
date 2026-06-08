@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 
 export class NFCService {
     static async init(
-        onScan: (tagId: string, url?: string) => void,
+        onScan: (tagId: string, url?: string, nfcCounter?: number) => void,
         onStatusUpdate: (status: string) => void
     ) {
         // ULTIMATE PERSISTENCE: localStorage survives even page reloads
@@ -27,7 +27,7 @@ export class NFCService {
                         console.log('!!! DARY SCAN RECEIVED !!!', event);
                         if (event.tagId) {
                             onStatusUpdate('КАРТА ПРОЧЕТЕНА!');
-                            onScan(event.tagId, event.url);
+                            onScan(event.tagId, event.url, event.nfcCounter);
                         }
                     });
 

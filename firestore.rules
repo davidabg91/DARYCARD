@@ -41,7 +41,7 @@ service cloud.firestore {
       // Staff may edit anything. Anonymous devices (drivers do NOT log in) may
       // bump ONLY the scan counters — never route/expiry/name/photo/etc.
       allow update: if isStaff()
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount', 'lastScanAt']);
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount', 'lastScanAt', 'lastScanCounter']);
       allow delete: if isAdmin();
 
     }
