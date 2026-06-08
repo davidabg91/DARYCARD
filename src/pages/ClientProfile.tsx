@@ -157,6 +157,7 @@ const ClientProfile: React.FC = () => {
     const [regCustomMunicipality, setRegCustomMunicipality] = useState('');
     const [regRoute, setRegRoute] = useState('');
     const [regAmount, setRegAmount] = useState('50');
+    const [regPaymentMethod, setRegPaymentMethod] = useState('В брой');
     const [regPhoto, setRegPhoto] = useState<string | null>(null);
     const [regAddress, setRegAddress] = useState('');
 
@@ -534,11 +535,11 @@ const ClientProfile: React.FC = () => {
             photoThumb,
             createdAt: now.toISOString(),
             amountPaid: Number(regAmount),
-            renewalHistory: [{ date: now.toISOString(), amount: Number(regAmount), month: expiryMonth }],
+            renewalHistory: [{ date: now.toISOString(), amount: Number(regAmount), month: expiryMonth, paymentMethod: regPaymentMethod }],
             history: [{
                 date: now.toISOString(),
                 action: 'Активиране (Сканиране)',
-                details: `Първоначално плащане: ${regAmount} € за месец ${expiryMonth}`,
+                details: `Първоначално плащане: ${regAmount} € за месец ${expiryMonth} | Начин на плащане: ${regPaymentMethod}`,
                 amount: Number(regAmount),
                 performedBy: currentUser?.username || 'Система (Линк)'
             }]
@@ -553,7 +554,7 @@ const ClientProfile: React.FC = () => {
                     performedBy: currentUser?.username || 'Система (Линк)',
                     action: 'Създаване',
                     targetName: regName,
-                    details: `Нова карта (NFC): ${id}. Сума: ${regAmount} €. Регион: ${regRoute}`,
+                    details: `Нова карта (NFC): ${id}. Сума: ${regAmount} €. Регион: ${regRoute} | Начин на плащане: ${regPaymentMethod}`,
                     amount: Number(regAmount)
                 });
                 const cardNum = CARDS_MAPPING[id] || '';
@@ -1009,6 +1010,65 @@ const ClientProfile: React.FC = () => {
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МАРШРУТ (КУРС)</label><select value={regRoute} onChange={e => setRegRoute(e.target.value)} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}><option value="">Избери маршрут...</option>{ROUTES.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>СУМА (€)</label><input type="number" value={regAmount} onChange={e => setRegAmount(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} /></div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МЕСЕЦ</label><input type="month" value={regMonth} onChange={e => setRegMonth(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none', colorScheme: 'dark' }} /></div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>НАЧИН НА ПЛАЩАНЕ</label>
+                                    <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setRegPaymentMethod('В брой')} 
+                                            style={{ 
+                                                flex: 1, 
+                                                padding: '10px', 
+                                                borderRadius: '8px', 
+                                                border: 'none', 
+                                                background: regPaymentMethod === 'В брой' ? '#00e676' : 'transparent', 
+                                                color: regPaymentMethod === 'В брой' ? '#000' : '#fff', 
+                                                fontWeight: 700, 
+                                                fontSize: '0.9rem',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            💵 В брой
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setRegPaymentMethod('С карта')} 
+                                            style={{ 
+                                                flex: 1, 
+                                                padding: '10px', 
+                                                borderRadius: '8px', 
+                                                border: 'none', 
+                                                background: regPaymentMethod === 'С карта' ? '#00e676' : 'transparent', 
+                                                color: regPaymentMethod === 'С карта' ? '#000' : '#fff', 
+                                                fontWeight: 700, 
+                                                fontSize: '0.9rem',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            💳 С карта
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setRegPaymentMethod('Банка')} 
+                                            style={{ 
+                                                flex: 1, 
+                                                padding: '10px', 
+                                                borderRadius: '8px', 
+                                                border: 'none', 
+                                                background: regPaymentMethod === 'Банка' ? '#00e676' : 'transparent', 
+                                                color: regPaymentMethod === 'Банка' ? '#000' : '#fff', 
+                                                fontWeight: 700, 
+                                                fontSize: '0.9rem',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            🏛️ Банка
+                                        </button>
+                                    </div>
+                                </div>
                                 <button onClick={handleRegister} style={{ marginTop: '1rem', padding: '1.2rem', background: '#00e676', color: '#ffffff', borderRadius: '12px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}>ЗАПАЗИ И АКТИВИРАЙ</button>
                                 <button onClick={() => setIsRegistering(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', cursor: 'pointer' }}>Отказ</button>
                             </div>
