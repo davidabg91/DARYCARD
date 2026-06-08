@@ -30,19 +30,21 @@ function DeepLinkHandler() {
   const navigate = useNavigate();
   const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
   const [transitId, setTransitId] = useState<string | null>(null);
+  const [transitPhysicalUid, setTransitPhysicalUid] = useState<string | undefined>(undefined);
   const [transitNfcCounter, setTransitNfcCounter] = useState<number | undefined>(undefined);
   // Bumped on every scan so TransitView remounts even when the SAME card is
   // scanned twice in a row — required for anti-passback to fire on a re-scan.
   const [scanNonce, setScanNonce] = useState(0);
   const lastTriggerRef = useRef<{ id: string; t: number }>({ id: '', t: 0 });
 
-  const triggerScan = useCallback((finalId: string, nfcCounter?: number) => {
+  const triggerScan = useCallback((finalId: string, physicalUid?: string, nfcCounter?: number) => {
     if (!finalId) return;
     const now = Date.now();
     // Ignore duplicate events from the same physical tap (some readers fire twice).
     if (lastTriggerRef.current.id === finalId && now - lastTriggerRef.current.t < 2000) return;
     lastTriggerRef.current = { id: finalId, t: now };
     setTransitId(finalId);
+    setTransitPhysicalUid(physicalUid);
     setTransitNfcCounter(nfcCounter);
     setScanNonce(n => n + 1);
   }, []);
@@ -52,10 +54,13 @@ function DeepLinkHandler() {
       console.log('🚀 NUCLEAR INJECTION:', { tagId, url });
       let idFromUrl = null;
       if (url && url.includes('darycommerce.com') && url.includes('client/')) {
-        const parts = url.split('/');
-        idFromUrl = parts[parts.length - 1];
+        const match = url.match(/\/client\/([^/?#]+)/);
+        if (match) {
+          idFromUrl = match[1].toUpperCase();
+        }
       }
-      triggerScan(idFromUrl || tagId, undefined);
+      const pUid = tagId ? tagId.toUpperCase() : undefined;
+      triggerScan(idFromUrl || pUid || '', pUid, undefined);
     };
     return () => { delete window.onNfcRawEvent; };
   }, [triggerScan]);
@@ -80,11 +85,13 @@ function DeepLinkHandler() {
       
       let idFromUrl = null;
       if (url && url.includes('darycommerce.com') && url.includes('client/')) {
-        const parts = url.split('/');
-        idFromUrl = parts[parts.length - 1];
+        const match = url.match(/\/client\/([^/?#]+)/);
+        if (match) {
+          idFromUrl = match[1].toUpperCase();
+        }
       }
-      
-      triggerScan(idFromUrl || id, nfcCounter);
+      const pUid = id ? id.toUpperCase() : undefined;
+      triggerScan(idFromUrl || pUid || '', pUid, nfcCounter);
     };
 
     window.addEventListener('dary-nfc-scan', handleInjectedScan as EventListener);
@@ -103,6 +110,7 @@ function DeepLinkHandler() {
         <TransitView
             key={scanNonce}
             id={transitId}
+            physicalUid={transitPhysicalUid}
             nfcCounter={transitNfcCounter}
             onClose={handleTransitClose}
             onUnregistered={handleTransitUnregistered}

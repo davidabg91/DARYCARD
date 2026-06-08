@@ -22,10 +22,12 @@ interface Client {
     lastScanAt?: string;
     cardNumber?: string;
     lastScanCounter?: number;
+    nfcUid?: string;
 }
 
 interface TransitViewProps {
     id: string;
+    physicalUid?: string;
     nfcCounter?: number;
     onClose: () => void;
     onUnregistered: (id: string) => void;
@@ -53,7 +55,7 @@ const formatTimeAgo = (totalSecs: number) => {
         : `Сканирана преди ${mins} мин.`;
 };
 
-const TransitView: React.FC<TransitViewProps> = ({ id, nfcCounter, onClose }) => {
+const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, onClose }) => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
     const [client, setClient] = useState<Client | null>(null);
@@ -63,6 +65,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, nfcCounter, onClose }) =>
     const [showPhotoModal, setShowPhotoModal] = useState(false);
     // Anti-passback: seconds since the previous scan when it was < 300s (5 min) ago (null = ok)
     const [passbackSecs, setPassbackSecs] = useState<number | null>(null);
+    const [isCloned, setIsCloned] = useState(false);
 
     // Quick Renewal States
     const [showQuickRenew, setShowQuickRenew] = useState(false);
@@ -87,6 +90,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, nfcCounter, onClose }) =>
         setClient(null);
         setShowAds(false); // INTERRUPT ADS ON NEW SCAN
         setPassbackSecs(null);
+        setIsCloned(false);
     }
 
     // Use refs for values needed in the effect timer to avoid dependency loops
@@ -224,11 +228,20 @@ const TransitView: React.FC<TransitViewProps> = ({ id, nfcCounter, onClose }) =>
                 }
                 checkActualStatus();
 
-                if (snap.exists()) {
+                 if (snap.exists()) {
                     const data = snap.data() as Client;
                     setClient({ ...data, id: snap.id });
 
-                    // ANTI-PASSBACK & CLONE PROTECTION:
+                    // PHYSICAL CARD CLONE PROTECTION (UID VERIFICATION):
+                    const registeredNfcUid = (data.nfcUid || '').toUpperCase();
+                    const scannedNfcUid = (physicalUid || '').toUpperCase();
+                    let clonedVal = false;
+                    if (registeredNfcUid && scannedNfcUid && registeredNfcUid !== scannedNfcUid) {
+                        clonedVal = true;
+                        setIsCloned(true);
+                    }
+
+                    // ANTI-PASSBACK & CLONE PROTECTION (NFC COUNTER):
                     // 1. If we have a hardware NFC counter, check if it's <= last recorded counter.
                     // 2. Otherwise (or as a fallback), use the time-based anti-passback.
                     const lastMs = data.lastScanAt ? new Date(data.lastScanAt).getTime() : 0;
@@ -237,24 +250,30 @@ const TransitView: React.FC<TransitViewProps> = ({ id, nfcCounter, onClose }) =>
                     let passback = false;
                     let showWarning = false;
                     
-                    const dbCounter = data.lastScanCounter ?? 0;
-                    if (nfcCounter !== undefined && nfcCounter !== null) {
-                        if (nfcCounter <= dbCounter) {
-                            passback = true;
-                            showWarning = true;
-                            // Set passbackSecs to time since last scan so we show the "Scanned X ago" message
-                            setPassbackSecs(secsSinceLast !== Infinity ? secsSinceLast : 0);
+                    if (clonedVal) {
+                        passback = true;
+                        showWarning = true;
+                        setPassbackSecs(null);
+                    } else {
+                        const dbCounter = data.lastScanCounter ?? 0;
+                        if (nfcCounter !== undefined && nfcCounter !== null) {
+                            if (nfcCounter <= dbCounter) {
+                                passback = true;
+                                showWarning = true;
+                                // Set passbackSecs to time since last scan so we show the "Scanned X ago" message
+                                setPassbackSecs(secsSinceLast !== Infinity ? secsSinceLast : 0);
+                            } else {
+                                // Valid counter, but check time-based warning/block just in case
+                                passback = secsSinceLast >= 0 && secsSinceLast < 180;
+                                showWarning = secsSinceLast >= 0 && secsSinceLast < 300;
+                                setPassbackSecs(showWarning ? secsSinceLast : null);
+                            }
                         } else {
-                            // Valid counter, but check time-based warning/block just in case
+                            // Fallback to purely time-based
                             passback = secsSinceLast >= 0 && secsSinceLast < 180;
                             showWarning = secsSinceLast >= 0 && secsSinceLast < 300;
                             setPassbackSecs(showWarning ? secsSinceLast : null);
                         }
-                    } else {
-                        // Fallback to purely time-based
-                        passback = secsSinceLast >= 0 && secsSinceLast < 180;
-                        showWarning = secsSinceLast >= 0 && secsSinceLast < 300;
-                        setPassbackSecs(showWarning ? secsSinceLast : null);
                     }
 
                     if (!passback) {
@@ -336,8 +355,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, nfcCounter, onClose }) =>
     const lastPaidMonth = renewalHistory.length > 0 
         ? [...renewalHistory].sort((a, b) => b.month.localeCompare(a.month))[0].month 
         : currentMonthStr;
-    const isValid = client && !client.isCanceled && hasPaidCurrentMonth;
-    const themeColor = unregistered ? '#ff9100' : (isValid ? '#00e676' : '#ff1744');
+    const isValid = client && !client.isCanceled && hasPaidCurrentMonth && !isCloned;
+    const themeColor = unregistered ? '#ff9100' : (isCloned ? '#ff1744' : (isValid ? '#00e676' : '#ff1744'));
 
     const getCardTypeColor = (type?: string) => {
         if (!type) return 'rgba(255,255,255,0.4)';
@@ -429,7 +448,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, nfcCounter, onClose }) =>
                         ) : (
                             <>
                                 {/* ANTI-PASSBACK WARNING */}
-                                {passbackSecs !== null && (
+                                {passbackSecs !== null && !isCloned && (
                                     <div style={{
                                         width: '100%',
                                         background: 'linear-gradient(135deg, #ffd600 0%, #ff9100 100%)',
@@ -446,6 +465,29 @@ const TransitView: React.FC<TransitViewProps> = ({ id, nfcCounter, onClose }) =>
                                             <div style={{ fontSize: '1.3rem', fontWeight: 900, letterSpacing: '0.5px' }}>ВЕЧЕ СКАНИРАНА</div>
                                             <div style={{ fontSize: '0.85rem', fontWeight: 700, opacity: 0.85 }}>
                                                 {formatTimeAgo(passbackSecs)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* CLONED CARD WARNING */}
+                                {isCloned && (
+                                    <div style={{
+                                        width: '100%',
+                                        background: 'linear-gradient(135deg, #d50000 0%, #ff1744 100%)',
+                                        color: '#fff',
+                                        padding: '1.25rem 1.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '14px',
+                                        boxShadow: '0 8px 30px rgba(255,23,68,0.35)',
+                                        animation: 'pulse 1.3s ease-in-out infinite'
+                                    }}>
+                                        <AlertTriangle size={36} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+                                        <div style={{ textAlign: 'left', lineHeight: 1.25 }}>
+                                            <div style={{ fontSize: '1.3rem', fontWeight: 900, letterSpacing: '0.5px' }}>ДУБЛИРАНА КАРТА</div>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 700, opacity: 0.85 }}>
+                                                Хардуерният UID не съвпада с регистрирания!
                                             </div>
                                         </div>
                                     </div>
