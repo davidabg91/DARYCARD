@@ -188,54 +188,8 @@ public class DaryNfcPlugin extends Plugin {
                 }
             }
 
-            // STAGE 2.5: Read hardware NFC counter & Auto-enable if disabled
+            // STAGE 2.5: (Counter disabled for system stability — using physical UID verification instead)
             int nfcCounter = -1;
-            if (chipType != 0) {
-                try {
-                    // Try reading configuration page first to verify / auto-enable counter
-                    byte[] cfgBytes = null;
-                    try { 
-                        cfgBytes = UltralightManagement.getInstance().readBlock(configPage, 150); 
-                    } catch (Exception e) {
-                        Log.e(TAG, "Failed to read configuration page " + configPage + ": " + e.getMessage());
-                    }
-                    
-                    if (cfgBytes != null && cfgBytes.length >= 16) {
-                        // Check if counter is disabled (ACCESS byte is index 2 of CFG 1, i.e., index 6 in cfgBytes)
-                        if ((cfgBytes[6] & 0x10) == 0) {
-                            Log.d(TAG, "NTAG counter disabled (bit 4 is 0). Enabling on page " + configPage);
-                            byte[] newCfg = new byte[4];
-                            System.arraycopy(cfgBytes, 4, newCfg, 0, 4); // copy CFG 1 (starts at cfgBytes[4])
-                            newCfg[2] = (byte) (newCfg[2] | 0x10); // set NFC_CNT_EN bit (bit 4)
-                            
-                            byte writePage = (byte) (configPage + 1); // CFG 1 page (42 / 132 / 228)
-                            try { 
-                                UltralightManagement.getInstance().writeBlock(writePage, newCfg, 150); 
-                                Log.d(TAG, "NTAG counter enabled successfully on page " + writePage);
-                            } catch (Exception e) { 
-                                Log.e(TAG, "Write config failed on page " + writePage + ": " + e.getMessage()); 
-                            }
-                        } else {
-                            Log.d(TAG, "NTAG counter already enabled (bit 4 is 1).");
-                        }
-                    }
-
-                    // Now, issue the official READ_CNT command (0x39 0x00)
-                    try {
-                        byte[] resp = UltralightManagement.getInstance().exchangeCmd(new byte[]{(byte) 0x39, (byte) 0x00}, 150);
-                        if (resp != null && resp.length >= 3) {
-                            nfcCounter = (resp[0] & 0xFF) | ((resp[1] & 0xFF) << 8) | ((resp[2] & 0xFF) << 16);
-                            Log.d(TAG, "NFC counter read via command success: " + nfcCounter);
-                        } else {
-                            Log.w(TAG, "NFC counter command returned invalid response length: " + (resp != null ? resp.length : 0));
-                        }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Failed to read NFC counter via command: " + e.getMessage());
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Hardware counter read/write logic failure: " + e.getMessage());
-                }
-            }
 
             // Hardware Feedback
             beepGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100);
