@@ -174,27 +174,49 @@ public class DaryNfcPlugin extends Plugin {
             // Parse NTAG chip type from Capability Container (CC) (page 3, byte 2)
             int chipType = 0; // 0 = unknown, 213, 215, 216
             byte configPage = 0;
-            byte counterPage = 0;
             if (b0 != null && b0.length >= 16) {
                 int sizeByte = b0[14] & 0xFF;
                 if (sizeByte == 0x12) {
                     chipType = 213;
                     configPage = (byte) 41;
-                    counterPage = (byte) 44;
                 } else if (sizeByte == 0x3E) {
                     chipType = 215;
                     configPage = (byte) 131;
-                    counterPage = (byte) 134;
                 } else if (sizeByte == 0x6D) {
                     chipType = 216;
                     configPage = (byte) 227;
-                    counterPage = (byte) 230;
                 }
             }
 
-            // Check and enable hardware counter if disabled
+            // STAGE 2.5: Read hardware NFC counter & Auto-enable if disabled (safe config read)
+            int nfcCounter = -1;
             if (chipType != 0) {
-                checkAndEnableNfcCounter(configPage);
+                try {
+                    byte[] cfgBytes = null;
+                    try { cfgBytes = UltralightManagement.getInstance().readBlock(configPage, 150); } catch (Exception ignored) {}
+                    if (cfgBytes != null && cfgBytes.length >= 16) {
+                        // Extract counter value from counter page (always the 4th block read, i.e., index 12, 13, 14)
+                        nfcCounter = (cfgBytes[12] & 0xFF) | ((cfgBytes[13] & 0xFF) << 8) | ((cfgBytes[14] & 0xFF) << 16);
+
+                        // Check if counter is disabled (ACCESS byte is index 2 of CFG 1, i.e., index 6 in cfgBytes)
+                        if ((cfgBytes[6] & 0x10) == 0) {
+                            Log.d(TAG, "NTAG counter disabled. Enabling on page " + configPage);
+                            byte[] newCfg = new byte[4];
+                            System.arraycopy(cfgBytes, 4, newCfg, 0, 4); // copy CFG 1
+                            newCfg[2] = (byte) (newCfg[2] | 0x10); // set NFC_CNT_EN bit
+                            
+                            byte writePage = (byte) (configPage + 1);
+                            try { 
+                                UltralightManagement.getInstance().writeBlock(writePage, newCfg, 150); 
+                                Log.d(TAG, "NTAG counter enabled successfully on page " + writePage);
+                            } catch (Exception e) { 
+                                Log.e(TAG, "Write config failed on page " + writePage + ": " + e.getMessage()); 
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Hardware counter read/write failure: " + e.getMessage());
+                }
             }
 
             // Hardware Feedback
@@ -218,20 +240,6 @@ public class DaryNfcPlugin extends Plugin {
                 }
             }
             if (!readError) url = extractUrl(buffer);
-
-            // STAGE 2.5: Read hardware NFC counter
-            int nfcCounter = -1;
-            if (chipType != 0) {
-                try {
-                    byte[] cntBytes = null;
-                    try { cntBytes = UltralightManagement.getInstance().readBlock(counterPage, 150); } catch (Exception ignored) {}
-                    if (cntBytes != null && cntBytes.length >= 3) {
-                        nfcCounter = (cntBytes[0] & 0xFF) | ((cntBytes[1] & 0xFF) << 8) | ((cntBytes[2] & 0xFF) << 16);
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Hardware counter read failure: " + e.getMessage());
-                }
-            }
 
             // STAGE 3: RELIABLE EMISSION
             final String fId = tagId;
@@ -279,27 +287,5 @@ public class DaryNfcPlugin extends Plugin {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) { sb.append(String.format("%02X", b)); }
         return sb.toString();
-    }
-
-    private void checkAndEnableNfcCounter(byte configPage) {
-        try {
-            byte[] cfg = null;
-            try { cfg = UltralightManagement.getInstance().readBlock(configPage, 150); } catch (Exception ignored) {}
-            if (cfg != null && cfg.length >= 4) {
-                if ((cfg[2] & 0x10) == 0) {
-                    Log.d(TAG, "NTAG counter disabled on page " + configPage + ". Enabling...");
-                    byte[] newCfg = new byte[4];
-                    System.arraycopy(cfg, 0, newCfg, 0, 4);
-                    newCfg[2] = (byte) (newCfg[2] | 0x10);
-                    try { 
-                        UltralightManagement.getInstance().writeBlock(configPage, newCfg, 150); 
-                    } catch (Exception e) { 
-                        Log.e(TAG, "Write config failed on page " + configPage + ": " + e.getMessage()); 
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "checkAndEnableNfcCounter failed on page " + configPage + ": " + e.getMessage());
-        }
     }
 }
