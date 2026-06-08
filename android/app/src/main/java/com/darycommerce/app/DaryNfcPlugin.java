@@ -150,7 +150,7 @@ public class DaryNfcPlugin extends Plugin {
         String url = null;
         
         try {
-            // STAGE 1: UID Read
+            // STAGE 1: UID Read (block 0 reads blocks 0, 1, 2, 3)
             byte[] b0 = null;
             try { b0 = UltralightManagement.getInstance().readBlock((byte) 0, 150); } catch (Exception ignored) {}
             
@@ -171,8 +171,31 @@ public class DaryNfcPlugin extends Plugin {
             lastId = tagId;
             lastTime = now;
 
+            // Parse NTAG chip type from Capability Container (CC) (page 3, byte 2)
+            int chipType = 0; // 0 = unknown, 213, 215, 216
+            byte configPage = 0;
+            byte counterPage = 0;
+            if (b0 != null && b0.length >= 16) {
+                int sizeByte = b0[14] & 0xFF;
+                if (sizeByte == 0x12) {
+                    chipType = 213;
+                    configPage = (byte) 41;
+                    counterPage = (byte) 44;
+                } else if (sizeByte == 0x3E) {
+                    chipType = 215;
+                    configPage = (byte) 131;
+                    counterPage = (byte) 134;
+                } else if (sizeByte == 0x6D) {
+                    chipType = 216;
+                    configPage = (byte) 227;
+                    counterPage = (byte) 230;
+                }
+            }
+
             // Check and enable hardware counter if disabled
-            checkAndEnableNfcCounter();
+            if (chipType != 0) {
+                checkAndEnableNfcCounter(configPage);
+            }
 
             // Hardware Feedback
             beepGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100);
@@ -198,29 +221,16 @@ public class DaryNfcPlugin extends Plugin {
 
             // STAGE 2.5: Read hardware NFC counter
             int nfcCounter = -1;
-            try {
-                // Probe NTAG216 counter (page 230)
-                byte[] b230 = null;
-                try { b230 = UltralightManagement.getInstance().readBlock((byte) 230, 150); } catch (Exception ignored) {}
-                if (b230 != null && b230.length >= 3) {
-                    nfcCounter = (b230[0] & 0xFF) | ((b230[1] & 0xFF) << 8) | ((b230[2] & 0xFF) << 16);
-                } else {
-                    // Probe NTAG215 counter (page 134)
-                    byte[] b134 = null;
-                    try { b134 = UltralightManagement.getInstance().readBlock((byte) 134, 150); } catch (Exception ignored) {}
-                    if (b134 != null && b134.length >= 3) {
-                        nfcCounter = (b134[0] & 0xFF) | ((b134[1] & 0xFF) << 8) | ((b134[2] & 0xFF) << 16);
-                    } else {
-                        // Probe NTAG213 counter (page 44)
-                        byte[] b44 = null;
-                        try { b44 = UltralightManagement.getInstance().readBlock((byte) 44, 150); } catch (Exception ignored) {}
-                        if (b44 != null && b44.length >= 3) {
-                            nfcCounter = (b44[0] & 0xFF) | ((b44[1] & 0xFF) << 8) | ((b44[2] & 0xFF) << 16);
-                        }
+            if (chipType != 0) {
+                try {
+                    byte[] cntBytes = null;
+                    try { cntBytes = UltralightManagement.getInstance().readBlock(counterPage, 150); } catch (Exception ignored) {}
+                    if (cntBytes != null && cntBytes.length >= 3) {
+                        nfcCounter = (cntBytes[0] & 0xFF) | ((cntBytes[1] & 0xFF) << 8) | ((cntBytes[2] & 0xFF) << 16);
                     }
+                } catch (Exception e) {
+                    Log.e(TAG, "Hardware counter read failure: " + e.getMessage());
                 }
-            } catch (Exception e) {
-                Log.e(TAG, "Hardware counter read failure: " + e.getMessage());
             }
 
             // STAGE 3: RELIABLE EMISSION
@@ -271,50 +281,25 @@ public class DaryNfcPlugin extends Plugin {
         return sb.toString();
     }
 
-    private void checkAndEnableNfcCounter() {
+    private void checkAndEnableNfcCounter(byte configPage) {
         try {
-            // Probe NTAG216 config (page 227)
-            byte[] cfg227 = null;
-            try { cfg227 = UltralightManagement.getInstance().readBlock((byte) 227, 150); } catch (Exception ignored) {}
-            if (cfg227 != null && cfg227.length >= 4) {
-                if ((cfg227[2] & 0x10) == 0) {
-                    Log.d(TAG, "NTAG216 counter disabled. Enabling...");
+            byte[] cfg = null;
+            try { cfg = UltralightManagement.getInstance().readBlock(configPage, 150); } catch (Exception ignored) {}
+            if (cfg != null && cfg.length >= 4) {
+                if ((cfg[2] & 0x10) == 0) {
+                    Log.d(TAG, "NTAG counter disabled on page " + configPage + ". Enabling...");
                     byte[] newCfg = new byte[4];
-                    System.arraycopy(cfg227, 0, newCfg, 0, 4);
+                    System.arraycopy(cfg, 0, newCfg, 0, 4);
                     newCfg[2] = (byte) (newCfg[2] | 0x10);
-                    try { UltralightManagement.getInstance().writeBlock((byte) 227, newCfg, 150); } catch (Exception e) { Log.e(TAG, "Write NTAG216 config failed: " + e.getMessage()); }
-                }
-                return;
-            }
-
-            // Probe NTAG215 config (page 131)
-            byte[] cfg131 = null;
-            try { cfg131 = UltralightManagement.getInstance().readBlock((byte) 131, 150); } catch (Exception ignored) {}
-            if (cfg131 != null && cfg131.length >= 4) {
-                if ((cfg131[2] & 0x10) == 0) {
-                    Log.d(TAG, "NTAG215 counter disabled. Enabling...");
-                    byte[] newCfg = new byte[4];
-                    System.arraycopy(cfg131, 0, newCfg, 0, 4);
-                    newCfg[2] = (byte) (newCfg[2] | 0x10);
-                    try { UltralightManagement.getInstance().writeBlock((byte) 131, newCfg, 150); } catch (Exception e) { Log.e(TAG, "Write NTAG215 config failed: " + e.getMessage()); }
-                }
-                return;
-            }
-
-            // Probe NTAG213 config (page 41)
-            byte[] cfg41 = null;
-            try { cfg41 = UltralightManagement.getInstance().readBlock((byte) 41, 150); } catch (Exception ignored) {}
-            if (cfg41 != null && cfg41.length >= 4) {
-                if ((cfg41[2] & 0x10) == 0) {
-                    Log.d(TAG, "NTAG213 counter disabled. Enabling...");
-                    byte[] newCfg = new byte[4];
-                    System.arraycopy(cfg41, 0, newCfg, 0, 4);
-                    newCfg[2] = (byte) (newCfg[2] | 0x10);
-                    try { UltralightManagement.getInstance().writeBlock((byte) 41, newCfg, 150); } catch (Exception e) { Log.e(TAG, "Write NTAG213 config failed: " + e.getMessage()); }
+                    try { 
+                        UltralightManagement.getInstance().writeBlock(configPage, newCfg, 150); 
+                    } catch (Exception e) { 
+                        Log.e(TAG, "Write config failed on page " + configPage + ": " + e.getMessage()); 
+                    }
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "checkAndEnableNfcCounter failed: " + e.getMessage());
+            Log.e(TAG, "checkAndEnableNfcCounter failed on page " + configPage + ": " + e.getMessage());
         }
     }
 }
