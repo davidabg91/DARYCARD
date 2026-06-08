@@ -259,10 +259,11 @@ const TransitView: React.FC<TransitViewProps> = ({ id, nfcCounter, onClose }) =>
 
                     if (!passback) {
                         const isoNow = new Date().toISOString();
-                        const updateData: any = { scanCount: increment(1), lastScanAt: isoNow };
-                        if (nfcCounter !== undefined && nfcCounter !== null) {
-                            updateData.lastScanCounter = nfcCounter;
-                        }
+                        const updateData = {
+                            scanCount: increment(1),
+                            lastScanAt: isoNow,
+                            ...(nfcCounter !== undefined && nfcCounter !== null ? { lastScanCounter: nfcCounter } : {})
+                        };
                         // Two independent writes (NOT a batch): the scan doc drives the
                         // traffic analysis and must not be taken down if the counter
                         // update is rejected for an anonymous (not-logged-in) device.
