@@ -1649,17 +1649,21 @@ const AdminPanel: React.FC = () => {
                             
                             const totalReportRevenue = filteredReportClients.reduce((sum, c) => sum + getReportAmount(c), 0);
 
-                            const showMunicipalityCol = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportMunicipality !== 'all';
+                            const showMunicipalityCol = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportMunicipality !== 'all';
+                            const showAddressCol = reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта';
                             const reportColSpan = 5 /* name, card no, type, route, amount */
                                 + (reportDistanceFilter !== 'all' ? 1 : 0)
-                                + (reportCardType === 'Пенсионерска карта' ? 1 : 0)
+                                + (showAddressCol ? 1 : 0)
                                 + (reportCardType === 'Ученическа карта' ? 1 : 0)
                                 + (showMunicipalityCol ? 1 : 0);
 
-                            const useRegisterPrint = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта';
+                            const useRegisterPrint = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportCardType === 'Инвалидна карта';
                             const SHORT_ROUTES = ["Ясен", "Опанец", "Ясен-Дисевица"];
 
-                            const registerCategoryLabel = reportCardType === 'Пенсионерска карта' ? 'ПЕНСИОНЕРИ' : 'УЧЕНИЦИ';
+                            const registerCategoryLabel = reportCardType === 'Пенсионерска карта' ? 'ПЕНСИОНЕРИ'
+                                : reportCardType === 'Учителска карта' ? 'УЧИТЕЛИ'
+                                : reportCardType === 'Инвалидна карта' ? 'ИНВАЛИДИ'
+                                : 'УЧЕНИЦИ';
                             const registerLines = (reportRoute !== 'all'
                                 ? [reportRoute]
                                 : reportDistanceFilter === 'under10' ? SHORT_ROUTES
@@ -1689,9 +1693,9 @@ const AdminPanel: React.FC = () => {
                                     const isShort = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
                                     const distStr = isShort ? "До 10 км" : "Над 10 км";
                                     const distancePart = reportDistanceFilter === 'all' ? '' : ` (${distStr})`;
-                                    const addressPart = (reportCardType === 'Пенсионерска карта' && c.address) ? ` - Адрес: ${c.address}` : '';
+                                    const addressPart = ((reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') && c.address) ? ` - Адрес: ${c.address}` : '';
                                     const schoolPart = (reportCardType === 'Ученическа карта' && c.school) ? ` (${c.school})` : '';
-                                    const municipalityPart = ((c.cardType === 'Ученическа карта' || c.cardType === 'Пенсионерска карта') && c.municipality) ? ` - Община: ${c.municipality}` : '';
+                                    const municipalityPart = ((c.cardType === 'Ученическа карта' || c.cardType === 'Пенсионерска карта' || c.cardType === 'Учителска карта') && c.municipality) ? ` - Община: ${c.municipality}` : '';
                                     const cardNum = getClientCardNumber(c);
                                     const cardNumPart = cardNum ? ` (Карта № ${cardNum})` : '';
                                     return `${c.name}${cardNumPart}${schoolPart}${addressPart}${municipalityPart} - ${c.cardType || 'Нормална карта'} - ${c.route}${distancePart} - ${getReportAmount(c)} €`;
@@ -1851,7 +1855,7 @@ const AdminPanel: React.FC = () => {
                                                         <th>№</th>
                                                         <th>ИМЕ</th>
                                                         <th>Община</th>
-                                                        <th>{reportCardType === 'Пенсионерска карта' ? 'Адрес' : 'Училище'}</th>
+                                                        <th>{reportCardType === 'Ученическа карта' ? 'Училище' : (reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') ? 'Адрес' : '—'}</th>
                                                         <th>КАРТА №</th>
                                                         <th>ДАТА</th>
                                                         <th>Направление</th>
@@ -1863,7 +1867,7 @@ const AdminPanel: React.FC = () => {
                                                             <td>{i + 1}</td>
                                                             <td>{c.name}</td>
                                                             <td>{c.municipality || '---'}</td>
-                                                            <td>{(reportCardType === 'Пенсионерска карта' ? c.address : c.school) || '---'}</td>
+                                                            <td>{(reportCardType === 'Ученическа карта' ? c.school : (reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') ? c.address : '') || '---'}</td>
                                                             <td>{getClientCardNumber(c) || '---'}</td>
                                                             <td>{getRegisterDate(c)}</td>
                                                             <td>{c.route}</td>
@@ -1890,7 +1894,7 @@ const AdminPanel: React.FC = () => {
                                                             <th>Вид Карта</th>
                                                             <th>Курс</th>
                                                             {reportDistanceFilter !== 'all' && <th>Разстояние</th>}
-                                                            {reportCardType === 'Пенсионерска карта' && <th>Адрес</th>}
+                                                            {showAddressCol && <th>Адрес</th>}
                                                             {reportCardType === 'Ученическа карта' && <th>Училище</th>}
                                                             {showMunicipalityCol && <th>Община</th>}
                                                             <th>Платена Сума</th>
@@ -1908,7 +1912,7 @@ const AdminPanel: React.FC = () => {
                                                                         {["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}
                                                                     </td>
                                                                 )}
-                                                                {reportCardType === 'Пенсионерска карта' && <td style={{ fontSize: '0.8rem' }}>{c.address || '---'}</td>}
+                                                                {showAddressCol && <td style={{ fontSize: '0.8rem' }}>{c.address || '---'}</td>}
                                                                 {reportCardType === 'Ученическа карта' && <td style={{ fontSize: '0.8rem' }}>{c.school || '---'}</td>}
                                                                 {showMunicipalityCol && <td style={{ fontSize: '0.8rem' }}>{c.municipality || '---'}</td>}
                                                                 <td style={{ fontWeight: 700, color: 'var(--success-color)' }}>{getReportAmount(c)} €</td>
@@ -1951,7 +1955,7 @@ const AdminPanel: React.FC = () => {
                                                                     {["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}
                                                                 </span>
                                                             )}
-                                                            {reportCardType === 'Пенсионерска карта' && (
+                                                            {showAddressCol && (
                                                                 <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'rgba(255,171,0,0.8)', fontStyle: 'italic' }}>
                                                                     <b>Адрес:</b> {c.address || 'Няма въведен адрес'}
                                                                 </div>
@@ -1961,7 +1965,7 @@ const AdminPanel: React.FC = () => {
                                                                     <b>Училище:</b> {c.school || 'Няма въведено училище'}
                                                                 </div>
                                                             )}
-                                                            {(c.cardType === 'Ученическа карта' || c.cardType === 'Пенсионерска карта') && (
+                                                            {(c.cardType === 'Ученическа карта' || c.cardType === 'Пенсионерска карта' || c.cardType === 'Учителска карта') && (
                                                                 <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--accent-color)', fontStyle: 'italic' }}>
                                                                     <b>Община:</b> {c.municipality || 'Няма въведена община'}
                                                                 </div>
