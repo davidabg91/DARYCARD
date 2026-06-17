@@ -498,6 +498,16 @@ const ClientProfile: React.FC = () => {
             alert('Моля, попълнете всички полета и направете снимка.');
             return;
         }
+        // Teachers require an община; disabled cards require an address (like pensioners).
+        const resolvedMunicipality = regMunicipality === MUNICIPALITY_CUSTOM ? regCustomMunicipality.trim() : regMunicipality;
+        if ((regCardType === 'Учителска карта' || regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта') && !resolvedMunicipality) {
+            alert('Моля, изберете Община.');
+            return;
+        }
+        if ((regCardType === 'Инвалидна карта' || regCardType === 'Пенсионерска карта') && !regAddress.trim()) {
+            alert('Моля, въведете адрес.');
+            return;
+        }
         const now = new Date();
         const expiryMonth = regMonth;
 
@@ -524,9 +534,9 @@ const ClientProfile: React.FC = () => {
             name: regName,
             route: regRoute,
             cardType: regCardType,
-            address: regCardType === 'Пенсионерска карта' ? regAddress : '',
+            address: (regCardType === 'Пенсионерска карта' || regCardType === 'Инвалидна карта') ? regAddress : '',
             school: regCardType === 'Ученическа карта' ? (regSelectedSchool === 'custom' ? regCustomSchool : regSelectedSchool) : '',
-            municipality: (regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта')
+            municipality: (regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта' || regCardType === 'Учителска карта')
                 ? (regMunicipality === MUNICIPALITY_CUSTOM ? regCustomMunicipality.trim() : regMunicipality)
                 : '',
             cardNumber: CARDS_MAPPING[id] || '',
@@ -924,11 +934,13 @@ const ClientProfile: React.FC = () => {
                                     setRegCardType(val);
                                     if (val === 'Пенсионерска карта') { setRegMunicipality(DEFAULT_MUNICIPALITY); setRegCustomMunicipality(''); }
                                     else if (val === 'Ученическа карта') { setRegMunicipality(regSelectedSchool && regSelectedSchool !== 'custom' ? (SCHOOL_MUNICIPALITY[regSelectedSchool] || DEFAULT_MUNICIPALITY) : ''); setRegCustomMunicipality(''); }
+                                    else if (val === 'Учителска карта') { setRegMunicipality(DEFAULT_MUNICIPALITY); setRegCustomMunicipality(''); }
                                     else { setRegMunicipality(''); setRegCustomMunicipality(''); }
                                 }} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}>
                                     <option value="Нормална карта">Нормална карта</option>
                                     <option value="Ученическа карта">Ученическа карта</option>
                                     <option value="Пенсионерска карта">Пенсионерска карта</option>
+                                    <option value="Учителска карта">Учителска карта</option>
                                     <option value="Инвалидна карта">Инвалидна карта</option>
                                 </select></div>
                                 {regCardType === 'Ученическа карта' && (
@@ -966,19 +978,19 @@ const ClientProfile: React.FC = () => {
                                         )}
                                     </div>
                                 )}
-                                {regCardType === 'Пенсионерска карта' && (
+                                {(regCardType === 'Пенсионерска карта' || regCardType === 'Инвалидна карта') && (
                                     <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                                        <label style={{ fontSize: '0.8rem', color: '#ffab00', marginBottom: '0.4rem', display: 'block', fontWeight: 800 }}>АДРЕС (Задължително за пенсионери)</label>
-                                        <input 
-                                            value={regAddress} 
-                                            onChange={e => setRegAddress(e.target.value)} 
-                                            style={{ width: '100%', padding: '1rem', background: 'rgba(255,171,0,0.05)', border: '1px solid rgba(255,171,0,0.3)', borderRadius: '12px', color: '#ffab00', outline: 'none' }} 
-                                            placeholder="напр. гр. Плевен, ул. Свобода 1..." 
-                                            required={regCardType === 'Пенсионерска карта'}
+                                        <label style={{ fontSize: '0.8rem', color: '#ffab00', marginBottom: '0.4rem', display: 'block', fontWeight: 800 }}>АДРЕС (Задължително)</label>
+                                        <input
+                                            value={regAddress}
+                                            onChange={e => setRegAddress(e.target.value)}
+                                            style={{ width: '100%', padding: '1rem', background: 'rgba(255,171,0,0.05)', border: '1px solid rgba(255,171,0,0.3)', borderRadius: '12px', color: '#ffab00', outline: 'none' }}
+                                            placeholder="напр. гр. Плевен, ул. Свобода 1..."
+                                            required={regCardType === 'Пенсионерска карта' || regCardType === 'Инвалидна карта'}
                                         />
                                     </div>
                                 )}
-                                {(regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта') && (
+                                {(regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта' || regCardType === 'Учителска карта') && (
                                     <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: '#7dd3fc', marginBottom: '0.4rem', display: 'block', fontWeight: 800 }}>ОБЩИНА</label>
@@ -986,7 +998,7 @@ const ClientProfile: React.FC = () => {
                                                 value={regMunicipality}
                                                 onChange={e => { setRegMunicipality(e.target.value); if (e.target.value !== MUNICIPALITY_CUSTOM) setRegCustomMunicipality(''); }}
                                                 style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(125,211,252,0.5)', borderRadius: '12px', color: '#fff', outline: 'none' }}
-                                                required={regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта'}
+                                                required={regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта' || regCardType === 'Учителска карта'}
                                             >
                                                 <option value="">Избери община...</option>
                                                 {MUNICIPALITIES.map(m => <option key={m} value={m}>{m}</option>)}
@@ -1112,6 +1124,7 @@ const ClientProfile: React.FC = () => {
         if (t.includes('ученическа')) return '#ffd54f';
         if (t.includes('пенсионерска')) return '#b39ddb';
         if (t.includes('инвалидна')) return '#ffab91';
+        if (t.includes('учителска')) return '#80cbc4';
         return '#81d4fa'; // Нормална
     };
     const cardTypeColor = getCardTypeColor(client?.cardType);

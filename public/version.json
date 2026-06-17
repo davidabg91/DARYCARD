@@ -1,5 +1,5 @@
 {
-  "version": "2026.05.31.01.20",
-  "buildDate": "2026-05-31T01:20:00Z",
-  "notes": "Update Dolna Mitropoliya Sunday schedule with merged shifted times."
+  "version": "2026.06.17.18.01",
+  "buildDate": "2026-06-17T18:01:00Z",
+  "notes": "Card types: add Teacher category (requires selecting a municipality) and require an address for Disabled cards (like Pensioners)."
 }

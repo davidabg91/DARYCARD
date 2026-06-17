@@ -736,6 +736,17 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
+        // Teachers require an община; disabled cards require an address (like pensioners).
+        const resolvedMunicipality = municipality === MUNICIPALITY_CUSTOM ? customMunicipality.trim() : municipality;
+        if ((cardType === 'Учителска карта' || cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта') && !resolvedMunicipality) {
+            setMessage({ text: 'Моля, изберете Община.', type: 'error' });
+            return;
+        }
+        if ((cardType === 'Инвалидна карта' || cardType === 'Пенсионерска карта') && !address.trim()) {
+            setMessage({ text: 'Моля, въведете адрес.', type: 'error' });
+            return;
+        }
+
         if (!nfcLinkId) {
             setMessage({ text: 'Моля, свържете карта (Сканирайте или въведете ID), преди да запишете.', type: 'error' });
             return;
@@ -791,9 +802,9 @@ const AdminPanel: React.FC = () => {
             expiryDate: expiryDate,
             photo: photoValue,
             photoThumb,
-            address: cardType === 'Пенсионерска карта' ? address : '',
+            address: (cardType === 'Пенсионерска карта' || cardType === 'Инвалидна карта') ? address : '',
             school: cardType === 'Ученическа карта' ? (selectedSchool === 'custom' ? customSchool : selectedSchool) : '',
-            municipality: (cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта')
+            municipality: (cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта' || cardType === 'Учителска карта')
                 ? (municipality === MUNICIPALITY_CUSTOM ? customMunicipality.trim() : municipality)
                 : '',
             cardNumber: CARDS_MAPPING[sanitizedNfcId] || '',
@@ -1800,6 +1811,7 @@ const AdminPanel: React.FC = () => {
                                                 <option value="Нормална карта">Нормална карта</option>
                                                 <option value="Ученическа карта">Ученическа карта</option>
                                                 <option value="Пенсионерска карта">Пенсионерска карта</option>
+                                                <option value="Учителска карта">Учителска карта</option>
                                                 <option value="Инвалидна карта">Инвалидна карта</option>
                                             </select>
                                         </div>
@@ -2360,6 +2372,9 @@ const AdminPanel: React.FC = () => {
                                             } else if (val === 'Ученическа карта') {
                                                 setMunicipality(selectedSchool && selectedSchool !== 'custom' ? (SCHOOL_MUNICIPALITY[selectedSchool] || DEFAULT_MUNICIPALITY) : '');
                                                 setCustomMunicipality('');
+                                            } else if (val === 'Учителска карта') {
+                                                setMunicipality(DEFAULT_MUNICIPALITY);
+                                                setCustomMunicipality('');
                                             } else {
                                                 setMunicipality('');
                                                 setCustomMunicipality('');
@@ -2368,19 +2383,20 @@ const AdminPanel: React.FC = () => {
                                             <option value="Нормална карта">Нормална карта</option>
                                             <option value="Ученическа карта">Ученическа карта</option>
                                             <option value="Пенсионерска карта">Пенсионерска карта</option>
+                                            <option value="Учителска карта">Учителска карта</option>
                                             <option value="Инвалидна карта">Инвалидна карта</option>
                                         </select>
                                     </div>
-                                    {cardType === 'Пенсионерска карта' && (
+                                    {(cardType === 'Пенсионерска карта' || cardType === 'Инвалидна карта') && (
                                         <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#ffab00', fontWeight: 700 }}>Адрес (Задължително за пенсионери)</label>
-                                            <input 
-                                                type="text" 
-                                                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(255, 171, 0, 0.05)', border: '1px solid rgba(255, 171, 0, 0.3)', color: '#ffab00' }} 
-                                                value={address} 
-                                                onChange={e => setAddress(e.target.value)} 
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#ffab00', fontWeight: 700 }}>Адрес (Задължително)</label>
+                                            <input
+                                                type="text"
+                                                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(255, 171, 0, 0.05)', border: '1px solid rgba(255, 171, 0, 0.3)', color: '#ffab00' }}
+                                                value={address}
+                                                onChange={e => setAddress(e.target.value)}
                                                 placeholder="напр. ул. Иван Вазов 10, Плевен"
-                                                required={cardType === 'Пенсионерска карта'} 
+                                                required={cardType === 'Пенсионерска карта' || cardType === 'Инвалидна карта'}
                                             />
                                         </div>
                                     )}
@@ -2425,7 +2441,7 @@ const AdminPanel: React.FC = () => {
                                             )}
                                         </div>
                                     )}
-                                    {(cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта') && (
+                                    {(cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта' || cardType === 'Учителска карта') && (
                                         <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                             <div>
                                                 <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-color)', fontWeight: 700 }}>Община</label>
@@ -2433,7 +2449,7 @@ const AdminPanel: React.FC = () => {
                                                     style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }}
                                                     value={municipality}
                                                     onChange={e => { setMunicipality(e.target.value); if (e.target.value !== MUNICIPALITY_CUSTOM) setCustomMunicipality(''); }}
-                                                    required={cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта'}
+                                                    required={cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта' || cardType === 'Учителска карта'}
                                                 >
                                                     <option value="">-- Изберете Община --</option>
                                                     {MUNICIPALITIES.map(m => <option key={m} value={m}>{m}</option>)}
