@@ -351,6 +351,9 @@ const ClientProfile: React.FC = () => {
     const [renewalMonth, setRenewalMonth] = useState(getSuggestedMonth());
     const [renewalAmount, setRenewalAmount] = useState(30);
     const [renewalRoute, setRenewalRoute] = useState('');
+    const [renewalPaymentMethod, setRenewalPaymentMethod] = useState('В брой');
+    const [renewalBankAmount, setRenewalBankAmount] = useState('');
+    const [renewalCashAmount, setRenewalCashAmount] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
 
     const audioContextRef = useRef<AudioContext | null>(null);
@@ -1421,42 +1424,71 @@ const ClientProfile: React.FC = () => {
                                         </select>
                                     </div>
 
-                                    <button 
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        <label style={{ fontSize: '0.6rem', opacity: 0.5, fontWeight: 900 }}>НАЧИН НА ПЛАЩАНЕ</label>
+                                        <PaymentMethodSelector
+                                            value={renewalPaymentMethod}
+                                            onChange={(m) => { setRenewalPaymentMethod(m); if (m === MIXED_METHOD && !renewalBankAmount && !renewalCashAmount) { setRenewalBankAmount(String(renewalAmount || '')); setRenewalCashAmount('0'); } }}
+                                            bankAmount={renewalBankAmount}
+                                            cashAmount={renewalCashAmount}
+                                            onBankAmountChange={setRenewalBankAmount}
+                                            onCashAmountChange={setRenewalCashAmount}
+                                            activeColor="#00e676"
+                                            surface="rgba(255,255,255,0.03)"
+                                        />
+                                    </div>
+
+                                    <button
                                         disabled={isUpdating}
                                         onClick={async () => {
                                             setIsUpdating(true);
                                             try {
+                                                const isMixedQR = renewalPaymentMethod === MIXED_METHOD;
+                                                const qrBank = Number(renewalBankAmount) || 0;
+                                                const qrCash = Number(renewalCashAmount) || 0;
+                                                const qrAmount = isMixedQR ? (qrBank + qrCash) : renewalAmount;
+                                                const qrPaymentFields = isMixedQR
+                                                    ? { paymentMethod: renewalPaymentMethod, bankAmount: qrBank, cashAmount: qrCash }
+                                                    : { paymentMethod: renewalPaymentMethod };
+                                                const qrPaymentLabel = isMixedQR ? `Смесено (Банка: ${qrBank.toFixed(2)} / Кеш: ${qrCash.toFixed(2)})` : renewalPaymentMethod;
+                                                if (isMixedQR && qrAmount <= 0) {
+                                                    playErrorSound();
+                                                    setIsUpdating(false);
+                                                    return;
+                                                }
                                                 const clientRef = doc(db, 'clients', client?.id || '');
                                                 await updateDoc(clientRef, {
                                                     expiryDate: renewalMonth,
                                                     route: renewalRoute,
-                                                    renewalHistory: arrayUnion({ 
-                                                        date: new Date().toISOString(), 
-                                                        amount: renewalAmount, 
-                                                        month: renewalMonth 
+                                                    renewalHistory: arrayUnion({
+                                                        date: new Date().toISOString(),
+                                                        amount: qrAmount,
+                                                        month: renewalMonth,
+                                                        ...qrPaymentFields
                                                     }),
-                                                    history: arrayUnion({ 
-                                                        date: new Date().toISOString(), 
-                                                        action: 'БЪРЗО ПОДНОВЯВАНЕ (PROFILE)', 
-                                                        amount: renewalAmount, 
+                                                    history: arrayUnion({
+                                                        date: new Date().toISOString(),
+                                                        action: 'БЪРЗО ПОДНОВЯВАНЕ (PROFILE)',
+                                                        amount: qrAmount,
                                                         month: renewalMonth,
                                                         route: renewalRoute,
-                                                        performedBy: currentUser?.username 
+                                                        ...qrPaymentFields,
+                                                        performedBy: currentUser?.username
                                                     })
                                                 });
-                                                
+
                                                 try {
                                                     await addDoc(collection(db, 'activity_logs'), {
                                                         timestamp: new Date().toISOString(),
                                                         performedBy: currentUser?.username || 'Admin',
                                                         action: 'Подновяване',
                                                         targetName: client?.name || 'Клиент',
-                                                        details: `Бързо подновяване за месец ${renewalMonth}. Сума: ${renewalAmount} €. Маршрут: ${renewalRoute}`,
-                                                        amount: Number(renewalAmount)
+                                                        details: `Бързо подновяване за месец ${renewalMonth}. Сума: ${qrAmount.toFixed(2)} €. Маршрут: ${renewalRoute} | Начин на плащане: ${qrPaymentLabel}`,
+                                                        amount: qrAmount
                                                     });
                                                     const cardNum = client ? (client.cardNumber || CARDS_MAPPING[client.id] || '') : '';
                                                     const nameWithCard = cardNum ? `${client?.name} (Карта № ${cardNum})` : (client?.name || 'Клиент');
-                                                    console.log(`[DARY_BRIDGE_LOG]: Подновяване на ${nameWithCard} за месец ${renewalMonth} - Сума: ${renewalAmount} €`);
+                                                    console.log(`[DARY_BRIDGE_LOG]: Подновяване на ${nameWithCard} за месец ${renewalMonth} - Сума: ${qrAmount.toFixed(2)} €`);
                                                 } catch (logErr) { console.error("Log error", logErr); }
 
                                                 playSuccessSound();
