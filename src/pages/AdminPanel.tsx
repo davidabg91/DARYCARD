@@ -27,6 +27,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { ROUTE_METADATA } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
+import PaymentMethodSelector from '../components/PaymentMethodSelector';
+import { MIXED_METHOD } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY } from '../data/municipalities';
 import { SCHOOLS, SCHOOL_MUNICIPALITY } from '../data/schools';
@@ -50,7 +52,7 @@ interface Client {
     createdAt: string;
     isCanceled?: boolean;
     cancelReason?: string;
-    renewalHistory?: { date: string, amount: number, month: string, paymentMethod?: string }[];
+    renewalHistory?: { date: string, amount: number, month: string, paymentMethod?: string, bankAmount?: number, cashAmount?: number }[];
     history?: ClientLog[];
     scanCount?: number;
     lastScanAt?: string;
@@ -310,6 +312,8 @@ const AdminPanel: React.FC = () => {
     const [amountPaid, setAmountPaid] = useState('');
     const [expiryDate, setExpiryDate] = useState(getDefaultExpiryMonth());
     const [paymentMethod, setPaymentMethod] = useState('В брой');
+    const [bankAmount, setBankAmount] = useState('');
+    const [cashAmount, setCashAmount] = useState('');
     const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
     const [nfcLinkId, setNfcLinkId] = useState('');
     const [address, setAddress] = useState('');
@@ -329,6 +333,8 @@ const AdminPanel: React.FC = () => {
     const [newMonth, setNewMonth] = useState('');
     const [newAmount, setNewAmount] = useState('');
     const [newPaymentMethod, setNewPaymentMethod] = useState('В брой');
+    const [newBankAmount, setNewBankAmount] = useState('');
+    const [newCashAmount, setNewCashAmount] = useState('');
     const [newRoute, setNewRoute] = useState('');
 
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
@@ -793,12 +799,27 @@ const AdminPanel: React.FC = () => {
             console.error('Thumbnail generation failed:', err);
         }
 
+        // Payment: a "Смесено" (mixed) payment splits the total between bank and cash.
+        const isMixedPay = paymentMethod === MIXED_METHOD;
+        const payBank = Number(bankAmount) || 0;
+        const payCash = Number(cashAmount) || 0;
+        const effectiveAmount = isMixedPay ? (payBank + payCash) : Number(amountPaid);
+        const paymentLabel = isMixedPay ? `Смесено (Банка: ${payBank.toFixed(2)} / Кеш: ${payCash.toFixed(2)})` : paymentMethod;
+        const renewalPaymentFields = isMixedPay
+            ? { paymentMethod, bankAmount: payBank, cashAmount: payCash }
+            : { paymentMethod };
+
+        if (isMixedPay && effectiveAmount <= 0) {
+            setMessage({ text: 'При смесено плащане въведете сумите по банка и/или в брой.', type: 'error' });
+            return;
+        }
+
         const newClient: Client = {
             id: generatedId,
             name: clientName,
             route: selectedRoute,
             cardType: cardType,
-            amountPaid: Number(amountPaid),
+            amountPaid: effectiveAmount,
             expiryDate: expiryDate,
             photo: photoValue,
             photoThumb,
@@ -809,12 +830,12 @@ const AdminPanel: React.FC = () => {
                 : '',
             cardNumber: CARDS_MAPPING[sanitizedNfcId] || '',
             createdAt: new Date().toISOString(),
-            renewalHistory: [{ date: new Date().toISOString(), amount: Number(amountPaid), month: expiryDate, paymentMethod: paymentMethod }],
+            renewalHistory: [{ date: new Date().toISOString(), amount: effectiveAmount, month: expiryDate, ...renewalPaymentFields }],
             history: [{
                 date: new Date().toISOString(),
                 action: 'Създаване',
-                details: `Първоначално плащане: ${amountPaid} € за месец ${expiryDate} | Начин на плащане: ${paymentMethod}`,
-                amount: Number(amountPaid),
+                details: `Първоначално плащане: ${effectiveAmount.toFixed(2)} € за месец ${expiryDate} | Начин на плащане: ${paymentLabel}`,
+                amount: effectiveAmount,
                 performedBy: currentUser?.username || 'Админ'
             }]
         };
@@ -822,7 +843,7 @@ const AdminPanel: React.FC = () => {
         await saveClient(newClient);
         const cardNum = getClientCardNumber(newClient);
         const nameWithCard = cardNum ? `${newClient.name} (Карта № ${cardNum})` : newClient.name;
-        await logGlobalActivity('Създаване', nameWithCard, `Нова карта: ${newClient.id}. Сума: ${amountPaid} €. Регион: ${selectedRoute} | Начин на плащане: ${paymentMethod}`, Number(amountPaid));
+        await logGlobalActivity('Създаване', nameWithCard, `Нова карта: ${newClient.id}. Сума: ${effectiveAmount.toFixed(2)} €. Регион: ${selectedRoute} | Начин на плащане: ${paymentLabel}`, effectiveAmount);
     };
 
     const saveClient = async (client: Client, isNew: boolean = true) => {
@@ -831,7 +852,7 @@ const AdminPanel: React.FC = () => {
             
             if (isNew) {
                 setRegistrationSuccess(client);
-                setClientName(''); setCardType('Нормална карта'); setAddress(''); setSelectedSchool(''); setCustomSchool(''); setMunicipality(''); setCustomMunicipality(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPaymentMethod('В брой'); setPhotoDataURL(null); setNfcLinkId('');
+                setClientName(''); setCardType('Нормална карта'); setAddress(''); setSelectedSchool(''); setCustomSchool(''); setMunicipality(''); setCustomMunicipality(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPaymentMethod('В брой'); setBankAmount(''); setCashAmount(''); setPhotoDataURL(null); setNfcLinkId('');
                 setShowActionModal(false);
                 setSelectedClient(null);
             } else {
@@ -851,10 +872,20 @@ const AdminPanel: React.FC = () => {
     const renewClient = async () => {
         if (!selectedClient) return;
         
-        if (!newMonth || !newAmount || Number(newAmount) <= 0 || !newRoute) {
-            alert('Моля, въведете валиден месец, сума и курс.');
+        const isMixedRenew = newPaymentMethod === MIXED_METHOD;
+        const renewBank = Number(newBankAmount) || 0;
+        const renewCash = Number(newCashAmount) || 0;
+        const effectiveNewAmount = isMixedRenew ? (renewBank + renewCash) : Number(newAmount);
+
+        if (!newMonth || !newRoute || effectiveNewAmount <= 0) {
+            alert(isMixedRenew ? 'Моля, въведете месец, курс и сумите за смесеното плащане.' : 'Моля, въведете валиден месец, сума и курс.');
             return;
         }
+
+        const renewPaymentLabel = isMixedRenew ? `Смесено (Банка: ${renewBank.toFixed(2)} / Кеш: ${renewCash.toFixed(2)})` : newPaymentMethod;
+        const renewPaymentFields = isMixedRenew
+            ? { paymentMethod: newPaymentMethod, bankAmount: renewBank, cashAmount: renewCash }
+            : { paymentMethod: newPaymentMethod };
 
         const routeChanged = newRoute !== selectedClient.route;
         const isoNow = new Date().toISOString();
@@ -868,18 +899,18 @@ const AdminPanel: React.FC = () => {
                 route: newRoute,
                 expiryDate: newMonth,
                 isCanceled: false,
-                amountPaid: increment(Number(newAmount)),
+                amountPaid: increment(effectiveNewAmount),
                 renewalHistory: arrayUnion({
                     date: isoNow,
-                    amount: Number(newAmount),
+                    amount: effectiveNewAmount,
                     month: newMonth,
-                    paymentMethod: newPaymentMethod
+                    ...renewPaymentFields
                 }),
                 history: arrayUnion({
                     date: isoNow,
                     action: 'Подновяване',
-                    details: `Нов месец: ${newMonth}${routeChanged ? ` | Променен курс: ${selectedClient.route} -> ${newRoute}` : ''} | Начин на плащане: ${newPaymentMethod}`,
-                    amount: Number(newAmount),
+                    details: `Нов месец: ${newMonth}${routeChanged ? ` | Променен курс: ${selectedClient.route} -> ${newRoute}` : ''} | Начин на плащане: ${renewPaymentLabel}`,
+                    amount: effectiveNewAmount,
                     performedBy: currentUser?.username || 'Админ'
                 })
             });
@@ -891,14 +922,16 @@ const AdminPanel: React.FC = () => {
 
         const cardNum = getClientCardNumber(selectedClient);
         const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
-        await logGlobalActivity('Подновяване', nameWithCard, `Месец: ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курс: ${newRoute}` : ''} | Начин на плащане: ${newPaymentMethod}`, Number(newAmount));
+        await logGlobalActivity('Подновяване', nameWithCard, `Месец: ${newMonth}. Сума: ${effectiveNewAmount.toFixed(2)} €. ${routeChanged ? `Курс: ${newRoute}` : ''} | Начин на плащане: ${renewPaymentLabel}`, effectiveNewAmount);
         setModalMessage({
-            text: `Успешно подновен абонамент за ${newMonth}. Сума: ${newAmount} €. ${routeChanged ? `Курсът е сменен на ${newRoute}.` : ''}`,
+            text: `Успешно подновен абонамент за ${newMonth}. Сума: ${effectiveNewAmount.toFixed(2)} €. ${routeChanged ? `Курсът е сменен на ${newRoute}.` : ''}`,
             type: 'success'
         });
         setNewMonth('');
         setNewAmount('');
         setNewPaymentMethod('В брой');
+        setNewBankAmount('');
+        setNewCashAmount('');
     };
 
     const deleteRenewal = async (client: Client, index: number) => {
@@ -1598,6 +1631,32 @@ const AdminPanel: React.FC = () => {
                                 }
                             };
 
+                            // Breakdown of how the reported amount was paid (splits "Смесено"
+                            // into its bank + cash parts), for display in the printed list.
+                            const getReportPaymentBreakdown = (c: Client) => {
+                                const inPeriod = (rh: { date?: string; month?: string }) => {
+                                    if (reportPeriodType === 'month') {
+                                        return reportMonth === 'all' ? true : rh.month === reportMonth;
+                                    }
+                                    return !!rh.date && rh.date.startsWith(reportDate);
+                                };
+                                let bank = 0, cash = 0, card = 0;
+                                (c.renewalHistory || []).forEach(rh => {
+                                    if (!inPeriod(rh)) return;
+                                    const m = rh.paymentMethod || 'В брой';
+                                    if (reportPaymentMethod !== 'all' && m !== reportPaymentMethod) return;
+                                    if (m === 'Смесено') { bank += rh.bankAmount || 0; cash += rh.cashAmount || 0; }
+                                    else if (m === 'Банка') bank += rh.amount;
+                                    else if (m === 'С карта') card += rh.amount;
+                                    else cash += rh.amount;
+                                });
+                                const parts: string[] = [];
+                                if (bank > 0) parts.push(`Банка ${bank.toFixed(2)}`);
+                                if (cash > 0) parts.push(`Кеш ${cash.toFixed(2)}`);
+                                if (card > 0) parts.push(`Карта ${card.toFixed(2)}`);
+                                return { bank, cash, card, label: parts.join(' + ') || '---' };
+                            };
+
                             const filteredReportClients = clients.filter(c => {
                                 let match = true;
                                 if (reportCardType !== 'all') {
@@ -1698,7 +1757,7 @@ const AdminPanel: React.FC = () => {
                                     const municipalityPart = ((c.cardType === 'Ученическа карта' || c.cardType === 'Пенсионерска карта' || c.cardType === 'Учителска карта') && c.municipality) ? ` - Община: ${c.municipality}` : '';
                                     const cardNum = getClientCardNumber(c);
                                     const cardNumPart = cardNum ? ` (Карта № ${cardNum})` : '';
-                                    return `${c.name}${cardNumPart}${schoolPart}${addressPart}${municipalityPart} - ${c.cardType || 'Нормална карта'} - ${c.route}${distancePart} - ${getReportAmount(c)} €`;
+                                    return `${c.name}${cardNumPart}${schoolPart}${addressPart}${municipalityPart} - ${c.cardType || 'Нормална карта'} - ${c.route}${distancePart} - ${getReportAmount(c)} € (${getReportPaymentBreakdown(c).label})`;
                                 }).join('\n');
                                 const footer = `\n---\nОбщо: ${totalReportRevenue.toFixed(2)} €`;
                                 const shareText = header + rows + footer;
@@ -1805,6 +1864,7 @@ const AdminPanel: React.FC = () => {
                                                 <option value="В брой">В брой</option>
                                                 <option value="С карта">С карта</option>
                                                 <option value="Банка">Банка</option>
+                                                <option value="Смесено">Смесено (Банка+Кеш)</option>
                                             </select>
                                         </div>
 
@@ -1859,6 +1919,7 @@ const AdminPanel: React.FC = () => {
                                                         <th>КАРТА №</th>
                                                         <th>ДАТА</th>
                                                         <th>Направление</th>
+                                                        <th>Плащане</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -1871,9 +1932,10 @@ const AdminPanel: React.FC = () => {
                                                             <td>{getClientCardNumber(c) || '---'}</td>
                                                             <td>{getRegisterDate(c)}</td>
                                                             <td>{c.route}</td>
+                                                            <td>{getReportPaymentBreakdown(c).label}</td>
                                                         </tr>
                                                     )) : (
-                                                        <tr><td colSpan={7} style={{ textAlign: 'center', padding: '12px' }}>Няма данни за избраните филтри</td></tr>
+                                                        <tr><td colSpan={8} style={{ textAlign: 'center', padding: '12px' }}>Няма данни за избраните филтри</td></tr>
                                                     )}
                                                 </tbody>
                                             </table>
@@ -2494,59 +2556,14 @@ const AdminPanel: React.FC = () => {
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Начин на плащане</label>
-                                        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                                            <button 
-                                                type="button" 
-                                                onClick={() => setPaymentMethod('В брой')} 
-                                                style={{ 
-                                                    flex: 1, 
-                                                    padding: '0.6rem', 
-                                                    borderRadius: '6px', 
-                                                    border: 'none', 
-                                                    background: paymentMethod === 'В брой' ? 'var(--primary-color)' : 'transparent', 
-                                                    color: '#fff', 
-                                                    fontWeight: 600, 
-                                                    cursor: 'pointer',
-                                                    transition: 'background 0.2s ease'
-                                                }}
-                                            >
-                                                💵 В брой
-                                            </button>
-                                            <button 
-                                                type="button" 
-                                                onClick={() => setPaymentMethod('С карта')} 
-                                                style={{ 
-                                                    flex: 1, 
-                                                    padding: '0.6rem', 
-                                                    borderRadius: '6px', 
-                                                    border: 'none', 
-                                                    background: paymentMethod === 'С карта' ? 'var(--primary-color)' : 'transparent', 
-                                                    color: '#fff', 
-                                                    fontWeight: 600, 
-                                                    cursor: 'pointer',
-                                                    transition: 'background 0.2s ease'
-                                                }}
-                                            >
-                                                💳 С карта
-                                            </button>
-                                            <button 
-                                                type="button" 
-                                                onClick={() => setPaymentMethod('Банка')} 
-                                                style={{ 
-                                                    flex: 1, 
-                                                    padding: '0.6rem', 
-                                                    borderRadius: '6px', 
-                                                    border: 'none', 
-                                                    background: paymentMethod === 'Банка' ? 'var(--primary-color)' : 'transparent', 
-                                                    color: '#fff', 
-                                                    fontWeight: 600, 
-                                                    cursor: 'pointer',
-                                                    transition: 'background 0.2s ease'
-                                                }}
-                                            >
-                                                🏛️ Банка
-                                            </button>
-                                        </div>
+                                        <PaymentMethodSelector
+                                            value={paymentMethod}
+                                            onChange={(m) => { setPaymentMethod(m); if (m === MIXED_METHOD && !bankAmount && !cashAmount) { setBankAmount(amountPaid || ''); setCashAmount('0'); } }}
+                                            bankAmount={bankAmount}
+                                            cashAmount={cashAmount}
+                                            onBankAmountChange={setBankAmount}
+                                            onCashAmountChange={setCashAmount}
+                                        />
                                     </div>
                                     <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
                                         <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Свързване на Карта (NFC/Link)</label>
@@ -3156,62 +3173,15 @@ const AdminPanel: React.FC = () => {
                                                 </div>
                                                 <div style={{ gridColumn: 'span 2' }}>
                                                     <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Начин на плащане</label>
-                                                    <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(0,0,0,0.2)', padding: '3px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                                                        <button 
-                                                            type="button" 
-                                                            onClick={() => setNewPaymentMethod('В брой')} 
-                                                            style={{ 
-                                                                flex: 1, 
-                                                                padding: '0.5rem', 
-                                                                borderRadius: '6px', 
-                                                                border: 'none', 
-                                                                background: newPaymentMethod === 'В брой' ? 'var(--success-color)' : 'transparent', 
-                                                                color: '#fff', 
-                                                                fontWeight: 600, 
-                                                                fontSize: '0.85rem',
-                                                                cursor: 'pointer',
-                                                                transition: 'background 0.2s ease'
-                                                            }}
-                                                        >
-                                                            💵 В брой
-                                                        </button>
-                                                        <button 
-                                                            type="button" 
-                                                            onClick={() => setNewPaymentMethod('С карта')} 
-                                                            style={{ 
-                                                                flex: 1, 
-                                                                padding: '0.5rem', 
-                                                                borderRadius: '6px', 
-                                                                border: 'none', 
-                                                                background: newPaymentMethod === 'С карта' ? 'var(--success-color)' : 'transparent', 
-                                                                color: '#fff', 
-                                                                fontWeight: 600, 
-                                                                fontSize: '0.85rem',
-                                                                cursor: 'pointer',
-                                                                transition: 'background 0.2s ease'
-                                                            }}
-                                                        >
-                                                            💳 С карта
-                                                        </button>
-                                                        <button 
-                                                            type="button" 
-                                                            onClick={() => setNewPaymentMethod('Банка')} 
-                                                            style={{ 
-                                                                flex: 1, 
-                                                                padding: '0.5rem', 
-                                                                borderRadius: '6px', 
-                                                                border: 'none', 
-                                                                background: newPaymentMethod === 'Банка' ? 'var(--success-color)' : 'transparent', 
-                                                                color: '#fff', 
-                                                                fontWeight: 600, 
-                                                                fontSize: '0.85rem',
-                                                                cursor: 'pointer',
-                                                                transition: 'background 0.2s ease'
-                                                            }}
-                                                        >
-                                                            🏛️ Банка
-                                                        </button>
-                                                    </div>
+                                                    <PaymentMethodSelector
+                                                        value={newPaymentMethod}
+                                                        onChange={(m) => { setNewPaymentMethod(m); if (m === MIXED_METHOD && !newBankAmount && !newCashAmount) { setNewBankAmount(newAmount || ''); setNewCashAmount('0'); } }}
+                                                        bankAmount={newBankAmount}
+                                                        cashAmount={newCashAmount}
+                                                        onBankAmountChange={setNewBankAmount}
+                                                        onCashAmountChange={setNewCashAmount}
+                                                        activeColor="var(--success-color)"
+                                                    />
                                                 </div>
                                             </div>
                                             <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>

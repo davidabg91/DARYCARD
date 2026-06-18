@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AdSlideshow from './AdSlideshow';
 import ClientPhoto from './ClientPhoto';
+import PaymentMethodSelector from './PaymentMethodSelector';
+import { MIXED_METHOD } from '../data/paymentMethods';
 import MyPosSmartSdk from '../services/MyPosSmartSdk';
 import { Capacitor } from '@capacitor/core';
 import { CARDS_MAPPING } from '../data/cardsMapping';
@@ -17,7 +19,7 @@ interface Client {
     photo: string;
     isCanceled?: boolean;
     cardType?: string;
-    renewalHistory?: { month: string; amount: number; date: string; paymentMethod?: string }[];
+    renewalHistory?: { month: string; amount: number; date: string; paymentMethod?: string; bankAmount?: number; cashAmount?: number }[];
     photoThumb?: string;
     lastScanAt?: string;
     cardNumber?: string;
@@ -78,6 +80,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     const [renewalAmount, setRenewalAmount] = useState(30);
     const [renewalRoute, setRenewalRoute] = useState('');
     const [renewalPaymentMethod, setRenewalPaymentMethod] = useState('В брой');
+    const [renewalBankAmount, setRenewalBankAmount] = useState('');
+    const [renewalCashAmount, setRenewalCashAmount] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
 
 
@@ -781,62 +785,16 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
 
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                             <label style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 900 }}>НАЧИН НА ПЛАЩАНЕ</label>
-                                            <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => setRenewalPaymentMethod('В брой')} 
-                                                    style={{ 
-                                                        flex: 1, 
-                                                        padding: '10px', 
-                                                        borderRadius: '8px', 
-                                                        border: 'none', 
-                                                        background: renewalPaymentMethod === 'В брой' ? '#00e676' : 'transparent', 
-                                                        color: renewalPaymentMethod === 'В брой' ? '#000' : '#fff', 
-                                                        fontWeight: 700, 
-                                                        fontSize: '0.9rem',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                >
-                                                    💵 В брой
-                                                </button>
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => setRenewalPaymentMethod('С карта')} 
-                                                    style={{ 
-                                                        flex: 1, 
-                                                        padding: '10px', 
-                                                        borderRadius: '8px', 
-                                                        border: 'none', 
-                                                        background: renewalPaymentMethod === 'С карта' ? '#00e676' : 'transparent', 
-                                                        color: renewalPaymentMethod === 'С карта' ? '#000' : '#fff', 
-                                                        fontWeight: 700, 
-                                                        fontSize: '0.9rem',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                >
-                                                    💳 С карта
-                                                </button>
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => setRenewalPaymentMethod('Банка')} 
-                                                    style={{ 
-                                                        flex: 1, 
-                                                        padding: '10px', 
-                                                        borderRadius: '8px', 
-                                                        border: 'none', 
-                                                        background: renewalPaymentMethod === 'Банка' ? '#00e676' : 'transparent', 
-                                                        color: renewalPaymentMethod === 'Банка' ? '#000' : '#fff', 
-                                                        fontWeight: 700, 
-                                                        fontSize: '0.9rem',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                >
-                                                    🏛️ Банка
-                                                </button>
-                                            </div>
+                                            <PaymentMethodSelector
+                                                value={renewalPaymentMethod}
+                                                onChange={(m) => { setRenewalPaymentMethod(m); if (m === MIXED_METHOD && !renewalBankAmount && !renewalCashAmount) { setRenewalBankAmount(String(renewalAmount || '')); setRenewalCashAmount('0'); } }}
+                                                bankAmount={renewalBankAmount}
+                                                cashAmount={renewalCashAmount}
+                                                onBankAmountChange={setRenewalBankAmount}
+                                                onCashAmountChange={setRenewalCashAmount}
+                                                activeColor="#00e676"
+                                                surface="rgba(255,255,255,0.03)"
+                                            />
                                         </div>
 
                                         <button 
@@ -844,24 +802,36 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                             onClick={async () => {
                                                 setIsUpdating(true);
                                                 try {
+                                                    const isMixedQR = renewalPaymentMethod === MIXED_METHOD;
+                                                    const qrBank = Number(renewalBankAmount) || 0;
+                                                    const qrCash = Number(renewalCashAmount) || 0;
+                                                    const qrAmount = isMixedQR ? (qrBank + qrCash) : renewalAmount;
+                                                    const qrPaymentFields = isMixedQR
+                                                        ? { paymentMethod: renewalPaymentMethod, bankAmount: qrBank, cashAmount: qrCash }
+                                                        : { paymentMethod: renewalPaymentMethod };
+                                                    if (isMixedQR && qrAmount <= 0) {
+                                                        playErrorSound();
+                                                        setIsUpdating(false);
+                                                        return;
+                                                    }
                                                     const clientRef = doc(db, 'clients', client?.id || '');
                                                     await updateDoc(clientRef, {
                                                         expiryDate: renewalMonth,
                                                         route: renewalRoute,
-                                                        renewalHistory: arrayUnion({ 
-                                                            date: new Date().toISOString(), 
-                                                            amount: renewalAmount, 
+                                                        renewalHistory: arrayUnion({
+                                                            date: new Date().toISOString(),
+                                                            amount: qrAmount,
                                                             month: renewalMonth,
-                                                            paymentMethod: renewalPaymentMethod
+                                                            ...qrPaymentFields
                                                         }),
-                                                        history: arrayUnion({ 
-                                                            date: new Date().toISOString(), 
-                                                            action: 'БЪРЗО ПОДНОВЯВАНЕ', 
-                                                            amount: renewalAmount, 
+                                                        history: arrayUnion({
+                                                            date: new Date().toISOString(),
+                                                            action: 'БЪРЗО ПОДНОВЯВАНЕ',
+                                                            amount: qrAmount,
                                                             month: renewalMonth,
                                                             route: renewalRoute,
-                                                            paymentMethod: renewalPaymentMethod,
-                                                            performedBy: currentUser?.username 
+                                                            ...qrPaymentFields,
+                                                            performedBy: currentUser?.username
                                                         })
                                                     });
                                                     playSuccessSound();

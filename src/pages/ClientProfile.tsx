@@ -8,6 +8,8 @@ import LoadingScreen from '../components/LoadingScreen';
 import { ROUTE_METADATA } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import ClientPhoto from '../components/ClientPhoto';
+import PaymentMethodSelector from '../components/PaymentMethodSelector';
+import { MIXED_METHOD } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY } from '../data/municipalities';
 import { SCHOOLS, SCHOOL_MUNICIPALITY } from '../data/schools';
@@ -22,7 +24,7 @@ interface Client {
     amountPaid?: number;
     isCanceled?: boolean;
     cancelReason?: string;
-    renewalHistory?: { date: string, amount: number, month: string, paymentMethod?: string }[];
+    renewalHistory?: { date: string, amount: number, month: string, paymentMethod?: string, bankAmount?: number, cashAmount?: number }[];
     history?: { date: string; action: string; details?: string; amount?: number; performedBy?: string; }[];
     cardType?: string;
     address?: string;
@@ -158,6 +160,8 @@ const ClientProfile: React.FC = () => {
     const [regRoute, setRegRoute] = useState('');
     const [regAmount, setRegAmount] = useState('50');
     const [regPaymentMethod, setRegPaymentMethod] = useState('В брой');
+    const [regBankAmount, setRegBankAmount] = useState('');
+    const [regCashAmount, setRegCashAmount] = useState('');
     const [regPhoto, setRegPhoto] = useState<string | null>(null);
     const [regAddress, setRegAddress] = useState('');
 
@@ -528,6 +532,19 @@ const ClientProfile: React.FC = () => {
             console.error('Thumbnail generation failed:', thumbErr);
         }
 
+        // Payment: "Смесено" (mixed) splits the total between bank and cash.
+        const isMixedReg = regPaymentMethod === MIXED_METHOD;
+        const regBank = Number(regBankAmount) || 0;
+        const regCash = Number(regCashAmount) || 0;
+        const regEffectiveAmount = isMixedReg ? (regBank + regCash) : Number(regAmount);
+        const regPaymentLabel = isMixedReg ? `Смесено (Банка: ${regBank.toFixed(2)} / Кеш: ${regCash.toFixed(2)})` : regPaymentMethod;
+        const regPaymentFields = isMixedReg ? { paymentMethod: regPaymentMethod, bankAmount: regBank, cashAmount: regCash } : { paymentMethod: regPaymentMethod };
+
+        if (isMixedReg && regEffectiveAmount <= 0) {
+            alert('При смесено плащане въведете сумите по банка и/или в брой.');
+            return;
+        }
+
         const newClient: Client = {
             id,
             nfcUid: urlUid.toUpperCase(),
@@ -544,13 +561,13 @@ const ClientProfile: React.FC = () => {
             photo: photoValue,
             photoThumb,
             createdAt: now.toISOString(),
-            amountPaid: Number(regAmount),
-            renewalHistory: [{ date: now.toISOString(), amount: Number(regAmount), month: expiryMonth, paymentMethod: regPaymentMethod }],
+            amountPaid: regEffectiveAmount,
+            renewalHistory: [{ date: now.toISOString(), amount: regEffectiveAmount, month: expiryMonth, ...regPaymentFields }],
             history: [{
                 date: now.toISOString(),
                 action: 'Активиране (Сканиране)',
-                details: `Първоначално плащане: ${regAmount} € за месец ${expiryMonth} | Начин на плащане: ${regPaymentMethod}`,
-                amount: Number(regAmount),
+                details: `Първоначално плащане: ${regEffectiveAmount.toFixed(2)} € за месец ${expiryMonth} | Начин на плащане: ${regPaymentLabel}`,
+                amount: regEffectiveAmount,
                 performedBy: currentUser?.username || 'Система (Линк)'
             }]
         };
@@ -564,8 +581,8 @@ const ClientProfile: React.FC = () => {
                     performedBy: currentUser?.username || 'Система (Линк)',
                     action: 'Създаване',
                     targetName: regName,
-                    details: `Нова карта (NFC): ${id}. Сума: ${regAmount} €. Регион: ${regRoute} | Начин на плащане: ${regPaymentMethod}`,
-                    amount: Number(regAmount)
+                    details: `Нова карта (NFC): ${id}. Сума: ${regEffectiveAmount.toFixed(2)} €. Регион: ${regRoute} | Начин на плащане: ${regPaymentLabel}`,
+                    amount: regEffectiveAmount
                 });
                 const cardNum = CARDS_MAPPING[id] || '';
                 const nameWithCard = cardNum ? `${regName} (Карта № ${cardNum})` : regName;
@@ -1024,62 +1041,16 @@ const ClientProfile: React.FC = () => {
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МЕСЕЦ</label><input type="month" value={regMonth} onChange={e => setRegMonth(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none', colorScheme: 'dark' }} /></div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                     <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>НАЧИН НА ПЛАЩАНЕ</label>
-                                    <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setRegPaymentMethod('В брой')} 
-                                            style={{ 
-                                                flex: 1, 
-                                                padding: '10px', 
-                                                borderRadius: '8px', 
-                                                border: 'none', 
-                                                background: regPaymentMethod === 'В брой' ? '#00e676' : 'transparent', 
-                                                color: regPaymentMethod === 'В брой' ? '#000' : '#fff', 
-                                                fontWeight: 700, 
-                                                fontSize: '0.9rem',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                        >
-                                            💵 В брой
-                                        </button>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setRegPaymentMethod('С карта')} 
-                                            style={{ 
-                                                flex: 1, 
-                                                padding: '10px', 
-                                                borderRadius: '8px', 
-                                                border: 'none', 
-                                                background: regPaymentMethod === 'С карта' ? '#00e676' : 'transparent', 
-                                                color: regPaymentMethod === 'С карта' ? '#000' : '#fff', 
-                                                fontWeight: 700, 
-                                                fontSize: '0.9rem',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                        >
-                                            💳 С карта
-                                        </button>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setRegPaymentMethod('Банка')} 
-                                            style={{ 
-                                                flex: 1, 
-                                                padding: '10px', 
-                                                borderRadius: '8px', 
-                                                border: 'none', 
-                                                background: regPaymentMethod === 'Банка' ? '#00e676' : 'transparent', 
-                                                color: regPaymentMethod === 'Банка' ? '#000' : '#fff', 
-                                                fontWeight: 700, 
-                                                fontSize: '0.9rem',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                        >
-                                            🏛️ Банка
-                                        </button>
-                                    </div>
+                                    <PaymentMethodSelector
+                                        value={regPaymentMethod}
+                                        onChange={(m) => { setRegPaymentMethod(m); if (m === MIXED_METHOD && !regBankAmount && !regCashAmount) { setRegBankAmount(regAmount || ''); setRegCashAmount('0'); } }}
+                                        bankAmount={regBankAmount}
+                                        cashAmount={regCashAmount}
+                                        onBankAmountChange={setRegBankAmount}
+                                        onCashAmountChange={setRegCashAmount}
+                                        activeColor="#00e676"
+                                        surface="rgba(255,255,255,0.03)"
+                                    />
                                 </div>
                                 <button onClick={handleRegister} style={{ marginTop: '1rem', padding: '1.2rem', background: '#00e676', color: '#ffffff', borderRadius: '12px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}>ЗАПАЗИ И АКТИВИРАЙ</button>
                                 <button onClick={() => setIsRegistering(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', cursor: 'pointer' }}>Отказ</button>

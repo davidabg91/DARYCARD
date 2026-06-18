@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.17.18.11",
-  "buildDate": "2026-06-17T18:11:00Z",
-  "notes": "Printed reports: include Teachers (with municipality) and Disabled cards (with address) in the register/print and screen reports."
+  "version": "2026.06.18.18.00",
+  "buildDate": "2026-06-18T18:00:00Z",
+  "notes": "Mixed payment (bank + cash split) on registration and renewal, with amounts entered by the operator; report filter and printed breakdown for it."
 }
