@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.18.18.08",
-  "buildDate": "2026-06-18T18:08:00Z",
-  "notes": "Add payment method (cash / card / bank / mixed) to the ClientProfile quick-payment panel."
+  "version": "2026.06.25.06.49",
+  "buildDate": "2026-06-25T06:49:00Z",
+  "notes": "Add the 'Ясен-Долни Дъбник' route to the card registration/management route lists."
 }
