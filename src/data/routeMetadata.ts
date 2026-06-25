@@ -30,6 +30,11 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
     priceSingle: "2.00 €",
     priceCard: "50.00 €"
   },
+  "Ясен-Долни Дъбник": {
+    stops: ["Ясен", "Д. Дъбник"],
+    priceSingle: "2.00 €",
+    priceCard: "45.00 €"
+  },
   "Садовец": {
     stops: ["Плевен", "Ясен", "Крушовица", "Садовец"],
     priceSingle: "2.30 €",
