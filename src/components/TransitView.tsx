@@ -415,6 +415,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
         if (t.includes('пенсионерска')) return '#b39ddb';
         if (t.includes('инвалидна')) return '#ffab91';
         if (t.includes('учителска')) return '#80cbc4';
+        if (t.includes('служебна')) return '#90a4ae';
         return '#81d4fa'; // Нормална
     };
     const cardTypeColor = getCardTypeColor(client?.cardType);

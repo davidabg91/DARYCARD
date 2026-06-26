@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.25.06.59",
-  "buildDate": "2026-06-25T06:59:00Z",
-  "notes": "Default card price 45.00 € for the 'Ясен-Долни Дъбник' route (auto-fills on selection)."
+  "version": "2026.06.26.11.43",
+  "buildDate": "2026-06-26T11:43:00Z",
+  "notes": "Add 'Служебна карта' card type (price 0) to registration, renewal, reports and card display."
 }

@@ -422,6 +422,7 @@ const ClientProfile: React.FC = () => {
 
     // Auto-price logic for registration
     useEffect(() => {
+        if (regCardType === 'Служебна карта') { setRegAmount('0'); return; }
         if (regRoute && ROUTE_METADATA[regRoute]) {
             const meta = ROUTE_METADATA[regRoute];
             let priceStr = meta.priceCard;
@@ -962,6 +963,7 @@ const ClientProfile: React.FC = () => {
                                     <option value="Пенсионерска карта">Пенсионерска карта</option>
                                     <option value="Учителска карта">Учителска карта</option>
                                     <option value="Инвалидна карта">Инвалидна карта</option>
+                                    <option value="Служебна карта">Служебна карта</option>
                                 </select></div>
                                 {regCardType === 'Ученическа карта' && (
                                     <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1099,6 +1101,7 @@ const ClientProfile: React.FC = () => {
         if (t.includes('пенсионерска')) return '#b39ddb';
         if (t.includes('инвалидна')) return '#ffab91';
         if (t.includes('учителска')) return '#80cbc4';
+        if (t.includes('служебна')) return '#90a4ae';
         return '#81d4fa'; // Нормална
     };
     const cardTypeColor = getCardTypeColor(client?.cardType);

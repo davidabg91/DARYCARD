@@ -439,6 +439,7 @@ const AdminPanel: React.FC = () => {
 
     // Auto-price logic
     useEffect(() => {
+        if (cardType === 'Служебна карта') { setAmountPaid('0'); return; }
         if (selectedRoute && ROUTE_METADATA[selectedRoute]) {
             const meta = ROUTE_METADATA[selectedRoute];
             let priceStr = meta.priceCard;
@@ -472,6 +473,7 @@ const AdminPanel: React.FC = () => {
 
     // Auto-price logic for renewal modal
     useEffect(() => {
+        if (selectedClient?.cardType === 'Служебна карта') { setNewAmount('0'); return; }
         if (newRoute && ROUTE_METADATA[newRoute] && selectedClient) {
             const meta = ROUTE_METADATA[newRoute];
             let priceStr = meta.priceCard;
@@ -876,8 +878,9 @@ const AdminPanel: React.FC = () => {
         const renewBank = Number(newBankAmount) || 0;
         const renewCash = Number(newCashAmount) || 0;
         const effectiveNewAmount = isMixedRenew ? (renewBank + renewCash) : Number(newAmount);
+        const isServiceCard = selectedClient.cardType === 'Служебна карта';
 
-        if (!newMonth || !newRoute || effectiveNewAmount <= 0) {
+        if (!newMonth || !newRoute || (effectiveNewAmount <= 0 && !isServiceCard) || Number.isNaN(effectiveNewAmount)) {
             alert(isMixedRenew ? 'Моля, въведете месец, курс и сумите за смесеното плащане.' : 'Моля, въведете валиден месец, сума и курс.');
             return;
         }
@@ -1877,6 +1880,7 @@ const AdminPanel: React.FC = () => {
                                                 <option value="Пенсионерска карта">Пенсионерска карта</option>
                                                 <option value="Учителска карта">Учителска карта</option>
                                                 <option value="Инвалидна карта">Инвалидна карта</option>
+                                                <option value="Служебна карта">Служебна карта</option>
                                             </select>
                                         </div>
                                         
@@ -2451,6 +2455,7 @@ const AdminPanel: React.FC = () => {
                                             <option value="Пенсионерска карта">Пенсионерска карта</option>
                                             <option value="Учителска карта">Учителска карта</option>
                                             <option value="Инвалидна карта">Инвалидна карта</option>
+                                            <option value="Служебна карта">Служебна карта</option>
                                         </select>
                                     </div>
                                     {(cardType === 'Пенсионерска карта' || cardType === 'Инвалидна карта') && (
