@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.26.11.43",
-  "buildDate": "2026-06-26T11:43:00Z",
-  "notes": "Add 'Служебна карта' card type (price 0) to registration, renewal, reports and card display."
+  "version": "2026.06.26.19.06",
+  "buildDate": "2026-06-26T19:06:00Z",
+  "notes": "Fix monthly revenue tile: count money received during the month (by payment date), not by the subscription month being paid for."
 }

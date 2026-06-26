@@ -1122,8 +1122,12 @@ const AdminPanel: React.FC = () => {
     }, 0);
 
     const currentMonthIso = todayIso.substring(0, 7);
+    // Revenue actually RECEIVED during the calendar month — filter by payment date
+    // (r.date), not by the subscription month being paid for (r.month). Otherwise a
+    // payment made this month for another month's subscription wouldn't count, which
+    // made the monthly total smaller than a single day's total.
     const revenueMonthCurrent = clients.reduce((acc, c) => {
-        const monthPayments = (c.renewalHistory || []).filter(r => r.month === currentMonthIso);
+        const monthPayments = (c.renewalHistory || []).filter(r => r.date?.startsWith(currentMonthIso));
         return acc + monthPayments.reduce((sum, p) => sum + p.amount, 0);
     }, 0);
 
