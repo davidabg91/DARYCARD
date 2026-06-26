@@ -363,9 +363,9 @@ const AdminPanel: React.FC = () => {
         setVisibleClients(20);
     }, [searchTerm, filterRoute, filterMonth]);
 
-    const [reportPeriodType, setReportPeriodType] = useState<'month' | 'day'>('month');
+    const [reportPeriodType, setReportPeriodType] = useState<'month' | 'day'>('day');
     const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
-    const [reportPaymentMethod, setReportPaymentMethod] = useState<string>('all');
+    const [reportPaymentMethod, setReportPaymentMethod] = useState<string>('В брой');
     const [reportMonth, setReportMonth] = useState<string>('all');
     const [reportCardType, setReportCardType] = useState<string>('all');
     const [reportRoute, setReportRoute] = useState<string>('all');
