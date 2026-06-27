@@ -1818,7 +1818,7 @@ const AdminPanel: React.FC = () => {
                                         getClientCardNumber(c) || '---',
                                         getRegisterDate(c),
                                         c.route,
-                                        getReportPaymentBreakdown(c).label,
+                                        `${getReportAmount(c)} €`,
                                     ];
                                 } else {
                                     cols = ['№', 'Име', 'Карта №', 'Вид', 'Курс', 'Плащане', 'Сума'];
@@ -2057,7 +2057,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                             <td>{getClientCardNumber(c) || '---'}</td>
                                                             <td>{getRegisterDate(c)}</td>
                                                             <td>{c.route}</td>
-                                                            <td>{getReportPaymentBreakdown(c).label}</td>
+                                                            <td>{getReportAmount(c)} €</td>
                                                         </tr>
                                                     )) : (
                                                         <tr><td colSpan={8} style={{ textAlign: 'center', padding: '12px' }}>Няма данни за избраните филтри</td></tr>

@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.27.13.48",
-  "buildDate": "2026-06-27T13:48:00Z",
-  "notes": "Report print: remove the browser header/footer (duplicate title, date and about:blank page number) and enlarge the font."
+  "version": "2026.06.27.13.57",
+  "buildDate": "2026-06-27T13:57:00Z",
+  "notes": "Register report: the payment column shows only the amount + € (no method label like 'Кеш'). Financial report keeps the breakdown."
 }
