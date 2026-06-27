@@ -1658,10 +1658,11 @@ const AdminPanel: React.FC = () => {
                                     else cash += rh.amount;
                                 });
                                 const parts: string[] = [];
-                                if (bank > 0) parts.push(`Банка ${bank.toFixed(2)}`);
-                                if (cash > 0) parts.push(`Кеш ${cash.toFixed(2)}`);
-                                if (card > 0) parts.push(`Карта ${card.toFixed(2)}`);
-                                return { bank, cash, card, label: parts.join(' + ') || '---' };
+                                const names: string[] = [];
+                                if (bank > 0) { parts.push(`Банка ${bank.toFixed(2)}`); names.push('Банка'); }
+                                if (cash > 0) { parts.push(`Кеш ${cash.toFixed(2)}`); names.push('Кеш'); }
+                                if (card > 0) { parts.push(`Карта ${card.toFixed(2)}`); names.push('Карта'); }
+                                return { bank, cash, card, label: parts.join(' + ') || '---', methods: names.join(' + ') || '---' };
                             };
 
                             const filteredReportClients = clients.filter(c => {
@@ -1821,16 +1822,17 @@ const AdminPanel: React.FC = () => {
                                         `${getReportAmount(c)} €`,
                                     ];
                                 } else {
-                                    cols = ['№', 'Име', 'Карта №', 'Вид', 'Курс', 'Плащане', 'Сума'];
-                                    rowVals = (c, n) => [
-                                        n,
-                                        c.name,
-                                        getClientCardNumber(c) || '---',
-                                        c.cardType || 'Нормална карта',
-                                        c.route,
-                                        getReportPaymentBreakdown(c).label,
-                                        `${getReportAmount(c)} €`,
-                                    ];
+                                    // Show the "Плащане" (method) column ONLY when no single
+                                    // payment method is filtered (otherwise it's redundant — the
+                                    // header already states the method and there is a "Сума" column).
+                                    // When shown, it lists only the method name(s), not the amount.
+                                    const showMethodCol = reportPaymentMethod === 'all';
+                                    cols = showMethodCol
+                                        ? ['№', 'Име', 'Карта №', 'Вид', 'Курс', 'Плащане', 'Сума']
+                                        : ['№', 'Име', 'Карта №', 'Вид', 'Курс', 'Сума'];
+                                    rowVals = (c, n) => showMethodCol
+                                        ? [n, c.name, getClientCardNumber(c) || '---', c.cardType || 'Нормална карта', c.route, getReportPaymentBreakdown(c).methods, `${getReportAmount(c)} €`]
+                                        : [n, c.name, getClientCardNumber(c) || '---', c.cardType || 'Нормална карта', c.route, `${getReportAmount(c)} €`];
                                 }
 
                                 const rows = filteredReportClients;

@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.27.13.57",
-  "buildDate": "2026-06-27T13:57:00Z",
-  "notes": "Register report: the payment column shows only the amount + € (no method label like 'Кеш'). Financial report keeps the breakdown."
+  "version": "2026.06.27.14.03",
+  "buildDate": "2026-06-27T14:03:00Z",
+  "notes": "Financial report print: drop the payment column when a single method is filtered; when 'all methods' is selected it shows only the method name (no amount), since there is a separate Сума column."
 }
