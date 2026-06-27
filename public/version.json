@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.27.13.01",
-  "buildDate": "2026-06-27T13:01:00Z",
-  "notes": "Desktop client profile: card on the left, action panels (payments / quick renew / management) on the right. Mobile unchanged."
+  "version": "2026.06.27.13.08",
+  "buildDate": "2026-06-27T13:08:00Z",
+  "notes": "Fix report printing: paginated print window prints the full list (no clipping), each page shows the report title, date and 'Страница X от Y'."
 }

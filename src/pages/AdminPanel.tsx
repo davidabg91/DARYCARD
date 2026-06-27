@@ -1784,6 +1784,98 @@ const AdminPanel: React.FC = () => {
                                 }
                             };
 
+                            // Print via a clean, manually-paginated document in a new window.
+                            // The previous approach (position:absolute + visibility on the live
+                            // DOM) clipped everything after the first page, so the printed list
+                            // was incomplete. Here every page carries the report title, date and
+                            // "Страница X от Y", and rows never split across pages.
+                            const handlePrintReport = () => {
+                                const esc = (s: string | number): string => String(s ?? '').replace(/[&<>"]/g, (m) =>
+                                    m === '&' ? '&amp;' : m === '<' ? '&lt;' : m === '>' ? '&gt;' : '&quot;');
+                                const ROWS_PER_PAGE = 20;
+                                const dateStr = new Date().toLocaleDateString('bg-BG');
+                                const periodStr = reportPeriodType === 'month'
+                                    ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}`
+                                    : `Ден: ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`;
+                                const title = useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : 'ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ';
+                                const subStr = [
+                                    `Дата: ${dateStr}`,
+                                    periodStr,
+                                    `Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType}`,
+                                    `Плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod}`,
+                                    `Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute}`,
+                                ].join(' | ');
+
+                                const detailLabel = reportCardType === 'Ученическа карта' ? 'Училище'
+                                    : (reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') ? 'Адрес' : '';
+
+                                let cols: string[];
+                                let rowVals: (c: Client, n: number) => (string | number)[];
+                                if (useRegisterPrint) {
+                                    cols = ['№', 'ИМЕ', 'Община', detailLabel || '—', 'КАРТА №', 'ДАТА', 'Направление', 'Плащане'];
+                                    rowVals = (c, n) => [
+                                        n,
+                                        c.name,
+                                        c.municipality || '---',
+                                        (reportCardType === 'Ученическа карта' ? c.school : (reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') ? c.address : '') || '---',
+                                        getClientCardNumber(c) || '---',
+                                        getRegisterDate(c),
+                                        c.route,
+                                        getReportPaymentBreakdown(c).label,
+                                    ];
+                                } else {
+                                    cols = ['№', 'Име', 'Карта №', 'Вид', 'Курс', 'Плащане', 'Сума'];
+                                    rowVals = (c, n) => [
+                                        n,
+                                        c.name,
+                                        getClientCardNumber(c) || '---',
+                                        c.cardType || 'Нормална карта',
+                                        c.route,
+                                        getReportPaymentBreakdown(c).label,
+                                        `${getReportAmount(c)} €`,
+                                    ];
+                                }
+
+                                const rows = filteredReportClients;
+                                const totalPages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
+                                let pagesHtml = '';
+                                for (let p = 0; p < totalPages; p++) {
+                                    const chunk = rows.slice(p * ROWS_PER_PAGE, (p + 1) * ROWS_PER_PAGE);
+                                    const isLast = p === totalPages - 1;
+                                    const headHtml = `<div class="rep-header"><div><div class="rep-title">${esc(title)}</div><div class="rep-sub">${esc(subStr)}</div></div><div class="rep-page">Страница ${p + 1} от ${totalPages}</div></div>`;
+                                    const theadHtml = `<thead><tr>${cols.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>`;
+                                    const tbodyHtml = `<tbody>${chunk.map((c, i) => `<tr>${rowVals(c, p * ROWS_PER_PAGE + i + 1).map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+                                    const footHtml = isLast
+                                        ? `<div class="rep-foot"><div><b>СЪСТАВИЛ:</b> К. ВАСИЛЕВА &nbsp;.............................</div><div><b>Общо записи:</b> ${rows.length}${!useRegisterPrint ? ` &nbsp;|&nbsp; <b>Общо приход:</b> ${totalReportRevenue.toFixed(2)} €` : ''}</div></div>`
+                                        : '';
+                                    pagesHtml += `<div class="page">${headHtml}<table>${theadHtml}${tbodyHtml}</table>${footHtml}</div>`;
+                                }
+
+                                const css = `@page { size: A4; margin: 12mm 13mm; }
+                                    * { box-sizing: border-box; }
+                                    body { font-family: Arial, "Segoe UI", sans-serif; color: #000; margin: 0; }
+                                    .page { page-break-after: always; }
+                                    .page:last-child { page-break-after: auto; }
+                                    .rep-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 2px solid #333; padding-bottom: 6px; margin-bottom: 10px; }
+                                    .rep-title { font-size: 15px; font-weight: bold; text-transform: uppercase; }
+                                    .rep-sub { font-size: 10px; color: #333; margin-top: 3px; }
+                                    .rep-page { font-size: 12px; font-weight: bold; white-space: nowrap; }
+                                    table { width: 100%; border-collapse: collapse; }
+                                    th, td { border: 1px solid #999; padding: 4px 6px; font-size: 11px; text-align: left; vertical-align: top; }
+                                    th { background: #eee; }
+                                    tr { page-break-inside: avoid; }
+                                    .rep-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 8px; border-top: 1px solid #333; font-size: 12px; }`;
+                                const html = `<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${css}</style></head><body>${pagesHtml}</body></html>`;
+
+                                const w = window.open('', '_blank');
+                                if (!w) { alert('Моля, разрешете изскачащите прозорци (pop-ups), за да принтирате отчета.'); return; }
+                                w.document.open();
+                                w.document.write(html);
+                                w.document.close();
+                                w.focus();
+                                setTimeout(() => { w.print(); }, 350);
+                            };
+
                             return (
                                 <Card>
                                     {/* 🖨️ Professional Print Header Summary */}
@@ -1826,8 +1918,8 @@ const AdminPanel: React.FC = () => {
                                             >
                                                 <Share2 size={16} /> Сподели Данни
                                             </button>
-                                            <button 
-                                                onClick={() => window.print()} 
+                                            <button
+                                                onClick={handlePrintReport}
                                                 style={{ padding: '0.6rem 1.2rem', background: 'var(--primary-color)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                                             >
                                                 🖨️ Принтирай Отчета
