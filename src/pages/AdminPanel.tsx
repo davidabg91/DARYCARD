@@ -1790,9 +1790,6 @@ const AdminPanel: React.FC = () => {
                             // was incomplete. Here every page carries the report title, date and
                             // "Страница X от Y", and rows never split across pages.
                             const handlePrintReport = () => {
-                                const esc = (s: string | number): string => String(s ?? '').replace(/[&<>"]/g, (m) =>
-                                    m === '&' ? '&amp;' : m === '<' ? '&lt;' : m === '>' ? '&gt;' : '&quot;');
-                                const ROWS_PER_PAGE = 20;
                                 const dateStr = new Date().toLocaleDateString('bg-BG');
                                 const periodStr = reportPeriodType === 'month'
                                     ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}`
@@ -1837,43 +1834,71 @@ const AdminPanel: React.FC = () => {
                                 }
 
                                 const rows = filteredReportClients;
-                                const totalPages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
-                                let pagesHtml = '';
-                                for (let p = 0; p < totalPages; p++) {
-                                    const chunk = rows.slice(p * ROWS_PER_PAGE, (p + 1) * ROWS_PER_PAGE);
-                                    const isLast = p === totalPages - 1;
-                                    const headHtml = `<div class="rep-header"><div><div class="rep-title">${esc(title)}</div><div class="rep-sub">${esc(subStr)}</div></div><div class="rep-page">Страница ${p + 1} от ${totalPages}</div></div>`;
-                                    const theadHtml = `<thead><tr>${cols.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>`;
-                                    const tbodyHtml = `<tbody>${chunk.map((c, i) => `<tr>${rowVals(c, p * ROWS_PER_PAGE + i + 1).map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody>`;
-                                    const footHtml = isLast
-                                        ? `<div class="rep-foot"><div><b>СЪСТАВИЛ:</b> К. ВАСИЛЕВА &nbsp;.............................</div><div><b>Общо записи:</b> ${rows.length}${!useRegisterPrint ? ` &nbsp;|&nbsp; <b>Общо приход:</b> ${totalReportRevenue.toFixed(2)} €` : ''}</div></div>`
-                                        : '';
-                                    pagesHtml += `<div class="page">${headHtml}<table>${theadHtml}${tbodyHtml}</table>${footHtml}</div>`;
-                                }
+                                const rowsData = rows.map((c, i) => rowVals(c, i + 1).map(v => String(v)));
+                                let logoUrl = '';
+                                try { logoUrl = new URL(logoMain, window.location.href).href; } catch { logoUrl = ''; }
+
+                                const payload = {
+                                    title,
+                                    sub: subStr,
+                                    cols,
+                                    rows: rowsData,
+                                    logo: logoUrl,
+                                    footLeft: '<b>СЪСТАВИЛ:</b> К. ВАСИЛЕВА &nbsp;.............................',
+                                    footRight: '<b>Общо записи:</b> ' + rows.length + (!useRegisterPrint ? ' &nbsp;|&nbsp; <b>Общо приход:</b> ' + totalReportRevenue.toFixed(2) + ' €' : ''),
+                                };
+                                const payloadJson = JSON.stringify(payload).replace(/</g, '\\u003c');
 
                                 const css = `@page { size: A4; margin: 12mm 13mm; }
-                                    * { box-sizing: border-box; }
-                                    body { font-family: Arial, "Segoe UI", sans-serif; color: #000; margin: 0; }
-                                    .page { page-break-after: always; }
-                                    .page:last-child { page-break-after: auto; }
-                                    .rep-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 2px solid #333; padding-bottom: 6px; margin-bottom: 10px; }
-                                    .rep-title { font-size: 15px; font-weight: bold; text-transform: uppercase; }
-                                    .rep-sub { font-size: 10px; color: #333; margin-top: 3px; }
-                                    .rep-page { font-size: 12px; font-weight: bold; white-space: nowrap; }
-                                    table { width: 100%; border-collapse: collapse; }
-                                    th, td { border: 1px solid #999; padding: 4px 6px; font-size: 11px; text-align: left; vertical-align: top; }
-                                    th { background: #eee; }
-                                    tr { page-break-inside: avoid; }
-                                    .rep-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 8px; border-top: 1px solid #333; font-size: 12px; }`;
-                                const html = `<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${css}</style></head><body>${pagesHtml}</body></html>`;
+* { box-sizing: border-box; }
+body { font-family: Arial, "Segoe UI", sans-serif; color: #000; margin: 0; }
+.page { width: 184mm; page-break-after: always; }
+.page:last-child { page-break-after: auto; }
+.rep-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; border-bottom: 2px solid #222; padding-bottom: 7px; margin-bottom: 9px; }
+.rep-left { display: flex; align-items: center; gap: 11px; }
+.rep-logo { height: 34px; width: auto; }
+.rep-title { font-size: 15px; font-weight: 800; text-transform: uppercase; line-height: 1.15; }
+.rep-sub { font-size: 10px; color: #444; margin-top: 3px; }
+.rep-page { font-size: 12px; font-weight: 700; white-space: nowrap; padding-top: 2px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #aaa; padding: 4px 6px; font-size: 11px; text-align: left; vertical-align: top; }
+th { background: #ececec; font-weight: 700; }
+tbody tr:nth-child(even) { background: #f7f7f7; }
+tr { page-break-inside: avoid; }
+.rep-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 11px; padding-top: 8px; border-top: 1px solid #222; font-size: 12px; }`;
+
+                                // This script runs inside the print window: it paginates by MEASURING
+                                // real row heights so each A4 page is filled, then prints.
+                                const script = `
+var D = ${payloadJson};
+var esc = function(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(m){ return m==='&'?'&amp;':m==='<'?'&lt;':m==='>'?'&gt;':'&quot;'; }); };
+var logoHtml = D.logo ? '<img class="rep-logo" src="'+D.logo+'"/>' : '';
+function headerHtml(pn, tp){ return '<div class="rep-header"><div class="rep-left">'+logoHtml+'<div><div class="rep-title">'+esc(D.title)+'</div><div class="rep-sub">'+esc(D.sub)+'</div></div></div><div class="rep-page">Страница '+pn+' от '+tp+'</div></div>'; }
+var thead = '<thead><tr>'+D.cols.map(function(h){return '<th>'+esc(h)+'</th>';}).join('')+'</tr></thead>';
+function rowHtml(r){ return '<tr>'+r.map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>'; }
+var probe = document.createElement('div'); probe.style.cssText='position:absolute;visibility:hidden;height:273mm;'; document.body.appendChild(probe);
+var PAGE_H = probe.offsetHeight - 6; probe.remove();
+var meas = document.createElement('div'); meas.className='page'; meas.style.cssText='position:absolute;visibility:hidden;left:-10000px;top:0;'; document.body.appendChild(meas);
+function blockH(ch){ meas.innerHTML = headerHtml(1,9)+'<table>'+thead+'<tbody>'+ch.map(rowHtml).join('')+'</tbody></table>'; return meas.offsetHeight; }
+var chunks=[]; var cur=[];
+for (var i=0;i<D.rows.length;i++){ cur.push(D.rows[i]); if (blockH(cur) > PAGE_H && cur.length>1){ cur.pop(); chunks.push(cur); cur=[D.rows[i]]; } }
+if (cur.length) chunks.push(cur);
+if (chunks.length===0) chunks.push([]);
+meas.remove();
+var tp = chunks.length; var out='';
+for (var p=0;p<tp;p++){ var foot=(p===tp-1)?'<div class="rep-foot"><div>'+D.footLeft+'</div><div>'+D.footRight+'</div></div>':''; out += '<div class="page">'+headerHtml(p+1,tp)+'<table>'+thead+'<tbody>'+chunks[p].map(rowHtml).join('')+'</tbody></table>'+foot+'</div>'; }
+document.getElementById('pages').innerHTML = out;
+var done=false; function go(){ if(done) return; done=true; window.focus(); window.print(); }
+var imgs=document.images;
+if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=function(){ if(--left<=0) setTimeout(go,150); }; for(var k=0;k<imgs.length;k++){ var im=imgs[k]; if(im.complete) tick(); else { im.onload=tick; im.onerror=tick; } } setTimeout(go,3000); }
+`;
+                                const html = `<!DOCTYPE html><html lang="bg"><head><meta charset="utf-8"><title>${title.replace(/[<>]/g, '')}</title><style>${css}</style></head><body><div id="pages"></div><script>${script}</script></body></html>`;
 
                                 const w = window.open('', '_blank');
                                 if (!w) { alert('Моля, разрешете изскачащите прозорци (pop-ups), за да принтирате отчета.'); return; }
                                 w.document.open();
                                 w.document.write(html);
                                 w.document.close();
-                                w.focus();
-                                setTimeout(() => { w.print(); }, 350);
                             };
 
                             return (

@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.27.13.08",
-  "buildDate": "2026-06-27T13:08:00Z",
-  "notes": "Fix report printing: paginated print window prints the full list (no clipping), each page shows the report title, date and 'Страница X от Y'."
+  "version": "2026.06.27.13.38",
+  "buildDate": "2026-06-27T13:38:00Z",
+  "notes": "Report print: measure-based pagination fills each page completely, styled header with logo on every page (title, date, Страница X от Y)."
 }
