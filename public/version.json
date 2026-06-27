@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.27.13.38",
-  "buildDate": "2026-06-27T13:38:00Z",
-  "notes": "Report print: measure-based pagination fills each page completely, styled header with logo on every page (title, date, Страница X от Y)."
+  "version": "2026.06.27.13.48",
+  "buildDate": "2026-06-27T13:48:00Z",
+  "notes": "Report print: remove the browser header/footer (duplicate title, date and about:blank page number) and enlarge the font."
 }

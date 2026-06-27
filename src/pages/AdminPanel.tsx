@@ -1849,23 +1849,23 @@ const AdminPanel: React.FC = () => {
                                 };
                                 const payloadJson = JSON.stringify(payload).replace(/</g, '\\u003c');
 
-                                const css = `@page { size: A4; margin: 12mm 13mm; }
+                                const css = `@page { size: A4; margin: 0; }
 * { box-sizing: border-box; }
 body { font-family: Arial, "Segoe UI", sans-serif; color: #000; margin: 0; }
-.page { width: 184mm; page-break-after: always; }
+.page { padding: 12mm 14mm; page-break-after: always; }
 .page:last-child { page-break-after: auto; }
-.rep-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; border-bottom: 2px solid #222; padding-bottom: 7px; margin-bottom: 9px; }
-.rep-left { display: flex; align-items: center; gap: 11px; }
-.rep-logo { height: 34px; width: auto; }
-.rep-title { font-size: 15px; font-weight: 800; text-transform: uppercase; line-height: 1.15; }
-.rep-sub { font-size: 10px; color: #444; margin-top: 3px; }
-.rep-page { font-size: 12px; font-weight: 700; white-space: nowrap; padding-top: 2px; }
+.rep-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 10px; }
+.rep-left { display: flex; align-items: center; gap: 12px; }
+.rep-logo { height: 40px; width: auto; }
+.rep-title { font-size: 18px; font-weight: 800; text-transform: uppercase; line-height: 1.15; }
+.rep-sub { font-size: 12px; color: #444; margin-top: 3px; }
+.rep-page { font-size: 14px; font-weight: 700; white-space: nowrap; padding-top: 2px; }
 table { width: 100%; border-collapse: collapse; }
-th, td { border: 1px solid #aaa; padding: 4px 6px; font-size: 11px; text-align: left; vertical-align: top; }
-th { background: #ececec; font-weight: 700; }
-tbody tr:nth-child(even) { background: #f7f7f7; }
+th, td { border: 1px solid #999; padding: 6px 8px; font-size: 13px; text-align: left; vertical-align: top; }
+th { background: #e8e8e8; font-weight: 700; }
+tbody tr:nth-child(even) { background: #f6f6f6; }
 tr { page-break-inside: avoid; }
-.rep-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 11px; padding-top: 8px; border-top: 1px solid #222; font-size: 12px; }`;
+.rep-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 9px; border-top: 1px solid #222; font-size: 13px; }`;
 
                                 // This script runs inside the print window: it paginates by MEASURING
                                 // real row heights so each A4 page is filled, then prints.
@@ -1878,7 +1878,7 @@ var thead = '<thead><tr>'+D.cols.map(function(h){return '<th>'+esc(h)+'</th>';})
 function rowHtml(r){ return '<tr>'+r.map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>'; }
 var probe = document.createElement('div'); probe.style.cssText='position:absolute;visibility:hidden;height:273mm;'; document.body.appendChild(probe);
 var PAGE_H = probe.offsetHeight - 6; probe.remove();
-var meas = document.createElement('div'); meas.className='page'; meas.style.cssText='position:absolute;visibility:hidden;left:-10000px;top:0;'; document.body.appendChild(meas);
+var meas = document.createElement('div'); meas.style.cssText='position:absolute;visibility:hidden;left:-10000px;top:0;width:182mm;'; document.body.appendChild(meas);
 function blockH(ch){ meas.innerHTML = headerHtml(1,9)+'<table>'+thead+'<tbody>'+ch.map(rowHtml).join('')+'</tbody></table>'; return meas.offsetHeight; }
 var chunks=[]; var cur=[];
 for (var i=0;i<D.rows.length;i++){ cur.push(D.rows[i]); if (blockH(cur) > PAGE_H && cur.length>1){ cur.pop(); chunks.push(cur); cur=[D.rows[i]]; } }
