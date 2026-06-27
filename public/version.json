@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.26.19.20",
-  "buildDate": "2026-06-26T19:20:00Z",
-  "notes": "Detailed reports default to Daily report type and Cash payment method."
+  "version": "2026.06.27.13.01",
+  "buildDate": "2026-06-27T13:01:00Z",
+  "notes": "Desktop client profile: card on the left, action panels (payments / quick renew / management) on the right. Mobile unchanged."
 }

@@ -1137,6 +1137,10 @@ const ClientProfile: React.FC = () => {
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100vh', background: `radial-gradient(circle at 20% 20%, ${themeColor}08 0%, transparent 50%)`, pointerEvents: 'none' }} />
             <div style={{ position: 'fixed', bottom: 0, right: 0, left: 0, height: '100vh', background: `radial-gradient(circle at 80% 80%, ${themeColor}08 0%, transparent 50%)`, pointerEvents: 'none' }} />
 
+            {/* Card + action panels. Stacked on mobile; on desktop the card moves to
+                the left and the panels sit to its right (see .profile-layout CSS). */}
+            <div className="profile-layout">
+
             {/* The Modern ID CARD */}
             <div className="id-card-container" style={{
                 width: '100%',
@@ -1271,7 +1275,7 @@ const ClientProfile: React.FC = () => {
             </div>
 
             {/* Account Actions / Payment Area */}
-            <div style={{ width: '100%', maxWidth: '440px', marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className="profile-actions" style={{ width: '100%', maxWidth: '440px', marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 
                 {/* Online Payment Panel */}
                 {!currentUser && !client?.isCanceled && (
@@ -1537,6 +1541,7 @@ const ClientProfile: React.FC = () => {
                     </div>
                 )}
             </div>
+            </div>{/* /.profile-layout */}
 
             <div style={{ marginTop: '2rem', textAlign: 'center', opacity: 0.2, fontSize: '0.7rem', fontWeight: 700 }}>
                 {scanTime} • {client.id.toUpperCase()}
@@ -1574,6 +1579,31 @@ const ClientProfile: React.FC = () => {
                 @keyframes fadeIn {
                     from { opacity: 0; }
                     to { opacity: 1; }
+                }
+                /* Profile layout: stacked by default (mobile / APK untouched). */
+                .profile-layout {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    width: 100%;
+                    position: relative;
+                    z-index: 10;
+                }
+                /* Desktop only: card on the left, action panels on the right, top-aligned
+                   so "Последни плащания", "Бързо подновяване" and "Управление" sit next
+                   to the card without scrolling. */
+                @media (min-width: 1024px) {
+                    .profile-layout {
+                        flex-direction: row;
+                        align-items: flex-start;
+                        justify-content: center;
+                        gap: 2rem;
+                        max-width: 960px;
+                        margin: 0 auto;
+                    }
+                    .profile-layout .profile-actions {
+                        margin-top: 0 !important;
+                    }
                 }
             `}</style>
         </div>
