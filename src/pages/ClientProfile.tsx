@@ -1432,7 +1432,7 @@ const ClientProfile: React.FC = () => {
                                                 type="month" 
                                                 value={renewalMonth} 
                                                 onChange={(e) => setRenewalMonth(e.target.value)}
-                                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, colorScheme: 'dark' }}
+                                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, colorScheme: 'dark', width: '100%', boxSizing: 'border-box' }}
                                             />
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -1441,7 +1441,7 @@ const ClientProfile: React.FC = () => {
                                                 type="number" 
                                                 value={renewalAmount} 
                                                 onChange={(e) => setRenewalAmount(Number(e.target.value))}
-                                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }}
+                                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, width: '100%', boxSizing: 'border-box' }}
                                             />
                                         </div>
                                     </div>
@@ -1451,7 +1451,7 @@ const ClientProfile: React.FC = () => {
                                         <select 
                                             value={renewalRoute} 
                                             onChange={(e) => setRenewalRoute(e.target.value)}
-                                            style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, outline: 'none', colorScheme: 'dark' }}
+                                            style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, outline: 'none', colorScheme: 'dark', width: '100%', boxSizing: 'border-box' }}
                                         >
                                             <option value="">Избери маршрут...</option>
                                             {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
