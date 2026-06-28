@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
-import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, Zap, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
@@ -1387,9 +1387,36 @@ const ClientProfile: React.FC = () => {
                             {!showQuickRenew ? (
                                 <button 
                                     onClick={() => setShowQuickRenew(true)}
-                                    style={{ width: '100%', background: '#00e676', color: '#000', padding: '1.5rem', borderRadius: '24px', border: 'none', fontWeight: 900, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', cursor: 'pointer' }}
+                                    style={{ 
+                                        width: '100%', 
+                                        background: 'linear-gradient(135deg, #00e676 0%, #009688 100%)', 
+                                        color: '#ffffff', 
+                                        padding: '1.2rem', 
+                                        borderRadius: '16px', 
+                                        border: 'none', 
+                                        fontWeight: 800, 
+                                        fontSize: '1.05rem', 
+                                        letterSpacing: '1px',
+                                        textTransform: 'uppercase',
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        justifyContent: 'center', 
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        boxShadow: '0 8px 24px rgba(0, 230, 118, 0.25)'
+                                    }}
+                                    onMouseOver={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 230, 118, 0.4)';
+                                        e.currentTarget.style.filter = 'brightness(1.05)';
+                                    }}
+                                    onMouseOut={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 230, 118, 0.25)';
+                                        e.currentTarget.style.filter = 'brightness(1)';
+                                    }}
                                 >
-                                    <Zap size={24} /> БЪРЗО ПОДНОВЯВАНЕ
+                                    БЪРЗО ПОДНОВЯВАНЕ
                                 </button>
                             ) : (
                                 <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s ease' }}>
@@ -1508,7 +1535,32 @@ const ClientProfile: React.FC = () => {
                                                 setIsUpdating(false);
                                             }
                                         }}
-                                        style={{ width: '100%', background: '#00e676', color: '#000', padding: '1.2rem', borderRadius: '18px', border: 'none', fontWeight: 900, fontSize: '1.1rem', marginTop: '0.5rem', cursor: 'pointer' }}
+                                        style={{ 
+                                            width: '100%', 
+                                            background: 'linear-gradient(135deg, #00e676 0%, #009688 100%)', 
+                                            color: '#ffffff', 
+                                            padding: '1.1rem', 
+                                            borderRadius: '14px', 
+                                            border: 'none', 
+                                            fontWeight: 800, 
+                                            fontSize: '1rem', 
+                                            letterSpacing: '1px',
+                                            textTransform: 'uppercase',
+                                            marginTop: '0.5rem', 
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease',
+                                            boxShadow: '0 6px 20px rgba(0, 230, 118, 0.2)'
+                                        }}
+                                        onMouseOver={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                            e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 230, 118, 0.3)';
+                                            e.currentTarget.style.filter = 'brightness(1.05)';
+                                        }}
+                                        onMouseOut={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 230, 118, 0.2)';
+                                            e.currentTarget.style.filter = 'brightness(1)';
+                                        }}
                                     >
                                         {isUpdating ? 'ОБРАБОТКА...' : 'ПОДНОВИ СЕГА'}
                                     </button>
