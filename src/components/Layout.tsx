@@ -364,101 +364,135 @@ const Layout: React.FC = () => {
             </main>
 
             <footer style={{
-                padding: '0.75rem 2rem 1.5rem',
-                textAlign: 'center',
+                padding: isMobile ? '2rem 1.5rem' : '3rem 2rem 2.5rem',
                 color: 'rgba(255,255,255,0.5)',
                 borderTop: isClientProfilePath ? '1px solid rgba(255,255,255,0.08)' : (location.pathname === '/' ? 'none' : '1px solid var(--surface-border)'),
                 fontSize: '0.875rem',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.4rem',
                 background: isClientProfilePath ? 'rgba(26, 26, 26, 0.85)' : 'transparent',
                 backdropFilter: isClientProfilePath ? 'blur(12px)' : 'none',
                 WebkitBackdropFilter: isClientProfilePath ? 'blur(12px)' : 'none',
                 boxShadow: isClientProfilePath ? '0 -4px 20px rgba(0,0,0,0.4)' : 'none',
                 width: '100%',
                 boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: isMobile ? '1.5rem' : '2.5rem',
             }}>
-                <a 
-                    href="http://davidax.org/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    style={{ 
-                        textDecoration: 'none', 
-                        color: 'inherit', 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        padding: '0.6rem 1.25rem',
-                        borderRadius: '12px',
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        backdropFilter: 'blur(10px)',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    }}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                        e.currentTarget.style.borderColor = 'rgba(255,82,82,0.3)';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(229,57,53,0.15)';
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                    }}
-                >
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '8px',
-                        background: 'linear-gradient(135deg, #e53935 0%, #ff5252 100%)',
-                        color: '#fff',
-                        boxShadow: '0 0 15px rgba(229,57,53,0.3)',
-                    }}>
-                        <ShieldCheck size={18} strokeWidth={2.5} />
-                    </div>
-                    <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column' }}>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'center' : 'flex-start',
+                    gap: '2rem',
+                    width: '100%',
+                    maxWidth: '1200px',
+                    margin: '0 auto',
+                    textAlign: isMobile ? 'center' : 'left',
+                }}>
+                    {/* Left Column: Brand & Tagline */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: '400px' }}>
                         <span style={{ 
-                            fontSize: '0.6rem', 
-                            opacity: 0.5, 
-                            textTransform: 'uppercase', 
-                            letterSpacing: '0.15em',
-                            fontWeight: 700,
-                            marginBottom: '-2px'
-                        }}>Developed by</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{ 
-                                fontWeight: 900, 
-                                fontSize: '1.1rem', 
-                                letterSpacing: '0.02em', 
-                                color: 'var(--text-primary)',
-                                textShadow: '0 0 20px rgba(255,255,255,0.1)'
-                            }}>DavidaX</span>
-                            <span style={{ 
-                                fontSize: '0.7rem', 
-                                color: '#ff5252',
-                                fontWeight: 800,
-                                opacity: 0.9
-                            }}>&lt;/&gt;</span>
+                            fontSize: '1.25rem', 
+                            fontWeight: 900, 
+                            letterSpacing: '0.05em', 
+                            color: '#fff',
+                            textTransform: 'uppercase'
+                        }}>Dary Commerce</span>
+                        <p style={{ 
+                            margin: 0, 
+                            fontSize: '0.85rem', 
+                            opacity: 0.6, 
+                            lineHeight: 1.5 
+                        }}>
+                            Обществен транспорт за град Плевен и региона. Бързо, сигурно и модерно пътуване.
+                        </p>
+                    </div>
+
+                    {/* Right Column: Actions & Install PWA */}
+                    <div style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: isMobile ? 'center' : 'flex-end', 
+                        gap: '0.75rem' 
+                    }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                            Инсталиране на приложението
+                        </div>
+                        <InstallPWA />
+                    </div>
+                </div>
+
+                <div style={{ 
+                    width: '100%', 
+                    maxWidth: '1200px', 
+                    height: '1px', 
+                    background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0) 100%)',
+                    margin: '0 auto' 
+                }} />
+
+                <div style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column-reverse' : 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1.5rem',
+                    width: '100%',
+                    maxWidth: '1200px',
+                    margin: '0 auto',
+                    fontSize: '0.8rem',
+                }}>
+                    {/* Copyright & Legal links */}
+                    <div style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: isMobile ? 'center' : 'flex-start', 
+                        gap: '0.5rem' 
+                    }}>
+                        <p style={{ margin: 0, opacity: 0.5 }}>
+                            © {new Date().getFullYear()} Dary Commerce. Всички права запазени.
+                        </p>
+                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem' }}>
+                            <Link to="/legal" style={{ color: 'inherit', textDecoration: 'none', opacity: 0.6, borderBottom: '1px solid transparent', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.borderBottomColor = 'rgba(255,255,255,0.4)'; }} onMouseOut={(e) => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.borderBottomColor = 'transparent'; }}>Правна информация</Link>
+                            <span style={{ opacity: 0.3 }}>•</span>
+                            <Link to="/legal" style={{ color: 'inherit', textDecoration: 'none', opacity: 0.6, borderBottom: '1px solid transparent', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.borderBottomColor = 'rgba(255,255,255,0.4)'; }} onMouseOut={(e) => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.borderBottomColor = 'transparent'; }}>Лични данни</Link>
                         </div>
                     </div>
-                </a>
-                
-                <InstallPWA />
 
-                <p>© {new Date().getFullYear()} Dary Commerce. Всички права запазени.</p>
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.2rem' }}>
-                    <Link to="/legal" style={{ color: 'inherit', textDecoration: 'underline', opacity: 0.8 }}>Правна информация</Link>
-                    <Link to="/legal" style={{ color: 'inherit', textDecoration: 'underline', opacity: 0.8 }}>Лични данни</Link>
+                    {/* Developer Info */}
+                    <div>
+                        <a 
+                            href="http://davidax.org/" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{ 
+                                textDecoration: 'none', 
+                                color: 'inherit', 
+                                display: 'flex', 
+                                alignItems: 'center',
+                                gap: '0.6rem',
+                                padding: '0.5rem 1.25rem',
+                                borderRadius: '12px',
+                                background: 'rgba(255,255,255,0.02)',
+                                border: '1px solid rgba(255,255,255,0.06)',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.borderColor = 'rgba(255,82,82,0.2)';
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                        >
+                            <span style={{ fontSize: '0.7rem', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Developed by</span>
+                            <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#fff' }}>DavidaX</span>
+                            <span style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800 }}>&lt;/&gt;</span>
+                        </a>
+                    </div>
                 </div>
-                <p style={{ opacity: 0.6 }}>Обществен транспорт за град Плевен и региона</p>
             </footer>
         </div>
     );
