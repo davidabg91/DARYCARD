@@ -10,7 +10,11 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
-const InstallPWA: React.FC = () => {
+interface InstallPWAProps {
+  compact?: boolean;
+}
+
+const InstallPWA: React.FC<InstallPWAProps> = ({ compact = false }) => {
   const [promptInstall, setPromptInstall] = useState<BeforeInstallPromptEvent | null>(null);
   
   const [isIOS] = useState(() => 
@@ -61,31 +65,33 @@ const InstallPWA: React.FC = () => {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '0.75rem',
-          padding: '0.8rem 1.5rem',
-          borderRadius: '16px',
+          gap: '0.4rem',
+          padding: compact ? '0.35rem 0.75rem' : '0.8rem 1.5rem',
+          borderRadius: compact ? '10px' : '16px',
           background: 'rgba(255,255,255,0.05)',
           border: '1px solid rgba(255,255,255,0.1)',
           color: '#fff',
           fontWeight: 700,
-          fontSize: '0.95rem',
+          fontSize: compact ? '0.75rem' : '0.95rem',
           cursor: 'pointer',
           transition: 'all 0.3s ease',
-          marginTop: '1rem',
-          boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+          marginTop: compact ? '0' : '1rem',
+          boxShadow: compact ? 'none' : '0 4px 15px rgba(0,0,0,0.2)',
+          textTransform: 'uppercase',
+          letterSpacing: compact ? '0.05em' : 'normal'
         }}
         onMouseOver={(e) => {
           e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
           e.currentTarget.style.borderColor = 'rgba(255,82,82,0.3)';
-          e.currentTarget.style.transform = 'translateY(-2px)';
+          if (!compact) e.currentTarget.style.transform = 'translateY(-2px)';
         }}
         onMouseOut={(e) => {
           e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
           e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-          e.currentTarget.style.transform = 'translateY(0)';
+          if (!compact) e.currentTarget.style.transform = 'translateY(0)';
         }}
       >
-        <Download size={20} color="#ff5252" />
+        <Download size={compact ? 14 : 20} color="#ff5252" />
         ИНСТАЛИРАЙ КАТО ПРИЛОЖЕНИЕ
       </button>
 

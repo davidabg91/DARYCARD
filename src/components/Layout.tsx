@@ -364,10 +364,10 @@ const Layout: React.FC = () => {
             </main>
 
             <footer style={{
-                padding: isMobile ? '2rem 1.5rem' : '3rem 2rem 2.5rem',
-                color: 'rgba(255,255,255,0.5)',
+                padding: '0.75rem 1.5rem',
+                color: 'rgba(255,255,255,0.4)',
                 borderTop: isClientProfilePath ? '1px solid rgba(255,255,255,0.08)' : (location.pathname === '/' ? 'none' : '1px solid var(--surface-border)'),
-                fontSize: '0.875rem',
+                fontSize: '0.8rem',
                 background: isClientProfilePath ? 'rgba(26, 26, 26, 0.85)' : 'transparent',
                 backdropFilter: isClientProfilePath ? 'blur(12px)' : 'none',
                 WebkitBackdropFilter: isClientProfilePath ? 'blur(12px)' : 'none',
@@ -375,123 +375,56 @@ const Layout: React.FC = () => {
                 width: '100%',
                 boxSizing: 'border-box',
                 display: 'flex',
-                flexDirection: 'column',
-                gap: isMobile ? '1.5rem' : '2.5rem',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1rem',
             }}>
-                <div style={{
-                    display: 'flex',
-                    flexDirection: isMobile ? 'column' : 'row',
-                    justifyContent: 'space-between',
-                    alignItems: isMobile ? 'center' : 'flex-start',
-                    gap: '2rem',
-                    width: '100%',
-                    maxWidth: '1200px',
-                    margin: '0 auto',
-                    textAlign: isMobile ? 'center' : 'left',
+                {/* Left Side: Copyright & Legal */}
+                <div style={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    alignItems: 'center', 
+                    justifyContent: isMobile ? 'center' : 'flex-start',
+                    gap: '0.75rem',
+                    textAlign: 'center'
                 }}>
-                    {/* Left Column: Brand & Tagline */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: '400px' }}>
-                        <span style={{ 
-                            fontSize: '1.25rem', 
-                            fontWeight: 900, 
-                            letterSpacing: '0.05em', 
-                            color: '#fff',
-                            textTransform: 'uppercase'
-                        }}>Dary Commerce</span>
-                        <p style={{ 
-                            margin: 0, 
-                            fontSize: '0.85rem', 
-                            opacity: 0.6, 
-                            lineHeight: 1.5 
-                        }}>
-                            Обществен транспорт за град Плевен и региона. Бързо, сигурно и модерно пътуване.
-                        </p>
-                    </div>
-
-                    {/* Right Column: Actions & Install PWA */}
-                    <div style={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: isMobile ? 'center' : 'flex-end', 
-                        gap: '0.75rem' 
-                    }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                            Инсталиране на приложението
-                        </div>
-                        <InstallPWA />
-                    </div>
+                    <span>© {new Date().getFullYear()} Dary Commerce</span>
+                    <span style={{ opacity: 0.3 }}>•</span>
+                    <Link to="/legal" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = '#fff'} onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}>Правна информация</Link>
+                    <span style={{ opacity: 0.3 }}>•</span>
+                    <Link to="/legal" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = '#fff'} onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}>Лични данни</Link>
                 </div>
 
+                {/* Right Side: Install PWA & Developer Credit */}
                 <div style={{ 
-                    width: '100%', 
-                    maxWidth: '1200px', 
-                    height: '1px', 
-                    background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0) 100%)',
-                    margin: '0 auto' 
-                }} />
-
-                <div style={{
-                    display: 'flex',
-                    flexDirection: isMobile ? 'column-reverse' : 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '1.5rem',
-                    width: '100%',
-                    maxWidth: '1200px',
-                    margin: '0 auto',
-                    fontSize: '0.8rem',
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    alignItems: 'center', 
+                    justifyContent: isMobile ? 'center' : 'flex-end',
+                    gap: '1rem' 
                 }}>
-                    {/* Copyright & Legal links */}
-                    <div style={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: isMobile ? 'center' : 'flex-start', 
-                        gap: '0.5rem' 
-                    }}>
-                        <p style={{ margin: 0, opacity: 0.5 }}>
-                            © {new Date().getFullYear()} Dary Commerce. Всички права запазени.
-                        </p>
-                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem' }}>
-                            <Link to="/legal" style={{ color: 'inherit', textDecoration: 'none', opacity: 0.6, borderBottom: '1px solid transparent', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.borderBottomColor = 'rgba(255,255,255,0.4)'; }} onMouseOut={(e) => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.borderBottomColor = 'transparent'; }}>Правна информация</Link>
-                            <span style={{ opacity: 0.3 }}>•</span>
-                            <Link to="/legal" style={{ color: 'inherit', textDecoration: 'none', opacity: 0.6, borderBottom: '1px solid transparent', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.borderBottomColor = 'rgba(255,255,255,0.4)'; }} onMouseOut={(e) => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.borderBottomColor = 'transparent'; }}>Лични данни</Link>
-                        </div>
-                    </div>
-
-                    {/* Developer Info */}
-                    <div>
-                        <a 
-                            href="http://davidax.org/" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            style={{ 
-                                textDecoration: 'none', 
-                                color: 'inherit', 
-                                display: 'flex', 
-                                alignItems: 'center',
-                                gap: '0.6rem',
-                                padding: '0.5rem 1.25rem',
-                                borderRadius: '12px',
-                                background: 'rgba(255,255,255,0.02)',
-                                border: '1px solid rgba(255,255,255,0.06)',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            }}
-                            onMouseOver={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                e.currentTarget.style.borderColor = 'rgba(255,82,82,0.2)';
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                            }}
-                            onMouseOut={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                        >
-                            <span style={{ fontSize: '0.7rem', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Developed by</span>
-                            <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#fff' }}>DavidaX</span>
-                            <span style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800 }}>&lt;/&gt;</span>
-                        </a>
-                    </div>
+                    <InstallPWA compact={true} />
+                    {(!isMobile || isClientProfilePath) && <span style={{ opacity: 0.3 }}>•</span>}
+                    <a 
+                        href="http://davidax.org/" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{ 
+                            textDecoration: 'none', 
+                            color: 'inherit', 
+                            display: 'flex', 
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'color 0.2s'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.color = '#ff5252'}
+                        onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
+                    >
+                        <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>Developed by</span>
+                        <span style={{ fontWeight: 800 }}>DavidaX</span>
+                        <span style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800 }}>&lt;/&gt;</span>
+                    </a>
                 </div>
             </footer>
         </div>
