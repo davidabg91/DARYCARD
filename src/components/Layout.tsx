@@ -367,12 +367,18 @@ const Layout: React.FC = () => {
                 padding: '0.75rem 2rem 1.5rem',
                 textAlign: 'center',
                 color: 'rgba(255,255,255,0.5)',
-                borderTop: location.pathname === '/' ? 'none' : '1px solid var(--surface-border)',
+                borderTop: isClientProfilePath ? '1px solid rgba(255,255,255,0.08)' : (location.pathname === '/' ? 'none' : '1px solid var(--surface-border)'),
                 fontSize: '0.875rem',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: '0.4rem',
+                background: isClientProfilePath ? 'rgba(26, 26, 26, 0.85)' : 'transparent',
+                backdropFilter: isClientProfilePath ? 'blur(12px)' : 'none',
+                WebkitBackdropFilter: isClientProfilePath ? 'blur(12px)' : 'none',
+                boxShadow: isClientProfilePath ? '0 -4px 20px rgba(0,0,0,0.4)' : 'none',
+                width: '100%',
+                boxSizing: 'border-box',
             }}>
                 <a 
                     href="http://davidax.org/" 
