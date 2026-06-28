@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Download, PlusSquare, ArrowUpFromLine, MoreVertical } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -95,15 +96,16 @@ const InstallPWA: React.FC<InstallPWAProps> = ({ compact = false }) => {
         ИНСТАЛИРАЙ КАТО ПРИЛОЖЕНИЕ
       </button>
 
-      {showIOSModal && (
+      {showIOSModal && createPortal(
         <div style={{
           position: 'fixed',
           inset: 0,
           zIndex: 10000,
           background: 'rgba(0,0,0,0.85)',
           backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
           display: 'flex',
-          alignItems: 'flex-end',
+          alignItems: 'center',
           justifyContent: 'center',
           padding: '1rem',
           animation: 'fadeIn 0.3s ease'
@@ -148,16 +150,18 @@ const InstallPWA: React.FC<InstallPWAProps> = ({ compact = false }) => {
                 РАЗБРАХ
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {showManualModal && (
+      {showManualModal && createPortal(
         <div style={{
           position: 'fixed',
           inset: 0,
           zIndex: 10000,
           background: 'rgba(0,0,0,0.85)',
           backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -204,7 +208,8 @@ const InstallPWA: React.FC<InstallPWAProps> = ({ compact = false }) => {
                 РАЗБРАХ
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <style>{`
