@@ -120,10 +120,10 @@ public class MainActivity extends BridgeActivity {
             overlay.setVisibility(View.GONE);
 
             ImageView logo = new ImageView(this);
-            logo.setImageResource(R.drawable.splash_logo);
+            logo.setImageResource(R.drawable.dary_logo); // clean brand logo (no "Зареждане" text)
             logo.setAdjustViewBounds(true);
-            logo.setAlpha(0.55f); // faint, so the screen stays mostly dark (saves power)
-            int logoW = (int) (200 * getResources().getDisplayMetrics().density); // ~200dp
+            logo.setAlpha(0.6f); // faint, so the screen stays mostly dark (saves power)
+            int logoW = (int) (320 * getResources().getDisplayMetrics().density); // ~320dp (bigger)
             FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                 logoW, FrameLayout.LayoutParams.WRAP_CONTENT);
             lp.gravity = Gravity.CENTER;
