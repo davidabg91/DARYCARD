@@ -1,10 +1,13 @@
 package com.darycommerce.app;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Toast;
 import com.getcapacitor.BridgeActivity;
@@ -16,17 +19,22 @@ public class MainActivity extends BridgeActivity {
     private static final String TAG = "DaryScanner";
 
     // --- Idle screen dimming ---------------------------------------------------
-    // After DIM_DELAY_MS of no touch / no card, drop the backlight to DIM_LEVEL so
-    // the screen looks "asleep". Any touch OR a scanned card restores full
-    // brightness. The screen never actually turns off, so NFC scanning keeps
-    // running the whole time. TEST value: 10s — raise DIM_DELAY_MS later.
+    // After DIM_DELAY_MS of no touch / no card, lower the backlight AND cover the
+    // screen with a pure-black overlay so it looks off (some terminals ignore a
+    // 0.0 brightness override, hence the overlay). Any touch OR a scanned card
+    // restores it. The screen never truly turns off, so NFC scanning keeps
+    // running. TEST value: 10s — raise DIM_DELAY_MS later.
     private static MainActivity instance;
     private static final long DIM_DELAY_MS = 10_000L;   // dim after 10 seconds
-    private static final float DIM_LEVEL = 0.0f;         // lowest possible backlight (max battery saving)
+    private static final float DIM_LEVEL = 0.01f;        // lowest reliably-honored backlight
     private static final float FULL_LEVEL = 1.0f;        // full brightness on wake
     private final Handler dimHandler = new Handler(Looper.getMainLooper());
+    private View dimOverlay;
 
-    private final Runnable dimRunnable = () -> setBrightness(DIM_LEVEL);
+    private final Runnable dimRunnable = () -> {
+        setBrightness(DIM_LEVEL);
+        if (dimOverlay != null) dimOverlay.setVisibility(View.VISIBLE);
+    };
 
     private void setBrightness(float level) {
         try {
@@ -38,11 +46,12 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    /** Restore full brightness and restart the idle-dim countdown. Safe from any thread. */
+    /** Restore full brightness, remove the black overlay, restart the idle-dim countdown. Safe from any thread. */
     public void wakeScreen() {
         runOnUiThread(() -> {
             dimHandler.removeCallbacks(dimRunnable);
             setBrightness(FULL_LEVEL);
+            if (dimOverlay != null) dimOverlay.setVisibility(View.GONE);
             dimHandler.postDelayed(dimRunnable, DIM_DELAY_MS);
         });
     }
@@ -97,6 +106,20 @@ public class MainActivity extends BridgeActivity {
 
         // --- WebView Configuration (Enable Voice/Audio Autoplay) ---
         this.bridge.getWebView().getSettings().setMediaPlaybackRequiresUserGesture(false);
+
+        // Black overlay used to make the screen look off while idle. Not clickable /
+        // focusable, so touches still pass through and wake the screen.
+        try {
+            dimOverlay = new View(this);
+            dimOverlay.setBackgroundColor(Color.BLACK);
+            dimOverlay.setClickable(false);
+            dimOverlay.setFocusable(false);
+            dimOverlay.setVisibility(View.GONE);
+            addContentView(dimOverlay, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        } catch (Exception e) {
+            Log.e(TAG, "Dim overlay error: " + e.getMessage());
+        }
 
         // Start the idle-dim countdown.
         wakeScreen();
