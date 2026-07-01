@@ -530,6 +530,12 @@ const ClientProfile: React.FC = () => {
             alert(`Картата изглежда прочетена НЕПЪЛНО (къс код: "${id}").\n\nМоля, сканирайте картата отново — по-бавно и плътно до четеца — преди да я активирате.`);
             return;
         }
+        // The id must correspond to a real printed card (i.e. exist in the card
+        // list with a number). Otherwise the profile would have no card number.
+        if (!CARDS_MAPPING[id]) {
+            alert(`Кодът "${id}" не е в списъка с картите на системата, затова няма номер на карта.\n\nПроверете картата и сканирайте отново. Ако е нова карта, първо трябва да се добави в списъка.`);
+            return;
+        }
         // Teachers require an община; disabled cards require an address (like pensioners).
         const resolvedMunicipality = regMunicipality === MUNICIPALITY_CUSTOM ? regCustomMunicipality.trim() : regMunicipality;
         if ((regCardType === 'Учителска карта' || regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта') && !resolvedMunicipality) {
@@ -819,6 +825,22 @@ const ClientProfile: React.FC = () => {
                                 </p>
                                 <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem', lineHeight: '1.6' }}>
                                     Моля, сканирайте картата <b>отново</b> — по-бавно и плътно до четеца — и проверете дали в адреса излиза пълен код.
+                                </p>
+                                <Link to="/" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
+                            </>
+                        ) : currentUser && !CARDS_MAPPING[id] ? (
+                            // Id is a full length but is NOT in the printed-card list, so it has
+                            // no real card number. Block activation to avoid a numberless profile.
+                            <>
+                                <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,171,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', border: '1px solid rgba(255,171,0,0.3)' }}>
+                                    <AlertTriangle size={48} color="#ffab00" />
+                                </div>
+                                <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '1rem', color: '#ffab00' }}>НЕПОЗНАТА КАРТА</h2>
+                                <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '1rem', lineHeight: '1.6' }}>
+                                    Кодът <b style={{ color: '#fff', fontFamily: 'monospace' }}>„{id}"</b> не е в списъка с картите на системата, затова няма номер на карта. Активиране е спряно, за да не се създаде сгрешен профил.
+                                </p>
+                                <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem', lineHeight: '1.6' }}>
+                                    Проверете картата и сканирайте <b>отново</b>. Ако е нова карта, тя първо трябва да бъде добавена в списъка с картите.
                                 </p>
                                 <Link to="/" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
                             </>

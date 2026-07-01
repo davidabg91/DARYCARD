@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.13.30",
-  "buildDate": "2026-07-01T13:30:00Z",
-  "notes": "Truncated-card guard now shows a 'КАРТАТА Е ПРОЧЕТЕНА НЕПЪЛНО' warning on the profile screen (no activate button) instead of only blocking at save time, when the id is under 8 chars."
+  "version": "2026.07.01.13.41",
+  "buildDate": "2026-07-01T13:41:00Z",
+  "notes": "Activation now also requires the scanned id to exist in the card list (CARDS_MAPPING) — an unknown/numberless card shows 'НЕПОЗНАТА КАРТА' and cannot be activated. Truncated (<8) still shows the incomplete-read warning."
 }
