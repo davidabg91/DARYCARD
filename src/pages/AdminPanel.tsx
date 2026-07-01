@@ -1911,17 +1911,23 @@ const AdminPanel: React.FC = () => {
                                 let cols: string[];
                                 let rowVals: (c: Client, n: number) => (string | number)[];
                                 if (useRegisterPrint) {
-                                    cols = ['№', 'ИМЕ', 'Община', detailLabel || '—', 'КАРТА №', 'ДАТА', 'Направление', 'Плащане'];
-                                    rowVals = (c, n) => [
-                                        n,
-                                        c.name,
-                                        c.municipality || '---',
-                                        (reportCardType === 'Ученическа карта' ? c.school : (reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') ? c.address : '') || '---',
-                                        getClientCardNumber(c) || '---',
-                                        getRegisterDate(c),
-                                        c.route,
-                                        `${getReportAmount(c)} €`,
-                                    ];
+                                    // Pensioner & student registers are official name lists — drop the
+                                    // "Направление" (route) and "Плащане" (amount) columns for them.
+                                    const hideRoutePayment = reportCardType === 'Пенсионерска карта' || reportCardType === 'Ученическа карта';
+                                    cols = hideRoutePayment
+                                        ? ['№', 'ИМЕ', 'Община', detailLabel || '—', 'КАРТА №', 'ДАТА']
+                                        : ['№', 'ИМЕ', 'Община', detailLabel || '—', 'КАРТА №', 'ДАТА', 'Направление', 'Плащане'];
+                                    rowVals = (c, n) => {
+                                        const base = [
+                                            n,
+                                            c.name,
+                                            c.municipality || '---',
+                                            (reportCardType === 'Ученическа карта' ? c.school : (reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') ? c.address : '') || '---',
+                                            getClientCardNumber(c) || '---',
+                                            getRegisterDate(c),
+                                        ];
+                                        return hideRoutePayment ? base : [...base, c.route, `${getReportAmount(c)} €`];
+                                    };
                                 } else {
                                     // Show the "Плащане" (method) column ONLY when no single
                                     // payment method is filtered (otherwise it's redundant — the
@@ -2146,8 +2152,12 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                         <th>{reportCardType === 'Ученическа карта' ? 'Училище' : (reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') ? 'Адрес' : '—'}</th>
                                                         <th>КАРТА №</th>
                                                         <th>ДАТА</th>
-                                                        <th>Направление</th>
-                                                        <th>Плащане</th>
+                                                        {!(reportCardType === 'Пенсионерска карта' || reportCardType === 'Ученическа карта') && (
+                                                            <>
+                                                                <th>Направление</th>
+                                                                <th>Плащане</th>
+                                                            </>
+                                                        )}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -2159,11 +2169,15 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                             <td>{(reportCardType === 'Ученическа карта' ? c.school : (reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') ? c.address : '') || '---'}</td>
                                                             <td>{getClientCardNumber(c) || '---'}</td>
                                                             <td>{getRegisterDate(c)}</td>
-                                                            <td>{c.route}</td>
-                                                            <td>{getReportAmount(c)} €</td>
+                                                            {!(reportCardType === 'Пенсионерска карта' || reportCardType === 'Ученическа карта') && (
+                                                                <>
+                                                                    <td>{c.route}</td>
+                                                                    <td>{getReportAmount(c)} €</td>
+                                                                </>
+                                                            )}
                                                         </tr>
                                                     )) : (
-                                                        <tr><td colSpan={8} style={{ textAlign: 'center', padding: '12px' }}>Няма данни за избраните филтри</td></tr>
+                                                        <tr><td colSpan={(reportCardType === 'Пенсионерска карта' || reportCardType === 'Ученическа карта') ? 6 : 8} style={{ textAlign: 'center', padding: '12px' }}>Няма данни за избраните филтри</td></tr>
                                                     )}
                                                 </tbody>
                                             </table>

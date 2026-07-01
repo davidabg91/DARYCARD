@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.12.20",
-  "buildDate": "2026-07-01T12:20:00Z",
-  "notes": "Service cards on the scan/activate profile: whole-year subscription + required reason field on activation, and whole-year quick-renew (matching the admin panel)."
+  "version": "2026.07.01.12.40",
+  "buildDate": "2026-07-01T12:40:00Z",
+  "notes": "Reports: pensioner & student register lists drop the 'Направление' and 'Плащане' columns (both preview and print)."
 }
