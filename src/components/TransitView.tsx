@@ -340,7 +340,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                             dailyScanCount: newDailyCount,
                         }).catch(err => console.error('Daily counter update failed:', err));
 
-                        if (todayCount >= 2) {
+                        if (todayCount >= 4) {
                             setShowDailyWarning(true);
                         }
                     }
@@ -532,7 +532,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                         color: 'rgba(255,255,255,0.92)',
                         lineHeight: 1.55,
                     }}>
-                        Тази карта е сканирана <strong>повече от 2 пъти днес</strong>.
+                        Тази карта е сканирана <strong>повече от 4 пъти днес</strong>.
                         Моля, <strong>сравни снимката и името</strong> с лицето
                         пред теб, за да се увериш, че е същият пътник.
                     </div>
@@ -608,8 +608,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                     flexDirection: 'column',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    gap: '1.5rem',
-                    paddingBottom: '2rem' // Minimal padding to ensure look is balanced
+                    gap: '1rem',
+                    paddingBottom: '0.75rem' // Keep the whole card within the terminal screen
                 }}>
                     <div style={{
                         width: '100%',
@@ -713,7 +713,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                     {isValid ? 'ВАЛИДЕН АБОНАМЕНТ' : 'КАРТАТА НЕ Е ПЛАТЕНА'}
                                 </div>
 
-                                <div style={{ padding: '1.5rem 2rem 2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+                                <div style={{ padding: '1rem 2rem 1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
                                     {/* Connectivity Status Label */}
                                     <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.4, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '-0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isActuallyOnline ? '#00e676' : '#ff5252' }} />
@@ -722,7 +722,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
 
                                     <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowPhotoModal(true)}>
                                         <div style={{ position: 'absolute', inset: '-15px', background: themeColor, borderRadius: '28px', opacity: 0.2, filter: 'blur(25px)' }} />
-                                        <ClientPhoto src={client?.photo} thumb={client?.photoThumb} alt="Profile" style={{ width: '260px', height: '260px', borderRadius: '28px', border: `4px solid ${themeColor}`, position: 'relative', boxShadow: '0 30px 60px rgba(0,0,0,0.7)' }} />
+                                        <ClientPhoto src={client?.photo} thumb={client?.photoThumb} alt="Profile" style={{ width: '220px', height: '220px', borderRadius: '28px', border: `4px solid ${themeColor}`, position: 'relative', boxShadow: '0 30px 60px rgba(0,0,0,0.7)' }} />
                                     </div>
 
                                     <div style={{ textAlign: 'center' }}>
@@ -735,7 +735,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                         <div style={{ fontSize: '2rem', fontWeight: 900, color: themeColor, textShadow: `0 0 30px ${themeColor}66` }}>{client?.route?.toUpperCase()}</div>
                                     </div>
 
-                                    <div style={{ width: '100%', background: isValid ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.15)', borderRadius: '28px', padding: '1.8rem 1rem', border: `1px solid ${isValid ? 'rgba(0,230,118,0.2)' : 'rgba(255,23,68,0.3)'}`, textAlign: 'center' }}>
+                                    <div style={{ width: '100%', background: isValid ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.15)', borderRadius: '28px', padding: '1.3rem 1rem', border: `1px solid ${isValid ? 'rgba(0,230,118,0.2)' : 'rgba(255,23,68,0.3)'}`, textAlign: 'center' }}>
                                         <div style={{ color: isValid ? 'rgba(255,255,255,0.5)' : '#ff5252', fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '3px', marginBottom: '8px' }}>
                                             {isValid ? 'ВАЛИДНОСТ ДО КРАЯ НА' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
                                         </div>

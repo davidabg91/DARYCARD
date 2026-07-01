@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.06.55",
-  "buildDate": "2026-07-01T06:55:00Z",
-  "notes": "Card scan reliability: if the printed URL can't be read, resolve the card by its physical chip UID via the nfc_uids map (fixes false 'invalid card' on fast swipes)."
+  "version": "2026.07.01.07.10",
+  "buildDate": "2026-07-01T07:10:00Z",
+  "notes": "Scan view: daily overuse warning now triggers after 4 scans (was 2); compact the profile card so the validity panel is fully visible without scrolling."
 }
