@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.13.21",
-  "buildDate": "2026-07-01T13:21:00Z",
-  "notes": "Registration guard: refuse to activate/register a card whose id is under 8 chars (a truncated/partial NFC read, e.g. 'JST'/'SH5') with a 'scan again' message."
+  "version": "2026.07.01.13.30",
+  "buildDate": "2026-07-01T13:30:00Z",
+  "notes": "Truncated-card guard now shows a 'КАРТАТА Е ПРОЧЕТЕНА НЕПЪЛНО' warning on the profile screen (no activate button) instead of only blocking at save time, when the id is under 8 chars."
 }

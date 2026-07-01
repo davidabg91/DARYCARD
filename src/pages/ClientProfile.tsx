@@ -806,6 +806,23 @@ const ClientProfile: React.FC = () => {
             <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', padding: '1rem', fontFamily: 'Inter, sans-serif' }}>
                 <div style={{ textAlign: 'center', maxWidth: '440px', width: '100%' }}>
                     {!isRegistering ? (
+                        id.length < 8 ? (
+                            // Truncated / partial NFC read (real card ids are 8–9 chars).
+                            // Don't offer activation under a broken id — tell the operator to rescan.
+                            <>
+                                <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,171,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', border: '1px solid rgba(255,171,0,0.3)' }}>
+                                    <AlertTriangle size={48} color="#ffab00" />
+                                </div>
+                                <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '1rem', color: '#ffab00' }}>КАРТАТА Е ПРОЧЕТЕНА НЕПЪЛНО</h2>
+                                <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '1rem', lineHeight: '1.6' }}>
+                                    Прочетен е само къс код <b style={{ color: '#fff', fontFamily: 'monospace' }}>„{id}"</b>, а реалният номер на картата е по-дълъг. Затова картата <b>не може</b> да се активира — иначе профилът ще е сгрешен.
+                                </p>
+                                <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem', lineHeight: '1.6' }}>
+                                    Моля, сканирайте картата <b>отново</b> — по-бавно и плътно до четеца — и проверете дали в адреса излиза пълен код.
+                                </p>
+                                <Link to="/" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
+                            </>
+                        ) : (
                         <>
                             <div style={{  width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                                 <Settings size={48} color={currentUser ? "var(--primary-color)" : "rgba(255,255,255,0.2)"} />
@@ -821,6 +838,7 @@ const ClientProfile: React.FC = () => {
                                 <Link to="/" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
                             </div>
                         </>
+                        )
                     ) : (
                         <div style={{ animation: 'fadeIn 0.4s ease', textAlign: 'left', background: 'rgba(255,255,255,0.03)', padding: '2rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.08)' }}>
                             <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', textAlign: 'center' }}>Регистрация на Карта</h3>
