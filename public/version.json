@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.07.10",
-  "buildDate": "2026-07-01T07:10:00Z",
-  "notes": "Scan view: daily overuse warning now triggers after 4 scans (was 2); compact the profile card so the validity panel is fully visible without scrolling."
+  "version": "2026.07.01.07.21",
+  "buildDate": "2026-07-01T07:21:00Z",
+  "notes": "Scan view: make the validity panel full-width (edge to edge) so 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА' fits on one line and the month is not cut off."
 }
