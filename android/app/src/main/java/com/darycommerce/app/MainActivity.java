@@ -22,7 +22,7 @@ public class MainActivity extends BridgeActivity {
     // running the whole time. TEST value: 10s — raise DIM_DELAY_MS later.
     private static MainActivity instance;
     private static final long DIM_DELAY_MS = 10_000L;   // dim after 10 seconds
-    private static final float DIM_LEVEL = 0.02f;        // near-black backlight
+    private static final float DIM_LEVEL = 0.0f;         // lowest possible backlight (max battery saving)
     private static final float FULL_LEVEL = 1.0f;        // full brightness on wake
     private final Handler dimHandler = new Handler(Looper.getMainLooper());
 
