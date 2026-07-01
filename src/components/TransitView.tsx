@@ -767,7 +767,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                         <div style={{ fontSize: '2rem', fontWeight: 900, color: themeColor, textShadow: `0 0 30px ${themeColor}66` }}>{client?.route?.toUpperCase()}</div>
                                     </div>
 
-                                    <div style={{ width: 'auto', marginLeft: '-2rem', marginRight: '-2rem', marginBottom: '-1.25rem', background: isValid ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.15)', padding: '1.3rem 1.25rem', borderTop: `1px solid ${isValid ? 'rgba(0,230,118,0.2)' : 'rgba(255,23,68,0.3)'}`, textAlign: 'center' }}>
+                                    <div style={{ alignSelf: 'stretch', marginLeft: '-2rem', marginRight: '-2rem', marginBottom: '-1.25rem', background: isValid ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.15)', padding: '1.3rem 1.25rem', borderTop: `1px solid ${isValid ? 'rgba(0,230,118,0.2)' : 'rgba(255,23,68,0.3)'}`, textAlign: 'center' }}>
                                         <div style={{ color: isValid ? 'rgba(255,255,255,0.5)' : '#ff5252', fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', whiteSpace: 'nowrap', marginBottom: '8px' }}>
                                             {isValid ? 'ВАЛИДНОСТ ДО КРАЯ НА' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
                                         </div>
