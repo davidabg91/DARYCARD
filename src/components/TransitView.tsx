@@ -228,13 +228,32 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
         let isMounted = true;
         if (!id) return;
 
-        getDoc(doc(db, 'clients', id)).then((snap) => {
+        getDoc(doc(db, 'clients', id)).then(async (firstSnap) => {
             if (isMounted) {
                 // INSTANT CONNECTIVITY SENSE: Check metadata + trigger ping
-                if (snap.metadata.fromCache) {
+                if (firstSnap.metadata.fromCache) {
                     setIsActuallyOnline(false);
                 }
                 checkActualStatus();
+
+                // FALLBACK: if the printed URL wasn't read, the scanned id is the chip's
+                // physical UID (not a document id). Resolve it via the public
+                // nfc_uids/{UID} -> clientId map so the card is still recognised.
+                let snap = firstSnap;
+                if (!snap.exists() && physicalUid) {
+                    try {
+                        const mapSnap = await getDoc(doc(db, 'nfc_uids', physicalUid.toUpperCase()));
+                        if (mapSnap.exists()) {
+                            const mappedId = mapSnap.data().clientId as string | undefined;
+                            if (mappedId && mappedId !== id) {
+                                const cSnap = await getDoc(doc(db, 'clients', mappedId));
+                                if (cSnap.exists()) snap = cSnap;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('UID fallback lookup failed:', e);
+                    }
+                }
 
                  if (snap.exists()) {
                     const data = snap.data() as Client;
@@ -372,7 +391,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
         return () => {
             isMounted = false;
         };
-    }, [id, nfcCounter, checkActualStatus]); 
+    }, [id, nfcCounter, checkActualStatus, physicalUid]);
 
     // IDLE DETECTION & SLIDESHOW LOGIC
     useEffect(() => {

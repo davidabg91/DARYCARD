@@ -59,6 +59,16 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ---- NFC UID -> client mapping ----
+    // Lets a terminal that read only the chip's physical UID (fast swipe, printed
+    // URL not read) resolve it to the client id. Public `get` (like a single
+    // client). Written only by the syncNfcUid Cloud Function (Admin SDK).
+    match /nfc_uids/{uid} {
+      allow get: if true;
+      allow list: if isStaff();
+      allow write: if false;
+    }
+
     // ---- Public intake forms ----
     // Anonymous visitors can submit a complaint/suggestion or a rental inquiry,
     // but only staff may read or manage them.

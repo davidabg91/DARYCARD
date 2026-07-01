@@ -4,6 +4,35 @@ import * as admin from "firebase-admin";
 admin.initializeApp();
 
 /**
+ * Keeps the public `nfc_uids/{UID} -> clientId` lookup in sync with each client's
+ * `nfcUid` field. A terminal that could read only the chip's physical UID (not the
+ * printed URL) uses this mapping to still resolve the card to its profile.
+ * Runs only when `nfcUid` actually changes, so ordinary scan-counter writes are
+ * ignored (no wasted writes, no loops — it writes to a different collection).
+ */
+export const syncNfcUid = functions.firestore
+    .document("clients/{clientId}")
+    .onWrite(async (change) => {
+        const before = change.before.exists ? change.before.data() : undefined;
+        const after = change.after.exists ? change.after.data() : undefined;
+        const beforeUid = before?.nfcUid ? String(before.nfcUid).toUpperCase() : "";
+        const afterUid = after?.nfcUid ? String(after.nfcUid).toUpperCase() : "";
+        if (beforeUid === afterUid) return;
+
+        const db = admin.firestore();
+        const batch = db.batch();
+        if (beforeUid) batch.delete(db.collection("nfc_uids").doc(beforeUid));
+        if (afterUid) {
+            batch.set(db.collection("nfc_uids").doc(afterUid), {
+                clientId: change.after.id,
+                updatedAt: new Date().toISOString(),
+            });
+        }
+        await batch.commit();
+    });
+
+
+/**
  * Creates a new staff user (auth account + Firestore profile) on behalf of an
  * admin. Done in a Cloud Function with the Admin SDK so that:
  *   1. The calling admin is NOT signed out (the client SDK's
