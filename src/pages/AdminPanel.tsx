@@ -58,6 +58,7 @@ interface Client {
     lastScanAt?: string;
     cardType?: string;
     address?: string;
+    serviceReason?: string;
     nfcUid?: string;
     school?: string;
     municipality?: string;
@@ -192,6 +193,18 @@ const getDefaultExpiryMonth = () => {
     return `${targetYear}-${targetMonth.toString().padStart(2, '0')}`;
 };
 
+// Service ("Служебна") cards are valid for a whole year. Validity is decided per
+// month (a renewalHistory entry whose `month` equals the current YYYY-MM), so a
+// whole-year subscription is stored as the 12 monthly entries of that year.
+const buildYearMonths = (year: number): string[] =>
+    Array.from({ length: 12 }, (_, i) => `${year}-${(i + 1).toString().padStart(2, '0')}`);
+
+// A few selectable years for service cards: previous, current, next two.
+const getServiceYearOptions = (): number[] => {
+    const y = new Date().getFullYear();
+    return [y - 1, y, y + 1, y + 2];
+};
+
 interface TabButtonProps {
     id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications';
     icon: React.ElementType;
@@ -317,6 +330,11 @@ const AdminPanel: React.FC = () => {
     const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
     const [nfcLinkId, setNfcLinkId] = useState('');
     const [address, setAddress] = useState('');
+    // Service cards ("Служебна"): a free-text reason why the card is issued
+    // (relative of a driver, contract with a община, etc.) and the year the
+    // whole-year (unpaid) subscription covers.
+    const [serviceReason, setServiceReason] = useState('');
+    const [serviceYear, setServiceYear] = useState(new Date().getFullYear());
     const [selectedSchool, setSelectedSchool] = useState('');
     const [customSchool, setCustomSchool] = useState('');
     // Municipality (община) for student & pensioner cards. `municipality` holds a
@@ -331,6 +349,7 @@ const AdminPanel: React.FC = () => {
     const [showActionModal, setShowActionModal] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
     const [newMonth, setNewMonth] = useState('');
+    const [newServiceYear, setNewServiceYear] = useState(new Date().getFullYear());
     const [newAmount, setNewAmount] = useState('');
     const [newPaymentMethod, setNewPaymentMethod] = useState('В брой');
     const [newBankAmount, setNewBankAmount] = useState('');
@@ -754,6 +773,10 @@ const AdminPanel: React.FC = () => {
             setMessage({ text: 'Моля, въведете адрес.', type: 'error' });
             return;
         }
+        if (cardType === 'Служебна карта' && !serviceReason.trim()) {
+            setMessage({ text: 'Моля, въведете причина за издаване на служебната карта.', type: 'error' });
+            return;
+        }
 
         if (!nfcLinkId) {
             setMessage({ text: 'Моля, свържете карта (Сканирайте или въведете ID), преди да запишете.', type: 'error' });
@@ -816,28 +839,41 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
+        // Service cards are unpaid and valid for the whole selected year: store all
+        // 12 monthly entries (amount 0) and set the expiry to December of that year.
+        const isServiceCard = cardType === 'Служебна карта';
+        const nowIso = new Date().toISOString();
+        const initialExpiry = isServiceCard ? `${serviceYear}-12` : expiryDate;
+        const initialRenewalHistory = isServiceCard
+            ? buildYearMonths(serviceYear).map(m => ({ date: nowIso, amount: 0, month: m, paymentMethod: 'Служебна' }))
+            : [{ date: nowIso, amount: effectiveAmount, month: expiryDate, ...renewalPaymentFields }];
+        const initialDetails = isServiceCard
+            ? `Служебна карта за цялата ${serviceYear} г. (без плащане) | Причина: ${serviceReason.trim()}`
+            : `Първоначално плащане: ${effectiveAmount.toFixed(2)} € за месец ${expiryDate} | Начин на плащане: ${paymentLabel}`;
+
         const newClient: Client = {
             id: generatedId,
             name: clientName,
             route: selectedRoute,
             cardType: cardType,
-            amountPaid: effectiveAmount,
-            expiryDate: expiryDate,
+            amountPaid: isServiceCard ? 0 : effectiveAmount,
+            expiryDate: initialExpiry,
             photo: photoValue,
             photoThumb,
             address: (cardType === 'Пенсионерска карта' || cardType === 'Инвалидна карта') ? address : '',
+            serviceReason: isServiceCard ? serviceReason.trim() : '',
             school: cardType === 'Ученическа карта' ? (selectedSchool === 'custom' ? customSchool : selectedSchool) : '',
             municipality: (cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта' || cardType === 'Учителска карта')
                 ? (municipality === MUNICIPALITY_CUSTOM ? customMunicipality.trim() : municipality)
                 : '',
             cardNumber: CARDS_MAPPING[sanitizedNfcId] || '',
-            createdAt: new Date().toISOString(),
-            renewalHistory: [{ date: new Date().toISOString(), amount: effectiveAmount, month: expiryDate, ...renewalPaymentFields }],
+            createdAt: nowIso,
+            renewalHistory: initialRenewalHistory,
             history: [{
-                date: new Date().toISOString(),
+                date: nowIso,
                 action: 'Създаване',
-                details: `Първоначално плащане: ${effectiveAmount.toFixed(2)} € за месец ${expiryDate} | Начин на плащане: ${paymentLabel}`,
-                amount: effectiveAmount,
+                details: initialDetails,
+                amount: isServiceCard ? 0 : effectiveAmount,
                 performedBy: currentUser?.username || 'Админ'
             }]
         };
@@ -845,7 +881,10 @@ const AdminPanel: React.FC = () => {
         await saveClient(newClient);
         const cardNum = getClientCardNumber(newClient);
         const nameWithCard = cardNum ? `${newClient.name} (Карта № ${cardNum})` : newClient.name;
-        await logGlobalActivity('Създаване', nameWithCard, `Нова карта: ${newClient.id}. Сума: ${effectiveAmount.toFixed(2)} €. Регион: ${selectedRoute} | Начин на плащане: ${paymentLabel}`, effectiveAmount);
+        const logDetails = isServiceCard
+            ? `Нова служебна карта: ${newClient.id}. Валидна за цялата ${serviceYear} г. Регион: ${selectedRoute} | Причина: ${serviceReason.trim()}`
+            : `Нова карта: ${newClient.id}. Сума: ${effectiveAmount.toFixed(2)} €. Регион: ${selectedRoute} | Начин на плащане: ${paymentLabel}`;
+        await logGlobalActivity('Създаване', nameWithCard, logDetails, isServiceCard ? 0 : effectiveAmount);
     };
 
     const saveClient = async (client: Client, isNew: boolean = true) => {
@@ -854,7 +893,7 @@ const AdminPanel: React.FC = () => {
             
             if (isNew) {
                 setRegistrationSuccess(client);
-                setClientName(''); setCardType('Нормална карта'); setAddress(''); setSelectedSchool(''); setCustomSchool(''); setMunicipality(''); setCustomMunicipality(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPaymentMethod('В брой'); setBankAmount(''); setCashAmount(''); setPhotoDataURL(null); setNfcLinkId('');
+                setClientName(''); setCardType('Нормална карта'); setAddress(''); setServiceReason(''); setServiceYear(new Date().getFullYear()); setSelectedSchool(''); setCustomSchool(''); setMunicipality(''); setCustomMunicipality(''); setAmountPaid(''); setExpiryDate(getDefaultExpiryMonth()); setPaymentMethod('В брой'); setBankAmount(''); setCashAmount(''); setPhotoDataURL(null); setNfcLinkId('');
                 setShowActionModal(false);
                 setSelectedClient(null);
             } else {
@@ -879,6 +918,39 @@ const AdminPanel: React.FC = () => {
         const renewCash = Number(newCashAmount) || 0;
         const effectiveNewAmount = isMixedRenew ? (renewBank + renewCash) : Number(newAmount);
         const isServiceCard = selectedClient.cardType === 'Служебна карта';
+
+        // Service cards renew for a whole year (unpaid): append all 12 monthly
+        // entries of the chosen year and set the expiry to that December.
+        if (isServiceCard) {
+            if (!newRoute) { alert('Моля, изберете курс.'); return; }
+            const isoNowSvc = new Date().toISOString();
+            const svcRouteChanged = newRoute !== selectedClient.route;
+            const yearEntries = buildYearMonths(newServiceYear).map(m => ({ date: isoNowSvc, amount: 0, month: m, paymentMethod: 'Служебна' }));
+            try {
+                await updateDoc(doc(db, 'clients', selectedClient.id), {
+                    route: newRoute,
+                    expiryDate: `${newServiceYear}-12`,
+                    isCanceled: false,
+                    renewalHistory: arrayUnion(...yearEntries),
+                    history: arrayUnion({
+                        date: isoNowSvc,
+                        action: 'Подновяване',
+                        details: `Служебна карта за цялата ${newServiceYear} г. (без плащане)${svcRouteChanged ? ` | Променен курс: ${selectedClient.route} -> ${newRoute}` : ''}`,
+                        amount: 0,
+                        performedBy: currentUser?.username || 'Админ'
+                    })
+                });
+            } catch (err) {
+                console.error(err);
+                setModalMessage({ text: 'Грешка при подновяване.', type: 'error' });
+                return;
+            }
+            const cardNumSvc = getClientCardNumber(selectedClient);
+            const nameSvc = cardNumSvc ? `${selectedClient.name} (Карта № ${cardNumSvc})` : selectedClient.name;
+            await logGlobalActivity('Подновяване', nameSvc, `Служебна карта за цялата ${newServiceYear} г. ${svcRouteChanged ? `Курс: ${newRoute}` : ''}`, 0);
+            setModalMessage({ text: `Успешно подновена служебна карта за цялата ${newServiceYear} г.${svcRouteChanged ? ` Курсът е сменен на ${newRoute}.` : ''}`, type: 'success' });
+            return;
+        }
 
         if (!newMonth || !newRoute || (effectiveNewAmount <= 0 && !isServiceCard) || Number.isNaN(effectiveNewAmount)) {
             alert(isMixedRenew ? 'Моля, въведете месец, курс и сумите за смесеното плащане.' : 'Моля, въведете валиден месец, сума и курс.');
@@ -2594,6 +2666,34 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             />
                                         </div>
                                     )}
+                                    {cardType === 'Служебна карта' && (
+                                        <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#4dd0e1', fontWeight: 700 }}>Причина за служебна карта (Задължително)</label>
+                                                <textarea
+                                                    rows={2}
+                                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(77, 208, 225, 0.05)', border: '1px solid rgba(77, 208, 225, 0.3)', color: '#4dd0e1', resize: 'vertical', fontFamily: 'inherit' }}
+                                                    value={serviceReason}
+                                                    onChange={e => setServiceReason(e.target.value)}
+                                                    placeholder="напр. роднина на шофьор / договор с Община Плевен"
+                                                    required={cardType === 'Служебна карта'}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#4dd0e1', fontWeight: 700 }}>Абонамент за цялата година</label>
+                                                <select
+                                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid rgba(77, 208, 225, 0.3)', color: '#fff', colorScheme: 'dark' }}
+                                                    value={serviceYear}
+                                                    onChange={e => setServiceYear(Number(e.target.value))}
+                                                >
+                                                    {getServiceYearOptions().map(y => <option key={y} value={y}>{y} г. (Януари – Декември)</option>)}
+                                                </select>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
+                                                    Служебната карта е безплатна и валидна за всичките 12 месеца на избраната година.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     {cardType === 'Ученическа карта' && (
                                         <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                             <div>
@@ -2672,16 +2772,19 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
                                         </select>
                                     </div>
+                                    {cardType !== 'Служебна карта' && (
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Сума (€)</label>
-                                            <input type="number" step="0.01" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} value={amountPaid} onChange={e => setAmountPaid(e.target.value)} required />
+                                            <input type="number" step="0.01" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} value={amountPaid} onChange={e => setAmountPaid(e.target.value)} required={cardType !== 'Служебна карта'} />
                                         </div>
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Месец</label>
-                                            <input type="month" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', colorScheme: 'dark' }} value={expiryDate} onChange={e => setExpiryDate(e.target.value)} required />
+                                            <input type="month" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', colorScheme: 'dark' }} value={expiryDate} onChange={e => setExpiryDate(e.target.value)} required={cardType !== 'Служебна карта'} />
                                         </div>
                                     </div>
+                                    )}
+                                    {cardType !== 'Служебна карта' && (
                                     <div>
                                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Начин на плащане</label>
                                         <PaymentMethodSelector
@@ -2693,6 +2796,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             onCashAmountChange={setCashAmount}
                                         />
                                     </div>
+                                    )}
                                     <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
                                         <label style={{ display: 'block', marginBottom: '0.8rem', color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Свързване на Карта (NFC/Link)</label>
                                         <div className="nfc-connect-container" style={{ display: 'flex', gap: '0.75rem' }}>
@@ -3267,6 +3371,11 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Общо платено</div>
                                             <div style={{ fontWeight: 700, color: 'var(--success-color)', fontSize: '1.1rem' }}>{selectedClient.amountPaid} €</div>
                                         </div>
+                                        {selectedClient.cardType === 'Служебна карта' && (
+                                            <div style={{ gridColumn: 'span 2', padding: '1rem', background: 'rgba(77, 208, 225, 0.08)', borderRadius: '10px', border: '1px solid rgba(77, 208, 225, 0.25)', fontSize: '0.85rem' }}>
+                                                <b style={{ color: '#4dd0e1' }}>Причина за служебна карта:</b> {selectedClient.serviceReason || 'Няма въведена причина'}
+                                            </div>
+                                        )}
                                         {selectedClient.isCanceled && (
                                             <div style={{ gridColumn: 'span 2', padding: '1rem', background: 'rgba(255,0,0,0.1)', borderRadius: '10px', border: '1px solid rgba(255,0,0,0.2)', fontSize: '0.85rem' }}>
                                                 <b style={{ color: 'var(--error-color)' }}>Причина за анулиране:</b> {selectedClient.cancelReason}
@@ -3281,6 +3390,22 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         <div style={{ padding: isMobile ? '1.25rem' : '1.5rem', borderRadius: '12px', background: 'rgba(0,255,150,0.03)', border: '1px solid rgba(0,255,150,0.1)' }}>
                                             <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)', margin: '0 0 1rem 0', fontSize: isMobile ? '1rem' : '1.1rem' }}><RefreshCw size={18} /> Подновяване</h4>
                                             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem', marginBottom: '1rem' }}>
+                                                {selectedClient.cardType === 'Служебна карта' ? (
+                                                    <div style={{ gridColumn: 'span 2' }}>
+                                                        <label style={{ display: 'block', fontSize: '0.7rem', color: '#4dd0e1', marginBottom: '0.3rem', fontWeight: 700 }}>Абонамент за цялата година</label>
+                                                        <select
+                                                            style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(77, 208, 225, 0.3)', borderRadius: '6px', color: '#fff', colorScheme: 'dark' }}
+                                                            value={newServiceYear}
+                                                            onChange={e => setNewServiceYear(Number(e.target.value))}
+                                                        >
+                                                            {getServiceYearOptions().map(y => <option key={y} value={y} style={{ background: '#222' }}>{y} г. (Януари – Декември)</option>)}
+                                                        </select>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
+                                                            Служебната карта е безплатна – ще стане валидна за всичките 12 месеца на избраната година.
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                <>
                                                 <div>
                                                     <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Месец</label>
                                                     <input type="month" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff', colorScheme: 'dark' }} value={newMonth} onChange={e => setNewMonth(e.target.value)} />
@@ -3289,16 +3414,19 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Сума (€)</label>
                                                     <input type="number" placeholder="0.00" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff' }} value={newAmount} onChange={e => setNewAmount(e.target.value)} />
                                                 </div>
+                                                </>
+                                                )}
                                                 <div style={{ gridColumn: 'span 2' }}>
                                                     <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Курс (Маршрут)</label>
-                                                    <select 
-                                                        style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff', colorScheme: 'dark' }} 
-                                                        value={newRoute} 
+                                                    <select
+                                                        style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff', colorScheme: 'dark' }}
+                                                        value={newRoute}
                                                         onChange={e => setNewRoute(e.target.value)}
                                                     >
                                                         {ROUTES.map(r => <option key={r} value={r} style={{ background: '#222' }}>{r}</option>)}
                                                     </select>
                                                 </div>
+                                                {selectedClient.cardType !== 'Служебна карта' && (
                                                 <div style={{ gridColumn: 'span 2' }}>
                                                     <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Начин на плащане</label>
                                                     <PaymentMethodSelector
@@ -3311,6 +3439,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                         activeColor="var(--success-color)"
                                                     />
                                                 </div>
+                                                )}
                                             </div>
                                             <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
                                         </div>

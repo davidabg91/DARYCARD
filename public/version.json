@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.08.28",
-  "buildDate": "2026-07-01T08:28:00Z",
-  "notes": "Scan view: make the green validity panel stretch full width (edge to edge) instead of hugging the text."
+  "version": "2026.07.01.12.00",
+  "buildDate": "2026-07-01T12:00:00Z",
+  "notes": "Service cards: whole-year (unpaid) subscription (12 monthly entries) on register/renew, plus a required reason field (relative of a driver, contract with a община, etc.)."
 }
