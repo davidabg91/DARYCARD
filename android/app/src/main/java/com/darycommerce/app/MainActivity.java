@@ -5,10 +5,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.Toast;
 import com.getcapacitor.BridgeActivity;
 import com.mypos.smartsdk.MyPOSAPI;
@@ -107,14 +110,26 @@ public class MainActivity extends BridgeActivity {
         // --- WebView Configuration (Enable Voice/Audio Autoplay) ---
         this.bridge.getWebView().getSettings().setMediaPlaybackRequiresUserGesture(false);
 
-        // Black overlay used to make the screen look off while idle. Not clickable /
-        // focusable, so touches still pass through and wake the screen.
+        // Idle overlay: a black screen with a faint centred logo (screensaver look).
+        // Not clickable / focusable, so touches still pass through and wake the screen.
         try {
-            dimOverlay = new View(this);
-            dimOverlay.setBackgroundColor(Color.BLACK);
-            dimOverlay.setClickable(false);
-            dimOverlay.setFocusable(false);
-            dimOverlay.setVisibility(View.GONE);
+            FrameLayout overlay = new FrameLayout(this);
+            overlay.setBackgroundColor(Color.BLACK);
+            overlay.setClickable(false);
+            overlay.setFocusable(false);
+            overlay.setVisibility(View.GONE);
+
+            ImageView logo = new ImageView(this);
+            logo.setImageResource(R.drawable.splash_logo);
+            logo.setAdjustViewBounds(true);
+            logo.setAlpha(0.55f); // faint, so the screen stays mostly dark (saves power)
+            int logoW = (int) (200 * getResources().getDisplayMetrics().density); // ~200dp
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                logoW, FrameLayout.LayoutParams.WRAP_CONTENT);
+            lp.gravity = Gravity.CENTER;
+            overlay.addView(logo, lp);
+
+            dimOverlay = overlay;
             addContentView(dimOverlay, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         } catch (Exception e) {
