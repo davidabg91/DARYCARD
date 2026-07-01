@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.12.13",
-  "buildDate": "2026-07-01T12:13:00Z",
-  "notes": "Clients list: sort controls (last added [default], A–Z, by card type, paid first, unpaid first) and a card-type filter."
+  "version": "2026.07.01.12.20",
+  "buildDate": "2026-07-01T12:20:00Z",
+  "notes": "Service cards on the scan/activate profile: whole-year subscription + required reason field on activation, and whole-year quick-renew (matching the admin panel)."
 }

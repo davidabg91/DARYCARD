@@ -28,6 +28,7 @@ interface Client {
     history?: { date: string; action: string; details?: string; amount?: number; performedBy?: string; }[];
     cardType?: string;
     address?: string;
+    serviceReason?: string;
     school?: string;
     municipality?: string;
     nfcUid?: string;
@@ -46,6 +47,17 @@ const ROUTES = [
     "Д. Дъбник - Садовец", "Д.Митрополия - Тръстеник", "Д.Митрополия - Славовица",
     "Пордим - Каменец", "Пордим - Згалево"
 ];
+
+// Service ("Служебна") cards are unpaid and valid for a whole year. Validity is
+// decided per month (a renewalHistory entry whose `month` equals the current
+// YYYY-MM), so a whole-year subscription is stored as the 12 monthly entries.
+const buildYearMonths = (year: number): string[] =>
+    Array.from({ length: 12 }, (_, i) => `${year}-${(i + 1).toString().padStart(2, '0')}`);
+
+const getServiceYearOptions = (): number[] => {
+    const y = new Date().getFullYear();
+    return [y - 1, y, y + 1, y + 2];
+};
 
 const formatTimeAgo = (totalSecs: number) => {
     if (totalSecs < 60) {
@@ -164,6 +176,11 @@ const ClientProfile: React.FC = () => {
     const [regCashAmount, setRegCashAmount] = useState('');
     const [regPhoto, setRegPhoto] = useState<string | null>(null);
     const [regAddress, setRegAddress] = useState('');
+    // Service ("Служебна") cards: reason for issuing + the year the whole-year
+    // (unpaid) subscription covers, for both activation and renewal.
+    const [regServiceReason, setRegServiceReason] = useState('');
+    const [regServiceYear, setRegServiceYear] = useState(new Date().getFullYear());
+    const [renewServiceYear, setRenewServiceYear] = useState(new Date().getFullYear());
 
     const getSuggestedMonth = () => {
         const now = new Date();
@@ -516,8 +533,13 @@ const ClientProfile: React.FC = () => {
             alert('Моля, въведете адрес.');
             return;
         }
+        if (regCardType === 'Служебна карта' && !regServiceReason.trim()) {
+            alert('Моля, въведете причина за издаване на служебната карта.');
+            return;
+        }
         const now = new Date();
-        const expiryMonth = regMonth;
+        const isServiceCard = regCardType === 'Служебна карта';
+        const expiryMonth = isServiceCard ? `${regServiceYear}-12` : regMonth;
 
         // Upload the photo to Storage; keep only the URL in the document. Fall back to
         // the inline base64 image if the upload fails so activation never breaks.
@@ -549,6 +571,14 @@ const ClientProfile: React.FC = () => {
             return;
         }
 
+        // Service cards: whole selected year (12 monthly entries, amount 0).
+        const initialRenewalHistory = isServiceCard
+            ? buildYearMonths(regServiceYear).map(m => ({ date: now.toISOString(), amount: 0, month: m, paymentMethod: 'Служебна' }))
+            : [{ date: now.toISOString(), amount: regEffectiveAmount, month: expiryMonth, ...regPaymentFields }];
+        const initialDetails = isServiceCard
+            ? `Служебна карта за цялата ${regServiceYear} г. (без плащане) | Причина: ${regServiceReason.trim()}`
+            : `Първоначално плащане: ${regEffectiveAmount.toFixed(2)} € за месец ${expiryMonth} | Начин на плащане: ${regPaymentLabel}`;
+
         const newClient: Client = {
             id,
             nfcUid: urlUid.toUpperCase(),
@@ -556,6 +586,7 @@ const ClientProfile: React.FC = () => {
             route: regRoute,
             cardType: regCardType,
             address: (regCardType === 'Пенсионерска карта' || regCardType === 'Инвалидна карта') ? regAddress : '',
+            serviceReason: isServiceCard ? regServiceReason.trim() : '',
             school: regCardType === 'Ученическа карта' ? (regSelectedSchool === 'custom' ? regCustomSchool : regSelectedSchool) : '',
             municipality: (regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта' || regCardType === 'Учителска карта')
                 ? (regMunicipality === MUNICIPALITY_CUSTOM ? regCustomMunicipality.trim() : regMunicipality)
@@ -565,13 +596,13 @@ const ClientProfile: React.FC = () => {
             photo: photoValue,
             photoThumb,
             createdAt: now.toISOString(),
-            amountPaid: regEffectiveAmount,
-            renewalHistory: [{ date: now.toISOString(), amount: regEffectiveAmount, month: expiryMonth, ...regPaymentFields }],
+            amountPaid: isServiceCard ? 0 : regEffectiveAmount,
+            renewalHistory: initialRenewalHistory,
             history: [{
                 date: now.toISOString(),
                 action: 'Активиране (Сканиране)',
-                details: `Първоначално плащане: ${regEffectiveAmount.toFixed(2)} € за месец ${expiryMonth} | Начин на плащане: ${regPaymentLabel}`,
-                amount: regEffectiveAmount,
+                details: initialDetails,
+                amount: isServiceCard ? 0 : regEffectiveAmount,
                 performedBy: currentUser?.username || 'Система (Линк)'
             }]
         };
@@ -585,8 +616,10 @@ const ClientProfile: React.FC = () => {
                     performedBy: currentUser?.username || 'Система (Линк)',
                     action: 'Създаване',
                     targetName: regName,
-                    details: `Нова карта (NFC): ${id}. Сума: ${regEffectiveAmount.toFixed(2)} €. Регион: ${regRoute} | Начин на плащане: ${regPaymentLabel}`,
-                    amount: regEffectiveAmount
+                    details: isServiceCard
+                        ? `Нова служебна карта (NFC): ${id}. Валидна за цялата ${regServiceYear} г. Регион: ${regRoute} | Причина: ${regServiceReason.trim()}`
+                        : `Нова карта (NFC): ${id}. Сума: ${regEffectiveAmount.toFixed(2)} €. Регион: ${regRoute} | Начин на плащане: ${regPaymentLabel}`,
+                    amount: isServiceCard ? 0 : regEffectiveAmount
                 });
                 const cardNum = CARDS_MAPPING[id] || '';
                 const nameWithCard = cardNum ? `${regName} (Карта № ${cardNum})` : regName;
@@ -1041,7 +1074,37 @@ const ClientProfile: React.FC = () => {
                                         )}
                                     </div>
                                 )}
+                                {regCardType === 'Служебна карта' && (
+                                    <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: '#4dd0e1', marginBottom: '0.4rem', display: 'block', fontWeight: 800 }}>ПРИЧИНА ЗА СЛУЖЕБНА КАРТА (Задължително)</label>
+                                            <textarea
+                                                rows={2}
+                                                value={regServiceReason}
+                                                onChange={e => setRegServiceReason(e.target.value)}
+                                                style={{ width: '100%', padding: '1rem', background: 'rgba(77,208,225,0.05)', border: '1px solid rgba(77,208,225,0.3)', borderRadius: '12px', color: '#4dd0e1', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+                                                placeholder="напр. роднина на шофьор / договор с Община Плевен"
+                                                required={regCardType === 'Служебна карта'}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: '#4dd0e1', marginBottom: '0.4rem', display: 'block', fontWeight: 800 }}>АБОНАМЕНТ ЗА ЦЯЛАТА ГОДИНА</label>
+                                            <select
+                                                value={regServiceYear}
+                                                onChange={e => setRegServiceYear(Number(e.target.value))}
+                                                style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(77,208,225,0.3)', borderRadius: '12px', color: '#fff', outline: 'none' }}
+                                            >
+                                                {getServiceYearOptions().map(y => <option key={y} value={y}>{y} г. (Януари – Декември)</option>)}
+                                            </select>
+                                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.4rem' }}>
+                                                Служебната карта е безплатна и валидна за всичките 12 месеца на избраната година.
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МАРШРУТ (КУРС)</label><select value={regRoute} onChange={e => setRegRoute(e.target.value)} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}><option value="">Избери маршрут...</option>{ROUTES.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
+                                {regCardType !== 'Служебна карта' && (
+                                <>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>СУМА (€)</label><input type="number" value={regAmount} onChange={e => setRegAmount(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} /></div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МЕСЕЦ</label><input type="month" value={regMonth} onChange={e => setRegMonth(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none', colorScheme: 'dark' }} /></div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -1057,6 +1120,8 @@ const ClientProfile: React.FC = () => {
                                         surface="rgba(255,255,255,0.03)"
                                     />
                                 </div>
+                                </>
+                                )}
                                 <button onClick={handleRegister} style={{ marginTop: '1rem', padding: '1.2rem', background: '#00e676', color: '#ffffff', borderRadius: '12px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}>ЗАПАЗИ И АКТИВИРАЙ</button>
                                 <button onClick={() => setIsRegistering(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', cursor: 'pointer' }}>Отказ</button>
                             </div>
@@ -1425,31 +1490,45 @@ const ClientProfile: React.FC = () => {
                                         <button onClick={() => setShowQuickRenew(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontWeight: 900, cursor: 'pointer' }}>ОТКАЗ</button>
                                     </div>
                                     
+                                    {client?.cardType === 'Служебна карта' ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <label style={{ fontSize: '0.6rem', color: '#4dd0e1', fontWeight: 900 }}>АБОНАМЕНТ ЗА ЦЯЛАТА ГОДИНА</label>
+                                            <select
+                                                value={renewServiceYear}
+                                                onChange={(e) => setRenewServiceYear(Number(e.target.value))}
+                                                style={{ background: '#111', border: '1px solid rgba(77,208,225,0.4)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, outline: 'none', colorScheme: 'dark', width: '100%', boxSizing: 'border-box' }}
+                                            >
+                                                {getServiceYearOptions().map(y => <option key={y} value={y}>{y} г. (Януари – Декември)</option>)}
+                                            </select>
+                                            <div style={{ fontSize: '0.68rem', opacity: 0.5, marginTop: '2px' }}>Служебната карта е безплатна – валидна за всичките 12 месеца.</div>
+                                        </div>
+                                    ) : (
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                             <label style={{ fontSize: '0.6rem', opacity: 0.5, fontWeight: 900 }}>МЕСЕЦ</label>
-                                            <input 
-                                                type="month" 
-                                                value={renewalMonth} 
+                                            <input
+                                                type="month"
+                                                value={renewalMonth}
                                                 onChange={(e) => setRenewalMonth(e.target.value)}
                                                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, colorScheme: 'dark', width: '100%', boxSizing: 'border-box' }}
                                             />
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                             <label style={{ fontSize: '0.6rem', opacity: 0.5, fontWeight: 900 }}>СУМА (€)</label>
-                                            <input 
-                                                type="number" 
-                                                value={renewalAmount} 
+                                            <input
+                                                type="number"
+                                                value={renewalAmount}
                                                 onChange={(e) => setRenewalAmount(Number(e.target.value))}
                                                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, width: '100%', boxSizing: 'border-box' }}
                                             />
                                         </div>
                                     </div>
+                                    )}
 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                         <label style={{ fontSize: '0.6rem', opacity: 0.5, fontWeight: 900 }}>МАРШРУТ</label>
-                                        <select 
-                                            value={renewalRoute} 
+                                        <select
+                                            value={renewalRoute}
                                             onChange={(e) => setRenewalRoute(e.target.value)}
                                             style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, outline: 'none', colorScheme: 'dark', width: '100%', boxSizing: 'border-box' }}
                                         >
@@ -1458,6 +1537,7 @@ const ClientProfile: React.FC = () => {
                                         </select>
                                     </div>
 
+                                    {client?.cardType !== 'Служебна карта' && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                         <label style={{ fontSize: '0.6rem', opacity: 0.5, fontWeight: 900 }}>НАЧИН НА ПЛАЩАНЕ</label>
                                         <PaymentMethodSelector
@@ -1471,12 +1551,51 @@ const ClientProfile: React.FC = () => {
                                             surface="rgba(255,255,255,0.03)"
                                         />
                                     </div>
+                                    )}
 
                                     <button
                                         disabled={isUpdating}
                                         onClick={async () => {
                                             setIsUpdating(true);
                                             try {
+                                                // Service cards renew for a whole year (unpaid): append all 12
+                                                // monthly entries of the chosen year, expiry = that December.
+                                                if (client?.cardType === 'Служебна карта') {
+                                                    if (!renewalRoute) { playErrorSound(); setIsUpdating(false); return; }
+                                                    const svcIso = new Date().toISOString();
+                                                    const svcEntries = buildYearMonths(renewServiceYear).map(m => ({ date: svcIso, amount: 0, month: m, paymentMethod: 'Служебна' }));
+                                                    const clientRefSvc = doc(db, 'clients', client?.id || '');
+                                                    await updateDoc(clientRefSvc, {
+                                                        expiryDate: `${renewServiceYear}-12`,
+                                                        route: renewalRoute,
+                                                        isCanceled: false,
+                                                        renewalHistory: arrayUnion(...svcEntries),
+                                                        history: arrayUnion({
+                                                            date: svcIso,
+                                                            action: 'БЪРЗО ПОДНОВЯВАНЕ (PROFILE)',
+                                                            amount: 0,
+                                                            month: `${renewServiceYear}-12`,
+                                                            route: renewalRoute,
+                                                            details: `Служебна карта за цялата ${renewServiceYear} г. (без плащане)`,
+                                                            performedBy: currentUser?.username
+                                                        })
+                                                    });
+                                                    try {
+                                                        await addDoc(collection(db, 'activity_logs'), {
+                                                            timestamp: svcIso,
+                                                            performedBy: currentUser?.username || 'Admin',
+                                                            action: 'Подновяване',
+                                                            targetName: client?.name || 'Клиент',
+                                                            details: `Служебна карта за цялата ${renewServiceYear} г. Маршрут: ${renewalRoute}`,
+                                                            amount: 0
+                                                        });
+                                                    } catch (logErr) { console.error("Log error", logErr); }
+                                                    playSuccessSound();
+                                                    setShowQuickRenew(false);
+                                                    setShowSuccessModal(true);
+                                                    setIsUpdating(false);
+                                                    return;
+                                                }
                                                 const isMixedQR = renewalPaymentMethod === MIXED_METHOD;
                                                 const qrBank = Number(renewalBankAmount) || 0;
                                                 const qrCash = Number(renewalCashAmount) || 0;
@@ -1582,7 +1701,7 @@ const ClientProfile: React.FC = () => {
                                 <CheckCircle size={60} color="#00e676" />
                             </div>
                             <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '1rem' }}>ГОТОВО!</h2>
-                            <p style={{ opacity: 0.6, marginBottom: '2rem', lineHeight: '1.6' }}>Абонаментът на <b>{client?.name}</b> бе подновен успешно за <b>{renewalMonth}</b>.</p>
+                            <p style={{ opacity: 0.6, marginBottom: '2rem', lineHeight: '1.6' }}>Абонаментът на <b>{client?.name}</b> бе подновен успешно за <b>{client?.cardType === 'Служебна карта' ? `цялата ${renewServiceYear} г.` : renewalMonth}</b>.</p>
                             <button 
                                 onClick={() => setShowSuccessModal(false)}
                                 style={{ width: '100%', background: '#fff', color: '#000', padding: '1.2rem', borderRadius: '18px', border: 'none', fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer' }}
