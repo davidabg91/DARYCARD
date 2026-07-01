@@ -26,9 +26,9 @@ public class MainActivity extends BridgeActivity {
     // screen with a pure-black overlay so it looks off (some terminals ignore a
     // 0.0 brightness override, hence the overlay). Any touch OR a scanned card
     // restores it. The screen never truly turns off, so NFC scanning keeps
-    // running. TEST value: 10s — raise DIM_DELAY_MS later.
+    // running.
     private static MainActivity instance;
-    private static final long DIM_DELAY_MS = 10_000L;   // dim after 10 seconds
+    private static final long DIM_DELAY_MS = 120_000L;  // dim after 2 minutes of inactivity
     private static final float DIM_LEVEL = 0.01f;        // lowest reliably-honored backlight
     private static final float FULL_LEVEL = 1.0f;        // full brightness on wake
     private final Handler dimHandler = new Handler(Looper.getMainLooper());
