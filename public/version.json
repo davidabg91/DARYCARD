@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.12.44",
-  "buildDate": "2026-07-01T12:44:00Z",
-  "notes": "Clients list: show each client's card type next to the route (desktop table column + mobile card badge)."
+  "version": "2026.07.01.13.21",
+  "buildDate": "2026-07-01T13:21:00Z",
+  "notes": "Registration guard: refuse to activate/register a card whose id is under 8 chars (a truncated/partial NFC read, e.g. 'JST'/'SH5') with a 'scan again' message."
 }

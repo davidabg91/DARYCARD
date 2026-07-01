@@ -802,7 +802,18 @@ const AdminPanel: React.FC = () => {
         }
 
         const sanitizedNfcId = nfcLinkId ? sanitizeId(nfcLinkId) : '';
-        
+
+        // Guard against a truncated/partial NFC read: real card ids are 8–9 chars.
+        // A shorter id (e.g. "JST", "SH5") means the card was read incompletely,
+        // so refuse instead of creating a profile under a broken id.
+        if (sanitizedNfcId && sanitizedNfcId.length < 8) {
+            setMessage({
+                text: `Картата изглежда прочетена НЕПЪЛНО (къс код: "${sanitizedNfcId}"). Моля, сканирайте/въведете картата отново.`,
+                type: 'error'
+            });
+            return;
+        }
+
         // Card ID Occupied Check - Hard stop if ID exists
         const idOccupied = clients.find(c => c.id === sanitizedNfcId);
         if (idOccupied) {

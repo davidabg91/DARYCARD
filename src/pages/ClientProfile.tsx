@@ -523,6 +523,13 @@ const ClientProfile: React.FC = () => {
             alert('Моля, попълнете всички полета и направете снимка.');
             return;
         }
+        // Guard against a truncated/partial NFC read: real card ids are 8–9 chars.
+        // A shorter id (e.g. "JST", "SH5") means the reader opened an incomplete
+        // link, so refuse activation instead of creating a broken profile.
+        if (id.length < 8) {
+            alert(`Картата изглежда прочетена НЕПЪЛНО (къс код: "${id}").\n\nМоля, сканирайте картата отново — по-бавно и плътно до четеца — преди да я активирате.`);
+            return;
+        }
         // Teachers require an община; disabled cards require an address (like pensioners).
         const resolvedMunicipality = regMunicipality === MUNICIPALITY_CUSTOM ? regCustomMunicipality.trim() : regMunicipality;
         if ((regCardType === 'Учителска карта' || regCardType === 'Ученическа карта' || regCardType === 'Пенсионерска карта') && !resolvedMunicipality) {
