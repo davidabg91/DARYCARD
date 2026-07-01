@@ -109,6 +109,12 @@ const ROUTES = [
     "Пордим - Каменец", "Пордим - Згалево"
 ];
 
+// The card types offered on registration, reused for the clients-list filter.
+const CARD_TYPES = [
+    "Нормална карта", "Ученическа карта", "Пенсионерска карта",
+    "Учителска карта", "Инвалидна карта", "Служебна карта"
+];
+
 const generateClientId = () => {
     // Collision-resistant: prefer crypto.randomUUID, fall back to crypto.getRandomValues.
     // (The old Math.random().substr(2,9) was both deprecated and prone to duplicates
@@ -375,12 +381,15 @@ const AdminPanel: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
     const [filterRoute, setFilterRoute] = useState<string>('all');
+    const [filterCardType, setFilterCardType] = useState<string>('all');
+    // How the clients list is ordered. Defaults to the most recently added.
+    const [sortBy, setSortBy] = useState<'recent' | 'alpha' | 'cardType' | 'paid' | 'unpaid'>('recent');
 
     // Reset the visible-client window whenever the filters change, so a new
     // search always starts from the first 20 matches.
     useEffect(() => {
         setVisibleClients(20);
-    }, [searchTerm, filterRoute, filterMonth]);
+    }, [searchTerm, filterRoute, filterMonth, filterCardType, sortBy]);
 
     const [reportPeriodType, setReportPeriodType] = useState<'month' | 'day'>('day');
     const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -1169,14 +1178,34 @@ const AdminPanel: React.FC = () => {
             cCardNum.includes(sSanitized);
         
         const matchesRoute = filterRoute === 'all' || c.route === filterRoute;
-        
-        return matchesSearch && matchesRoute;
+        const matchesCardType = filterCardType === 'all' || (c.cardType || 'Нормална карта') === filterCardType;
+
+        return matchesSearch && matchesRoute && matchesCardType;
     }).sort((a, b) => {
-        const statusA = getClientStatusForMonth(a, filterMonth);
-        const statusB = getClientStatusForMonth(b, filterMonth);
-        
-        const weights: Record<string, number> = { 'Неплатен': 0, 'Платен': 1, 'Анулиран': 2 };
-        return weights[statusA] - weights[statusB];
+        switch (sortBy) {
+            case 'alpha':
+                return a.name.localeCompare(b.name, 'bg');
+            case 'cardType': {
+                const ta = a.cardType || 'Нормална карта';
+                const tb = b.cardType || 'Нормална карта';
+                if (ta !== tb) return ta.localeCompare(tb, 'bg');
+                return a.name.localeCompare(b.name, 'bg');
+            }
+            case 'paid':
+            case 'unpaid': {
+                const statusA = getClientStatusForMonth(a, filterMonth);
+                const statusB = getClientStatusForMonth(b, filterMonth);
+                const weights: Record<string, number> = sortBy === 'unpaid'
+                    ? { 'Неплатен': 0, 'Платен': 1, 'Анулиран': 2 }
+                    : { 'Платен': 0, 'Неплатен': 1, 'Анулиран': 2 };
+                if (weights[statusA] !== weights[statusB]) return weights[statusA] - weights[statusB];
+                return a.name.localeCompare(b.name, 'bg');
+            }
+            case 'recent':
+            default:
+                // Most recently added first (createdAt is an ISO string).
+                return (b.createdAt || '').localeCompare(a.createdAt || '');
+        }
     });
     
     // Financial Calculations for Accountant
@@ -2265,21 +2294,48 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                             />
                         </div>
                         
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
-                            <select 
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                                title="Подреждане"
+                                style={{ flex: 1, minWidth: '150px', padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.3)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700 }}
+                            >
+                                <option value="recent" style={{ background: '#222' }}>↓ Последно добавени</option>
+                                <option value="alpha" style={{ background: '#222' }}>А–Я (Азбучен ред)</option>
+                                <option value="cardType" style={{ background: '#222' }}>По вид карта</option>
+                                <option value="paid" style={{ background: '#222' }}>Първо платени</option>
+                                <option value="unpaid" style={{ background: '#222' }}>Първо неплатени</option>
+                            </select>
+
+                            <select
+                                value={filterCardType}
+                                onChange={(e) => setFilterCardType(e.target.value)}
+                                title="Вид карта"
+                                style={{ flex: 1, minWidth: '150px', padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                            >
+                                <option value="all" style={{ background: '#222' }}>Всички видове карти</option>
+                                {CARD_TYPES.map(t => (
+                                    <option key={t} value={t} style={{ background: '#222' }}>{t}</option>
+                                ))}
+                            </select>
+
+                            <select
                                 value={filterMonth}
                                 onChange={(e) => setFilterMonth(e.target.value)}
-                                style={{ flex: 1, padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                                title="Месец за статус"
+                                style={{ flex: 1, minWidth: '120px', padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
                             >
                                 {allMonths.map(m => (
                                     <option key={m} value={m} style={{ background: '#222' }}>{m}</option>
                                 ))}
                             </select>
 
-                            <select 
+                            <select
                                 value={filterRoute}
                                 onChange={(e) => setFilterRoute(e.target.value)}
-                                style={{ flex: 1, padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                                title="Курс"
+                                style={{ flex: 1, minWidth: '150px', padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
                             >
                                 <option value="all" style={{ background: '#222' }}>Всички Курсове</option>
                                 {ROUTES.map(r => (

@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.12.00",
-  "buildDate": "2026-07-01T12:00:00Z",
-  "notes": "Service cards: whole-year (unpaid) subscription (12 monthly entries) on register/renew, plus a required reason field (relative of a driver, contract with a община, etc.)."
+  "version": "2026.07.01.12.13",
+  "buildDate": "2026-07-01T12:13:00Z",
+  "notes": "Clients list: sort controls (last added [default], A–Z, by card type, paid first, unpaid first) and a card-type filter."
 }
