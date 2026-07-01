@@ -2366,6 +2366,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                     <tr>
                                         <th>Клиент</th>
                                         <th>Курс</th>
+                                        <th>Вид карта</th>
                                         <th>Платено (€)</th>
                                         <th>Статус за {filterMonth}</th>
                                         <th>Действия</th>
@@ -2412,6 +2413,20 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                             {client.route}
                                                         </span>
                                                     </td>
+                                                    <td>
+                                                        <span style={{
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 700,
+                                                            color: 'var(--text-secondary)',
+                                                            padding: '0.2rem 0.6rem',
+                                                            borderRadius: '6px',
+                                                            background: 'rgba(255,255,255,0.05)',
+                                                            border: '1px solid var(--surface-border)',
+                                                            whiteSpace: 'nowrap'
+                                                        }}>
+                                                            {client.cardType || 'Нормална карта'}
+                                                        </span>
+                                                    </td>
                                                     <td style={{ fontWeight: 700, color: getMonthPayment(client, filterMonth) > 0 ? 'var(--success-color)' : 'var(--text-secondary)' }}>
                                                         {getMonthPayment(client, filterMonth)} €
                                                     </td>
@@ -2455,7 +2470,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                            <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                                                 Няма намерени клиенти по този критерий.
                                             </td>
                                         </tr>
@@ -2495,12 +2510,20 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     </div>
                                                 </div>
                                             </div>
-                                            <span style={{ 
-                                                fontSize: '0.7rem', fontWeight: 700, color: getRouteColor(client.route),
-                                                padding: '0.2rem 0.6rem', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${getRouteColor(client.route)}`
-                                            }}>
-                                                {client.route}
-                                            </span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
+                                                <span style={{
+                                                    fontSize: '0.7rem', fontWeight: 700, color: getRouteColor(client.route),
+                                                    padding: '0.2rem 0.6rem', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${getRouteColor(client.route)}`, whiteSpace: 'nowrap'
+                                                }}>
+                                                    {client.route}
+                                                </span>
+                                                <span style={{
+                                                    fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)',
+                                                    padding: '0.15rem 0.5rem', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', whiteSpace: 'nowrap'
+                                                }}>
+                                                    {client.cardType || 'Нормална карта'}
+                                                </span>
+                                            </div>
                                         </div>
                                         
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '10px' }}>

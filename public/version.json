@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.12.40",
-  "buildDate": "2026-07-01T12:40:00Z",
-  "notes": "Reports: pensioner & student register lists drop the 'Направление' and 'Плащане' columns (both preview and print)."
+  "version": "2026.07.01.12.44",
+  "buildDate": "2026-07-01T12:44:00Z",
+  "notes": "Clients list: show each client's card type next to the route (desktop table column + mobile card badge)."
 }
