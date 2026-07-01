@@ -66,6 +66,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     const [loading, setLoading] = useState(true);
     const [showManagement, setShowManagement] = useState(false);
     const [unregistered, setUnregistered] = useState(false);
+    // Offline AND no cached data for this card (different from "not registered").
+    const [offlineNoData, setOfflineNoData] = useState(false);
     const [showPhotoModal, setShowPhotoModal] = useState(false);
     // Anti-passback: seconds since the previous scan when it was < 300s (5 min) ago (null = ok)
     const [passbackSecs, setPassbackSecs] = useState<number | null>(null);
@@ -99,6 +101,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
         setShowAds(false); // INTERRUPT ADS ON NEW SCAN
         setPassbackSecs(null);
         setIsCloned(false);
+        setOfflineNoData(false);
     }
 
     // Use refs for values needed in the effect timer to avoid dependency loops
@@ -164,20 +167,26 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     const playSuccessRef = useRef(playSuccessSound);
     useEffect(() => { playSuccessRef.current = playSuccessSound; }, [playSuccessSound]);
 
-    // 📡 SMART PING: Verified internet check
+    // 📡 SMART PING: verified internet check. In the bundled APK `/version.json` is a
+    // LOCAL file, so pinging it always "succeeds" — we must ping the REAL server.
     const checkActualStatus = useCallback(async () => {
+         if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            setIsActuallyOnline(false);
+            return;
+         }
          const controller = new AbortController();
-         const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+         const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
          try {
-            const entropy = Math.random().toString(36).substring(7);
-            const res = await fetch(`/version.json?t=${Date.now()}&e=${entropy}`, { 
-                method: 'HEAD', 
+            // no-cors: we only care that the request reaches the network (opaque
+            // response). Reaching the server => online; a network error => offline.
+            await fetch(`https://darycommerce.com/version.json?t=${Date.now()}`, {
+                method: 'HEAD',
+                mode: 'no-cors',
                 cache: 'no-store',
-                signal: controller.signal 
+                signal: controller.signal
             });
             clearTimeout(timeoutId);
-            const isOnline = res.ok;
-            setIsActuallyOnline(isOnline);
+            setIsActuallyOnline(true);
          } catch {
             clearTimeout(timeoutId);
             setIsActuallyOnline(false);
@@ -379,13 +388,25 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                     else playSuccessRef.current();
                 } else {
                     playErrorRef.current();
-                    setUnregistered(true);
+                    // Distinguish "offline & no cached data for this card" from a card
+                    // that is genuinely not registered (only the latter is "invalid").
+                    const offline = (typeof navigator !== 'undefined' && !navigator.onLine) || snap.metadata.fromCache;
+                    if (offline) {
+                        setOfflineNoData(true);
+                    } else {
+                        setUnregistered(true);
+                    }
                 }
                 setLoading(false);
             }
         }).catch(err => {
             console.error("Transit fetch error:", err);
-            if (isMounted) setLoading(false);
+            if (isMounted) {
+                // The read failed entirely (typically offline / Firestore unavailable).
+                playErrorRef.current();
+                setOfflineNoData(true);
+                setLoading(false);
+            }
         });
 
         return () => {
@@ -425,7 +446,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
         ? [...renewalHistory].sort((a, b) => b.month.localeCompare(a.month))[0].month 
         : currentMonthStr;
     const isValid = client && !client.isCanceled && hasPaidCurrentMonth && !isCloned;
-    const themeColor = unregistered ? '#ff9100' : (isCloned ? '#ff1744' : (isValid ? '#00e676' : '#ff1744'));
+    const themeColor = offlineNoData ? '#29b6f6' : unregistered ? '#ff9100' : (isCloned ? '#ff1744' : (isValid ? '#00e676' : '#ff1744'));
 
     const getCardTypeColor = (type?: string) => {
         if (!type) return 'rgba(255,255,255,0.4)';
@@ -623,7 +644,18 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                         zIndex: 10
                     }} onClick={(e) => e.stopPropagation()}>
                         
-                        {unregistered ? (
+                        {offlineNoData ? (
+                            <div style={{ padding: '3rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', textAlign: 'center' }}>
+                               <div style={{ background: 'rgba(41,182,246,0.12)', padding: '20px', borderRadius: '50%' }}>
+                                   <AlertTriangle size={80} color="#29b6f6" />
+                               </div>
+                               <h2 style={{ fontSize: '2.3rem', fontWeight: 900 }}>НЯМА ВРЪЗКА</h2>
+                               <p style={{ opacity: 0.75, fontSize: '1.05rem', lineHeight: 1.5 }}>
+                                   Няма интернет и няма запазени данни за тази карта.<br/>
+                                   Свържете се с мрежата и сканирайте отново.
+                               </p>
+                            </div>
+                        ) : unregistered ? (
                             <div style={{ padding: '3rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', textAlign: 'center' }}>
                                <div style={{ background: 'rgba(255,145,0,0.1)', padding: '20px', borderRadius: '50%' }}>
                                    <XCircle size={80} color="#ff9100" />
@@ -750,7 +782,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                 </div>
 
                 {/* MANAGEMENT SECTION - BELOW THE FOLD */}
-                {!unregistered && (
+                {!unregistered && !offlineNoData && (
                     <div style={{ width: '100%', paddingBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
                         
                         {/* ADMIN / MODERATOR QUICK ACTIONS - NOW ALWAYS VISIBLE FOR ADMINS */}

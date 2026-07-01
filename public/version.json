@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.07.21",
-  "buildDate": "2026-07-01T07:21:00Z",
-  "notes": "Scan view: make the validity panel full-width (edge to edge) so 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА' fits on one line and the month is not cut off."
+  "version": "2026.07.01.08.15",
+  "buildDate": "2026-07-01T08:15:00Z",
+  "notes": "Scan view: correctly detect offline (ping the real server, not the bundled file); when offline with no cached data show a 'НЯМА ВРЪЗКА' warning instead of 'invalid card'."
 }
