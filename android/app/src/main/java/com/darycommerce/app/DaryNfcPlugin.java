@@ -117,6 +117,7 @@ public class DaryNfcPlugin extends Plugin {
                     while (isScanningEnabled.get() && isBound.get()) {
                         try {
                             if (UltralightManagement.getInstance().detect(10)) {
+                                MainActivity.wakeFromScan();
                                 processCardStable();
                                 
                                 UltralightManagement.getInstance().close(50);
