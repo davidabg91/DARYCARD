@@ -58,7 +58,9 @@ export const createStaffUser = functions.https.onCall(async (data, context) => {
 
     const email = String(data?.email || "").trim();
     const password = String(data?.password || "");
-    const role = data?.role === "admin" ? "admin" : "moderator";
+    const role = ["admin", "moderator", "inspector"].includes(data?.role)
+        ? data.role
+        : "moderator";
 
     if (!email || password.length < 6) {
         throw new functions.https.HttpsError(

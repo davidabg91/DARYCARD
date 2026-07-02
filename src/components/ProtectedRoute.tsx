@@ -5,9 +5,12 @@ import type { UserRole } from '../types/auth';
 interface Props {
     children: React.ReactNode;
     requiredRole?: UserRole;
+    // If set, only these roles may access. An inspector who lands on a page not
+    // meant for them is redirected to their /inspections home.
+    allowedRoles?: UserRole[];
 }
 
-const ProtectedRoute: React.FC<Props> = ({ children, requiredRole }) => {
+const ProtectedRoute: React.FC<Props> = ({ children, requiredRole, allowedRoles }) => {
     const { currentUser, loading } = useAuth();
 
     if (loading) {
@@ -38,12 +41,21 @@ const ProtectedRoute: React.FC<Props> = ({ children, requiredRole }) => {
         );
     }
 
-    if (requiredRole === 'admin' && currentUser.role !== 'admin') {
+    // Inspectors have the least rights: they can only reach pages that explicitly
+    // allow them. Send them to their own /inspections home otherwise.
+    if (currentUser.role === 'inspector' && !(allowedRoles?.includes('inspector'))) {
+        return <Navigate to="/inspections" replace />;
+    }
+
+    const blocked =
+        (requiredRole === 'admin' && currentUser.role !== 'admin') ||
+        (allowedRoles && !allowedRoles.includes(currentUser.role));
+    if (blocked) {
         return (
             <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#fff', background: 'var(--bg-color)', minHeight: '100vh' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚫</div>
                 <h2 style={{ color: '#ff5252', marginBottom: '0.5rem' }}>Забранен достъп</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>Нямате администраторски права за тази секция.</p>
+                <p style={{ color: 'var(--text-secondary)' }}>Нямате права за тази секция.</p>
             </div>
         );
     }

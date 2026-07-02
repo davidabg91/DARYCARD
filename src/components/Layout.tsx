@@ -103,6 +103,7 @@ const Layout: React.FC = () => {
 
             {currentUser && (
                 <>
+                    {currentUser.role !== 'inspector' && (
                     <Link
                         to="/admin"
                         onClick={closeMenu}
@@ -125,6 +126,20 @@ const Layout: React.FC = () => {
                             }}></span>
                         )}
                     </Link>
+                    )}
+
+                        {(currentUser.role === 'admin' || currentUser.role === 'inspector') && (
+                            <Link
+                                to="/inspections"
+                                onClick={closeMenu}
+                                style={{
+                                    color: location.pathname === '/inspections' ? '#ffab00' : '#fff',
+                                    fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
+                                    borderBottom: location.pathname === '/inspections' ? '2px solid #ffab00' : '2px solid transparent',
+                                    paddingBottom: '2px',
+                                }}
+                            >Проверки</Link>
+                        )}
 
                         {currentUser.role === 'admin' && (
                             <Link
@@ -207,6 +222,7 @@ const Layout: React.FC = () => {
             )}
             {currentUser && (
                 <>
+                    {currentUser.role !== 'inspector' && (
                     <Link to="/admin" onClick={closeMenu} className="mobile-nav-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         Мениджър
                         {totalUnread > 0 && (
@@ -216,6 +232,10 @@ const Layout: React.FC = () => {
                             }}>{totalUnread}</span>
                         )}
                     </Link>
+                    )}
+                    {(currentUser.role === 'admin' || currentUser.role === 'inspector') && (
+                        <Link to="/inspections" onClick={closeMenu} className="mobile-nav-link">Проверки</Link>
+                    )}
                     {currentUser.role === 'admin' && (
                         <Link to="/system-admin" onClick={closeMenu} className="mobile-nav-link">Админ Панел</Link>
                     )}

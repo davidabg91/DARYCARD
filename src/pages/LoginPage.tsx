@@ -23,7 +23,7 @@ const LoginPage: React.FC = () => {
 
     useEffect(() => {
         if (currentUser) {
-            navigate('/admin');
+            navigate(currentUser.role === 'inspector' ? '/inspections' : '/admin');
         }
     }, [currentUser, navigate]);
 

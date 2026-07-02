@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage';
 
 import SystemAdminPanel from './pages/SystemAdminPanel';
 const Landing = lazy(() => import('./pages/Landing'));
+const Inspections = lazy(() => import('./pages/Inspections'));
 const StaffPortal = lazy(() => import('./pages/StaffPortal'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 const Help = lazy(() => import('./pages/Help'));
@@ -142,7 +143,7 @@ function DeepLinkHandler() {
 
 function App() {
   // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.07.02.16.34";
+  const INTERNAL_APP_VERSION = "2026.07.02.17.05";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
@@ -244,9 +245,14 @@ function App() {
               <Route path="rent" element={<BusRental />} />
               <Route path="portal" element={<StaffPortal />} />
 
-              {/* Moderator + Admin */}
+              {/* Moderator + Admin (inspectors are redirected to /inspections) */}
               <Route path="admin" element={
-                <ProtectedRoute><AdminPanel /></ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin', 'moderator']}><AdminPanel /></ProtectedRoute>
+              } />
+
+              {/* Inspectors + Admin */}
+              <Route path="inspections" element={
+                <ProtectedRoute allowedRoles={['admin', 'inspector']}><Inspections /></ProtectedRoute>
               } />
 
               {/* Admin only */}

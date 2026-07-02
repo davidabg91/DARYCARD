@@ -71,11 +71,13 @@ const ROUTES = [
 const ROLE_LABELS: Record<UserRole, string> = {
     admin: 'Администратор',
     moderator: 'Модератор',
+    inspector: 'Проверяващ',
 };
 
 const ROLE_COLORS: Record<UserRole, string> = {
     admin: '#ff5252',
     moderator: '#00ADB5',
+    inspector: '#ffab00',
 };
 
 // --- Main Component ---
@@ -607,6 +609,7 @@ const SystemAdminPanel: React.FC = () => {
                                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Роля</label>
                                         <select value={newRole} onChange={e => setNewRole(e.target.value as UserRole)} style={{ width: '100%', padding: '0.8rem', borderRadius: '10px', background: '#333', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }}>
                                             <option value="moderator">Модератор</option>
+                                            <option value="inspector">Проверяващ</option>
                                             <option value="admin">Администратор</option>
                                         </select>
                                     </div>
@@ -618,6 +621,7 @@ const SystemAdminPanel: React.FC = () => {
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Роля</label>
                                     <select value={newRole} onChange={e => setNewRole(e.target.value as UserRole)} style={{ width: '100%', padding: '0.8rem', borderRadius: '10px', background: '#333', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }}>
                                         <option value="moderator">Модератор</option>
+                                        <option value="inspector">Проверяващ</option>
                                         <option value="admin">Администратор</option>
                                     </select>
                                 </div>
@@ -650,6 +654,7 @@ const SystemAdminPanel: React.FC = () => {
                                                     style={{ padding: '0.45rem 0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: 'white', fontSize: '0.8rem', flex: isMobile ? 1 : 'none' }}
                                                 >
                                                     <option value="moderator">Модератор</option>
+                                                    <option value="inspector">Проверяващ</option>
                                                     <option value="admin">Администратор</option>
                                                 </select>
                                                 <button onClick={() => window.confirm('Наистина ли искате да изтриете този потребител?') && deleteUser(user.id)} style={{ padding: '0.65rem', color: '#ff5252', background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.2)', borderRadius: '8px', cursor: 'pointer' }}><Trash2 size={18} /></button>

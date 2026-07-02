@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.16.34",
-  "buildDate": "2026-07-02T16:34:00Z",
-  "notes": "Profile shows the previous scan time (frozen at load, excluding the current scan) so inspectors can tell if the card was scanned at boarding. Admin client details also show 'Последно сканиране'."
+  "version": "2026.07.02.17.05",
+  "buildDate": "2026-07-02T17:05:00Z",
+  "notes": "New role Проверяващ (inspector, least rights): own /inspections page; inspector scans logged separately with geolocation (not general stats); last-scan panel visible only to inspectors/admins; admins see all inspections."
 }

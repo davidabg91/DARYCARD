@@ -20,6 +20,9 @@ service cloud.firestore {
     function isAdmin() {
       return hasProfile() && userRole() == 'admin';
     }
+    function isInspector() {
+      return hasProfile() && userRole() == 'inspector';
+    }
 
     // ---- Users (staff accounts) ----
     // Anyone signed in can read the staff list (only emails + roles, low sensitivity).
@@ -132,6 +135,17 @@ service cloud.firestore {
       allow read: if isStaff();
       allow delete: if isStaff();
       allow update: if isAdmin();
+    }
+
+    // ---- Inspector (Проверяващ) scans ----
+    // Separate from the general scan stats. Created by an inspector (or admin)
+    // when checking a card on the bus, with an optional geolocation. An inspector
+    // may read only their OWN scans; admins may read all.
+    match /inspector_scans/{scanId} {
+      allow create: if isInspector() || isAdmin();
+      allow read: if isAdmin()
+        || (isInspector() && resource.data.inspectorId == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
 
     // ---- Default deny ----

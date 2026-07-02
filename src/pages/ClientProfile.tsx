@@ -155,7 +155,7 @@ const ClientProfile: React.FC = () => {
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const urlUid = queryParams.get('uid') || '';
-    const { currentUser } = useAuth();
+    const { currentUser, loading: authLoading } = useAuth();
     const [client, setClient] = useState<Client | null>(null);
     const [loading, setLoading] = useState(true);
     const [scanTime] = useState(new Date().toLocaleTimeString('bg-BG'));
@@ -743,14 +743,49 @@ const ClientProfile: React.FC = () => {
     const prevScanRef = useRef<string | null | undefined>(undefined);
     const hasClient = !!client;
     // Visible scan feedback shown on the profile: green "recorded" / yellow "passback".
-    const [scanFeedback, setScanFeedback] = useState<{ type: 'recorded' | 'passback' | 'recent'; secs?: number } | null>(null);
+    const [scanFeedback, setScanFeedback] = useState<{ type: 'recorded' | 'passback' | 'recent' | 'inspection'; secs?: number } | null>(null);
 
     useEffect(() => {
         // Record the scan for everyone who opens a registered card — drivers do NOT
         // log in, so we must not gate this on currentUser. The Firestore rules allow
         // an anonymous write to ONLY scanCount/lastScanAt + the scans subcollection.
-        if (!id || loading || !hasClient || scannedRef.current === id) return;
+        // Wait for auth to resolve (authLoading) so we know the role before deciding
+        // whether this is an inspector check (separate stats) or a normal scan.
+        if (!id || loading || authLoading || !hasClient || scannedRef.current === id) return;
         scannedRef.current = id;
+
+        // INSPECTOR (Проверяващ) scan: record a separate inspection with geolocation,
+        // and do NOT touch the general scan stats. Captures the passenger's boarding
+        // scan (client.lastScanAt at this moment) so we can later see if it was scanned.
+        if (currentUser?.role === 'inspector') {
+            const isoNow = new Date().toISOString();
+            const cardNum = client?.cardNumber || CARDS_MAPPING[id] || '';
+            const base = {
+                inspectorId: currentUser.id,
+                inspectorName: currentUser.username,
+                clientId: id,
+                clientName: client?.name ?? '',
+                clientCard: cardNum,
+                route: client?.route ?? '',
+                at: isoNow,
+                boardingScanAt: client?.lastScanAt ?? null,
+            };
+            const save = (extra: Record<string, unknown>) =>
+                addDoc(collection(db, 'inspector_scans'), { ...base, ...extra })
+                    .catch(err => console.error('Inspection log failed:', err));
+            if (typeof navigator !== 'undefined' && navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => save({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+                    () => save({ lat: null, lng: null, locationError: true }),
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+                );
+            } else {
+                save({ lat: null, lng: null, locationError: true });
+            }
+            setScanFeedback({ type: 'inspection' });
+            return;
+        }
+
         // Anti-passback: if this card was scanned less than 180s (3 min) ago, flag
         // it (yellow warning) and do NOT record another scan. Beyond that,
         // if it was scanned < 300s (5 min) ago, show the warning but DO record the scan.
@@ -775,7 +810,7 @@ const ClientProfile: React.FC = () => {
             .catch(err => console.error('Scan record failed:', err));
         updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow })
             .catch(err => console.error('Scan counter update failed:', err));
-    }, [id, loading, hasClient, client?.route, client?.lastScanAt]);
+    }, [id, loading, authLoading, hasClient, currentUser, client?.route, client?.lastScanAt, client?.name, client?.cardNumber]);
 
     useEffect(() => {
         const resetIdleTimer = () => {
@@ -1424,8 +1459,9 @@ const ClientProfile: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Last-scan info (previous scan, excluding this one) — for inspectors */}
-                {(() => {
+                {/* Last-scan info (previous scan, excluding this one) — visible only to
+                    inspectors and admins (not to drivers/moderators or the public). */}
+                {(currentUser?.role === 'inspector' || currentUser?.role === 'admin') && (() => {
                     const prev = prevScanRef.current;
                     if (!prev) {
                         return (
@@ -1446,6 +1482,13 @@ const ClientProfile: React.FC = () => {
                         </div>
                     );
                 })()}
+
+                {/* Inspector: confirmation that this check was recorded (separate stats) */}
+                {currentUser?.role === 'inspector' && scanFeedback?.type === 'inspection' && (
+                    <div style={{ padding: '0.7rem 1.25rem', background: 'rgba(0,173,181,0.1)', borderBottom: '1px solid rgba(0,173,181,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--primary-color)', fontSize: '0.85rem', fontWeight: 700 }}>
+                        <CheckCircle size={15} /> Проверката е записана (с локация)
+                    </div>
+                )}
 
                 {/* Footer Security Element */}
                 <div style={{ padding: '1rem 1.5rem', background: 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
