@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.09.46",
-  "buildDate": "2026-07-02T09:46:00Z",
-  "notes": "Clients: bulk renewal — select clients (checkboxes / select-all-by-filter), review modal to drop clients from the group, then renew all at each card's own price for the chosen month."
+  "version": "2026.07.02.09.55",
+  "buildDate": "2026-07-02T09:55:00Z",
+  "notes": "Clients: when the card-type filter is 'Ученическа карта', a school filter appears so bulk renewal can target a single school."
 }

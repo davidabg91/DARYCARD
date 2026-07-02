@@ -419,6 +419,8 @@ const AdminPanel: React.FC = () => {
 
     const [filterRoute, setFilterRoute] = useState<string>('all');
     const [filterCardType, setFilterCardType] = useState<string>('all');
+    // School filter, only used when the card-type filter is "Ученическа карта".
+    const [filterSchool, setFilterSchool] = useState<string>('all');
     // How the clients list is ordered. Defaults to the most recently added.
     const [sortBy, setSortBy] = useState<'recent' | 'alpha' | 'cardType' | 'paid' | 'unpaid'>('recent');
 
@@ -426,7 +428,7 @@ const AdminPanel: React.FC = () => {
     // search always starts from the first 20 matches.
     useEffect(() => {
         setVisibleClients(20);
-    }, [searchTerm, filterRoute, filterMonth, filterCardType, sortBy]);
+    }, [searchTerm, filterRoute, filterMonth, filterCardType, filterSchool, sortBy]);
 
     const [reportPeriodType, setReportPeriodType] = useState<'month' | 'day'>('day');
     const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -1272,8 +1274,9 @@ const AdminPanel: React.FC = () => {
         
         const matchesRoute = filterRoute === 'all' || c.route === filterRoute;
         const matchesCardType = filterCardType === 'all' || (c.cardType || 'Нормална карта') === filterCardType;
+        const matchesSchool = filterCardType !== 'Ученическа карта' || filterSchool === 'all' || (c.school || '') === filterSchool;
 
-        return matchesSearch && matchesRoute && matchesCardType;
+        return matchesSearch && matchesRoute && matchesCardType && matchesSchool;
     }).sort((a, b) => {
         switch (sortBy) {
             case 'alpha':
@@ -2534,7 +2537,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
 
                             <select
                                 value={filterCardType}
-                                onChange={(e) => setFilterCardType(e.target.value)}
+                                onChange={(e) => { setFilterCardType(e.target.value); if (e.target.value !== 'Ученическа карта') setFilterSchool('all'); }}
                                 title="Вид карта"
                                 style={{ flex: 1, minWidth: '150px', padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
                             >
@@ -2543,6 +2546,23 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                     <option key={t} value={t} style={{ background: '#222' }}>{t}</option>
                                 ))}
                             </select>
+
+                            {filterCardType === 'Ученическа карта' && (
+                                <select
+                                    value={filterSchool}
+                                    onChange={(e) => setFilterSchool(e.target.value)}
+                                    title="Училище"
+                                    style={{ flex: 1, minWidth: '150px', padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(0,173,181,0.08)', border: '1px solid rgba(0,173,181,0.3)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700 }}
+                                >
+                                    <option value="all" style={{ background: '#222' }}>Всички училища</option>
+                                    {Array.from(new Set([
+                                        ...SCHOOLS,
+                                        ...clients.filter(c => c.cardType === 'Ученическа карта' && c.school).map(c => c.school as string)
+                                    ])).sort((a, b) => a.localeCompare(b, 'bg')).map(s => (
+                                        <option key={s} value={s} style={{ background: '#222' }}>{s}</option>
+                                    ))}
+                                </select>
+                            )}
 
                             <select
                                 value={filterMonth}
