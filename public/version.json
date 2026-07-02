@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.09.38",
-  "buildDate": "2026-07-02T09:38:00Z",
-  "notes": "Finances: ПРИХОД ЗА МЕСЕЦА is blurred by default and revealed with an eye toggle (Revolut-style)."
+  "version": "2026.07.02.09.46",
+  "buildDate": "2026-07-02T09:46:00Z",
+  "notes": "Clients: bulk renewal — select clients (checkboxes / select-all-by-filter), review modal to drop clients from the group, then renew all at each card's own price for the chosen month."
 }

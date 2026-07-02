@@ -212,6 +212,24 @@ const getServiceYearOptions = (): number[] => {
     return [y - 1, y, y + 1, y + 2];
 };
 
+// The card price for a route + card type (pensioner & student = half),
+// mirroring the auto-price logic. Used by bulk renewal. Service cards = 0.
+const computeCardAmount = (route: string, cardType?: string): number => {
+    if (cardType === 'Служебна карта') return 0;
+    const meta = ROUTE_METADATA[route];
+    if (!meta) return 0;
+    let priceStr = meta.priceCard;
+    let half = cardType === 'Пенсионерска карта';
+    if (cardType === 'Ученическа карта') {
+        if (meta.priceCardStudent) priceStr = meta.priceCardStudent;
+        else half = true;
+    }
+    if (!priceStr || priceStr === '-' || priceStr === '---') return 0;
+    const n = parseFloat(priceStr.replace(' €', ''));
+    if (isNaN(n)) return 0;
+    return Number((half ? n / 2 : n).toFixed(2));
+};
+
 interface TabButtonProps {
     id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications';
     icon: React.ElementType;
@@ -382,6 +400,22 @@ const AdminPanel: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     // Monthly revenue is blurred by default (Revolut-style); the eye icon reveals it.
     const [showMonthlyRevenue, setShowMonthlyRevenue] = useState(false);
+
+    // Bulk renewal: a selection of client ids + the review modal state.
+    const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
+    const [showBulkRenew, setShowBulkRenew] = useState(false);
+    const [bulkMonth, setBulkMonth] = useState<string>(getDefaultExpiryMonth());
+    const [bulkPaymentMethod, setBulkPaymentMethod] = useState('В брой');
+    const [bulkProcessing, setBulkProcessing] = useState(false);
+    const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number } | null>(null);
+
+    const toggleClientSelected = (id: string) => {
+        setSelectedClientIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
 
     const [filterRoute, setFilterRoute] = useState<string>('all');
     const [filterCardType, setFilterCardType] = useState<string>('all');
@@ -1030,6 +1064,51 @@ const AdminPanel: React.FC = () => {
         setNewPaymentMethod('В брой');
         setNewBankAmount('');
         setNewCashAmount('');
+    };
+
+    // Renew every selected client for the chosen month at each one's own price
+    // (route + card type). Service cards get the whole year of that month.
+    const bulkRenew = async () => {
+        const targets = clients.filter(c => selectedClientIds.has(c.id));
+        if (targets.length === 0) return;
+        setBulkProcessing(true);
+        setBulkResult(null);
+        let ok = 0, fail = 0, totalAmount = 0;
+        for (const c of targets) {
+            const isoNow = new Date().toISOString();
+            try {
+                if (c.cardType === 'Служебна карта') {
+                    const year = Number(bulkMonth.slice(0, 4));
+                    const entries = buildYearMonths(year).map(m => ({ date: isoNow, amount: 0, month: m, paymentMethod: 'Служебна' }));
+                    await updateDoc(doc(db, 'clients', c.id), {
+                        expiryDate: `${year}-12`,
+                        isCanceled: false,
+                        renewalHistory: arrayUnion(...entries),
+                        history: arrayUnion({ date: isoNow, action: 'Групово подновяване', details: `Служебна карта за цялата ${year} г. (без плащане)`, amount: 0, performedBy: currentUser?.username || 'Админ' })
+                    });
+                } else {
+                    const amount = computeCardAmount(c.route, c.cardType);
+                    await updateDoc(doc(db, 'clients', c.id), {
+                        expiryDate: bulkMonth,
+                        isCanceled: false,
+                        amountPaid: increment(amount),
+                        renewalHistory: arrayUnion({ date: isoNow, amount, month: bulkMonth, paymentMethod: bulkPaymentMethod }),
+                        history: arrayUnion({ date: isoNow, action: 'Групово подновяване', details: `Месец: ${bulkMonth} | Начин на плащане: ${bulkPaymentMethod}`, amount, performedBy: currentUser?.username || 'Админ' })
+                    });
+                    totalAmount += amount;
+                }
+                ok++;
+            } catch (err) {
+                console.error('Bulk renew failed for', c.id, err);
+                fail++;
+            }
+        }
+        try {
+            await logGlobalActivity('Групово подновяване', `${ok} карти`, `Месец: ${bulkMonth}. Успешни: ${ok}, неуспешни: ${fail}. Начин на плащане: ${bulkPaymentMethod}`, totalAmount);
+        } catch (err) { console.error(err); }
+        setBulkProcessing(false);
+        setBulkResult({ ok, fail });
+        setSelectedClientIds(new Set());
     };
 
     const deleteRenewal = async (client: Client, index: number) => {
@@ -2495,6 +2574,20 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                             <table>
                                 <thead>
                                     <tr>
+                                        <th style={{ width: '34px' }}>
+                                            <input
+                                                type="checkbox"
+                                                title="Избери всички (по текущия филтър)"
+                                                checked={filteredClientsByFilters.length > 0 && filteredClientsByFilters.every(c => selectedClientIds.has(c.id))}
+                                                onChange={(e) => setSelectedClientIds(prev => {
+                                                    const next = new Set(prev);
+                                                    if (e.target.checked) filteredClientsByFilters.forEach(c => next.add(c.id));
+                                                    else filteredClientsByFilters.forEach(c => next.delete(c.id));
+                                                    return next;
+                                                })}
+                                                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary-color)' }}
+                                            />
+                                        </th>
                                         <th>Клиент</th>
                                         <th>Курс</th>
                                         <th>Вид карта</th>
@@ -2508,7 +2601,15 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         filteredClientsByFilters.slice(0, visibleClients).map(client => {
                                             const status = getClientStatusForMonth(client, filterMonth);
                                             return (
-                                                <tr key={client.id}>
+                                                <tr key={client.id} style={{ background: selectedClientIds.has(client.id) ? 'rgba(0,173,181,0.06)' : undefined }}>
+                                                    <td style={{ width: '34px' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedClientIds.has(client.id)}
+                                                            onChange={() => toggleClientSelected(client.id)}
+                                                            style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary-color)' }}
+                                                        />
+                                                    </td>
                                                     <td style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                                         <img src={client.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
                                                         <div>
@@ -2601,7 +2702,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                            <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                                                 Няма намерени клиенти по този критерий.
                                             </td>
                                         </tr>
@@ -2617,9 +2718,15 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                 const status = getClientStatusForMonth(client, filterMonth);
                                 const isMonthPaid = getMonthPayment(client, filterMonth) > 0;
                                 return (
-                                    <div key={client.id} className="client-card">
+                                    <div key={client.id} className="client-card" style={selectedClientIds.has(client.id) ? { border: '1px solid var(--primary-color)', background: 'rgba(0,173,181,0.06)' } : undefined}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedClientIds.has(client.id)}
+                                                    onChange={() => toggleClientSelected(client.id)}
+                                                    style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: 'var(--primary-color)', marginTop: '0.4rem', flexShrink: 0 }}
+                                                />
                                                 <img src={client.photo} style={{ width: '50px', height: '50px', borderRadius: '12px', objectFit: 'cover' }} />
                                                 <div>
                                                     <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{client.name}</div>
@@ -2709,6 +2816,87 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                             >
                                 Зареди още ({filteredClientsByFilters.length - visibleClients})
                             </button>
+                        </div>
+                    )}
+
+                    {/* Floating bulk-selection bar */}
+                    {selectedClientIds.size > 0 && !showBulkRenew && (
+                        <div style={{ position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 900, background: '#17171c', border: '1px solid var(--primary-color)', borderRadius: '50px', padding: '0.6rem 0.75rem 0.6rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', boxShadow: '0 12px 40px rgba(0,0,0,0.55)', flexWrap: 'wrap', maxWidth: '95vw' }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.9rem', whiteSpace: 'nowrap' }}>{selectedClientIds.size} избрани</span>
+                            <button onClick={() => { setBulkResult(null); setBulkMonth(getDefaultExpiryMonth()); setBulkPaymentMethod('В брой'); setShowBulkRenew(true); }} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--success-color)', color: '#fff', border: 'none', borderRadius: '50px', padding: '0.6rem 1.1rem', fontWeight: 800, cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                                <RefreshCw size={16} /> Поднови групово
+                            </button>
+                            <button onClick={() => setSelectedClientIds(new Set())} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--surface-border)', borderRadius: '50px', padding: '0.6rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                                Изчисти
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Bulk renewal modal */}
+                    {showBulkRenew && (
+                        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => { if (!bulkProcessing) { setShowBulkRenew(false); setBulkResult(null); } }}>
+                            <div onClick={(e) => e.stopPropagation()} style={{ background: '#17171c', border: '1px solid var(--surface-border)', borderRadius: '20px', width: '100%', maxWidth: '520px', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                {bulkResult ? (
+                                    <div style={{ padding: '2.5rem 2rem', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>✅</div>
+                                        <h3 style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '0.75rem' }}>Готово!</h3>
+                                        <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Успешно подновени: <b style={{ color: 'var(--success-color)' }}>{bulkResult.ok}</b> карти за <b>{bulkMonth}</b>.</p>
+                                        {bulkResult.fail > 0 && <p style={{ color: '#ff5252', marginBottom: '0.5rem' }}>Неуспешни: <b>{bulkResult.fail}</b></p>}
+                                        <button onClick={() => { setShowBulkRenew(false); setBulkResult(null); }} style={{ marginTop: '1rem', padding: '0.8rem 2rem', borderRadius: '50px', background: 'var(--primary-color)', color: '#fff', border: 'none', fontWeight: 800, cursor: 'pointer' }}>Затвори</button>
+                                    </div>
+                                ) : (() => {
+                                    const selectedList = clients.filter(c => selectedClientIds.has(c.id));
+                                    const total = selectedList.reduce((s, c) => s + computeCardAmount(c.route, c.cardType), 0);
+                                    return (
+                                        <>
+                                            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--surface-border)' }}>
+                                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.15rem', color: 'var(--success-color)' }}><RefreshCw size={20} /> Групово подновяване ({selectedList.length})</h3>
+                                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0.5rem 0 0' }}>Всяка карта се подновява по своята цена (курс + вид). Служебните — за цялата година.</p>
+                                            </div>
+                                            <div style={{ padding: '1.25rem 1.5rem', display: 'flex', gap: '1rem', borderBottom: '1px solid var(--surface-border)', flexWrap: 'wrap' }}>
+                                                <div style={{ flex: 1, minWidth: '140px' }}>
+                                                    <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>МЕСЕЦ</label>
+                                                    <input type="month" value={bulkMonth} onChange={(e) => setBulkMonth(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', colorScheme: 'dark' }} />
+                                                </div>
+                                                <div style={{ flex: 1, minWidth: '140px' }}>
+                                                    <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>НАЧИН НА ПЛАЩАНЕ</label>
+                                                    <select value={bulkPaymentMethod} onChange={(e) => setBulkPaymentMethod(e.target.value)} style={{ width: '100%', padding: '0.6rem', background: '#222', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff' }}>
+                                                        {['В брой', 'С карта', 'Банка'].map(m => <option key={m} value={m}>{m}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div style={{ overflowY: 'auto', flex: 1, padding: '0.5rem 1.5rem' }}>
+                                                {selectedList.length === 0 ? (
+                                                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма избрани клиенти.</div>
+                                                ) : selectedList.map(c => (
+                                                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                        <img src={c.photo} style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{c.route} · {c.cardType || 'Нормална карта'}</div>
+                                                        </div>
+                                                        <div style={{ fontWeight: 800, fontSize: '0.85rem', color: c.cardType === 'Служебна карта' ? 'var(--text-secondary)' : 'var(--success-color)', whiteSpace: 'nowrap' }}>
+                                                            {c.cardType === 'Служебна карта' ? 'цяла година' : `${computeCardAmount(c.route, c.cardType).toFixed(2)} €`}
+                                                        </div>
+                                                        <button onClick={() => toggleClientSelected(c.id)} title="Махни от групата" style={{ background: 'transparent', border: 'none', color: '#ff5252', cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+                                                            <XCircle size={20} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                                                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Общо: <b style={{ color: '#fff' }}>{total.toFixed(2)} €</b></div>
+                                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                                    <button disabled={bulkProcessing} onClick={() => { setShowBulkRenew(false); }} style={{ padding: '0.7rem 1.25rem', borderRadius: '8px', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--surface-border)', fontWeight: 700, cursor: 'pointer' }}>Отказ</button>
+                                                    <button disabled={bulkProcessing || selectedList.length === 0} onClick={bulkRenew} style={{ padding: '0.7rem 1.5rem', borderRadius: '8px', background: 'var(--success-color)', color: '#fff', border: 'none', fontWeight: 800, cursor: bulkProcessing || selectedList.length === 0 ? 'not-allowed' : 'pointer', opacity: bulkProcessing || selectedList.length === 0 ? 0.6 : 1 }}>
+                                                        {bulkProcessing ? 'Подновяване…' : `Поднови ${selectedList.length}`}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
                         </div>
                     )}
                 </div>
