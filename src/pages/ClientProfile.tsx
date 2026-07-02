@@ -1508,8 +1508,8 @@ const ClientProfile: React.FC = () => {
                         );
                     }
                     const f = formatScanMoment(prev);
-                    // Green if scanned within the last ~2h (likely this trip), else neutral.
-                    const recent = f.secs < 7200;
+                    // Green if scanned within the last 3h (same rule as the boarding verdict).
+                    const recent = f.secs < 3 * 3600;
                     return (
                         <div style={{ padding: '0.9rem 1.25rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', fontSize: '0.9rem' }}>
                             <Clock size={16} color={recent ? '#00e676' : 'rgba(255,255,255,0.5)'} />
@@ -1520,12 +1520,21 @@ const ClientProfile: React.FC = () => {
                     );
                 })()}
 
-                {/* Inspector/admin: confirmation that this check was recorded (separate stats) */}
-                {(currentUser?.role === 'inspector' || currentUser?.role === 'admin') && scanFeedback?.type === 'inspection' && (
-                    <div style={{ padding: '0.7rem 1.25rem', background: 'rgba(0,173,181,0.1)', borderBottom: '1px solid rgba(0,173,181,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--primary-color)', fontSize: '0.85rem', fontWeight: 700 }}>
-                        <CheckCircle size={15} /> Проверката е записана (с локация)
-                    </div>
-                )}
+                {/* Inspector/admin: boarding-scan verdict (same rule as the Проверки tab:
+                    scanned within 3h before this check = scanned at boarding). */}
+                {(currentUser?.role === 'inspector' || currentUser?.role === 'admin') && scanFeedback?.type === 'inspection' && (() => {
+                    const prev = prevScanRef.current;
+                    const ok = !!prev && (Date.now() - new Date(prev).getTime()) < 3 * 3600 * 1000;
+                    return (
+                        <div style={{ padding: '1.1rem 1.25rem', background: ok ? 'rgba(0,230,118,0.15)' : 'rgba(255,82,82,0.15)', borderBottom: `1px solid ${ok ? 'rgba(0,230,118,0.35)' : 'rgba(255,82,82,0.4)'}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: ok ? '#00e676' : '#ff5252', fontSize: '1.3rem', fontWeight: 900, letterSpacing: '1px' }}>
+                                {ok ? <CheckCircle size={24} /> : <XCircle size={24} />}
+                                {ok ? 'СКАНИРАН ПРИ КАЧВАНЕ' : 'НЕ Е СКАНИРАН'}
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)' }}>Проверката е записана (с локация)</div>
+                        </div>
+                    );
+                })()}
 
                 {/* Footer Security Element */}
                 <div style={{ padding: '1rem 1.5rem', background: 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

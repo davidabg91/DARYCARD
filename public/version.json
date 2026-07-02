@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.17.46",
-  "buildDate": "2026-07-02T17:46:00Z",
-  "notes": "Inspections: geolocation is reverse-geocoded to a readable address (OpenStreetMap), and the admin gets a map of all inspection points (green=scanned, red=not)."
+  "version": "2026.07.02.18.12",
+  "buildDate": "2026-07-02T18:12:00Z",
+  "notes": "When an inspector/admin scans, the profile now shows the boarding verdict '✓ СКАНИРАН ПРИ КАЧВАНЕ' / '✗ НЕ Е СКАНИРАН' (same 3h rule as the Проверки tab) instead of a generic 'recorded' message."
 }
