@@ -1075,9 +1075,11 @@ const AdminPanel: React.FC = () => {
         if (targets.length === 0) return;
         setBulkProcessing(true);
         setBulkResult(null);
-        let ok = 0, fail = 0, totalAmount = 0;
+        let ok = 0, fail = 0;
         for (const c of targets) {
             const isoNow = new Date().toISOString();
+            const cardNum = getClientCardNumber(c);
+            const nameWithCard = cardNum ? `${c.name} (Карта № ${cardNum})` : c.name;
             try {
                 if (c.cardType === 'Служебна карта') {
                     const year = Number(bulkMonth.slice(0, 4));
@@ -1086,8 +1088,10 @@ const AdminPanel: React.FC = () => {
                         expiryDate: `${year}-12`,
                         isCanceled: false,
                         renewalHistory: arrayUnion(...entries),
-                        history: arrayUnion({ date: isoNow, action: 'Групово подновяване', details: `Служебна карта за цялата ${year} г. (без плащане)`, amount: 0, performedBy: currentUser?.username || 'Админ' })
+                        history: arrayUnion({ date: isoNow, action: 'Групово подновяване', details: `Служебна карта за цялата ${year} г. (без плащане) | Курс: ${c.route}`, amount: 0, performedBy: currentUser?.username || 'Админ' })
                     });
+                    // One audit-log entry per client, with its full details.
+                    await logGlobalActivity('Групово подновяване', nameWithCard, `Служебна карта за цялата ${year} г. (без плащане). Курс: ${c.route} | Вид: Служебна карта`, 0);
                 } else {
                     const amount = computeCardAmount(c.route, c.cardType);
                     await updateDoc(doc(db, 'clients', c.id), {
@@ -1095,9 +1099,9 @@ const AdminPanel: React.FC = () => {
                         isCanceled: false,
                         amountPaid: increment(amount),
                         renewalHistory: arrayUnion({ date: isoNow, amount, month: bulkMonth, paymentMethod: bulkPaymentMethod }),
-                        history: arrayUnion({ date: isoNow, action: 'Групово подновяване', details: `Месец: ${bulkMonth} | Начин на плащане: ${bulkPaymentMethod}`, amount, performedBy: currentUser?.username || 'Админ' })
+                        history: arrayUnion({ date: isoNow, action: 'Групово подновяване', details: `Месец: ${bulkMonth}. Сума: ${amount.toFixed(2)} €. Курс: ${c.route} | Начин на плащане: ${bulkPaymentMethod}`, amount, performedBy: currentUser?.username || 'Админ' })
                     });
-                    totalAmount += amount;
+                    await logGlobalActivity('Групово подновяване', nameWithCard, `Месец: ${bulkMonth}. Сума: ${amount.toFixed(2)} €. Курс: ${c.route} | Вид: ${c.cardType || 'Нормална карта'} | Начин на плащане: ${bulkPaymentMethod}`, amount);
                 }
                 ok++;
             } catch (err) {
@@ -1105,9 +1109,6 @@ const AdminPanel: React.FC = () => {
                 fail++;
             }
         }
-        try {
-            await logGlobalActivity('Групово подновяване', `${ok} карти`, `Месец: ${bulkMonth}. Успешни: ${ok}, неуспешни: ${fail}. Начин на плащане: ${bulkPaymentMethod}`, totalAmount);
-        } catch (err) { console.error(err); }
         setBulkProcessing(false);
         setBulkResult({ ok, fail });
         setSelectedClientIds(new Set());
