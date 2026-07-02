@@ -72,54 +72,78 @@ export default function Inspections() {
         return () => unsub();
     }, [currentUser, isAdmin]);
 
-    const todayIso = new Date().toISOString().slice(0, 10);
     const monthIso = new Date().toISOString().slice(0, 7);
-    const countToday = useMemo(() => scans.filter(s => s.at?.startsWith(todayIso)).length, [scans, todayIso]);
-    const countMonth = useMemo(() => scans.filter(s => s.at?.startsWith(monthIso)).length, [scans, monthIso]);
-    const scannedOk = useMemo(() => scans.filter(wasScannedAtBoarding).length, [scans]);
+    // Show inspections one day at a time (defaults to today).
+    const [filterDay, setFilterDay] = useState(() => new Date().toISOString().slice(0, 10));
+    const dayScans = useMemo(() => scans.filter(s => s.at?.startsWith(filterDay)), [scans, filterDay]);
 
-    // Per-inspector breakdown (admin only).
+    const countDay = dayScans.length;
+    const countMonth = useMemo(() => scans.filter(s => s.at?.startsWith(monthIso)).length, [scans, monthIso]);
+    const scannedOk = useMemo(() => dayScans.filter(wasScannedAtBoarding).length, [dayScans]);
+
+    const shiftDay = (delta: number) => {
+        const d = new Date(filterDay + 'T12:00:00');
+        d.setDate(d.getDate() + delta);
+        setFilterDay(d.toISOString().slice(0, 10));
+    };
+
+    // Per-inspector breakdown for the selected day (admin only).
     const byInspector = useMemo(() => {
         const map = new Map<string, { name: string; count: number }>();
-        for (const s of scans) {
+        for (const s of dayScans) {
             const e = map.get(s.inspectorId) || { name: s.inspectorName, count: 0 };
             e.count++;
             map.set(s.inspectorId, e);
         }
         return [...map.values()].sort((a, b) => b.count - a.count);
-    }, [scans]);
+    }, [dayScans]);
 
     // Map of inspection locations (admin only), rendered with Leaflet from CDN.
     const mapEl = useRef<HTMLDivElement>(null);
     const mapObj = useRef<any>(null);
     const markerLayer = useRef<any>(null);
-    const pointsWithGps = useMemo(() => scans.filter(s => s.lat != null && s.lng != null), [scans]);
+    const pointsWithGps = useMemo(() => dayScans.filter(s => s.lat != null && s.lng != null), [dayScans]);
 
     useEffect(() => {
-        if (!isAdmin || pointsWithGps.length === 0) return;
+        if (!isAdmin) return;
         let cancelled = false;
         loadLeaflet().then(() => {
             if (cancelled || !mapEl.current) return;
             const L = (window as any).L;
             if (!mapObj.current) {
-                mapObj.current = L.map(mapEl.current).setView([pointsWithGps[0].lat, pointsWithGps[0].lng], 12);
+                mapObj.current = L.map(mapEl.current).setView([43.4, 24.6], 11); // Pleven region
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(mapObj.current);
                 markerLayer.current = L.layerGroup().addTo(mapObj.current);
             }
             markerLayer.current.clearLayers();
+            if (pointsWithGps.length === 0) { setTimeout(() => mapObj.current && mapObj.current.invalidateSize(), 150); return; }
             const bounds: [number, number][] = [];
+            // Spread markers that share the exact same spot so none is hidden.
+            const seen = new Map<string, number>();
             for (const s of pointsWithGps) {
+                const rawLat = s.lat as number, rawLng = s.lng as number;
+                const key = `${rawLat.toFixed(5)},${rawLng.toFixed(5)}`;
+                const n = seen.get(key) || 0;
+                seen.set(key, n + 1);
+                let lat = rawLat, lng = rawLng;
+                if (n > 0) {
+                    const angle = n * 2.399963; // golden angle
+                    const ring = Math.floor((n - 1) / 8) + 1;
+                    const r = 0.00011 * ring; // ~12 m per ring
+                    lat += r * Math.cos(angle);
+                    lng += (r * Math.sin(angle)) / Math.cos(lat * Math.PI / 180);
+                }
                 const ok = wasScannedAtBoarding(s);
                 const color = ok ? '#00e676' : '#ff5252';
-                const m = L.circleMarker([s.lat, s.lng], { radius: 8, color, fillColor: color, fillOpacity: 0.75, weight: 2 });
+                const m = L.circleMarker([lat, lng], { radius: 8, color, fillColor: color, fillOpacity: 0.8, weight: 2 });
                 m.bindPopup(
                     `<b>${s.clientName || s.clientId}</b><br>${fmt(s.at)}<br>${s.route || ''}<br>Проверил: ${s.inspectorName}<br>${s.address || ''}<br><b style="color:${color}">${ok ? '✅ Сканиран при качване' : '❌ Не е сканиран'}</b>`
                 );
                 m.addTo(markerLayer.current);
-                bounds.push([s.lat as number, s.lng as number]);
+                bounds.push([lat, lng]);
             }
-            if (bounds.length > 1) mapObj.current.fitBounds(bounds, { padding: [30, 30] });
-            else mapObj.current.setView(bounds[0], 14);
+            if (bounds.length > 1) mapObj.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+            else mapObj.current.setView(bounds[0], 15);
             setTimeout(() => mapObj.current && mapObj.current.invalidateSize(), 150);
         }).catch(err => console.error('Map load failed:', err));
         return () => { cancelled = true; };
@@ -134,19 +158,33 @@ export default function Inspections() {
                 {isAdmin ? 'Всички проверки от проверяващите — кога, колко и откъде са сканирани картите.' : 'Твоите проверки — кога, колко карти си проверил и от коя локация.'}
             </p>
 
+            {/* Day selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+                <button onClick={() => shiftDay(-1)} title="Предишен ден" style={{ padding: '0.55rem 0.9rem', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', cursor: 'pointer', fontWeight: 800 }}>‹</button>
+                <input
+                    type="date"
+                    value={filterDay}
+                    max={new Date().toISOString().slice(0, 10)}
+                    onChange={e => setFilterDay(e.target.value)}
+                    style={{ padding: '0.55rem 0.8rem', borderRadius: '10px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', color: '#fff', colorScheme: 'dark', outline: 'none' }}
+                />
+                <button onClick={() => shiftDay(1)} title="Следващ ден" disabled={filterDay >= new Date().toISOString().slice(0, 10)} style={{ padding: '0.55rem 0.9rem', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', cursor: 'pointer', fontWeight: 800, opacity: filterDay >= new Date().toISOString().slice(0, 10) ? 0.4 : 1 }}>›</button>
+                <button onClick={() => setFilterDay(new Date().toISOString().slice(0, 10))} style={{ padding: '0.55rem 1rem', borderRadius: '10px', background: 'rgba(0,173,181,0.1)', border: '1px solid rgba(0,173,181,0.3)', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 800 }}>Днес</button>
+            </div>
+
             {/* Summary */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 <div style={{ padding: '1.25rem', background: 'rgba(0,173,181,0.06)', border: '1px solid rgba(0,173,181,0.2)', borderRadius: '14px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Проверки днес</div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--primary-color)' }}>{countToday}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Проверки за деня</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--primary-color)' }}>{countDay}</div>
                 </div>
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '14px' }}>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Този месец</div>
                     <div style={{ fontSize: '2rem', fontWeight: 900 }}>{countMonth}</div>
                 </div>
                 <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '14px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Сканирани при качване</div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900, color: '#00e676' }}>{scannedOk}<span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}> / {scans.length}</span></div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Сканирани при качване (деня)</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 900, color: '#00e676' }}>{scannedOk}<span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}> / {countDay}</span></div>
                 </div>
             </div>
 
@@ -163,24 +201,31 @@ export default function Inspections() {
                 </div>
             )}
 
-            {/* Map (admin only) */}
-            {isAdmin && pointsWithGps.length > 0 && (
+            {/* Map (admin only) — always mounted so the Leaflet instance stays valid */}
+            {isAdmin && (
                 <div style={{ marginBottom: '2rem' }}>
                     <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <MapPin size={16} /> Карта на проверките <span style={{ fontSize: '0.75rem' }}>(зелено = сканиран, червено = не)</span>
                     </h3>
-                    <div ref={mapEl} style={{ width: '100%', height: '360px', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--surface-border)', background: 'rgba(255,255,255,0.02)' }} />
+                    <div style={{ position: 'relative' }}>
+                        <div ref={mapEl} style={{ width: '100%', height: '360px', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--surface-border)', background: 'rgba(255,255,255,0.02)' }} />
+                        {pointsWithGps.length === 0 && (
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', color: 'var(--text-secondary)', fontWeight: 700, background: 'rgba(0,0,0,0.35)', borderRadius: '14px' }}>
+                                Няма проверки с локация за този ден
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
-            {/* List */}
+            {/* List (for the selected day) */}
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Зареждане…</div>
-            ) : scans.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Все още няма записани проверки.</div>
+            ) : dayScans.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Няма проверки за избрания ден.</div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                    {scans.map(s => {
+                    {dayScans.map(s => {
                         const ok = wasScannedAtBoarding(s);
                         return (
                             <div key={s.id} style={{ padding: '0.9rem 1.1rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '12px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem 1rem' }}>

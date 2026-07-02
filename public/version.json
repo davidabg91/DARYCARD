@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.18.17",
-  "buildDate": "2026-07-02T18:17:00Z",
-  "notes": "Boarding-scan window tightened to 1 hour. Inspection address now leads with the city/village (then street); click still opens the exact location."
+  "version": "2026.07.02.18.34",
+  "buildDate": "2026-07-02T18:34:00Z",
+  "notes": "Inspections: pick a day (date picker + prev/next/today) to view day-by-day; map markers that share the same spot are spread out so all are visible."
 }
