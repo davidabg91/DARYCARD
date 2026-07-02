@@ -754,35 +754,40 @@ const ClientProfile: React.FC = () => {
         if (!id || loading || authLoading || !hasClient || scannedRef.current === id) return;
         scannedRef.current = id;
 
-        // INSPECTOR (Проверяващ) scan: record a separate inspection with geolocation,
-        // and do NOT touch the general scan stats. Captures the passenger's boarding
-        // scan (client.lastScanAt at this moment) so we can later see if it was scanned.
-        if (currentUser?.role === 'inspector') {
-            const isoNow = new Date().toISOString();
-            const cardNum = client?.cardNumber || CARDS_MAPPING[id] || '';
-            const base = {
-                inspectorId: currentUser.id,
-                inspectorName: currentUser.username,
-                clientId: id,
-                clientName: client?.name ?? '',
-                clientCard: cardNum,
-                route: client?.route ?? '',
-                at: isoNow,
-                boardingScanAt: client?.lastScanAt ?? null,
-            };
-            const save = (extra: Record<string, unknown>) =>
-                addDoc(collection(db, 'inspector_scans'), { ...base, ...extra })
-                    .catch(err => console.error('Inspection log failed:', err));
-            if (typeof navigator !== 'undefined' && navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    pos => save({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-                    () => save({ lat: null, lng: null, locationError: true }),
-                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
-                );
-            } else {
-                save({ lat: null, lng: null, locationError: true });
+        // Any LOGGED-IN staff scan is kept OUT of the general traffic stats
+        // (scanCount / scans subcollection). Only anonymous driver scans — the
+        // real passenger boardings — count toward traffic analysis.
+        //  - Inspectors & admins: record a separate inspection WITH geolocation.
+        //  - Moderators: view only, nothing recorded.
+        if (currentUser) {
+            if (currentUser.role === 'inspector' || currentUser.role === 'admin') {
+                const isoNow = new Date().toISOString();
+                const cardNum = client?.cardNumber || CARDS_MAPPING[id] || '';
+                const base = {
+                    inspectorId: currentUser.id,
+                    inspectorName: currentUser.username,
+                    inspectorRole: currentUser.role,
+                    clientId: id,
+                    clientName: client?.name ?? '',
+                    clientCard: cardNum,
+                    route: client?.route ?? '',
+                    at: isoNow,
+                    boardingScanAt: client?.lastScanAt ?? null,
+                };
+                const save = (extra: Record<string, unknown>) =>
+                    addDoc(collection(db, 'inspector_scans'), { ...base, ...extra })
+                        .catch(err => console.error('Inspection log failed:', err));
+                if (typeof navigator !== 'undefined' && navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        pos => save({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+                        () => save({ lat: null, lng: null, locationError: true }),
+                        { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+                    );
+                } else {
+                    save({ lat: null, lng: null, locationError: true });
+                }
+                setScanFeedback({ type: 'inspection' });
             }
-            setScanFeedback({ type: 'inspection' });
             return;
         }
 
@@ -1483,8 +1488,8 @@ const ClientProfile: React.FC = () => {
                     );
                 })()}
 
-                {/* Inspector: confirmation that this check was recorded (separate stats) */}
-                {currentUser?.role === 'inspector' && scanFeedback?.type === 'inspection' && (
+                {/* Inspector/admin: confirmation that this check was recorded (separate stats) */}
+                {(currentUser?.role === 'inspector' || currentUser?.role === 'admin') && scanFeedback?.type === 'inspection' && (
                     <div style={{ padding: '0.7rem 1.25rem', background: 'rgba(0,173,181,0.1)', borderBottom: '1px solid rgba(0,173,181,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--primary-color)', fontSize: '0.85rem', fontWeight: 700 }}>
                         <CheckCircle size={15} /> Проверката е записана (с локация)
                     </div>

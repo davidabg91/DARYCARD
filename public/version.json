@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.17.05",
-  "buildDate": "2026-07-02T17:05:00Z",
-  "notes": "New role Проверяващ (inspector, least rights): own /inspections page; inspector scans logged separately with geolocation (not general stats); last-scan panel visible only to inspectors/admins; admins see all inspections."
+  "version": "2026.07.02.17.20",
+  "buildDate": "2026-07-02T17:20:00Z",
+  "notes": "Admins can now do inspections too (logged with geolocation). Logged-in staff (admin, moderator, inspector) scans are excluded from the general traffic analysis — only anonymous driver scans count."
 }
