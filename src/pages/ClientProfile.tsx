@@ -739,6 +739,8 @@ const ClientProfile: React.FC = () => {
     }, [id, initAudio, playSuccessSound, playErrorSound, urlUid, currentUser]); // Removed cloudSyncStatus to prevent re-subscription flicker
 
     const scannedRef = useRef<string | null>(null);
+    // Last-scan time frozen at first load (before this view records its own scan).
+    const prevScanRef = useRef<string | null | undefined>(undefined);
     const hasClient = !!client;
     // Visible scan feedback shown on the profile: green "recorded" / yellow "passback".
     const [scanFeedback, setScanFeedback] = useState<{ type: 'recorded' | 'passback' | 'recent'; secs?: number } | null>(null);
@@ -1226,7 +1228,25 @@ const ClientProfile: React.FC = () => {
         : currentMonthStr;
     const isActive = !isCanceled && hasPaidCurrentMonth;
     const themeColor = isActive ? '#00e676' : '#ff1744';
-    
+
+    // Freeze the last-scan time as it was when this page first loaded — i.e.
+    // BEFORE this view records its own scan — so an inspector sees when the
+    // passenger's card was actually scanned at boarding, not their own check.
+    if (client && prevScanRef.current === undefined) {
+        prevScanRef.current = client.lastScanAt || null;
+    }
+    const formatScanMoment = (iso: string) => {
+        const d = new Date(iso);
+        const dateStr = d.toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const secs = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000));
+        let rel: string;
+        if (secs < 60) rel = `преди ${secs} сек`;
+        else if (secs < 3600) rel = `преди ${Math.round(secs / 60)} мин`;
+        else if (secs < 86400) rel = `преди ${Math.round(secs / 3600)} ч`;
+        else rel = `преди ${Math.round(secs / 86400)} дни`;
+        return { dateStr, rel, secs };
+    };
+
     let statusText = isCanceled ? 'АНУЛИРАН' : 'КАРТАТА НЕ Е ПЛАТЕНА';
     if (!isCanceled && !hasPaidCurrentMonth) { 
         statusText = `БЕЗ ТАКСА ЗА ${getFormattedMonth(currentMonthStr).split(' ')[0]}`; 
@@ -1403,6 +1423,29 @@ const ClientProfile: React.FC = () => {
                         {getFormattedMonth(isActive ? lastPaidMonth : currentMonthStr)}
                     </div>
                 </div>
+
+                {/* Last-scan info (previous scan, excluding this one) — for inspectors */}
+                {(() => {
+                    const prev = prevScanRef.current;
+                    if (!prev) {
+                        return (
+                            <div style={{ padding: '0.9rem 1.25rem', background: 'rgba(255,171,0,0.08)', borderBottom: '1px solid rgba(255,171,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#ffab00', fontSize: '0.9rem', fontWeight: 700 }}>
+                                <Clock size={16} /> Няма предишно сканиране на тази карта
+                            </div>
+                        );
+                    }
+                    const f = formatScanMoment(prev);
+                    // Green if scanned within the last ~2h (likely this trip), else neutral.
+                    const recent = f.secs < 7200;
+                    return (
+                        <div style={{ padding: '0.9rem 1.25rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', fontSize: '0.9rem' }}>
+                            <Clock size={16} color={recent ? '#00e676' : 'rgba(255,255,255,0.5)'} />
+                            <span style={{ color: 'rgba(255,255,255,0.55)' }}>Последно сканиране:</span>
+                            <b style={{ color: recent ? '#00e676' : '#fff' }}>{f.dateStr}</b>
+                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem' }}>({f.rel})</span>
+                        </div>
+                    );
+                })()}
 
                 {/* Footer Security Element */}
                 <div style={{ padding: '1rem 1.5rem', background: 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

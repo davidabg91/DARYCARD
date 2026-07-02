@@ -3804,6 +3804,10 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Общо платено</div>
                                             <div style={{ fontWeight: 700, color: 'var(--success-color)', fontSize: '1.1rem' }}>{selectedClient.amountPaid} €</div>
                                         </div>
+                                        <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Clock size={13} /> Последно сканиране</div>
+                                            <div style={{ fontWeight: 600 }}>{selectedClient.lastScanAt ? new Date(selectedClient.lastScanAt).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Никога сканирана'}</div>
+                                        </div>
                                         {selectedClient.cardType === 'Служебна карта' && (
                                             <div style={{ gridColumn: 'span 2', padding: '1rem', background: 'rgba(77, 208, 225, 0.08)', borderRadius: '10px', border: '1px solid rgba(77, 208, 225, 0.25)', fontSize: '0.85rem' }}>
                                                 <b style={{ color: '#4dd0e1' }}>Причина за служебна карта:</b> {selectedClient.serviceReason || 'Няма въведена причина'}

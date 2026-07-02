@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.10.04",
-  "buildDate": "2026-07-02T10:04:00Z",
-  "notes": "Bulk renewal audit: write a full per-client activity-log entry (name, card №, month, amount, route, type, payment) instead of one vague summary line."
+  "version": "2026.07.02.16.34",
+  "buildDate": "2026-07-02T16:34:00Z",
+  "notes": "Profile shows the previous scan time (frozen at load, excluding the current scan) so inspectors can tell if the card was scanned at boarding. Admin client details also show 'Последно сканиране'."
 }
