@@ -6,7 +6,8 @@ import {
     RefreshCw, List, Save, 
     ShieldCheck, Shield, TrendingUp,
     PiggyBank, AlertTriangle, Share2,
-    AlertCircle, Bus, Send, Bell, BarChart3
+    AlertCircle, Bus, Send, Bell, BarChart3,
+    Eye, EyeOff
 } from 'lucide-react';
 import Card from '../components/Card';
 import logoMain from '../assets/logo_main.png';
@@ -379,6 +380,8 @@ const AdminPanel: React.FC = () => {
         return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
     });
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    // Monthly revenue is blurred by default (Revolut-style); the eye icon reveals it.
+    const [showMonthlyRevenue, setShowMonthlyRevenue] = useState(false);
 
     const [filterRoute, setFilterRoute] = useState<string>('all');
     const [filterCardType, setFilterCardType] = useState<string>('all');
@@ -1657,7 +1660,30 @@ const AdminPanel: React.FC = () => {
                                 <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={18} /> ПРИХОД ЗА МЕСЕЦА</div>
                                 <div style={{ background: 'rgba(0, 173, 181, 0.1)', color: 'var(--primary-color)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>{currentMonthIso}</div>
                             </div>
-                            <div style={{ fontSize: isMobile ? '1.75rem' : '2.5rem', fontWeight: 900, color: '#fff' }}>{revenueMonthCurrent.toFixed(2)} €</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div
+                                    onClick={() => setShowMonthlyRevenue(v => !v)}
+                                    style={{
+                                        fontSize: isMobile ? '1.75rem' : '2.5rem',
+                                        fontWeight: 900,
+                                        color: '#fff',
+                                        filter: showMonthlyRevenue ? 'none' : 'blur(11px)',
+                                        userSelect: showMonthlyRevenue ? 'auto' : 'none',
+                                        transition: 'filter 0.25s ease',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {revenueMonthCurrent.toFixed(2)} €
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowMonthlyRevenue(v => !v)}
+                                    title={showMonthlyRevenue ? 'Скрий сумата' : 'Покажи сумата'}
+                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', borderRadius: '10px', padding: '0.5rem', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                                >
+                                    {showMonthlyRevenue ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Общо активни този месец</div>
                         </Card>
                     </div>
