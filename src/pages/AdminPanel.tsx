@@ -6,7 +6,7 @@ import {
     RefreshCw, List, Save, 
     ShieldCheck, Shield, TrendingUp,
     PiggyBank, AlertTriangle, Share2,
-    AlertCircle, Bus, Send, Bell
+    AlertCircle, Bus, Send, Bell, BarChart3
 } from 'lucide-react';
 import Card from '../components/Card';
 import logoMain from '../assets/logo_main.png';
@@ -1726,6 +1726,63 @@ const AdminPanel: React.FC = () => {
                             </div>
                         </Card>
                     </div>
+
+                    {/* --- ACTIVITY BY DAY-OF-MONTH CHART --- */}
+                    <Card>
+                        <h3 style={{ marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--primary-color)' }}>
+                            <BarChart3 size={20} /> Кога се издават/подновяват карти (по ден от месеца)
+                        </h3>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                            Всяка издадена или подновена карта се брои по деня от месеца на транзакцията (сборувано за цялата история).
+                        </p>
+                        {(() => {
+                            // Count unique transaction days per client (dedupes the 12 identical
+                            // service-card entries into one), bucketed by day-of-month 1–31.
+                            const counts = new Array(31).fill(0);
+                            for (const c of clients) {
+                                const dates = new Set<string>();
+                                (c.renewalHistory || []).forEach(rh => { if (rh.date) dates.add(rh.date.slice(0, 10)); });
+                                if (c.createdAt) dates.add(c.createdAt.slice(0, 10));
+                                dates.forEach(d => {
+                                    const day = Number(d.slice(8, 10));
+                                    if (day >= 1 && day <= 31) counts[day - 1]++;
+                                });
+                            }
+                            const maxCount = Math.max(1, ...counts);
+                            const totalEvents = counts.reduce((a, b) => a + b, 0);
+                            const busiestDay = counts.indexOf(Math.max(...counts)) + 1;
+                            return (
+                                <>
+                                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: isMobile ? '2px' : '4px', height: '180px', padding: '0 0 0.25rem' }}>
+                                        {counts.map((n, i) => {
+                                            const day = i + 1;
+                                            const isTop = n === maxCount && n > 0;
+                                            return (
+                                                <div key={day} title={`${day}-о число: ${n} издадени/подновени`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', gap: '4px' }}>
+                                                    <div style={{ fontSize: '0.6rem', fontWeight: 700, color: isTop ? 'var(--primary-color)' : 'var(--text-secondary)', opacity: n > 0 ? 1 : 0 }}>{n}</div>
+                                                    <div style={{
+                                                        width: '100%',
+                                                        height: `${Math.round((n / maxCount) * 100)}%`,
+                                                        minHeight: n > 0 ? '3px' : '0',
+                                                        background: isTop ? 'var(--primary-color)' : 'rgba(0,173,181,0.35)',
+                                                        borderRadius: '3px 3px 0 0',
+                                                        transition: 'height 0.3s ease'
+                                                    }} />
+                                                    {(day === 1 || day % 5 === 0 || day === 31) && (
+                                                        <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>{day}</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                        <div>Общо транзакции: <b style={{ color: '#fff' }}>{totalEvents}</b></div>
+                                        {totalEvents > 0 && <div>Най-натоварен ден: <b style={{ color: 'var(--primary-color)' }}>{busiestDay}-о число</b> ({maxCount})</div>}
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </Card>
 
                     {/* --- DETAILS REPORT EXPORT SECTION --- */}
                     <div style={{ marginTop: '1rem' }} id="printable-report">

@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.09.00",
-  "buildDate": "2026-07-02T09:00:00Z",
-  "notes": "Градина card price fixed to 75.00 € (pensioner/student auto = 37.50). Also auto-price the scan/link quick-renew from the route so renewals use the current price."
+  "version": "2026.07.02.09.15",
+  "buildDate": "2026-07-02T09:15:00Z",
+  "notes": "Finances: add a day-of-month bar chart showing when in the month cards are most issued/renewed."
 }
