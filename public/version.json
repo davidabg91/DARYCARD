@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.09.15",
-  "buildDate": "2026-07-02T09:15:00Z",
-  "notes": "Finances: add a day-of-month bar chart showing when in the month cards are most issued/renewed."
+  "version": "2026.07.02.09.31",
+  "buildDate": "2026-07-02T09:31:00Z",
+  "notes": "Finances chart: clearer/modern layout — labelled count axis (БРОЙ КАРТИ) with gridlines and a ДЕН ОТ МЕСЕЦА x-axis, so date vs count is obvious."
 }

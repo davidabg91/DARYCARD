@@ -1751,33 +1751,70 @@ const AdminPanel: React.FC = () => {
                             const maxCount = Math.max(1, ...counts);
                             const totalEvents = counts.reduce((a, b) => a + b, 0);
                             const busiestDay = counts.indexOf(Math.max(...counts)) + 1;
+                            const CHART_H = 200;
+                            const gap = isMobile ? '2px' : '4px';
+                            // Y-axis ticks (count), top -> 0, evenly spaced to match the gridlines.
+                            const yTicks = Array.from({ length: 5 }, (_, i) => Math.round(maxCount - (maxCount / 4) * i));
                             return (
                                 <>
-                                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: isMobile ? '2px' : '4px', height: '180px', padding: '0 0 0.25rem' }}>
-                                        {counts.map((n, i) => {
-                                            const day = i + 1;
-                                            const isTop = n === maxCount && n > 0;
-                                            return (
-                                                <div key={day} title={`${day}-о число: ${n} издадени/подновени`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', gap: '4px' }}>
-                                                    <div style={{ fontSize: '0.6rem', fontWeight: 700, color: isTop ? 'var(--primary-color)' : 'var(--text-secondary)', opacity: n > 0 ? 1 : 0 }}>{n}</div>
-                                                    <div style={{
-                                                        width: '100%',
-                                                        height: `${Math.round((n / maxCount) * 100)}%`,
-                                                        minHeight: n > 0 ? '3px' : '0',
-                                                        background: isTop ? 'var(--primary-color)' : 'rgba(0,173,181,0.35)',
-                                                        borderRadius: '3px 3px 0 0',
-                                                        transition: 'height 0.3s ease'
-                                                    }} />
-                                                    {(day === 1 || day % 5 === 0 || day === 31) && (
-                                                        <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>{day}</div>
-                                                    )}
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        {/* Y-axis caption */}
+                                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '0.62rem', fontWeight: 800, letterSpacing: '1px', color: 'var(--text-secondary)', textAlign: 'center', height: `${CHART_H}px`, display: 'flex', alignItems: 'center' }}>
+                                            БРОЙ КАРТИ
+                                        </div>
+                                        {/* Y-axis tick values */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: `${CHART_H}px`, fontSize: '0.6rem', color: 'var(--text-secondary)', textAlign: 'right', minWidth: '16px' }}>
+                                            {yTicks.map((t, i) => <div key={i} style={{ lineHeight: 1, transform: i === 0 ? 'translateY(-3px)' : i === yTicks.length - 1 ? 'translateY(3px)' : 'none' }}>{t}</div>)}
+                                        </div>
+                                        {/* Plot area */}
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ position: 'relative', height: `${CHART_H}px` }}>
+                                                {/* horizontal gridlines */}
+                                                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                                    {yTicks.map((_, i) => <div key={i} style={{ borderTop: '1px dashed rgba(255,255,255,0.08)' }} />)}
                                                 </div>
-                                            );
-                                        })}
+                                                {/* bars */}
+                                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', gap }}>
+                                                    {counts.map((n, i) => {
+                                                        const day = i + 1;
+                                                        const isTop = n === maxCount && n > 0;
+                                                        return (
+                                                            <div key={day} title={`${day}-о число: ${n} издадени/подновени карти`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                                                                {isTop && <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--primary-color)', marginBottom: '2px' }}>{n}</div>}
+                                                                <div style={{
+                                                                    width: '100%',
+                                                                    height: `${Math.round((n / maxCount) * 100)}%`,
+                                                                    minHeight: n > 0 ? '3px' : '0',
+                                                                    background: isTop ? 'var(--primary-color)' : 'rgba(0,173,181,0.45)',
+                                                                    borderRadius: '3px 3px 0 0',
+                                                                    transition: 'height 0.3s ease'
+                                                                }} />
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                            {/* X-axis day labels (aligned under the bars) */}
+                                            <div style={{ display: 'flex', gap, marginTop: '6px' }}>
+                                                {counts.map((n, i) => {
+                                                    const day = i + 1;
+                                                    const show = day === 1 || day % 5 === 0 || day === 31;
+                                                    const isTop = n === maxCount && n > 0;
+                                                    return (
+                                                        <div key={day} style={{ flex: 1, textAlign: 'center', fontSize: '0.58rem', fontWeight: isTop ? 800 : 500, color: isTop ? 'var(--primary-color)' : 'var(--text-secondary)' }}>
+                                                            {show || isTop ? day : ''}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            <div style={{ textAlign: 'center', fontSize: '0.62rem', fontWeight: 800, letterSpacing: '1px', color: 'var(--text-secondary)', marginTop: '6px' }}>
+                                                ДЕН ОТ МЕСЕЦА
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                        <div>Общо транзакции: <b style={{ color: '#fff' }}>{totalEvents}</b></div>
-                                        {totalEvents > 0 && <div>Най-натоварен ден: <b style={{ color: 'var(--primary-color)' }}>{busiestDay}-о число</b> ({maxCount})</div>}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--surface-border)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                        <div>📊 Общо транзакции: <b style={{ color: '#fff' }}>{totalEvents}</b></div>
+                                        {totalEvents > 0 && <div>🔺 Най-натоварен ден: <b style={{ color: 'var(--primary-color)' }}>{busiestDay}-о число</b> ({maxCount} карти)</div>}
                                     </div>
                                 </>
                             );
