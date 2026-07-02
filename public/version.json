@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.01.13.41",
-  "buildDate": "2026-07-01T13:41:00Z",
-  "notes": "Activation now also requires the scanned id to exist in the card list (CARDS_MAPPING) — an unknown/numberless card shows 'НЕПОЗНАТА КАРТА' and cannot be activated. Truncated (<8) still shows the incomplete-read warning."
+  "version": "2026.07.02.09.00",
+  "buildDate": "2026-07-02T09:00:00Z",
+  "notes": "Градина card price fixed to 75.00 € (pensioner/student auto = 37.50). Also auto-price the scan/link quick-renew from the route so renewals use the current price."
 }

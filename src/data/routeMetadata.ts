@@ -134,7 +134,7 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Градина": {
     stops: ["Плевен", "Ясен", "Търнене", "Дисевица", "Градина"],
     priceSingle: "2.00 €",
-    priceCard: "40.00 €"
+    priceCard: "75.00 €"
   },
   "Ореховица": {
     stops: ["Плевен", "Опанец", "Д.М", "Тръстеник", "Славовица", "Ореховица"],

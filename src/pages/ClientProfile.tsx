@@ -471,6 +471,34 @@ const ClientProfile: React.FC = () => {
         }
     }, [regRoute, regCardType]);
 
+    // Auto-price the quick-renew amount from the route + card type (pensioner &
+    // student = half), so a renewal uses the route's current card price instead
+    // of the last paid amount. Service cards are handled separately (whole year).
+    useEffect(() => {
+        if (!client || client.cardType === 'Служебна карта') return;
+        if (renewalRoute && ROUTE_METADATA[renewalRoute]) {
+            const meta = ROUTE_METADATA[renewalRoute];
+            let priceStr = meta.priceCard;
+            if (client.cardType === 'Ученическа карта') {
+                if (meta.priceCardStudent) {
+                    priceStr = meta.priceCardStudent;
+                } else if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) { setRenewalAmount(Number((normal / 2).toFixed(2))); return; }
+                }
+            } else if (client.cardType === 'Пенсионерска карта') {
+                if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) { setRenewalAmount(Number((normal / 2).toFixed(2))); return; }
+                }
+            }
+            if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                const n = parseFloat(priceStr.replace(' €', '').trim());
+                if (!isNaN(n)) setRenewalAmount(n);
+            }
+        }
+    }, [renewalRoute, client]);
+
     const initAudio = React.useCallback(() => {
         if (audioInitializedRef.current) return;
         try {
