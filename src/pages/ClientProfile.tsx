@@ -74,11 +74,10 @@ const reverseGeocode = async (lat: number, lng: number): Promise<string | null> 
         if (!r.ok) return null;
         const d = await r.json();
         const a = d.address || {};
-        const parts = [
-            a.road,
-            a.house_number,
-            a.suburb || a.neighbourhood || a.village || a.town || a.city || a.municipality,
-        ].filter(Boolean);
+        // City/village first (most important), then the street if known.
+        const place = a.city || a.town || a.village || a.municipality || a.hamlet || a.suburb || a.county;
+        const road = a.road ? (a.house_number ? `${a.road} ${a.house_number}` : a.road) : '';
+        const parts = [place, road].filter(Boolean);
         return parts.length ? parts.join(', ') : (d.display_name || null);
     } catch {
         return null;
@@ -1508,8 +1507,8 @@ const ClientProfile: React.FC = () => {
                         );
                     }
                     const f = formatScanMoment(prev);
-                    // Green if scanned within the last 3h (same rule as the boarding verdict).
-                    const recent = f.secs < 3 * 3600;
+                    // Green if scanned within the last hour (same rule as the boarding verdict).
+                    const recent = f.secs < 3600;
                     return (
                         <div style={{ padding: '0.9rem 1.25rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', fontSize: '0.9rem' }}>
                             <Clock size={16} color={recent ? '#00e676' : 'rgba(255,255,255,0.5)'} />
@@ -1524,7 +1523,7 @@ const ClientProfile: React.FC = () => {
                     scanned within 3h before this check = scanned at boarding). */}
                 {(currentUser?.role === 'inspector' || currentUser?.role === 'admin') && scanFeedback?.type === 'inspection' && (() => {
                     const prev = prevScanRef.current;
-                    const ok = !!prev && (Date.now() - new Date(prev).getTime()) < 3 * 3600 * 1000;
+                    const ok = !!prev && (Date.now() - new Date(prev).getTime()) < 3600 * 1000;
                     return (
                         <div style={{ padding: '1.1rem 1.25rem', background: ok ? 'rgba(0,230,118,0.15)' : 'rgba(255,82,82,0.15)', borderBottom: `1px solid ${ok ? 'rgba(0,230,118,0.35)' : 'rgba(255,82,82,0.4)'}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: ok ? '#00e676' : '#ff5252', fontSize: '1.3rem', fontWeight: 900, letterSpacing: '1px' }}>

@@ -44,11 +44,11 @@ const loadLeaflet = (): Promise<void> => {
 const fmt = (iso: string) => new Date(iso).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 // A passenger counts as "scanned at boarding" if their card was scanned within
-// 3 hours before the inspection.
+// 1 hour before the inspection.
 const wasScannedAtBoarding = (s: InspectionScan) => {
     if (!s.boardingScanAt) return false;
     const diff = new Date(s.at).getTime() - new Date(s.boardingScanAt).getTime();
-    return diff >= 0 && diff < 3 * 3600 * 1000;
+    return diff >= 0 && diff < 3600 * 1000;
 };
 
 export default function Inspections() {

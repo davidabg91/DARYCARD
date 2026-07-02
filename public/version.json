@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.18.12",
-  "buildDate": "2026-07-02T18:12:00Z",
-  "notes": "When an inspector/admin scans, the profile now shows the boarding verdict '✓ СКАНИРАН ПРИ КАЧВАНЕ' / '✗ НЕ Е СКАНИРАН' (same 3h rule as the Проверки tab) instead of a generic 'recorded' message."
+  "version": "2026.07.02.18.17",
+  "buildDate": "2026-07-02T18:17:00Z",
+  "notes": "Boarding-scan window tightened to 1 hour. Inspection address now leads with the city/village (then street); click still opens the exact location."
 }
