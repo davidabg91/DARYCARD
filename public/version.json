@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.17.20",
-  "buildDate": "2026-07-02T17:20:00Z",
-  "notes": "Admins can now do inspections too (logged with geolocation). Logged-in staff (admin, moderator, inspector) scans are excluded from the general traffic analysis — only anonymous driver scans count."
+  "version": "2026.07.02.17.46",
+  "buildDate": "2026-07-02T17:46:00Z",
+  "notes": "Inspections: geolocation is reverse-geocoded to a readable address (OpenStreetMap), and the admin gets a map of all inspection points (green=scanned, red=not)."
 }

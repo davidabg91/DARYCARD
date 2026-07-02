@@ -59,6 +59,32 @@ const getServiceYearOptions = (): number[] => {
     return [y - 1, y, y + 1, y + 2];
 };
 
+// Turn GPS coordinates into a short human-readable address via OpenStreetMap
+// (Nominatim). Best-effort with a timeout — returns null on any failure so the
+// inspection still saves with the raw coordinates.
+const reverseGeocode = async (lat: number, lng: number): Promise<string | null> => {
+    try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 5000);
+        const r = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=bg&zoom=18`,
+            { signal: ctrl.signal, headers: { Accept: 'application/json' } }
+        );
+        clearTimeout(t);
+        if (!r.ok) return null;
+        const d = await r.json();
+        const a = d.address || {};
+        const parts = [
+            a.road,
+            a.house_number,
+            a.suburb || a.neighbourhood || a.village || a.town || a.city || a.municipality,
+        ].filter(Boolean);
+        return parts.length ? parts.join(', ') : (d.display_name || null);
+    } catch {
+        return null;
+    }
+};
+
 const formatTimeAgo = (totalSecs: number) => {
     if (totalSecs < 60) {
         return `Сканирана преди ${totalSecs} сек.`;
@@ -779,7 +805,13 @@ const ClientProfile: React.FC = () => {
                         .catch(err => console.error('Inspection log failed:', err));
                 if (typeof navigator !== 'undefined' && navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
-                        pos => save({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+                        pos => {
+                            const lat = pos.coords.latitude, lng = pos.coords.longitude;
+                            // Resolve a readable address, then save (falls back to coords only).
+                            reverseGeocode(lat, lng).then(address =>
+                                save({ lat, lng, accuracy: pos.coords.accuracy, address: address || null })
+                            );
+                        },
                         () => save({ lat: null, lng: null, locationError: true }),
                         { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
                     );
