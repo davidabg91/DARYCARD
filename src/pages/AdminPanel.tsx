@@ -46,14 +46,15 @@ interface Client {
     id: string;
     rfid?: string;
     name: string;
-    route: string;
+    route: string; // display string; for multi-direction clients it's the routes joined by ", "
+    routes?: string[]; // the client's directions (source of truth); falls back to [route]
     amountPaid: number;
     expiryDate: string; // "YYYY-MM"
     photo: string;
     createdAt: string;
     isCanceled?: boolean;
     cancelReason?: string;
-    renewalHistory?: { date: string, amount: number, month: string, paymentMethod?: string, bankAmount?: number, cashAmount?: number }[];
+    renewalHistory?: { date: string, amount: number, month: string, route?: string, paymentMethod?: string, bankAmount?: number, cashAmount?: number }[];
     history?: ClientLog[];
     scanCount?: number;
     lastScanAt?: string;
@@ -228,6 +229,23 @@ const computeCardAmount = (route: string, cardType?: string): number => {
     const n = parseFloat(priceStr.replace(' €', ''));
     if (isNaN(n)) return 0;
     return Number((half ? n / 2 : n).toFixed(2));
+};
+
+// A client's directions. Source of truth is `routes`; falls back to splitting the
+// (possibly comma-joined) `route` display string, then to a single [route].
+const getClientRoutes = (client: { route?: string; routes?: string[] }): string[] => {
+    if (client.routes && client.routes.length) return client.routes;
+    if (client.route && client.route.includes(',')) return client.route.split(',').map(r => r.trim()).filter(Boolean);
+    return client.route ? [client.route] : [];
+};
+
+// Is a specific direction paid for a given month? Legacy entries without a
+// `route` count toward the client's primary (first) direction.
+const isDirectionPaid = (client: Client, direction: string, month: string): boolean => {
+    const primary = getClientRoutes(client)[0];
+    return (client.renewalHistory || []).some(rh =>
+        rh.month === month && (rh.route ? rh.route === direction : direction === primary)
+    );
 };
 
 interface TabButtonProps {
@@ -904,8 +922,8 @@ const AdminPanel: React.FC = () => {
         const nowIso = new Date().toISOString();
         const initialExpiry = isServiceCard ? `${serviceYear}-12` : expiryDate;
         const initialRenewalHistory = isServiceCard
-            ? buildYearMonths(serviceYear).map(m => ({ date: nowIso, amount: 0, month: m, paymentMethod: 'Служебна' }))
-            : [{ date: nowIso, amount: effectiveAmount, month: expiryDate, ...renewalPaymentFields }];
+            ? buildYearMonths(serviceYear).map(m => ({ date: nowIso, amount: 0, month: m, route: selectedRoute, paymentMethod: 'Служебна' }))
+            : [{ date: nowIso, amount: effectiveAmount, month: expiryDate, route: selectedRoute, ...renewalPaymentFields }];
         const initialDetails = isServiceCard
             ? `Служебна карта за цялата ${serviceYear} г. (без плащане) | Причина: ${serviceReason.trim()}`
             : `Първоначално плащане: ${effectiveAmount.toFixed(2)} € за месец ${expiryDate} | Начин на плащане: ${paymentLabel}`;
@@ -914,6 +932,7 @@ const AdminPanel: React.FC = () => {
             id: generatedId,
             name: clientName,
             route: selectedRoute,
+            routes: [selectedRoute],
             cardType: cardType,
             amountPaid: isServiceCard ? 0 : effectiveAmount,
             expiryDate: initialExpiry,
@@ -981,20 +1000,23 @@ const AdminPanel: React.FC = () => {
         // Service cards renew for a whole year (unpaid): append all 12 monthly
         // entries of the chosen year and set the expiry to that December.
         if (isServiceCard) {
-            if (!newRoute) { alert('Моля, изберете курс.'); return; }
+            if (!newRoute) { alert('Моля, изберете направление.'); return; }
             const isoNowSvc = new Date().toISOString();
-            const svcRouteChanged = newRoute !== selectedClient.route;
-            const yearEntries = buildYearMonths(newServiceYear).map(m => ({ date: isoNowSvc, amount: 0, month: m, paymentMethod: 'Служебна' }));
+            const curRoutesSvc = getClientRoutes(selectedClient);
+            const newRoutesSvc = curRoutesSvc.includes(newRoute) ? curRoutesSvc : [...curRoutesSvc, newRoute];
+            const isNewDirSvc = !curRoutesSvc.includes(newRoute);
+            const yearEntries = buildYearMonths(newServiceYear).map(m => ({ date: isoNowSvc, amount: 0, month: m, route: newRoute, paymentMethod: 'Служебна' }));
             try {
                 await updateDoc(doc(db, 'clients', selectedClient.id), {
-                    route: newRoute,
+                    route: newRoutesSvc.join(', '),
+                    routes: newRoutesSvc,
                     expiryDate: `${newServiceYear}-12`,
                     isCanceled: false,
                     renewalHistory: arrayUnion(...yearEntries),
                     history: arrayUnion({
                         date: isoNowSvc,
-                        action: 'Подновяване',
-                        details: `Служебна карта за цялата ${newServiceYear} г. (без плащане)${svcRouteChanged ? ` | Променен курс: ${selectedClient.route} -> ${newRoute}` : ''}`,
+                        action: isNewDirSvc ? 'Добавяне на направление' : 'Подновяване',
+                        details: `Служебна карта, направление ${newRoute} за цялата ${newServiceYear} г. (без плащане)`,
                         amount: 0,
                         performedBy: currentUser?.username || 'Админ'
                     })
@@ -1006,8 +1028,8 @@ const AdminPanel: React.FC = () => {
             }
             const cardNumSvc = getClientCardNumber(selectedClient);
             const nameSvc = cardNumSvc ? `${selectedClient.name} (Карта № ${cardNumSvc})` : selectedClient.name;
-            await logGlobalActivity('Подновяване', nameSvc, `Служебна карта за цялата ${newServiceYear} г. ${svcRouteChanged ? `Курс: ${newRoute}` : ''}`, 0);
-            setModalMessage({ text: `Успешно подновена служебна карта за цялата ${newServiceYear} г.${svcRouteChanged ? ` Курсът е сменен на ${newRoute}.` : ''}`, type: 'success' });
+            await logGlobalActivity(isNewDirSvc ? 'Добавяне на направление' : 'Подновяване', nameSvc, `Служебна карта, направление ${newRoute} за цялата ${newServiceYear} г.`, 0);
+            setModalMessage({ text: `${isNewDirSvc ? 'Добавено' : 'Подновено'} направление „${newRoute}" (служебна) за цялата ${newServiceYear} г.`, type: 'success' });
             return;
         }
 
@@ -1021,29 +1043,34 @@ const AdminPanel: React.FC = () => {
             ? { paymentMethod: newPaymentMethod, bankAmount: renewBank, cashAmount: renewCash }
             : { paymentMethod: newPaymentMethod };
 
-        const routeChanged = newRoute !== selectedClient.route;
+        const curRoutes = getClientRoutes(selectedClient);
+        const newRoutes = curRoutes.includes(newRoute) ? curRoutes : [...curRoutes, newRoute];
+        const isNewDir = !curRoutes.includes(newRoute);
+        const newExpiry = newMonth > (selectedClient.expiryDate || '') ? newMonth : selectedClient.expiryDate;
         const isoNow = new Date().toISOString();
 
         // Atomic update: appending to history/renewalHistory and bumping the running
         // total with arrayUnion + increment instead of overwriting the whole document.
-        // This prevents two moderators renewing the same client from clobbering each
-        // other's payment (lost-update race).
+        // The chosen route is merged into the client's directions (a new one is
+        // ADDED as a separate subscription; an existing one is renewed).
         try {
             await updateDoc(doc(db, 'clients', selectedClient.id), {
-                route: newRoute,
-                expiryDate: newMonth,
+                route: newRoutes.join(', '),
+                routes: newRoutes,
+                expiryDate: newExpiry,
                 isCanceled: false,
                 amountPaid: increment(effectiveNewAmount),
                 renewalHistory: arrayUnion({
                     date: isoNow,
                     amount: effectiveNewAmount,
                     month: newMonth,
+                    route: newRoute,
                     ...renewPaymentFields
                 }),
                 history: arrayUnion({
                     date: isoNow,
-                    action: 'Подновяване',
-                    details: `Нов месец: ${newMonth}${routeChanged ? ` | Променен курс: ${selectedClient.route} -> ${newRoute}` : ''} | Начин на плащане: ${renewPaymentLabel}`,
+                    action: isNewDir ? 'Добавяне на направление' : 'Подновяване',
+                    details: `Направление ${newRoute} — месец ${newMonth}. Сума: ${effectiveNewAmount.toFixed(2)} € | Начин на плащане: ${renewPaymentLabel}`,
                     amount: effectiveNewAmount,
                     performedBy: currentUser?.username || 'Админ'
                 })
@@ -1056,9 +1083,9 @@ const AdminPanel: React.FC = () => {
 
         const cardNum = getClientCardNumber(selectedClient);
         const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
-        await logGlobalActivity('Подновяване', nameWithCard, `Месец: ${newMonth}. Сума: ${effectiveNewAmount.toFixed(2)} €. ${routeChanged ? `Курс: ${newRoute}` : ''} | Начин на плащане: ${renewPaymentLabel}`, effectiveNewAmount);
+        await logGlobalActivity(isNewDir ? 'Добавяне на направление' : 'Подновяване', nameWithCard, `Направление ${newRoute} — месец ${newMonth}. Сума: ${effectiveNewAmount.toFixed(2)} € | Начин на плащане: ${renewPaymentLabel}`, effectiveNewAmount);
         setModalMessage({
-            text: `Успешно подновен абонамент за ${newMonth}. Сума: ${effectiveNewAmount.toFixed(2)} €. ${routeChanged ? `Курсът е сменен на ${newRoute}.` : ''}`,
+            text: `${isNewDir ? 'Добавено' : 'Подновено'} направление „${newRoute}" за ${newMonth}. Сума: ${effectiveNewAmount.toFixed(2)} €.`,
             type: 'success'
         });
         setNewMonth('');
@@ -1081,24 +1108,25 @@ const AdminPanel: React.FC = () => {
             const cardNum = getClientCardNumber(c);
             const nameWithCard = cardNum ? `${c.name} (Карта № ${cardNum})` : c.name;
             try {
+                const primaryDir = getClientRoutes(c)[0] || c.route;
                 if (c.cardType === 'Служебна карта') {
                     const year = Number(bulkMonth.slice(0, 4));
-                    const entries = buildYearMonths(year).map(m => ({ date: isoNow, amount: 0, month: m, paymentMethod: 'Служебна' }));
+                    const entries = buildYearMonths(year).map(m => ({ date: isoNow, amount: 0, month: m, route: primaryDir, paymentMethod: 'Служебна' }));
                     await updateDoc(doc(db, 'clients', c.id), {
                         expiryDate: `${year}-12`,
                         isCanceled: false,
                         renewalHistory: arrayUnion(...entries),
-                        history: arrayUnion({ date: isoNow, action: 'Групово подновяване', details: `Служебна карта за цялата ${year} г. (без плащане) | Курс: ${c.route}`, amount: 0, performedBy: currentUser?.username || 'Админ' })
+                        history: arrayUnion({ date: isoNow, action: 'Групово подновяване', details: `Служебна карта за цялата ${year} г. (без плащане) | Направление: ${primaryDir}`, amount: 0, performedBy: currentUser?.username || 'Админ' })
                     });
                     // One audit-log entry per client, with its full details.
-                    await logGlobalActivity('Групово подновяване', nameWithCard, `Служебна карта за цялата ${year} г. (без плащане). Курс: ${c.route} | Вид: Служебна карта`, 0);
+                    await logGlobalActivity('Групово подновяване', nameWithCard, `Служебна карта за цялата ${year} г. (без плащане). Направление: ${primaryDir} | Вид: Служебна карта`, 0);
                 } else {
-                    const amount = computeCardAmount(c.route, c.cardType);
+                    const amount = computeCardAmount(primaryDir, c.cardType);
                     await updateDoc(doc(db, 'clients', c.id), {
                         expiryDate: bulkMonth,
                         isCanceled: false,
                         amountPaid: increment(amount),
-                        renewalHistory: arrayUnion({ date: isoNow, amount, month: bulkMonth, paymentMethod: bulkPaymentMethod }),
+                        renewalHistory: arrayUnion({ date: isoNow, amount, month: bulkMonth, route: primaryDir, paymentMethod: bulkPaymentMethod }),
                         history: arrayUnion({ date: isoNow, action: 'Групово подновяване', details: `Месец: ${bulkMonth}. Сума: ${amount.toFixed(2)} €. Курс: ${c.route} | Начин на плащане: ${bulkPaymentMethod}`, amount, performedBy: currentUser?.username || 'Админ' })
                     });
                     await logGlobalActivity('Групово подновяване', nameWithCard, `Месец: ${bulkMonth}. Сума: ${amount.toFixed(2)} €. Курс: ${c.route} | Вид: ${c.cardType || 'Нормална карта'} | Начин на плащане: ${bulkPaymentMethod}`, amount);
@@ -1273,7 +1301,7 @@ const AdminPanel: React.FC = () => {
             cCardNum.includes(sTerm) ||
             cCardNum.includes(sSanitized);
         
-        const matchesRoute = filterRoute === 'all' || c.route === filterRoute;
+        const matchesRoute = filterRoute === 'all' || getClientRoutes(c).includes(filterRoute);
         const matchesCardType = filterCardType === 'all' || (c.cardType || 'Нормална карта') === filterCardType;
         const matchesSchool = filterCardType !== 'Ученическа карта' || filterSchool === 'all' || (c.school || '') === filterSchool;
 
@@ -1986,7 +2014,7 @@ const AdminPanel: React.FC = () => {
                                     const cType = c.cardType || 'Нормална карта';
                                     if (cType !== reportCardType) match = false;
                                 }
-                                if (reportRoute !== 'all' && c.route !== reportRoute) match = false;
+                                if (reportRoute !== 'all' && !getClientRoutes(c).includes(reportRoute)) match = false;
                                 if (reportMunicipality !== 'all' && (c.municipality || '') !== reportMunicipality) match = false;
                                 
                                 if (reportPeriodType === 'month') {
@@ -2695,7 +2723,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     </td>
                                                     <td style={{ display: 'flex', gap: '0.5rem' }}>
                                                         <button
-                                                            onClick={() => { setSelectedClient(client); setNewRoute(client.route); setShowActionModal(true); }}
+                                                            onClick={() => { setSelectedClient(client); setNewRoute(getClientRoutes(client)[0] || ''); setShowActionModal(true); }}
                                                             style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.75rem', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', color: '#fff' }}
                                                         >
                                                             Управление
@@ -2801,7 +2829,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
 
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.5rem' }}>
                                             <button
-                                                onClick={() => { setSelectedClient(client); setNewRoute(client.route); setShowActionModal(true); }}
+                                                onClick={() => { setSelectedClient(client); setNewRoute(getClientRoutes(client)[0] || ''); setShowActionModal(true); }}
                                                 style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid var(--surface-border)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', background: 'var(--primary-color)', color: '#fff' }}
                                             >
                                                 Управление
@@ -2867,7 +2895,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                     </div>
                                 ) : (() => {
                                     const selectedList = clients.filter(c => selectedClientIds.has(c.id));
-                                    const total = selectedList.reduce((s, c) => s + computeCardAmount(c.route, c.cardType), 0);
+                                    const total = selectedList.reduce((s, c) => s + computeCardAmount(getClientRoutes(c)[0] || c.route, c.cardType), 0);
                                     return (
                                         <>
                                             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--surface-border)' }}>
@@ -2897,7 +2925,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                             <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{c.route} · {c.cardType || 'Нормална карта'}</div>
                                                         </div>
                                                         <div style={{ fontWeight: 800, fontSize: '0.85rem', color: c.cardType === 'Служебна карта' ? 'var(--text-secondary)' : 'var(--success-color)', whiteSpace: 'nowrap' }}>
-                                                            {c.cardType === 'Служебна карта' ? 'цяла година' : `${computeCardAmount(c.route, c.cardType).toFixed(2)} €`}
+                                                            {c.cardType === 'Служебна карта' ? 'цяла година' : `${computeCardAmount(getClientRoutes(c)[0] || c.route, c.cardType).toFixed(2)} €`}
                                                         </div>
                                                         <button onClick={() => toggleClientSelected(c.id)} title="Махни от групата" style={{ background: 'transparent', border: 'none', color: '#ff5252', cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
                                                             <XCircle size={20} />
@@ -3823,9 +3851,30 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
 
                                 {modalTab === 'actions' && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.3s ease' }}>
-                                        {/* Renew */}
+                                        {/* Directions & subscriptions status */}
+                                        <div style={{ padding: isMobile ? '1.25rem' : '1.5rem', borderRadius: '12px', background: 'rgba(0,173,181,0.04)', border: '1px solid rgba(0,173,181,0.15)' }}>
+                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', margin: '0 0 1rem 0', fontSize: isMobile ? '1rem' : '1.1rem' }}><Bus size={18} /> Направления (за {currentMonthIso})</h4>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                {getClientRoutes(selectedClient).map(dir => {
+                                                    const paid = isDirectionPaid(selectedClient, dir, currentMonthIso);
+                                                    return (
+                                                        <div key={dir} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.9rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--surface-border)' }}>
+                                                            <span style={{ fontWeight: 700 }}>{dir}</span>
+                                                            <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '50px', background: paid ? 'rgba(0,230,118,0.12)' : 'rgba(255,82,82,0.12)', color: paid ? '#00e676' : '#ff5252' }}>
+                                                                {paid ? '✓ Платено' : '✗ Неплатено'}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem' }}>
+                                                За да <b>добавиш ново направление</b> или да <b>подновиш</b> — избери маршрута долу в „Подновяване". Ново направление се добавя; съществуващо се подновява.
+                                            </div>
+                                        </div>
+
+                                        {/* Renew / add direction */}
                                         <div style={{ padding: isMobile ? '1.25rem' : '1.5rem', borderRadius: '12px', background: 'rgba(0,255,150,0.03)', border: '1px solid rgba(0,255,150,0.1)' }}>
-                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)', margin: '0 0 1rem 0', fontSize: isMobile ? '1rem' : '1.1rem' }}><RefreshCw size={18} /> Подновяване</h4>
+                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)', margin: '0 0 1rem 0', fontSize: isMobile ? '1rem' : '1.1rem' }}><RefreshCw size={18} /> Подновяване / добави направление</h4>
                                             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem', marginBottom: '1rem' }}>
                                                 {selectedClient.cardType === 'Служебна карта' ? (
                                                     <div style={{ gridColumn: 'span 2' }}>

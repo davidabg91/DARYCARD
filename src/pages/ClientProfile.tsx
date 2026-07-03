@@ -18,13 +18,14 @@ interface Client {
     id: string;
     name: string;
     route: string;
+    routes?: string[];
     expiryDate: string;
     photo: string;
     createdAt: string;
     amountPaid?: number;
     isCanceled?: boolean;
     cancelReason?: string;
-    renewalHistory?: { date: string, amount: number, month: string, paymentMethod?: string, bankAmount?: number, cashAmount?: number }[];
+    renewalHistory?: { date: string, amount: number, month: string, route?: string, paymentMethod?: string, bankAmount?: number, cashAmount?: number }[];
     history?: { date: string; action: string; details?: string; amount?: number; performedBy?: string; }[];
     cardType?: string;
     address?: string;
@@ -57,6 +58,13 @@ const buildYearMonths = (year: number): string[] =>
 const getServiceYearOptions = (): number[] => {
     const y = new Date().getFullYear();
     return [y - 1, y, y + 1, y + 2];
+};
+
+// A client's directions (source of truth `routes`; falls back to the route string).
+const getClientRoutes = (client: { route?: string; routes?: string[] }): string[] => {
+    if (client.routes && client.routes.length) return client.routes;
+    if (client.route && client.route.includes(',')) return client.route.split(',').map(r => r.trim()).filter(Boolean);
+    return client.route ? [client.route] : [];
 };
 
 // Turn GPS coordinates into a short human-readable address via OpenStreetMap
@@ -639,8 +647,8 @@ const ClientProfile: React.FC = () => {
 
         // Service cards: whole selected year (12 monthly entries, amount 0).
         const initialRenewalHistory = isServiceCard
-            ? buildYearMonths(regServiceYear).map(m => ({ date: now.toISOString(), amount: 0, month: m, paymentMethod: 'Служебна' }))
-            : [{ date: now.toISOString(), amount: regEffectiveAmount, month: expiryMonth, ...regPaymentFields }];
+            ? buildYearMonths(regServiceYear).map(m => ({ date: now.toISOString(), amount: 0, month: m, route: regRoute, paymentMethod: 'Служебна' }))
+            : [{ date: now.toISOString(), amount: regEffectiveAmount, month: expiryMonth, route: regRoute, ...regPaymentFields }];
         const initialDetails = isServiceCard
             ? `Служебна карта за цялата ${regServiceYear} г. (без плащане) | Причина: ${regServiceReason.trim()}`
             : `Първоначално плащане: ${regEffectiveAmount.toFixed(2)} € за месец ${expiryMonth} | Начин на плащане: ${regPaymentLabel}`;
@@ -650,6 +658,7 @@ const ClientProfile: React.FC = () => {
             nfcUid: urlUid.toUpperCase(),
             name: regName,
             route: regRoute,
+            routes: [regRoute],
             cardType: regCardType,
             address: (regCardType === 'Пенсионерска карта' || regCardType === 'Инвалидна карта') ? regAddress : '',
             serviceReason: isServiceCard ? regServiceReason.trim() : '',
@@ -1474,6 +1483,22 @@ const ClientProfile: React.FC = () => {
                     <div style={{ marginBottom: '0.5rem' }}>
                         <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 0.1rem 0', letterSpacing: '-0.2px', color: 'rgba(255,255,255,0.6)' }}>{client.name.toUpperCase()}</h2>
                         <div style={{ fontSize: '1.8rem', fontWeight: 900, color: themeColor, textShadow: `0 0 30px ${themeColor}66` }}>{client.route.toUpperCase()}</div>
+                        {(() => {
+                            const dirs = getClientRoutes(client);
+                            if (dirs.length < 2) return null;
+                            return (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', justifyContent: 'center', marginTop: '0.5rem' }}>
+                                    {dirs.map(dir => {
+                                        const paid = (client.renewalHistory || []).some(rh => rh.month === currentMonthStr && (rh.route ? rh.route === dir : dir === dirs[0]));
+                                        return (
+                                            <span key={dir} style={{ fontSize: '0.72rem', fontWeight: 800, padding: '0.2rem 0.55rem', borderRadius: '50px', background: paid ? 'rgba(0,230,118,0.15)' : 'rgba(255,82,82,0.15)', color: paid ? '#00e676' : '#ff5252', border: `1px solid ${paid ? 'rgba(0,230,118,0.3)' : 'rgba(255,82,82,0.3)'}` }}>
+                                                {paid ? '✓' : '✗'} {dir}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
 
@@ -1769,11 +1794,14 @@ const ClientProfile: React.FC = () => {
                                                 if (client?.cardType === 'Служебна карта') {
                                                     if (!renewalRoute) { playErrorSound(); setIsUpdating(false); return; }
                                                     const svcIso = new Date().toISOString();
-                                                    const svcEntries = buildYearMonths(renewServiceYear).map(m => ({ date: svcIso, amount: 0, month: m, paymentMethod: 'Служебна' }));
+                                                    const svcCur = getClientRoutes(client);
+                                                    const svcNew = svcCur.includes(renewalRoute) ? svcCur : [...svcCur, renewalRoute];
+                                                    const svcEntries = buildYearMonths(renewServiceYear).map(m => ({ date: svcIso, amount: 0, month: m, route: renewalRoute, paymentMethod: 'Служебна' }));
                                                     const clientRefSvc = doc(db, 'clients', client?.id || '');
                                                     await updateDoc(clientRefSvc, {
                                                         expiryDate: `${renewServiceYear}-12`,
-                                                        route: renewalRoute,
+                                                        route: svcNew.join(', '),
+                                                        routes: svcNew,
                                                         isCanceled: false,
                                                         renewalHistory: arrayUnion(...svcEntries),
                                                         history: arrayUnion({
@@ -1816,13 +1844,18 @@ const ClientProfile: React.FC = () => {
                                                     return;
                                                 }
                                                 const clientRef = doc(db, 'clients', client?.id || '');
+                                                const qrCur = getClientRoutes(client || { route: '' });
+                                                const qrNew = qrCur.includes(renewalRoute) ? qrCur : [...qrCur, renewalRoute];
+                                                const qrExpiry = renewalMonth > (client?.expiryDate || '') ? renewalMonth : (client?.expiryDate || renewalMonth);
                                                 await updateDoc(clientRef, {
-                                                    expiryDate: renewalMonth,
-                                                    route: renewalRoute,
+                                                    expiryDate: qrExpiry,
+                                                    route: qrNew.join(', '),
+                                                    routes: qrNew,
                                                     renewalHistory: arrayUnion({
                                                         date: new Date().toISOString(),
                                                         amount: qrAmount,
                                                         month: renewalMonth,
+                                                        route: renewalRoute,
                                                         ...qrPaymentFields
                                                     }),
                                                     history: arrayUnion({

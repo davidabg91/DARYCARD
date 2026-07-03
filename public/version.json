@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.02.18.34",
-  "buildDate": "2026-07-02T18:34:00Z",
-  "notes": "Inspections: pick a day (date picker + prev/next/today) to view day-by-day; map markers that share the same spot are spread out so all are visible."
+  "version": "2026.07.03.11.32",
+  "buildDate": "2026-07-03T11:32:00Z",
+  "notes": "Multi-direction subscriptions: a client can hold several directions (e.g. Садовец + Дъбник), each renewed and validated per direction. Directions show comma-joined (terminals unchanged); the management modal lists per-direction paid/unpaid status."
 }
