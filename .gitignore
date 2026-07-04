@@ -45,3 +45,6 @@ DARY PROGRAM EXE/
 # Installer binaries
 vc_redist.x64.exe
 innosetup-setup.exe
+
+# Local Claude skills bundle (ui-ux-pro-max etc.) — large, kept out of the repo
+.claude/skills/
