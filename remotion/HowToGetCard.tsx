@@ -150,8 +150,6 @@ const ThreeDCard: React.FC<{ frame: number; startFrame: number }> = ({ frame, st
         easing: EASE,
     });
 
-    if (frame < startFrame) return null;
-
     // 3D rotation animations
     const rotateY = interpolate(appearProgress, [0, 1], [60, -15]);
     const rotateX = interpolate(appearProgress, [0, 1], [20, 8]);
@@ -160,10 +158,9 @@ const ThreeDCard: React.FC<{ frame: number; startFrame: number }> = ({ frame, st
     const opacity = appearProgress;
 
     // Subtly float up and down after entry
-    const floatY = Math.sin((frame - startFrame - 30) / 20) * 12;
-    // Tiny tilt oscillation
-    const tiltX = Math.cos((frame - startFrame - 30) / 25) * 2;
-    const tiltY = Math.sin((frame - startFrame - 30) / 30) * 3;
+    const floatY = Math.sin(Math.max(0, frame - startFrame - 30) / 20) * 12;
+    const tiltX = Math.cos(Math.max(0, frame - startFrame - 30) / 25) * 2;
+    const tiltY = Math.sin(Math.max(0, frame - startFrame - 30) / 30) * 3;
 
     return (
         <div style={{
@@ -187,7 +184,7 @@ const ThreeDCard: React.FC<{ frame: number; startFrame: number }> = ({ frame, st
                 border: '1px solid rgba(255,255,255,0.1)',
             }}>
                 <Img 
-                    src={staticFile('dary-card-processed.png')} 
+                    src={staticFile('bb6def80-ee6b-444b-a25f-de2941d48942.png')} 
                     style={{ 
                         width: '100%', 
                         height: '100%', 
@@ -227,17 +224,18 @@ const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
     const cardY = interpolate(frame, [18, 58], [520, -12], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
     const cardOp = interpolate(frame, [18, 30, 70, 84], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
     const scanned = frame >= 62;
-    const flash = interpolate(frame, [58, 66, 88], [0, 0.65, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
-    // Profile screen reveal animations
-    const screenScale = interpolate(frame, [62, 74], [0.85, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
-    const screenOp = interpolate(frame, [62, 70], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    // Smooth transition from standby to scanned casing (takes 8 frames starting at 62)
+    const scannedOp = interpolate(frame, [62, 70], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+
+    // Green flash overlay centered at frame 62-65 to make the switch completely invisible
+    const flash = interpolate(frame, [59, 62, 65, 78], [0, 0.75, 0.75, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
     return (
         <div style={{ position: 'relative', width: 440, height: 962 }}>
             {/* incoming card — transparent PNG directly rendered with drop-shadow for perfect edges */}
             <Img
-                src={staticFile('dary-card-processed.png')}
+                src={staticFile('bb6def80-ee6b-444b-a25f-de2941d48942.png')}
                 style={{
                     position: 'absolute',
                     left: 50,
@@ -251,7 +249,7 @@ const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
                 }}
             />
 
-            {/* device body (real casing image) */}
+            {/* standby device body (real casing image) */}
             <div style={{
                 position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
                 zIndex: 2,
@@ -268,107 +266,88 @@ const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
                     borderRadius: '38px',
                     overflow: 'hidden',
                     background: '#091410',
-                    border: scanned ? '3px solid rgba(0, 230, 118, 0.85)' : '3px solid rgba(255,255,255,0.05)',
-                    boxShadow: scanned ? '0 0 50px rgba(0, 230, 118, 0.4), inset 0 0 35px rgba(0, 230, 118, 0.3)' : 'none',
-                    transition: 'border 0.2s, box-shadow 0.2s',
+                    border: '3px solid rgba(255,255,255,0.05)',
                     zIndex: 3,
                 }}>
-                    {!scanned ? (
-                        /* Standby screen */
-                        <div style={{
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: '#091410',
-                            padding: 20,
-                            gap: 30,
-                        }}>
-                            {/* Pulsing signal icon */}
-                            <div style={{
-                                position: 'relative',
-                                width: 100,
-                                height: 100,
-                                borderRadius: '50%',
-                                background: 'rgba(0,173,181,0.15)',
-                                border: '2px solid rgba(0,173,181,0.4)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                scale: String(0.9 + 0.1 * Math.abs(Math.sin(frame / 10))),
-                            }}>
-                                <ScanLine size={46} color={TEAL_LIGHT} strokeWidth={2.5} />
-                            </div>
-                            <div style={{
-                                color: WHITE,
-                                fontWeight: 800,
-                                fontSize: 20,
-                                textAlign: 'center',
-                                fontFamily: FONT,
-                                letterSpacing: 2,
-                                lineHeight: 1.3,
-                            }}>
-                                МОЛЯ,<br />ДОПРЕТЕ КАРТА
-                            </div>
-                            <div style={{
-                                color: 'rgba(255,255,255,0.4)',
-                                fontSize: 13,
-                                fontWeight: 600,
-                                letterSpacing: 1,
-                                textTransform: 'uppercase',
-                                marginTop: 10,
-                            }}>
-                                DARY COMMERCE
-                            </div>
-                        </div>
-                    ) : (
-                        /* Scanned profile screen */
-                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#091410' }}>
-                            <Img
-                                src={staticFile('Screenshot 2026-07-04 151400.png')}
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'contain',
-                                    scale: String(screenScale),
-                                    opacity: screenOp,
-                                }}
-                            />
-
-                            {/* Dynamic green neon glow around the profile photo inside the screenshot */}
-                            <div style={{
-                                position: 'absolute',
-                                left: '50%',
-                                top: '25.6%',
-                                marginLeft: -94,
-                                width: 188,
-                                height: 188,
-                                borderRadius: 38,
-                                border: '3px solid rgba(0, 230, 118, 0.85)',
-                                boxShadow: '0 0 35px rgba(0, 230, 118, 0.9), inset 0 0 20px rgba(0, 230, 118, 0.6)',
-                                opacity: interpolate(frame, [62, 75], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) * (0.7 + 0.3 * Math.abs(Math.sin(frame / 8))),
-                                pointerEvents: 'none',
-                                zIndex: 4,
-                            }} />
-                        </div>
-                    )}
-
-                    {/* tap green flash */}
+                    {/* Standby screen */}
                     <div style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: 0,
                         width: '100%',
                         height: '100%',
-                        background: GREEN,
-                        opacity: flash,
-                        pointerEvents: 'none',
-                        zIndex: 10,
-                    }} />
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: '#091410',
+                        padding: 20,
+                        gap: 30,
+                    }}>
+                        {/* Pulsing signal icon */}
+                        <div style={{
+                            position: 'relative',
+                            width: 100,
+                            height: 100,
+                            borderRadius: '50%',
+                            background: 'rgba(0,173,181,0.15)',
+                            border: '2px solid rgba(0,173,181,0.4)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            scale: String(0.9 + 0.1 * Math.abs(Math.sin(frame / 10))),
+                        }}>
+                            <ScanLine size={46} color={TEAL_LIGHT} strokeWidth={2.5} />
+                        </div>
+                        <div style={{
+                            color: WHITE,
+                            fontWeight: 800,
+                            fontSize: 20,
+                            textAlign: 'center',
+                            fontFamily: FONT,
+                            letterSpacing: 2,
+                            lineHeight: 1.3,
+                        }}>
+                            МОЛЯ,<br />ДОПРЕТЕ КАРТА
+                        </div>
+                        <div style={{
+                            color: 'rgba(255,255,255,0.4)',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            letterSpacing: 1,
+                            textTransform: 'uppercase',
+                            marginTop: 10,
+                        }}>
+                            DARY COMMERCE
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            {/* Scanned device casing (fades in smoothly over the standby casing) */}
+            {frame >= 62 && (
+                <div style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    width: '100%',
+                    height: '100%',
+                    opacity: scannedOp,
+                    zIndex: 4,
+                }}>
+                    <Img src={staticFile('26fe1bc6-3579-4143-9905-03edbd65af09.png')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
+            )}
+
+            {/* tap green flash over the entire validator casing to make transition seamless */}
+            <div style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: '100%',
+                height: '100%',
+                background: GREEN,
+                opacity: flash,
+                pointerEvents: 'none',
+                zIndex: 10,
+            }} />
         </div>
     );
 };
