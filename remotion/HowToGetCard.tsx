@@ -222,9 +222,10 @@ const Step1: React.FC = () => {
 };
 
 // ---- Scene 3: Step 2 — at the bus (scan) -----------------------------------
+// ---- Scene 3: Step 2 — at the bus (scan) -----------------------------------
 const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
     // Card slides up to the top contactless zone, taps (~62), then screen displays scanned profile.
-    const cardY = interpolate(frame, [18, 58], [320, -5], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
+    const cardY = interpolate(frame, [18, 58], [480, -10], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
     const cardOp = interpolate(frame, [18, 30, 70, 84], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
     const scanned = frame >= 62;
     const flash = interpolate(frame, [58, 66, 88], [0, 0.65, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
@@ -234,18 +235,22 @@ const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
     const screenOp = interpolate(frame, [62, 70], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
     return (
-        <div style={{ position: 'relative', width: 310, height: 680 }}>
-            {/* incoming card */}
-            <div style={{
-                position: 'absolute', left: 35, top: 0,
-                translate: `0px ${cardY}px`, opacity: cardOp,
-                width: 240, height: 151, borderRadius: 14,
-                boxShadow: '0 20px 45px rgba(0,0,0,0.6)', zIndex: 5,
-                overflow: 'hidden',
-                border: '1px solid rgba(255,255,255,0.1)',
-            }}>
-                <Img src={staticFile('dary-card-processed.png')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
+        <div style={{ position: 'relative', width: 410, height: 900 }}>
+            {/* incoming card — transparent PNG directly rendered with drop-shadow for perfect edges */}
+            <Img
+                src={staticFile('dary-card-processed.png')}
+                style={{
+                    position: 'absolute',
+                    left: 45,
+                    top: 0,
+                    translate: `0px ${cardY}px`,
+                    opacity: cardOp,
+                    width: 320,
+                    height: 202,
+                    filter: 'drop-shadow(0 25px 35px rgba(0,0,0,0.7))',
+                    zIndex: 5,
+                }}
+            />
 
             {/* device body (real casing image) */}
             <div style={{
@@ -254,16 +259,19 @@ const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
             }}>
                 <Img src={staticFile('mps-ultra-device-xxl.png')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 
-                {/* screen overlay */}
+                {/* screen overlay with smoother rounded edges (38px) */}
                 <div style={{
                     position: 'absolute',
                     left: '14.98%',
                     width: '70.95%',
                     top: '8.53%',
                     height: '77.48%',
-                    borderRadius: '24px',
+                    borderRadius: '38px',
                     overflow: 'hidden',
                     background: '#091410',
+                    border: scanned ? '3px solid rgba(0, 230, 118, 0.85)' : '3px solid rgba(255,255,255,0.05)',
+                    boxShadow: scanned ? '0 0 50px rgba(0, 230, 118, 0.4), inset 0 0 35px rgba(0, 230, 118, 0.3)' : 'none',
+                    transition: 'border 0.2s, box-shadow 0.2s',
                     zIndex: 3,
                 }}>
                     {!scanned ? (
@@ -329,6 +337,22 @@ const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
                                     opacity: screenOp,
                                 }}
                             />
+
+                            {/* Dynamic green neon glow around the profile photo inside the screenshot */}
+                            <div style={{
+                                position: 'absolute',
+                                left: '50%',
+                                top: '25.6%',
+                                marginLeft: -88,
+                                width: 176,
+                                height: 176,
+                                borderRadius: 36,
+                                border: '3px solid rgba(0, 230, 118, 0.85)',
+                                boxShadow: '0 0 35px rgba(0, 230, 118, 0.9), inset 0 0 20px rgba(0, 230, 118, 0.6)',
+                                opacity: interpolate(frame, [62, 75], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) * (0.7 + 0.3 * Math.abs(Math.sin(frame / 8))),
+                                pointerEvents: 'none',
+                                zIndex: 4,
+                            }} />
                         </div>
                     )}
 
@@ -353,21 +377,26 @@ const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
 const Step2: React.FC = () => {
     const frame = useCurrentFrame();
     const opacity = sceneFade(frame, STEP2);
-    const cap = reveal(frame, 150, 26);
+    const cap = reveal(frame, 100, 26);
     return (
-        <AbsoluteFill style={{ opacity, fontFamily: FONT, alignItems: 'center', justifyContent: 'flex-start', padding: '90px 100px 0' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 30 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 22, opacity: reveal(frame, 4).opacity, translate: `0px ${reveal(frame, 4).ty}px` }}>
-                    <div style={{ width: 74, height: 74, borderRadius: 22, background: `linear-gradient(135deg, ${TEAL}, #067a80)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 42, fontWeight: 900, color: '#001012' }}>2</div>
-                    <Bus size={46} color={TEAL_LIGHT} />
-                    <div style={{ fontSize: 46, fontWeight: 900, color: WHITE, letterSpacing: 1 }}>Сканирате в автобуса</div>
+        <AbsoluteFill style={{ opacity, fontFamily: FONT, padding: '100px 120px 100px 150px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 80, width: '100%' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 50, flex: '1' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 24, opacity: reveal(frame, 4).opacity, translate: `0px ${reveal(frame, 4).ty}px` }}>
+                        <div style={{ width: 92, height: 92, borderRadius: 26, background: `linear-gradient(135deg, ${TEAL}, #067a80)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, fontWeight: 900, color: '#001012', boxShadow: `0 18px 50px ${TEAL}55` }}>2</div>
+                        <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: 6, color: TEAL_LIGHT, textTransform: 'uppercase' }}>Сканиране</div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 30, opacity: cap.opacity, translate: `0px ${cap.ty}px` }}>
+                        <div style={{ fontSize: 62, fontWeight: 900, color: WHITE, lineHeight: 1.25 }}>
+                            Сканирате при<br />качване в автобуса
+                        </div>
+                        <div style={{ fontSize: 44, fontWeight: 600, color: MUTED, lineHeight: 1.45 }}>
+                            Допрете картата в <span style={{ color: TEAL_LIGHT, fontWeight: 800 }}>горната част</span> на апарата.
+                        </div>
+                    </div>
                 </div>
-                <Terminal frame={frame} />
-                <div style={{
-                    fontSize: 40, fontWeight: 700, color: MUTED, textAlign: 'center', maxWidth: 1100,
-                    opacity: cap.opacity, translate: `0px ${cap.ty}px`, marginTop: -6,
-                }}>
-                    Допирате картата в <span style={{ color: TEAL_LIGHT, fontWeight: 800 }}>горната част</span> на апарата
+                <div style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <Terminal frame={frame} />
                 </div>
             </div>
         </AbsoluteFill>
