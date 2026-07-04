@@ -1272,23 +1272,23 @@ const Landing: React.FC = () => {
                                      <span style={{ fontWeight: 800 }}>Почивен ден</span>
                                  </div>
                              </div>
-                        </div>
-                    </div>
 
-                    {/* How-to video — full width, autoplays (muted) when scrolled into view */}
-                    <div style={{ maxWidth: '1100px', margin: '3rem auto 0', width: '100%' }}>
-                        <video
-                            ref={howToVideoRef}
-                            controls
-                            muted
-                            playsInline
-                            preload="metadata"
-                            poster={`${import.meta.env.BASE_URL}how-to-poster.jpg`}
-                            style={{ width: '100%', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', display: 'block', background: '#0a0e13', boxShadow: '0 30px 70px rgba(0,0,0,0.45)' }}
-                        >
-                            <source src={`${import.meta.env.BASE_URL}how-to-get-card.mp4`} type="video/mp4" />
-                            Вашият браузър не поддържа видео.
-                        </video>
+                             {/* How-to video — wrapped in a matching glass panel, under the working-hours card, with a similar size and style. */}
+                             <div className="working-hours-card glass" style={{ marginTop: '1.5rem', padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                                 <video
+                                     ref={howToVideoRef}
+                                     controls
+                                     muted
+                                     playsInline
+                                     preload="metadata"
+                                     poster={`${import.meta.env.BASE_URL}how-to-poster.jpg`}
+                                     style={{ width: '100%', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', display: 'block', background: '#0a0e13' }}
+                                 >
+                                     <source src={`${import.meta.env.BASE_URL}how-to-get-card.mp4`} type="video/mp4" />
+                                     Вашият браузър не поддържа видео.
+                                 </video>
+                             </div>
+                        </div>
                     </div>
                 </section>
 
