@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.04.11.32",
-  "buildDate": "2026-07-04T11:32:00Z",
-  "notes": "Inspections tab redesign (Soft UI): segmented day selector, icon stat cards with a scanned-at-boarding %, refined rows with a status accent bar and icon badges, map legend, tabular numbers and hover transitions."
+  "version": "2026.07.04.12.15",
+  "buildDate": "2026-07-04T12:15:00Z",
+  "notes": "Landing: add the 'Как да извадите абонаментна карта?' explainer video under the Работно Време panel in the ВАЖНА ИНФОРМАЦИЯ section."
 }
