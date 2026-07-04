@@ -220,16 +220,16 @@ const Step1: React.FC = () => {
 
 // ---- Scene 3: Step 2 — at the bus (scan) -----------------------------------
 const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
-    // Card slides up to the top contactless zone, taps (~62), then screen displays scanned profile.
+    // Card slides up to the top contactless zone, taps (~62)
     const cardY = interpolate(frame, [18, 58], [520, -12], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
     const cardOp = interpolate(frame, [18, 30, 70, 84], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
     const scanned = frame >= 62;
 
-    // Smooth transition from standby to scanned casing (takes 8 frames starting at 62)
-    const scannedOp = interpolate(frame, [62, 70], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    // Smooth fade out of the standby screen to reveal the pre-baked scan profile underneath
+    const standbyOp = interpolate(frame, [62, 70], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
-    // Green flash overlay centered at frame 62-65 to make the switch completely invisible
-    const flash = interpolate(frame, [59, 62, 65, 78], [0, 0.75, 0.75, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    // High-tech circular radial sweep centered at the contactless scanner zone (peaks at Y=15%)
+    const flash = interpolate(frame, [59, 62, 65, 78], [0, 0.95, 0.95, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
     return (
         <div style={{ position: 'relative', width: 440, height: 962 }}>
@@ -249,27 +249,26 @@ const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
                 }}
             />
 
-            {/* standby device body (real casing image) */}
+            {/* device body: always using the scanned device image so casing never changes or shifts */}
             <div style={{
                 position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
                 zIndex: 2,
             }}>
-                <Img src={staticFile('mps-ultra-device-xxl.png')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <Img src={staticFile('26fe1bc6-3579-4143-9905-03edbd65af09.png')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 
-                {/* screen overlay with smoother rounded edges (38px) */}
+                {/* Standby screen overlay: covers the screen area and fades out on scan */}
                 <div style={{
                     position: 'absolute',
-                    left: '14.98%',
-                    width: '70.95%',
-                    top: '8.53%',
-                    height: '77.48%',
-                    borderRadius: '38px',
+                    left: '18.86%',
+                    width: '62.05%',
+                    top: '19.75%',
+                    height: '67.98%',
+                    borderRadius: '24px',
                     overflow: 'hidden',
                     background: '#091410',
-                    border: '3px solid rgba(255,255,255,0.05)',
+                    opacity: standbyOp,
                     zIndex: 3,
                 }}>
-                    {/* Standby screen */}
                     <div style={{
                         width: '100%',
                         height: '100%',
@@ -319,35 +318,22 @@ const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Scanned device casing (fades in smoothly over the standby casing) */}
-            {frame >= 62 && (
+                {/* High-tech screen-only radial sweep: simulates scanner reader emission inside the screen area */}
                 <div style={{
                     position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: scannedOp,
+                    left: '18.86%',
+                    width: '62.05%',
+                    top: '19.75%',
+                    height: '67.98%',
+                    borderRadius: '24px',
+                    overflow: 'hidden',
+                    background: 'radial-gradient(circle at 50% 15%, rgba(0, 230, 118, 0.95) 0%, rgba(0, 230, 118, 0.3) 50%, transparent 100%)',
+                    opacity: flash,
+                    pointerEvents: 'none',
                     zIndex: 4,
-                }}>
-                    <Img src={staticFile('26fe1bc6-3579-4143-9905-03edbd65af09.png')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                </div>
-            )}
-
-            {/* tap green flash over the entire validator casing to make transition seamless */}
-            <div style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                width: '100%',
-                height: '100%',
-                background: GREEN,
-                opacity: flash,
-                pointerEvents: 'none',
-                zIndex: 10,
-            }} />
+                }} />
+            </div>
         </div>
     );
 };
