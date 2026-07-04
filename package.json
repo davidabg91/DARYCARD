@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "video": "remotion studio remotion/index.ts",
+    "video:render": "remotion render remotion/index.ts HowToGetCard out/how-to-get-card.mp4 --codec h264"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
@@ -25,6 +27,7 @@
   "devDependencies": {
     "@capacitor/cli": "^8.3.1",
     "@eslint/js": "^9.39.4",
+    "@remotion/cli": "^4.0.484",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -34,6 +37,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "remotion": "^4.0.484",
     "sharp": "^0.34.5",
     "terser": "^5.46.1",
     "typescript": "~5.9.3",

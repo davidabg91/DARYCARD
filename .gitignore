@@ -48,3 +48,8 @@ innosetup-setup.exe
 
 # Local Claude skills bundle (ui-ux-pro-max etc.) — large, kept out of the repo
 .claude/skills/
+.agents/
+skills-lock.json
+
+# Remotion rendered video output
+out/
