@@ -773,8 +773,10 @@ const ClientProfile: React.FC = () => {
     }, [id, initAudio, playSuccessSound, playErrorSound, urlUid, currentUser]); // Removed cloudSyncStatus to prevent re-subscription flicker
 
     const scannedRef = useRef<string | null>(null);
-    // Last-scan time frozen at first load (before this view records its own scan).
-    const prevScanRef = useRef<string | null | undefined>(undefined);
+    // Always points at the latest client snapshot (used when saving an inspection
+    // so we record the freshest boarding-scan time, not a stale offline-cache one).
+    const latestClientRef = useRef(client);
+    latestClientRef.current = client;
     const hasClient = !!client;
     // Visible scan feedback shown on the profile: green "recorded" / yellow "passback".
     const [scanFeedback, setScanFeedback] = useState<{ type: 'recorded' | 'passback' | 'recent' | 'inspection'; secs?: number } | null>(null);
@@ -806,10 +808,12 @@ const ClientProfile: React.FC = () => {
                     clientCard: cardNum,
                     route: client?.route ?? '',
                     at: isoNow,
-                    boardingScanAt: client?.lastScanAt ?? null,
                 };
+                // Read the boarding scan at SAVE time from the latest snapshot (the
+                // geolocation lookup takes a moment, during which Firestore usually
+                // replaces the stale offline-cache value with the fresh server one).
                 const save = (extra: Record<string, unknown>) =>
-                    addDoc(collection(db, 'inspector_scans'), { ...base, ...extra })
+                    addDoc(collection(db, 'inspector_scans'), { ...base, boardingScanAt: latestClientRef.current?.lastScanAt ?? null, ...extra })
                         .catch(err => console.error('Inspection log failed:', err));
                 if (typeof navigator !== 'undefined' && navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
@@ -1309,12 +1313,11 @@ const ClientProfile: React.FC = () => {
     const isActive = !isCanceled && hasPaidCurrentMonth;
     const themeColor = isActive ? '#00e676' : '#ff1744';
 
-    // Freeze the last-scan time as it was when this page first loaded — i.e.
-    // BEFORE this view records its own scan — so an inspector sees when the
-    // passenger's card was actually scanned at boarding, not their own check.
-    if (client && prevScanRef.current === undefined) {
-        prevScanRef.current = client.lastScanAt || null;
-    }
+    // The boarding scan to show inspectors/admins = the client's LIVE last-scan
+    // time. Their own check does not touch lastScanAt, so no freezing is needed;
+    // using the live value means it self-corrects from the offline cache to the
+    // fresh server value without needing a manual refresh.
+    const lastBoardingScan = client?.lastScanAt || null;
     const formatScanMoment = (iso: string) => {
         const d = new Date(iso);
         const dateStr = d.toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -1523,7 +1526,7 @@ const ClientProfile: React.FC = () => {
                 {/* Last-scan info (previous scan, excluding this one) — visible only to
                     inspectors and admins (not to drivers/moderators or the public). */}
                 {(currentUser?.role === 'inspector' || currentUser?.role === 'admin') && (() => {
-                    const prev = prevScanRef.current;
+                    const prev = lastBoardingScan;
                     if (!prev) {
                         return (
                             <div style={{ padding: '0.9rem 1.25rem', background: 'rgba(255,171,0,0.08)', borderBottom: '1px solid rgba(255,171,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#ffab00', fontSize: '0.9rem', fontWeight: 700 }}>
@@ -1547,7 +1550,7 @@ const ClientProfile: React.FC = () => {
                 {/* Inspector/admin: boarding-scan verdict (same rule as the Проверки tab:
                     scanned within 3h before this check = scanned at boarding). */}
                 {(currentUser?.role === 'inspector' || currentUser?.role === 'admin') && scanFeedback?.type === 'inspection' && (() => {
-                    const prev = prevScanRef.current;
+                    const prev = lastBoardingScan;
                     const ok = !!prev && (Date.now() - new Date(prev).getTime()) < 3600 * 1000;
                     return (
                         <div style={{ padding: '1.1rem 1.25rem', background: ok ? 'rgba(0,230,118,0.15)' : 'rgba(255,82,82,0.15)', borderBottom: `1px solid ${ok ? 'rgba(0,230,118,0.35)' : 'rgba(255,82,82,0.4)'}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>

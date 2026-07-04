@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.03.11.32",
-  "buildDate": "2026-07-03T11:32:00Z",
-  "notes": "Multi-direction subscriptions: a client can hold several directions (e.g. Садовец + Дъбник), each renewed and validated per direction. Directions show comma-joined (terminals unchanged); the management modal lists per-direction paid/unpaid status."
+  "version": "2026.07.04.10.38",
+  "buildDate": "2026-07-04T10:38:00Z",
+  "notes": "Fix stale last-scan on inspections: show the LIVE last-scan time (auto-corrects from offline cache to fresh server value, no refresh) and record the inspection's boarding scan from the freshest snapshot."
 }
