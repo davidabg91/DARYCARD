@@ -89,7 +89,7 @@ const StepHeader: React.FC<{ n: number; label: string; frame: number }> = ({ n, 
                 boxShadow: `0 18px 50px ${TEAL}55`,
             }}>{n}</div>
             <div style={{
-                fontSize: 40, fontWeight: 800, letterSpacing: 6, color: TEAL_LIGHT,
+                fontSize: 44, fontWeight: 800, letterSpacing: 6, color: TEAL_LIGHT,
                 textTransform: 'uppercase',
             }}>{label}</div>
         </div>
@@ -102,18 +102,18 @@ const Row: React.FC<{ icon: React.ElementType; text: string; frame: number; star
         const col = accent || WHITE;
         return (
             <div style={{
-                display: 'flex', alignItems: 'center', gap: 32,
+                display: 'flex', alignItems: 'center', gap: 36,
                 opacity: r.opacity, translate: `${-r.ty}px 0px`,
             }}>
                 <div style={{
-                    width: 104, height: 104, borderRadius: 28, flexShrink: 0,
+                    width: 128, height: 128, borderRadius: 32, flexShrink: 0,
                     background: accent ? `${accent}1f` : 'rgba(255,255,255,0.06)',
                     border: `2px solid ${accent ? accent + '66' : 'rgba(255,255,255,0.12)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                    <Icon size={52} color={accent || TEAL_LIGHT} strokeWidth={2} />
+                    <Icon size={72} color={accent || TEAL_LIGHT} strokeWidth={2} />
                 </div>
-                <div style={{ fontSize: 56, fontWeight: 700, color: col }}>{text}</div>
+                <div style={{ fontSize: 72, fontWeight: 700, color: col }}>{text}</div>
             </div>
         );
     };
@@ -129,10 +129,10 @@ const Intro: React.FC = () => {
     return (
         <AbsoluteFill style={{ opacity, alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 44, padding: 100 }}>
-                <Img src={staticFile('logo_main.png')} style={{ width: 460, opacity: logoOp, scale: String(logoScale) }} />
+                <Img src={staticFile('logo_main.png')} style={{ width: 520, opacity: logoOp, scale: String(logoScale) }} />
                 <div style={{ height: 6, width: lineW, borderRadius: 3, background: `linear-gradient(90deg, transparent, ${TEAL}, transparent)` }} />
                 <div style={{
-                    fontSize: 82, fontWeight: 900, color: WHITE, textAlign: 'center', lineHeight: 1.15,
+                    fontSize: 100, fontWeight: 900, color: WHITE, textAlign: 'center', lineHeight: 1.15,
                     maxWidth: 1400, opacity: t.opacity, translate: `0px ${t.ty}px`, letterSpacing: -1,
                 }}>
                     Как да извадите<br />абонаментна карта?
@@ -176,9 +176,9 @@ const ThreeDCard: React.FC<{ frame: number; startFrame: number }> = ({ frame, st
             transform: `translateY(${floatY}px)`,
         }}>
             <div style={{
-                width: 580,
-                height: 366,
-                borderRadius: 36,
+                width: 660,
+                height: 416,
+                borderRadius: 40,
                 boxShadow: '0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(0,173,181,0.2)',
                 background: '#0d1117',
                 overflow: 'hidden',
@@ -204,7 +204,7 @@ const Step1: React.FC = () => {
     const frame = useCurrentFrame();
     const opacity = sceneFade(frame, STEP1);
     return (
-        <AbsoluteFill style={{ opacity, fontFamily: FONT, padding: '110px 120px 110px 150px', justifyContent: 'center' }}>
+        <AbsoluteFill style={{ opacity, fontFamily: FONT, padding: '80px 100px 80px 120px', justifyContent: 'center' }}>
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 60, width: '100%' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 64, flex: '1' }}>
                     <StepHeader n={1} label="На гишето" frame={frame} />
@@ -222,10 +222,9 @@ const Step1: React.FC = () => {
 };
 
 // ---- Scene 3: Step 2 — at the bus (scan) -----------------------------------
-// ---- Scene 3: Step 2 — at the bus (scan) -----------------------------------
 const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
     // Card slides up to the top contactless zone, taps (~62), then screen displays scanned profile.
-    const cardY = interpolate(frame, [18, 58], [480, -10], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
+    const cardY = interpolate(frame, [18, 58], [520, -12], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
     const cardOp = interpolate(frame, [18, 30, 70, 84], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
     const scanned = frame >= 62;
     const flash = interpolate(frame, [58, 66, 88], [0, 0.65, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
@@ -235,18 +234,18 @@ const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
     const screenOp = interpolate(frame, [62, 70], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
     return (
-        <div style={{ position: 'relative', width: 410, height: 900 }}>
+        <div style={{ position: 'relative', width: 440, height: 962 }}>
             {/* incoming card — transparent PNG directly rendered with drop-shadow for perfect edges */}
             <Img
                 src={staticFile('dary-card-processed.png')}
                 style={{
                     position: 'absolute',
-                    left: 45,
+                    left: 50,
                     top: 0,
                     translate: `0px ${cardY}px`,
                     opacity: cardOp,
-                    width: 320,
-                    height: 202,
+                    width: 340,
+                    height: 214,
                     filter: 'drop-shadow(0 25px 35px rgba(0,0,0,0.7))',
                     zIndex: 5,
                 }}
@@ -343,10 +342,10 @@ const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
                                 position: 'absolute',
                                 left: '50%',
                                 top: '25.6%',
-                                marginLeft: -88,
-                                width: 176,
-                                height: 176,
-                                borderRadius: 36,
+                                marginLeft: -94,
+                                width: 188,
+                                height: 188,
+                                borderRadius: 38,
                                 border: '3px solid rgba(0, 230, 118, 0.85)',
                                 boxShadow: '0 0 35px rgba(0, 230, 118, 0.9), inset 0 0 20px rgba(0, 230, 118, 0.6)',
                                 opacity: interpolate(frame, [62, 75], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) * (0.7 + 0.3 * Math.abs(Math.sin(frame / 8))),
@@ -379,7 +378,7 @@ const Step2: React.FC = () => {
     const opacity = sceneFade(frame, STEP2);
     const cap = reveal(frame, 100, 26);
     return (
-        <AbsoluteFill style={{ opacity, fontFamily: FONT, padding: '100px 120px 100px 150px', justifyContent: 'center' }}>
+        <AbsoluteFill style={{ opacity, fontFamily: FONT, padding: '80px 100px 80px 120px', justifyContent: 'center' }}>
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 80, width: '100%' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 50, flex: '1' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 24, opacity: reveal(frame, 4).opacity, translate: `0px ${reveal(frame, 4).ty}px` }}>
@@ -387,10 +386,10 @@ const Step2: React.FC = () => {
                         <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: 6, color: TEAL_LIGHT, textTransform: 'uppercase' }}>Сканиране</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 30, opacity: cap.opacity, translate: `0px ${cap.ty}px` }}>
-                        <div style={{ fontSize: 62, fontWeight: 900, color: WHITE, lineHeight: 1.25 }}>
+                        <div style={{ fontSize: 72, fontWeight: 900, color: WHITE, lineHeight: 1.25 }}>
                             Сканирате при<br />качване в автобуса
                         </div>
-                        <div style={{ fontSize: 44, fontWeight: 600, color: MUTED, lineHeight: 1.45 }}>
+                        <div style={{ fontSize: 48, fontWeight: 600, color: MUTED, lineHeight: 1.45 }}>
                             Допрете картата в <span style={{ color: TEAL_LIGHT, fontWeight: 800 }}>горната част</span> на апарата.
                         </div>
                     </div>
@@ -419,12 +418,12 @@ const Info: React.FC = () => {
                     <div style={{ width: 140, height: 140, borderRadius: 40, background: `${AMBER}1f`, border: `3px solid ${AMBER}66`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <ShieldCheck size={80} color={AMBER} />
                     </div>
-                    <div style={{ fontSize: 84, fontWeight: 900, color: AMBER, letterSpacing: 2 }}>ПАЗЕТЕ КАРТАТА!</div>
+                    <div style={{ fontSize: 96, fontWeight: 900, color: AMBER, letterSpacing: 2 }}>ПАЗЕТЕ КАРТАТА!</div>
                 </div>
-                <div style={{ fontSize: 58, fontWeight: 800, color: WHITE, opacity: l1.opacity, translate: `0px ${l1.ty}px` }}>
+                <div style={{ fontSize: 68, fontWeight: 800, color: WHITE, opacity: l1.opacity, translate: `0px ${l1.ty}px` }}>
                     Картата <span style={{ color: AMBER }}>не се подменя</span>.
                 </div>
-                <div style={{ fontSize: 48, fontWeight: 600, color: MUTED, lineHeight: 1.35, opacity: l2.opacity, translate: `0px ${l2.ty}px` }}>
+                <div style={{ fontSize: 56, fontWeight: 600, color: MUTED, lineHeight: 1.35, opacity: l2.opacity, translate: `0px ${l2.ty}px` }}>
                     При изтичане само я <span style={{ color: TEAL_LIGHT, fontWeight: 800 }}>презареждате</span> на гишето.
                 </div>
                 <div style={{
@@ -433,7 +432,7 @@ const Info: React.FC = () => {
                     background: `${TEAL}18`, border: `2px solid ${TEAL}66`, borderRadius: 60, padding: '22px 44px',
                 }}>
                     <Clock size={54} color={TEAL_LIGHT} />
-                    <span style={{ fontSize: 54, fontWeight: 900, color: WHITE }}>за под 1 минута</span>
+                    <span style={{ fontSize: 60, fontWeight: 900, color: WHITE }}>за под 1 минута</span>
                     <RefreshCcw size={48} color={TEAL_LIGHT} />
                 </div>
             </div>
@@ -452,9 +451,9 @@ const Outro: React.FC = () => {
     return (
         <AbsoluteFill style={{ opacity, fontFamily: FONT, alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 34 }}>
-                <Img src={staticFile('logo_main.png')} style={{ width: 520, opacity: logoOp, scale: String(logoScale) }} />
-                <div style={{ fontSize: 72, fontWeight: 900, color: WHITE, letterSpacing: 8, opacity: t.opacity, translate: `0px ${t.ty}px` }}>{SYSTEM_NAME}</div>
-                <div style={{ fontSize: 40, fontWeight: 600, color: TEAL_LIGHT, letterSpacing: 3, opacity: w.opacity }}>Абонаментна система · darycommerce.com</div>
+                <Img src={staticFile('logo_main.png')} style={{ width: 580, opacity: logoOp, scale: String(logoScale) }} />
+                <div style={{ fontSize: 84, fontWeight: 900, color: WHITE, letterSpacing: 8, opacity: t.opacity, translate: `0px ${t.ty}px` }}>{SYSTEM_NAME}</div>
+                <div style={{ fontSize: 46, fontWeight: 600, color: TEAL_LIGHT, letterSpacing: 3, opacity: w.opacity }}>Абонаментна система · darycommerce.com</div>
             </div>
         </AbsoluteFill>
     );
