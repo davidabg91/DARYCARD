@@ -1273,7 +1273,7 @@ const Landing: React.FC = () => {
                                  </div>
                              </div>
 
-                             {/* How-to video — wrapped in a matching glass panel with no padding to maximize video size. Added cache buster ?v=2 to force browser refresh. */}
+                             {/* How-to video — wrapped in a matching glass panel with no padding to maximize video size. Added cache buster ?v=3 to force browser refresh. */}
                              <div className="working-hours-card glass" style={{ marginTop: '1.5rem', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
                                  <video
                                      ref={howToVideoRef}
@@ -1281,10 +1281,10 @@ const Landing: React.FC = () => {
                                      muted
                                      playsInline
                                      preload="metadata"
-                                     poster={`${import.meta.env.BASE_URL}how-to-poster.jpg?v=2`}
+                                     poster={`${import.meta.env.BASE_URL}how-to-poster.jpg?v=3`}
                                      style={{ width: '100%', display: 'block', background: '#0a0e13' }}
                                  >
-                                     <source src={`${import.meta.env.BASE_URL}how-to-get-card.mp4?v=2`} type="video/mp4" />
+                                     <source src={`${import.meta.env.BASE_URL}how-to-get-card.mp4?v=3`} type="video/mp4" />
                                      Вашият браузър не поддържа видео.
                                  </video>
                              </div>
