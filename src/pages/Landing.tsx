@@ -1,5 +1,5 @@
 import logoTravel from '../assets/logo_travel.png';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Clock, MapPin, Search, 
   CreditCard, ExternalLink,
@@ -33,6 +33,25 @@ const Landing: React.FC = () => {
         return saved ? JSON.parse(saved) : [];
     });
     const [expandedNotifId, setExpandedNotifId] = useState<string | null>(null);
+
+    // Autoplay the how-to video (muted) once it scrolls into view; pause when it leaves.
+    const howToVideoRef = useRef<HTMLVideoElement>(null);
+    useEffect(() => {
+        const el = howToVideoRef.current;
+        if (!el) return;
+        const io = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    el.play().catch(() => { /* ignore blocked autoplay */ });
+                } else {
+                    el.pause();
+                }
+            },
+            { threshold: 0.5 }
+        );
+        io.observe(el);
+        return () => io.disconnect();
+    }, []);
 
     const currentDay = currentTime.getDay();
     const holiday = getHoliday(currentTime);
@@ -1253,25 +1272,23 @@ const Landing: React.FC = () => {
                                      <span style={{ fontWeight: 800 }}>Почивен ден</span>
                                  </div>
                              </div>
-
-                             {/* Video guide */}
-                             <div className="working-hours-card glass" style={{ marginTop: '1.5rem' }}>
-                                 <h4 style={{ marginBottom: '1rem', fontWeight: 900, color: 'var(--primary-color)' }}>Как да извадите абонаментна карта?</h4>
-                                 <video
-                                     controls
-                                     playsInline
-                                     preload="metadata"
-                                     poster={`${import.meta.env.BASE_URL}how-to-poster.jpg`}
-                                     style={{ width: '100%', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.1)', display: 'block', background: '#0a0e13' }}
-                                 >
-                                     <source src={`${import.meta.env.BASE_URL}how-to-get-card.mp4`} type="video/mp4" />
-                                     Вашият браузър не поддържа видео.
-                                 </video>
-                                 <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.9rem', lineHeight: 1.5 }}>
-                                     Кратко видео как се издава и ползва абонаментната карта — стъпка по стъпка.
-                                 </p>
-                             </div>
                         </div>
+                    </div>
+
+                    {/* How-to video — full width, autoplays (muted) when scrolled into view */}
+                    <div style={{ maxWidth: '1100px', margin: '3rem auto 0', width: '100%' }}>
+                        <video
+                            ref={howToVideoRef}
+                            controls
+                            muted
+                            playsInline
+                            preload="metadata"
+                            poster={`${import.meta.env.BASE_URL}how-to-poster.jpg`}
+                            style={{ width: '100%', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', display: 'block', background: '#0a0e13', boxShadow: '0 30px 70px rgba(0,0,0,0.45)' }}
+                        >
+                            <source src={`${import.meta.env.BASE_URL}how-to-get-card.mp4`} type="video/mp4" />
+                            Вашият браузър не поддържа видео.
+                        </video>
                     </div>
                 </section>
 

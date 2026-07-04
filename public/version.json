@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.04.12.15",
-  "buildDate": "2026-07-04T12:15:00Z",
-  "notes": "Landing: add the 'Как да извадите абонаментна карта?' explainer video under the Работно Време panel in the ВАЖНА ИНФОРМАЦИЯ section."
+  "version": "2026.07.04.12.23",
+  "buildDate": "2026-07-04T12:23:00Z",
+  "notes": "Landing how-to video: no panel, full-width and larger for readability, and autoplays (muted) when scrolled into view (pauses when leaving)."
 }
