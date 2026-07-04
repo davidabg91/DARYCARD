@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.04.10.38",
-  "buildDate": "2026-07-04T10:38:00Z",
-  "notes": "Fix stale last-scan on inspections: show the LIVE last-scan time (auto-corrects from offline cache to fresh server value, no refresh) and record the inspection's boarding scan from the freshest snapshot."
+  "version": "2026.07.04.11.32",
+  "buildDate": "2026-07-04T11:32:00Z",
+  "notes": "Inspections tab redesign (Soft UI): segmented day selector, icon stat cards with a scanned-at-boarding %, refined rows with a status accent bar and icon badges, map legend, tabular numbers and hover transitions."
 }

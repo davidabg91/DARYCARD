@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, query, where, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, MapPin, Clock, User } from 'lucide-react';
+import { ShieldCheck, MapPin, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, CalendarDays, ClipboardCheck, Percent } from 'lucide-react';
 
 interface InspectionScan {
     id: string;
@@ -149,52 +149,90 @@ export default function Inspections() {
         return () => { cancelled = true; };
     }, [isAdmin, pointsWithGps]);
 
-    return (
-        <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '1.5rem 1rem 4rem' }}>
-            <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.6rem', fontWeight: 900, marginBottom: '0.3rem' }}>
-                <ShieldCheck size={26} color="var(--primary-color)" /> Проверки
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-                {isAdmin ? 'Всички проверки от проверяващите — кога, колко и откъде са сканирани картите.' : 'Твоите проверки — кога, колко карти си проверил и от коя локация.'}
-            </p>
+    const isToday = filterDay >= new Date().toISOString().slice(0, 10);
+    const scanPct = countDay > 0 ? Math.round((scannedOk / countDay) * 100) : 0;
+    const dayLabel = new Date(filterDay + 'T12:00:00').toLocaleDateString('bg-BG', { weekday: 'short', day: '2-digit', month: 'short' });
+    const num = { fontVariantNumeric: 'tabular-nums' as const };
 
-            {/* Day selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
-                <button onClick={() => shiftDay(-1)} title="Предишен ден" style={{ padding: '0.55rem 0.9rem', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', cursor: 'pointer', fontWeight: 800 }}>‹</button>
-                <input
-                    type="date"
-                    value={filterDay}
-                    max={new Date().toISOString().slice(0, 10)}
-                    onChange={e => setFilterDay(e.target.value)}
-                    style={{ padding: '0.55rem 0.8rem', borderRadius: '10px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', color: '#fff', colorScheme: 'dark', outline: 'none' }}
-                />
-                <button onClick={() => shiftDay(1)} title="Следващ ден" disabled={filterDay >= new Date().toISOString().slice(0, 10)} style={{ padding: '0.55rem 0.9rem', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', cursor: 'pointer', fontWeight: 800, opacity: filterDay >= new Date().toISOString().slice(0, 10) ? 0.4 : 1 }}>›</button>
-                <button onClick={() => setFilterDay(new Date().toISOString().slice(0, 10))} style={{ padding: '0.55rem 1rem', borderRadius: '10px', background: 'rgba(0,173,181,0.1)', border: '1px solid rgba(0,173,181,0.3)', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 800 }}>Днес</button>
+    return (
+        <div style={{ maxWidth: '1040px', margin: '0 auto', padding: '1.5rem 1rem 4rem' }}>
+            <style>{`
+                .insp-card { transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+                .insp-card:hover { transform: translateY(-2px); border-color: rgba(0,173,181,0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+                .insp-row { transition: background .15s ease, border-color .15s ease; }
+                .insp-row:hover { background: rgba(255,255,255,0.055); border-color: rgba(0,173,181,0.3); }
+                .insp-seg { transition: background .15s ease, color .15s ease; }
+                .insp-seg:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: #fff; }
+                .insp-chip { transition: border-color .15s ease, background .15s ease; }
+                .insp-chip:hover { border-color: rgba(0,173,181,0.4); }
+                .insp-loc { transition: color .15s ease; }
+                .insp-loc:hover { color: #4de1ea !important; }
+                @media (prefers-reduced-motion: reduce) {
+                    .insp-card, .insp-row, .insp-seg, .insp-chip, .insp-loc { transition: none !important; }
+                    .insp-card:hover { transform: none; }
+                }
+            `}</style>
+
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '0.4rem' }}>
+                <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: 'linear-gradient(135deg, rgba(0,173,181,0.22), rgba(0,173,181,0.06))', border: '1px solid rgba(0,173,181,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <ShieldCheck size={24} color="var(--primary-color)" />
+                </div>
+                <div>
+                    <h1 style={{ fontSize: '1.55rem', fontWeight: 900, margin: 0, letterSpacing: '-0.3px' }}>Проверки</h1>
+                    <p style={{ color: 'var(--text-secondary)', margin: '0.15rem 0 0', fontSize: '0.85rem' }}>
+                        {isAdmin ? 'Всички проверки — кога, колко и откъде са сканирани картите.' : 'Твоите проверки — кога, колко карти си проверил и локация.'}
+                    </p>
+                </div>
             </div>
 
-            {/* Summary */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ padding: '1.25rem', background: 'rgba(0,173,181,0.06)', border: '1px solid rgba(0,173,181,0.2)', borderRadius: '14px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Проверки за деня</div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--primary-color)' }}>{countDay}</div>
+            {/* Day selector (segmented) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', margin: '1.5rem 0' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'stretch', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--surface-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <button className="insp-seg" onClick={() => shiftDay(-1)} title="Предишен ден" style={{ padding: '0 0.7rem', background: 'transparent', border: 'none', borderRight: '1px solid var(--surface-border)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><ChevronLeft size={18} /></button>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 0.85rem', cursor: 'pointer' }}>
+                        <CalendarDays size={16} color="var(--primary-color)" />
+                        <span style={{ fontWeight: 800, fontSize: '0.9rem', textTransform: 'capitalize', ...num }}>{dayLabel}</span>
+                        <input type="date" value={filterDay} max={new Date().toISOString().slice(0, 10)} onChange={e => setFilterDay(e.target.value)} style={{ position: 'absolute', opacity: 0, width: '1px', height: '1px' }} />
+                    </label>
+                    <button className="insp-seg" onClick={() => shiftDay(1)} title="Следващ ден" disabled={isToday} style={{ padding: '0 0.7rem', background: 'transparent', border: 'none', borderLeft: '1px solid var(--surface-border)', color: '#fff', cursor: isToday ? 'not-allowed' : 'pointer', opacity: isToday ? 0.35 : 1, display: 'flex', alignItems: 'center' }}><ChevronRight size={18} /></button>
                 </div>
-                <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '14px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Този месец</div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900 }}>{countMonth}</div>
-                </div>
-                <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '14px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Сканирани при качване (деня)</div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900, color: '#00e676' }}>{scannedOk}<span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}> / {countDay}</span></div>
-                </div>
+                {!isToday && (
+                    <button className="insp-seg" onClick={() => setFilterDay(new Date().toISOString().slice(0, 10))} style={{ padding: '0.55rem 1rem', borderRadius: '12px', background: 'rgba(0,173,181,0.1)', border: '1px solid rgba(0,173,181,0.35)', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 800, fontSize: '0.85rem' }}>Днес</button>
+                )}
+            </div>
+
+            {/* Summary cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.9rem', marginBottom: '2rem' }}>
+                {[
+                    { icon: ClipboardCheck, label: 'Проверки за деня', value: String(countDay), tint: 'var(--primary-color)', bg: 'rgba(0,173,181,0.09)', border: 'rgba(0,173,181,0.28)', sub: null },
+                    { icon: CalendarDays, label: 'Този месец', value: String(countMonth), tint: '#e6e6e6', bg: 'rgba(255,255,255,0.035)', border: 'var(--surface-border)', sub: null },
+                    { icon: Percent, label: 'Сканирани при качване', value: `${scanPct}%`, tint: scanPct >= 80 ? '#00e676' : scanPct >= 50 ? '#ffab00' : '#ff5252', bg: 'rgba(255,255,255,0.035)', border: 'var(--surface-border)', sub: `${scannedOk} / ${countDay}` },
+                ].map((c, i) => (
+                    <div key={i} className="insp-card" style={{ padding: '1.15rem 1.25rem', background: c.bg, border: `1px solid ${c.border}`, borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>{c.label}</span>
+                            <div style={{ width: '30px', height: '30px', borderRadius: '9px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <c.icon size={16} color={c.tint} />
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '2.1rem', fontWeight: 900, color: c.tint, lineHeight: 1, ...num }}>{c.value}</span>
+                            {c.sub && <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 700, ...num }}>{c.sub}</span>}
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {isAdmin && byInspector.length > 0 && (
-                <div style={{ marginBottom: '2rem' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-secondary)' }}>По проверяващ</h3>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
+                <div style={{ marginBottom: '1.75rem' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 700, marginBottom: '0.65rem' }}>По проверяващ</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem' }}>
                         {byInspector.map(b => (
-                            <div key={b.name} style={{ padding: '0.5rem 0.9rem', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--surface-border)', borderRadius: '50px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <User size={14} /> {b.name} <b style={{ color: 'var(--primary-color)' }}>{b.count}</b>
+                            <div key={b.name} className="insp-chip" style={{ padding: '0.4rem 0.5rem 0.4rem 0.4rem', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--surface-border)', borderRadius: '50px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'rgba(0,173,181,0.15)', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 900, flexShrink: 0 }}>{(b.name || '?').trim().charAt(0).toUpperCase()}</span>
+                                <span style={{ fontWeight: 600 }}>{b.name}</span>
+                                <span style={{ background: 'rgba(0,173,181,0.15)', color: 'var(--primary-color)', fontWeight: 900, borderRadius: '50px', padding: '0.1rem 0.5rem', fontSize: '0.8rem', ...num }}>{b.count}</span>
                             </div>
                         ))}
                     </div>
@@ -204,13 +242,19 @@ export default function Inspections() {
             {/* Map (admin only) — always mounted so the Leaflet instance stays valid */}
             {isAdmin && (
                 <div style={{ marginBottom: '2rem' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <MapPin size={16} /> Карта на проверките <span style={{ fontSize: '0.75rem' }}>(зелено = сканиран, червено = не)</span>
-                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.65rem' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <MapPin size={14} /> Карта на проверките
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.9rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#00e676' }} /> Сканиран</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#ff5252' }} /> Не е сканиран</span>
+                        </div>
+                    </div>
                     <div style={{ position: 'relative' }}>
-                        <div ref={mapEl} style={{ width: '100%', height: '360px', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--surface-border)', background: 'rgba(255,255,255,0.02)' }} />
+                        <div ref={mapEl} style={{ width: '100%', height: '360px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--surface-border)', background: 'rgba(255,255,255,0.02)' }} />
                         {pointsWithGps.length === 0 && (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', color: 'var(--text-secondary)', fontWeight: 700, background: 'rgba(0,0,0,0.35)', borderRadius: '14px' }}>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', color: 'var(--text-secondary)', fontWeight: 700, background: 'rgba(0,0,0,0.4)', borderRadius: '16px' }}>
                                 Няма проверки с локация за този ден
                             </div>
                         )}
@@ -219,32 +263,43 @@ export default function Inspections() {
             )}
 
             {/* List (for the selected day) */}
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 700, marginBottom: '0.65rem' }}>Списък проверки</div>
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Зареждане…</div>
             ) : dayScans.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Няма проверки за избрания ден.</div>
+                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--surface-border)', borderRadius: '16px' }}>
+                    <ClipboardCheck size={30} style={{ opacity: 0.4, marginBottom: '0.6rem' }} />
+                    <div style={{ fontWeight: 700 }}>Няма проверки за избрания ден</div>
+                    <div style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Смени датата или избери „Днес".</div>
+                </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                     {dayScans.map(s => {
                         const ok = wasScannedAtBoarding(s);
+                        const accent = ok ? '#00e676' : '#ff5252';
                         return (
-                            <div key={s.id} style={{ padding: '0.9rem 1.1rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '12px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem 1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)', minWidth: '130px' }}>
-                                    <Clock size={14} /> {fmt(s.at)}
+                            <div key={s.id} className="insp-row" style={{ position: 'relative', padding: '0.85rem 1.1rem 0.85rem 1.25rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '14px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.7rem 1rem', overflow: 'hidden' }}>
+                                <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: accent }} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)', minWidth: '112px', ...num }}>
+                                    <Clock size={14} style={{ flexShrink: 0 }} /> {fmt(s.at)}
                                 </div>
-                                <div style={{ flex: 1, minWidth: '160px' }}>
-                                    <div style={{ fontWeight: 700 }}>{s.clientName || s.clientId}{s.clientCard ? ` · №${s.clientCard}` : ''}</div>
-                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{s.route || '—'}{isAdmin ? ` · Проверил: ${s.inspectorName}` : ''}</div>
+                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                    <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+                                        {s.clientName || s.clientId}
+                                        {s.clientCard ? <span style={{ color: 'var(--text-secondary)', fontWeight: 600, ...num }}> · №{s.clientCard}</span> : ''}
+                                    </div>
+                                    <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>{s.route || '—'}{isAdmin ? ` · ${s.inspectorName}` : ''}</div>
                                 </div>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.25rem 0.6rem', borderRadius: '50px', whiteSpace: 'nowrap', background: ok ? 'rgba(0,230,118,0.12)' : 'rgba(255,82,82,0.12)', color: ok ? '#00e676' : '#ff5252' }}>
-                                    {ok ? '✓ Сканиран при качване' : '✗ Не е сканиран'}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.74rem', fontWeight: 800, padding: '0.28rem 0.65rem', borderRadius: '50px', whiteSpace: 'nowrap', background: ok ? 'rgba(0,230,118,0.13)' : 'rgba(255,82,82,0.13)', color: accent, border: `1px solid ${ok ? 'rgba(0,230,118,0.28)' : 'rgba(255,82,82,0.28)'}` }}>
+                                    {ok ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                                    {ok ? 'Сканиран' : 'Не е сканиран'}
                                 </div>
                                 {s.lat != null && s.lng != null ? (
-                                    <a href={`https://www.google.com/maps?q=${s.lat},${s.lng}`} target="_blank" rel="noopener noreferrer" title="Виж на картата" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 700, maxWidth: '220px' }}>
+                                    <a className="insp-loc" href={`https://www.google.com/maps?q=${s.lat},${s.lng}`} target="_blank" rel="noopener noreferrer" title="Виж на картата" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 700, maxWidth: '210px' }}>
                                         <MapPin size={14} style={{ flexShrink: 0 }} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.address || 'Локация'}</span>
                                     </a>
                                 ) : (
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>без локация</span>
+                                    <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>без локация</span>
                                 )}
                             </div>
                         );
