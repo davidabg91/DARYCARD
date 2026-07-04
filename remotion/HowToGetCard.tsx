@@ -9,8 +9,8 @@ import {
     Easing,
 } from 'remotion';
 import {
-    CreditCard, Camera, FileText, Bus, ScanLine, CheckCircle2,
-    ShieldCheck, RefreshCcw, Clock, User,
+    CreditCard, Camera, FileText, Bus, ScanLine,
+    ShieldCheck, RefreshCcw, Clock,
 } from 'lucide-react';
 
 // ---- Theme -----------------------------------------------------------------
@@ -142,20 +142,80 @@ const Intro: React.FC = () => {
     );
 };
 
-// ---- Scene 2: Step 1 — at the counter -------------------------------------
+// ---- Scene 2: Step 1 — at the counter with 3D Card ------------------------
+const ThreeDCard: React.FC<{ frame: number; startFrame: number }> = ({ frame, startFrame }) => {
+    const appearProgress = interpolate(frame, [startFrame, startFrame + 30], [0, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: EASE,
+    });
+
+    if (frame < startFrame) return null;
+
+    // 3D rotation animations
+    const rotateY = interpolate(appearProgress, [0, 1], [60, -15]);
+    const rotateX = interpolate(appearProgress, [0, 1], [20, 8]);
+    const rotateZ = interpolate(appearProgress, [0, 1], [-10, -3]);
+    const scale = interpolate(appearProgress, [0, 1], [0.5, 0.9]);
+    const opacity = appearProgress;
+
+    // Subtly float up and down after entry
+    const floatY = Math.sin((frame - startFrame - 30) / 20) * 12;
+    // Tiny tilt oscillation
+    const tiltX = Math.cos((frame - startFrame - 30) / 25) * 2;
+    const tiltY = Math.sin((frame - startFrame - 30) / 30) * 3;
+
+    return (
+        <div style={{
+            flex: '1.2',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            perspective: 1200,
+            opacity,
+            transform: `translateY(${floatY}px)`,
+        }}>
+            <div style={{
+                width: 580,
+                height: 366,
+                borderRadius: 36,
+                boxShadow: '0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(0,173,181,0.2)',
+                background: '#0d1117',
+                overflow: 'hidden',
+                transform: `rotateY(${rotateY + tiltY}deg) rotateX(${rotateX + tiltX}deg) rotateZ(${rotateZ}deg) scale(${scale})`,
+                transformStyle: 'preserve-3d',
+                border: '1px solid rgba(255,255,255,0.1)',
+            }}>
+                <Img 
+                    src={staticFile('dary-card-processed.png')} 
+                    style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover',
+                        display: 'block' 
+                    }} 
+                />
+            </div>
+        </div>
+    );
+};
+
 const Step1: React.FC = () => {
     const frame = useCurrentFrame();
     const opacity = sceneFade(frame, STEP1);
     return (
-        <AbsoluteFill style={{ opacity, fontFamily: FONT, padding: '110px 150px', justifyContent: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 64 }}>
-                <StepHeader n={1} label="На гишето" frame={frame} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 40, marginLeft: 8 }}>
-                    <Row icon={CreditCard} text="Плащате за абонамента" frame={frame} start={30} />
-                    <Row icon={Camera} text="Правим ви снимка" frame={frame} start={60} />
-                    <Row icon={FileText} text="Въвеждаме вашите данни" frame={frame} start={90} />
-                    <Row icon={CreditCard} text="Получавате вашата карта" frame={frame} start={130} accent={TEAL} />
+        <AbsoluteFill style={{ opacity, fontFamily: FONT, padding: '110px 120px 110px 150px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 60, width: '100%' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 64, flex: '1' }}>
+                    <StepHeader n={1} label="На гишето" frame={frame} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 36, marginLeft: 8 }}>
+                        <Row icon={CreditCard} text="Плащате за абонамента" frame={frame} start={30} />
+                        <Row icon={Camera} text="Правим ви снимка" frame={frame} start={60} />
+                        <Row icon={FileText} text="Въвеждаме вашите данни" frame={frame} start={90} />
+                        <Row icon={CreditCard} text="Получавате вашата карта" frame={frame} start={130} accent={TEAL} />
+                    </div>
                 </div>
+                <ThreeDCard frame={frame} startFrame={145} />
             </div>
         </AbsoluteFill>
     );
@@ -163,84 +223,128 @@ const Step1: React.FC = () => {
 
 // ---- Scene 3: Step 2 — at the bus (scan) -----------------------------------
 const Terminal: React.FC<{ frame: number }> = ({ frame }) => {
-    // Card slides up to the top scan zone, taps (~50), then screen turns green.
-    const cardY = interpolate(frame, [18, 58], [340, -20], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
+    // Card slides up to the top contactless zone, taps (~62), then screen displays scanned profile.
+    const cardY = interpolate(frame, [18, 58], [320, -5], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
     const cardOp = interpolate(frame, [18, 30, 70, 84], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
     const scanned = frame >= 62;
-    const flash = interpolate(frame, [58, 66, 88], [0, 0.5, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-    const scanPulse = 0.45 + 0.35 * Math.abs(Math.sin(frame / 7));
-    // Green profile reveal
-    const g = interpolate(frame, [70, 96], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
-    const checkScale = interpolate(frame, [78, 100], [0.4, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.bezier(0.34, 1.56, 0.64, 1) });
-    const borderCol = scanned ? GREEN : 'rgba(255,255,255,0.14)';
+    const flash = interpolate(frame, [58, 66, 88], [0, 0.65, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+
+    // Profile screen reveal animations
+    const screenScale = interpolate(frame, [62, 74], [0.85, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: EASE });
+    const screenOp = interpolate(frame, [62, 70], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
     return (
-        <div style={{ position: 'relative', width: 460, height: 700 }}>
+        <div style={{ position: 'relative', width: 310, height: 680 }}>
             {/* incoming card */}
             <div style={{
-                position: 'absolute', left: '50%', top: 0, marginLeft: -150,
+                position: 'absolute', left: 35, top: 0,
                 translate: `0px ${cardY}px`, opacity: cardOp,
-                width: 300, height: 186, borderRadius: 20,
-                background: `linear-gradient(135deg, ${TEAL}, #05666b)`,
-                boxShadow: '0 20px 50px rgba(0,0,0,0.5)', zIndex: 5,
-                display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: 22,
+                width: 240, height: 151, borderRadius: 14,
+                boxShadow: '0 20px 45px rgba(0,0,0,0.6)', zIndex: 5,
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.1)',
             }}>
-                <div style={{ width: 46, height: 34, borderRadius: 7, background: 'rgba(255,255,255,0.55)' }} />
-                <div style={{ color: '#eaffff', fontWeight: 900, fontSize: 26, letterSpacing: 2, fontFamily: FONT }}>DARY CARD</div>
+                <Img src={staticFile('dary-card-processed.png')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
 
-            {/* device body */}
+            {/* device body (real casing image) */}
             <div style={{
-                position: 'absolute', left: 0, top: 96, width: 460, height: 604,
-                borderRadius: 40, background: '#12181f', border: `3px solid ${borderCol}`,
-                boxShadow: scanned ? `0 0 60px ${GREEN}55, 0 30px 70px rgba(0,0,0,0.5)` : '0 30px 70px rgba(0,0,0,0.5)',
-                overflow: 'hidden',
+                position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
+                zIndex: 2,
             }}>
-                {/* top scan zone */}
+                <Img src={staticFile('mps-ultra-device-xxl.png')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+
+                {/* screen overlay */}
                 <div style={{
-                    height: 92, background: scanned ? `${GREEN}22` : `${TEAL}1f`,
-                    borderBottom: `2px solid ${scanned ? GREEN + '55' : TEAL + '44'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
-                    opacity: scanned ? 1 : scanPulse,
+                    position: 'absolute',
+                    left: '14.98%',
+                    width: '70.95%',
+                    top: '8.53%',
+                    height: '77.48%',
+                    borderRadius: '24px',
+                    overflow: 'hidden',
+                    background: '#091410',
+                    zIndex: 3,
                 }}>
-                    <ScanLine size={34} color={scanned ? GREEN : TEAL_LIGHT} />
-                    <span style={{ color: scanned ? GREEN : TEAL_LIGHT, fontWeight: 800, fontSize: 26, fontFamily: FONT }}>
-                        {scanned ? 'ПРОЧЕТЕНА' : 'Допрете тук'}
-                    </span>
-                </div>
-
-                {/* screen */}
-                <div style={{ padding: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-                    {/* avatar + name (appear with green reveal) */}
-                    <div style={{ opacity: g, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, translate: `0px ${(1 - g) * 20}px` }}>
+                    {!scanned ? (
+                        /* Standby screen */
                         <div style={{
-                            width: 132, height: 132, borderRadius: '50%',
-                            background: `linear-gradient(135deg, ${GREEN}, #059c53)`,
-                            border: '4px solid rgba(255,255,255,0.25)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: '#091410',
+                            padding: 20,
+                            gap: 30,
                         }}>
-                            <User size={70} color="#00230f" />
+                            {/* Pulsing signal icon */}
+                            <div style={{
+                                position: 'relative',
+                                width: 100,
+                                height: 100,
+                                borderRadius: '50%',
+                                background: 'rgba(0,173,181,0.15)',
+                                border: '2px solid rgba(0,173,181,0.4)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                scale: String(0.9 + 0.1 * Math.abs(Math.sin(frame / 10))),
+                            }}>
+                                <ScanLine size={46} color={TEAL_LIGHT} strokeWidth={2.5} />
+                            </div>
+                            <div style={{
+                                color: WHITE,
+                                fontWeight: 800,
+                                fontSize: 20,
+                                textAlign: 'center',
+                                fontFamily: FONT,
+                                letterSpacing: 2,
+                                lineHeight: 1.3,
+                            }}>
+                                МОЛЯ,<br />ДОПРЕТЕ КАРТА
+                            </div>
+                            <div style={{
+                                color: 'rgba(255,255,255,0.4)',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                letterSpacing: 1,
+                                textTransform: 'uppercase',
+                                marginTop: 10,
+                            }}>
+                                DARY COMMERCE
+                            </div>
                         </div>
-                        <div style={{ color: WHITE, fontWeight: 800, fontSize: 30, fontFamily: FONT }}>ИВАН ПЕТРОВ</div>
-                    </div>
+                    ) : (
+                        /* Scanned profile screen */
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#091410' }}>
+                            <Img
+                                src={staticFile('Screenshot 2026-07-04 151400.png')}
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'contain',
+                                    scale: String(screenScale),
+                                    opacity: screenOp,
+                                }}
+                            />
+                        </div>
+                    )}
 
-                    {/* green valid panel */}
+                    {/* tap green flash */}
                     <div style={{
-                        opacity: g, width: '100%', marginTop: 6,
-                        background: `${GREEN}22`, border: `2px solid ${GREEN}66`, borderRadius: 22,
-                        padding: '22px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-                    }}>
-                        <div style={{ scale: String(checkScale) }}>
-                            <CheckCircle2 size={72} color={GREEN} strokeWidth={2.5} />
-                        </div>
-                        <div style={{ color: GREEN, fontWeight: 900, fontSize: 30, fontFamily: FONT, letterSpacing: 1, textAlign: 'center' }}>
-                            ВАЛИДЕН АБОНАМЕНТ
-                        </div>
-                    </div>
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        width: '100%',
+                        height: '100%',
+                        background: GREEN,
+                        opacity: flash,
+                        pointerEvents: 'none',
+                        zIndex: 10,
+                    }} />
                 </div>
-
-                {/* tap flash */}
-                <AbsoluteFill style={{ background: GREEN, opacity: flash }} />
             </div>
         </div>
     );
