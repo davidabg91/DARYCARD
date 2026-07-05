@@ -14,7 +14,10 @@ export default defineConfig({
     }),
     ViteImageOptimizer({
       test: /\.(jpe?g|png|gif|tiff|webp|svg|avif)$/i,
-      exclude: ['pwa-icon.png', 'favicon.ico', 'apple-touch-icon.png'],
+      // Skip lossy PNG quantization for brand logos and app icons — the palette
+      // reduction at quality 80 blurs their anti-aliased edges/gradients. Regex
+      // matches the full path so it also catches hashed asset names (logo_main-<hash>.png).
+      exclude: /(logo|pwa-icon|apple-touch-icon|favicon)/i,
       png: { quality: 80 },
     }),
     VitePWA({

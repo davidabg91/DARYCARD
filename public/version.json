@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.05.21.37",
-  "buildDate": "2026-07-05T21:37:00Z",
-  "notes": "Help page redesign: consistent numbered steps, button/tab chips, clearer color legend and modern layout."
+  "version": "2026.07.05.21.51",
+  "buildDate": "2026-07-05T21:51:00Z",
+  "notes": "Crisp navbar/login logo: exclude logos from lossy PNG optimization and ship right-sized assets."
 }
