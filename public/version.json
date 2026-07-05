@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.04.12.23",
-  "buildDate": "2026-07-04T12:23:00Z",
-  "notes": "Landing how-to video: no panel, full-width and larger for readability, and autoplays (muted) when scrolled into view (pauses when leaving)."
+  "version": "2026.07.05.20.51",
+  "buildDate": "2026-07-05T20:51:00Z",
+  "notes": "Inspections page: two-column layout with a new inspector report panel (driver, bus, destination, client count, problem notes)."
 }

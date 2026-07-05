@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
 import LoadingScreen from '../components/LoadingScreen';
-import { ROUTE_METADATA } from '../data/routeMetadata';
+import { ROUTE_METADATA, ROUTES } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import ClientPhoto from '../components/ClientPhoto';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
@@ -37,17 +37,6 @@ interface Client {
     lastScanAt?: string;
     cardNumber?: string;
 }
-
-const ROUTES = [
-    "Бъркач", "Тръстеник", "Биволаре", "Горна Митрополия", "Долни Дъбник",
-    "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
-    "Долна Митрополия", "Ясен", "Крушовица", "Дисевица", "Търнене", "Градина",
-    "Петърница", "Опанец", "Победа", "Подем", "Божурица",
-    "Ясен-Дисевица", "Ясен-Долни Дъбник", "Ореховица", "Брегаре", "Крушовене",
-    "Гривица", "Згалево", "Пордим", "Одърне", "Каменец", "Вълчитрън", "Катерица", "Борислав",
-    "Д. Дъбник - Садовец", "Д.Митрополия - Тръстеник", "Д.Митрополия - Славовица",
-    "Пордим - Каменец", "Пордим - Згалево"
-];
 
 // Service ("Служебна") cards are unpaid and valid for a whole year. Validity is
 // decided per month (a renewalHistory entry whose `month` equals the current

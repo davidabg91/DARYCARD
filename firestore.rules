@@ -148,6 +148,18 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ---- Inspector (Проверяващ) reports ----
+    // Free-form report an inspector fills in after checking a bus trip (driver,
+    // bus, destination, client count, any problem found). Same access pattern
+    // as inspector_scans: an inspector may read only their OWN reports; admins
+    // read all.
+    match /inspector_reports/{reportId} {
+      allow create: if isInspector() || isAdmin();
+      allow read: if isAdmin()
+        || (isInspector() && resource.data.inspectorId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
     // ---- Default deny ----
     match /{document=**} {
       allow read, write: if false;
