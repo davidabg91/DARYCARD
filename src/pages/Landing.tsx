@@ -109,6 +109,7 @@ const Landing: React.FC = () => {
 
 
     const getScheduleForDay = (d: number, isHolid: boolean, sched: RouteSchedule): RouteSchedule | ScheduleTime => {
+        if (isHolid && sched.holiday) return sched.holiday;
         if ((isHolid || d === 0) && sched.sunday) return sched.sunday;
         if (d === 6 && sched.saturday) return sched.saturday;
         return sched;
@@ -1079,16 +1080,24 @@ const Landing: React.FC = () => {
                                                             gap: '0.6rem'
                                                         }}>
                                                             <Calendar size={16} />
-                                                            {holiday.name.toUpperCase()}: Важи неделно разписание.
+                                                            {holiday.name.toUpperCase()}: {sched.holiday ? 'Важи празнично разписание.' : 'Важи неделно разписание.'}
                                                         </div>
                                                     )}
                                                 </div>
 
                                                 {[
-                                                    { 
-                                                        id: 'sunday', 
-                                                        condition: !!sched.sunday, 
-                                                        isCurrent: isSun, 
+                                                    {
+                                                        id: 'holiday',
+                                                        condition: !!sched.holiday,
+                                                        isCurrent: isHoliday && !!sched.holiday,
+                                                        label: 'ПРАЗНИК',
+                                                        color: '#e040fb',
+                                                        times: sched.holiday
+                                                    },
+                                                    {
+                                                        id: 'sunday',
+                                                        condition: !!sched.sunday,
+                                                        isCurrent: isSun && !(isHoliday && !!sched.holiday),
                                                         label: 'НЕДЕЛЯ',
                                                         color: '#ff5252',
                                                         times: sched.sunday

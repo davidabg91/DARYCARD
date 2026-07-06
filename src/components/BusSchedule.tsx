@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bus } from 'lucide-react';
-import { SCHEDULES } from '../data/schedules';
+import { SCHEDULES, type ScheduleTime } from '../data/schedules';
 import { abbreviate } from '../data/routeMetadata';
 import { getHoliday } from '../utils/holidays';
 
@@ -27,8 +27,13 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
     const holiday = getHoliday(currentTime);
     const isHoliday = !!holiday;
     
-    let activeSchedule = scheduleData;
-    if ((isSunday || isHoliday) && scheduleData.sunday) {
+    // Some lines publish a dedicated holiday schedule; otherwise holidays fall
+    // back to the Sunday times.
+    const hasHolidaySched = isHoliday && !!scheduleData.holiday;
+    let activeSchedule: ScheduleTime = scheduleData;
+    if (hasHolidaySched) {
+        activeSchedule = scheduleData.holiday!;
+    } else if ((isSunday || isHoliday) && scheduleData.sunday) {
         activeSchedule = scheduleData.sunday;
     } else if (isSaturday && scheduleData.saturday) {
         activeSchedule = scheduleData.saturday;
@@ -86,7 +91,7 @@ const BusSchedule: React.FC<BusScheduleProps> = ({ route }) => {
                     <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '1px' }}>РАЗПИСАНИЕ АВТОБУСИ</span>
                 </div>
                 <div style={{ fontSize: '0.75rem', color: isHoliday ? '#ff5252' : 'rgba(255,255,255,0.4)', fontWeight: 800 }}>
-                    ({isHoliday ? `${holiday.name.toUpperCase()}: Важи неделно разписание` : 
+                    ({isHoliday ? `${holiday.name.toUpperCase()}: ${hasHolidaySched ? 'Празнично разписание' : 'Важи неделно разписание'}` :
                       (isSunday ? 'неделя' : 
                        isSaturday ? 'събота' : 
                        (route === 'Тръстеник' ? 'понеделник-събота' : 'делнични дни'))})

@@ -8,7 +8,18 @@ export interface RouteSchedule {
   fromDestination: string[];
   saturday?: ScheduleTime;
   sunday?: ScheduleTime;
+  holiday?: ScheduleTime;
 }
+
+// Каменец–Одърне–Пордим–Згалево–Плевен line: the bus leaves Плевен at the same
+// times for every village on the line; only the village→Плевен departures differ
+// per stop. Kept here so all four village schedules stay in sync.
+const KAMENETS_FROM_PLEVEN = {
+  weekday: ["07:00", "10:30", "12:30", "14:30", "18:00"],
+  saturday: ["07:00", "10:30", "14:30", "18:00"],
+  sunday: ["18:00"],
+  holiday: ["10:30", "14:30", "18:00"],
+};
 
 export const SCHEDULES: Record<string, RouteSchedule> = {
   "Тръстеник": {
@@ -160,15 +171,19 @@ export const SCHEDULES: Record<string, RouteSchedule> = {
     fromDestination: ["07:45", "10:00", "13:45"]
   },
   "Каменец": {
-    fromPleven: ["07:00", "10:30", "12:30", "14:30", "18:00"],
-    fromDestination: ["06:00", "08:00", "11:20", "13:30", "16:50"],
+    fromPleven: KAMENETS_FROM_PLEVEN.weekday,
+    fromDestination: ["06:00", "07:50", "11:20", "13:30", "16:50"],
     saturday: {
-        fromPleven: ["10:30", "14:30", "18:00"],
-        fromDestination: ["07:50", "11:20", "16:50"]
+        fromPleven: KAMENETS_FROM_PLEVEN.saturday,
+        fromDestination: ["06:00", "07:50", "11:20", "16:50"]
     },
     sunday: {
-        fromPleven: ["18:00"],
+        fromPleven: KAMENETS_FROM_PLEVEN.sunday,
         fromDestination: ["16:50"]
+    },
+    holiday: {
+        fromPleven: KAMENETS_FROM_PLEVEN.holiday,
+        fromDestination: ["07:50", "11:20", "16:50"]
     }
   },
   "Борислав": {
@@ -202,9 +217,29 @@ SCHEDULES["Гривица"] = {
   saturday: SCHEDULES["Каменец"].saturday,
   sunday: SCHEDULES["Каменец"].sunday
 };
-SCHEDULES["Згалево"] = SCHEDULES["Гривица"];
-SCHEDULES["Пордим"] = SCHEDULES["Гривица"];
-SCHEDULES["Одърне"] = SCHEDULES["Каменец"];
+// Villages on the Каменец–Одърне–Пордим–Згалево–Плевен line each have their own
+// village→Плевен departure times; the Плевен departure column is shared.
+SCHEDULES["Одърне"] = {
+  fromPleven: KAMENETS_FROM_PLEVEN.weekday,
+  fromDestination: ["06:10", "08:00", "11:30", "13:40", "17:00"],
+  saturday: { fromPleven: KAMENETS_FROM_PLEVEN.saturday, fromDestination: ["06:10", "08:00", "11:30", "17:00"] },
+  sunday: { fromPleven: KAMENETS_FROM_PLEVEN.sunday, fromDestination: ["17:00"] },
+  holiday: { fromPleven: KAMENETS_FROM_PLEVEN.holiday, fromDestination: ["08:00", "11:30", "17:00"] }
+};
+SCHEDULES["Пордим"] = {
+  fromPleven: KAMENETS_FROM_PLEVEN.weekday,
+  fromDestination: ["06:20", "08:10", "11:40", "13:50", "17:15"],
+  saturday: { fromPleven: KAMENETS_FROM_PLEVEN.saturday, fromDestination: ["06:20", "08:10", "11:40", "17:15"] },
+  sunday: { fromPleven: KAMENETS_FROM_PLEVEN.sunday, fromDestination: ["17:15"] },
+  holiday: { fromPleven: KAMENETS_FROM_PLEVEN.holiday, fromDestination: ["08:10", "11:40", "17:15"] }
+};
+SCHEDULES["Згалево"] = {
+  fromPleven: KAMENETS_FROM_PLEVEN.weekday,
+  fromDestination: ["06:30", "08:15", "11:50", "14:00", "17:25"],
+  saturday: { fromPleven: KAMENETS_FROM_PLEVEN.saturday, fromDestination: ["06:30", "08:15", "11:50", "17:25"] },
+  sunday: { fromPleven: KAMENETS_FROM_PLEVEN.sunday, fromDestination: ["17:25"] },
+  holiday: { fromPleven: KAMENETS_FROM_PLEVEN.holiday, fromDestination: ["08:15", "11:50", "17:25"] }
+};
 SCHEDULES["Вълчитрън"] = SCHEDULES["Борислав"];
 SCHEDULES["Катерица"] = SCHEDULES["Борислав"];
 SCHEDULES["Пордим - Каменец"] = SCHEDULES["Каменец"];
