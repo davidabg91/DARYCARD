@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.06.16.19",
-  "buildDate": "2026-07-06T16:19:00Z",
-  "notes": "Каменец–Одърне–Пордим–Згалево line: correct per-village timetables and a dedicated holiday schedule."
+  "version": "2026.07.06.19.54",
+  "buildDate": "2026-07-06T19:54:00Z",
+  "notes": "Гривица timetable added to the Каменец line (Згалево + 10 min) and its schedule now shows its own name."
 }

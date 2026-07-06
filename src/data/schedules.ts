@@ -211,11 +211,15 @@ SCHEDULES["Брегаре"] = SCHEDULES["Байкал"];
 SCHEDULES["Крушовене"] = SCHEDULES["Байкал"];
 
 // New routes mappings
+// Гривица is the first village after Плевен on the Каменец line; its
+// village→Плевен times are Згалево's + 10 min. The Плевен departure column is
+// shared across the whole line.
 SCHEDULES["Гривица"] = {
-  fromPleven: ["07:00", "07:30", "10:30", "12:30", "13:00", "14:30", "16:30", "18:00"],
-  fromDestination: ["06:00", "07:50", "08:00", "11:20", "13:20", "13:30", "16:50", "16:50"],
-  saturday: SCHEDULES["Каменец"].saturday,
-  sunday: SCHEDULES["Каменец"].sunday
+  fromPleven: KAMENETS_FROM_PLEVEN.weekday,
+  fromDestination: ["06:40", "08:25", "12:00", "14:10", "17:35"],
+  saturday: { fromPleven: KAMENETS_FROM_PLEVEN.saturday, fromDestination: ["06:40", "08:25", "12:00", "17:35"] },
+  sunday: { fromPleven: KAMENETS_FROM_PLEVEN.sunday, fromDestination: ["17:35"] },
+  holiday: { fromPleven: KAMENETS_FROM_PLEVEN.holiday, fromDestination: ["08:25", "12:00", "17:35"] }
 };
 // Villages on the Каменец–Одърне–Пордим–Згалево–Плевен line each have their own
 // village→Плевен departure times; the Плевен departure column is shared.
