@@ -2,7 +2,7 @@ import React from 'react';
 import {
     HelpCircle, RefreshCw, CheckCircle, XCircle, Search, User,
     ScanLine, Camera, Phone, Sparkles, Info, Ban, UserPlus,
-    PencilLine, Palette, MousePointerClick, Smartphone,
+    PencilLine, Palette, MousePointerClick, Smartphone, CreditCard,
 } from 'lucide-react';
 
 /* ---- Design tokens (brand teal/green/red + a real gold for the "golden rule") ---- */
@@ -198,6 +198,19 @@ const Help: React.FC = () => {
                     <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', marginTop: '0.3rem', padding: '0.75rem 0.9rem', background: 'rgba(255,82,82,0.08)', border: '1px solid rgba(255,82,82,0.22)', borderRadius: '12px' }}>
                         <XCircle size={17} color={RED} style={{ flexShrink: 0, marginTop: '2px' }} />
                         <span style={{ fontSize: '0.85rem', color: '#ffc9c9', lineHeight: 1.5 }}>Картата става <b>НЕВАЛИДНА</b> и шофьорът ще види червен сигнал.</span>
+                    </div>
+                </GuideCard>
+
+                <GuideCard tone="gold" icon={<CreditCard size={20} color={GOLD} />} title="Загубена карта" badge="Такса 5 €">
+                    <p style={{ margin: '0 0 0.3rem', color: 'var(--text-secondary)', fontSize: '0.92rem' }}>Когато клиент загуби картата си — прехвърляш профила на нова карта:</p>
+                    <Step n={1} tone="gold"><b>Сканирай</b> новата (празна) карта на клиента.</Step>
+                    <Step n={2} tone="gold">Натисни бутона <Pill tone="gold">Загубена карта</Pill>.</Step>
+                    <Step n={3} tone="gold">Намери клиента чрез <b>търсене</b> и го избери.</Step>
+                    <Step n={4} tone="gold">Избери <b>месеца</b> — ако има абонамент за него, се прехвърля на новата карта.</Step>
+                    <Step n={5} tone="gold">Натисни <Pill tone="green">Прехвърли и активирай</Pill>.</Step>
+                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', marginTop: '0.3rem', padding: '0.75rem 0.9rem', background: `${GOLD}14`, border: `1px solid ${GOLD}33`, borderRadius: '12px' }}>
+                        <Info size={17} color={GOLD} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <span style={{ fontSize: '0.85rem', color: '#ffe0a3', lineHeight: 1.5 }}>Старата карта се <b>анулира автоматично</b> (става червена). Начислява се <b>глоба 5 €</b>, която влиза в оборота.</span>
                     </div>
                 </GuideCard>
 
