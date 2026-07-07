@@ -331,6 +331,7 @@ const AdminPanel: React.FC = () => {
         'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
+    const [fines, setFines] = useState<{ amount: number; date: string }[]>([]);
     const [signals, setSignals] = useState<Signal[]>([]);
     const [rentals, setRentals] = useState<Rental[]>([]);
     const [notifications, setNotifications] = useState<PushNotification[]>([]);
@@ -761,6 +762,15 @@ const AdminPanel: React.FC = () => {
             setSubscribers(list);
         });
 
+        // 7. Listen for Fines (Глоби) — counted into the daily turnover figure.
+        const finesQ = query(collection(db, 'fines'));
+        const unsubscribeFines = onSnapshot(finesQ, (snapshot) => {
+            setFines(snapshot.docs.map(d => {
+                const data = d.data();
+                return { amount: Number(data.amount) || 0, date: (data.date as string) || '' };
+            }));
+        }, (err) => console.error('Fines listener error:', err));
+
         return () => {
             unsubscribe();
             unsubscribeSignals();
@@ -768,6 +778,7 @@ const AdminPanel: React.FC = () => {
             unsubscribeNotifications();
             unsubscribeSub();
             actionUnsubscribe();
+            unsubscribeFines();
         };
     }, [location.search]);
 
@@ -1345,7 +1356,7 @@ const AdminPanel: React.FC = () => {
     const revenueSelectedDay = clients.reduce((acc, c) => {
         const payments = (c.renewalHistory || []).filter(r => r.date?.startsWith(selectedDate));
         return acc + payments.reduce((sum, p) => sum + p.amount, 0);
-    }, 0);
+    }, 0) + fines.filter(f => f.date?.startsWith(selectedDate)).reduce((sum, f) => sum + f.amount, 0);
 
     const currentMonthIso = todayIso.substring(0, 7);
     // Revenue actually RECEIVED during the calendar month — filter by payment date

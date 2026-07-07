@@ -160,6 +160,16 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ---- Fines (Глоби) ----
+    // Standalone charges (e.g. a lost-card fee) kept separate from subscription
+    // renewals so they don't affect card validity but still count toward revenue.
+    // Staff may read and create; only admins may edit or delete.
+    match /fines/{fineId} {
+      allow read: if isStaff();
+      allow create: if isStaff();
+      allow update, delete: if isAdmin();
+    }
+
     // ---- Default deny ----
     match /{document=**} {
       allow read, write: if false;

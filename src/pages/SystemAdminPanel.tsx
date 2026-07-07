@@ -3,7 +3,7 @@ import {
     BarChart, Users as UsersIcon, History as HistoryIcon,
     TrendingUp, DollarSign,
     RefreshCw, Search, Clock, Shield,
-    UserPlus, Trash2
+    UserPlus, Trash2, AlertTriangle
 } from 'lucide-react';
 import { collection, collectionGroup, query, where, orderBy, limit, onSnapshot, updateDoc, doc, writeBatch, deleteField } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -90,6 +90,7 @@ const SystemAdminPanel: React.FC = () => {
     const [scans, setScans] = useState<ScanRecord[]>([]);
 
     const [globalLogs, setGlobalLogs] = useState<GlobalLog[]>([]);
+    const [fines, setFines] = useState<{ amount: number; month: string; date: string }[]>([]);
     const [logLimit, setLogLimit] = useState(20);
     const [loading, setLoading] = useState(true);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -154,6 +155,18 @@ const SystemAdminPanel: React.FC = () => {
         return () => unsub();
     }, [selectedDate]);
 
+    // Fines (Глоби) — standalone charges (e.g. lost-card fee) that count toward
+    // revenue but live outside renewalHistory so they don't affect card validity.
+    useEffect(() => {
+        const unsub = onSnapshot(collection(db, 'fines'), (snap) => {
+            setFines(snap.docs.map(d => {
+                const data = d.data();
+                return { amount: Number(data.amount) || 0, month: (data.month as string) || '', date: (data.date as string) || '' };
+            }));
+        }, (err) => console.error('Fines listener error:', err));
+        return () => unsub();
+    }, []);
+
     // Audit logs — newest first, paginated in batches of 20.
     useEffect(() => {
         const qLogs = query(collection(db, 'activity_logs'), orderBy('timestamp', 'desc'), limit(logLimit));
@@ -189,12 +202,17 @@ const SystemAdminPanel: React.FC = () => {
 
     // --- Dashboard Calculations ---
     const isAll = statsMonth === 'all';
-    const totalRevenue = isAll
+    // Fines counted for the selected period (all / a given month).
+    const finesForPeriod = isAll
+        ? fines.reduce((acc, f) => acc + f.amount, 0)
+        : fines.filter(f => f.month === statsMonth).reduce((acc, f) => acc + f.amount, 0);
+    const subscriptionRevenue = isAll
         ? clients.reduce((acc, c) => acc + (c.amountPaid || 0), 0)
         : clients.reduce((acc, c) => {
             const monthlyRenewal = (c.renewalHistory || []).find(r => r.month === statsMonth);
             return acc + (monthlyRenewal ? monthlyRenewal.amount : 0);
         }, 0);
+    const totalRevenue = subscriptionRevenue + finesForPeriod;
 
     const activeClientsCount = isAll
         ? clients.filter(c => !c.isCanceled && !isExpired(c.expiryDate, c)).length
@@ -211,11 +229,11 @@ const SystemAdminPanel: React.FC = () => {
 
     const todayIso = new Date().toISOString().split('T')[0];
 
-    // Revenue for selected day
+    // Revenue for selected day (subscription renewals + fines booked that day)
     const revenueSelectedDay = clients.reduce((acc, c) => {
         const payments = (c.renewalHistory || []).filter(r => r.date?.startsWith(selectedDate));
         return acc + payments.reduce((sum, p) => sum + p.amount, 0);
-    }, 0);
+    }, 0) + fines.filter(f => f.date?.startsWith(selectedDate)).reduce((sum, f) => sum + f.amount, 0);
     const registrationsSelectedDay = clients.filter(c => c.createdAt?.startsWith(selectedDate)).length;
 
     const hourlyDistribution = (() => {
@@ -414,6 +432,7 @@ const SystemAdminPanel: React.FC = () => {
                                     <StatCard icon={RefreshCw} label="Обновени" value={renewedCount} color="#4caf50" isMobile={isMobile} />
                                     <StatCard icon={Percent} label="На Карта" value={`${avgProfit} €`} color="#e91e63" isMobile={isMobile} />
                                     <StatCard icon={Shield} label="Липсващи" value={pendingTotal} color="#ff5252" isMobile={isMobile} />
+                                    <StatCard icon={AlertTriangle} label="Глоби" value={`${finesForPeriod.toFixed(2)} €`} color="#ff9800" isMobile={isMobile} />
                                 </div>
                             </section>
 

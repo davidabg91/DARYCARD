@@ -8,6 +8,7 @@ import LoadingScreen from '../components/LoadingScreen';
 import { ROUTE_METADATA, ROUTES } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import ClientPhoto from '../components/ClientPhoto';
+import LostCardTransfer from '../components/LostCardTransfer';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import { MIXED_METHOD } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
@@ -183,6 +184,7 @@ const ClientProfile: React.FC = () => {
     const [scanTime] = useState(new Date().toLocaleTimeString('bg-BG'));
     const [showPhotoModal, setShowPhotoModal] = useState(false);
     const [isRegistering, setIsRegistering] = useState(false);
+    const [showLostCard, setShowLostCard] = useState(false);
     const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     
     const [regName, setRegName] = useState('');
@@ -960,6 +962,9 @@ const ClientProfile: React.FC = () => {
                                 {currentUser && (
                                     <button onClick={() => setIsRegistering(true)} style={{ padding: '1.2rem', background: 'var(--primary-color)', color: '#fff', borderRadius: '50px', border: 'none', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 10px 30px rgba(0, 173, 181, 0.3)' }}>АКТИВИРАЙ КАРТАТА СЕГА</button>
                                 )}
+                                {currentUser && (
+                                    <button onClick={() => setShowLostCard(true)} style={{ padding: '0.95rem', background: 'rgba(255,82,82,0.08)', color: '#ff8a8a', borderRadius: '50px', border: '1px solid rgba(255,82,82,0.3)', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer' }}>Загубена карта</button>
+                                )}
                                 <Link to="/" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
                             </div>
                         </>
@@ -1278,6 +1283,14 @@ const ClientProfile: React.FC = () => {
                         </div>
                     )}
                 </div>
+                {showLostCard && (
+                    <LostCardTransfer
+                        newCardId={id}
+                        newCardUid={urlUid}
+                        onClose={() => setShowLostCard(false)}
+                        onDone={() => setShowLostCard(false)}
+                    />
+                )}
             </div>
         );
     }

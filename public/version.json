@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.06.19.54",
-  "buildDate": "2026-07-06T19:54:00Z",
-  "notes": "Гривица timetable added to the Каменец line (Згалево + 10 min) and its schedule now shows its own name."
+  "version": "2026.07.07.08.32",
+  "buildDate": "2026-07-07T08:32:00Z",
+  "notes": "Lost card: transfer a client's profile to a new card, cancel the old one, and charge a 5€ fine that counts toward revenue and audit."
 }
