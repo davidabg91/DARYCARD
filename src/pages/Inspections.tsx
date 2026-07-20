@@ -7,6 +7,7 @@ import { ROUTES } from '../data/routeMetadata';
 import {
     ShieldCheck, MapPin, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, CalendarDays, ClipboardCheck, Percent,
     FileText, Users, Bus, Navigation, AlertTriangle, Send, Loader2, UserCog,
+    TrendingUp, BarChart3, Route, Star, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
 interface InspectionScan {
@@ -70,12 +71,79 @@ const wasScannedAtBoarding = (s: InspectionScan) => {
     return diff >= 0 && diff < 3600 * 1000;
 };
 
+// ── Mini bar chart (pure CSS) ──────────────────────────────────────────────
+function MiniBarChart({ data, max }: { data: { day: number; count: number }[]; max: number }) {
+    const peak = Math.max(max, 1);
+    return (
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '64px', padding: '0 2px' }}>
+            {data.map(d => {
+                const pct = (d.count / peak) * 100;
+                const hasData = d.count > 0;
+                return (
+                    <div
+                        key={d.day}
+                        title={`${d.day}: ${d.count} проверки`}
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            height: '100%',
+                            gap: '2px',
+                            cursor: hasData ? 'default' : undefined,
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: '100%',
+                                height: `${Math.max(pct, hasData ? 8 : 2)}%`,
+                                borderRadius: '3px 3px 1px 1px',
+                                background: hasData
+                                    ? `linear-gradient(to top, var(--primary-color), rgba(0,173,181,0.5))`
+                                    : 'rgba(255,255,255,0.07)',
+                                transition: 'height .3s ease',
+                            }}
+                        />
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 export default function Inspections() {
-    const { currentUser } = useAuth();
+    const { currentUser, users } = useAuth();
     const [scans, setScans] = useState<InspectionScan[]>([]);
     const [loading, setLoading] = useState(true);
 
     const isAdmin = currentUser?.role === 'admin';
+
+    // ── Inspector filter (admin only) ───────────────────────────────────────
+    const [filterInspector, setFilterInspector] = useState<string>('all');
+
+    // All inspectors from users list
+    const inspectorUsers = useMemo(
+        () => users.filter(u => u.role === 'inspector'),
+        [users]
+    );
+
+    // Also collect inspectors seen in scan data (may include removed accounts)
+    const inspectorsInData = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const s of scans) {
+            if (s.inspectorId && s.inspectorName) map.set(s.inspectorId, s.inspectorName);
+        }
+        return map;
+    }, [scans]);
+
+    // Merged list: user-list inspectors + any extra from scan data
+    const allInspectors = useMemo(() => {
+        const result = new Map<string, string>();
+        for (const u of inspectorUsers) result.set(u.id, u.username);
+        inspectorsInData.forEach((name, id) => { if (!result.has(id)) result.set(id, name); });
+        return [...result.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'bg'));
+    }, [inspectorUsers, inspectorsInData]);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -91,16 +159,28 @@ export default function Inspections() {
         return () => unsub();
     }, [currentUser, isAdmin]);
 
-    const monthIso = new Date().toISOString().slice(0, 7);
+    // Apply inspector filter to all scans
+    const filteredScans = useMemo(() =>
+        (isAdmin && filterInspector !== 'all')
+            ? scans.filter(s => s.inspectorId === filterInspector)
+            : scans,
+        [scans, isAdmin, filterInspector]
+    );
+
+    const now = new Date();
+    const monthIso = now.toISOString().slice(0, 7);
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // 1-indexed
+
     // Show inspections one day at a time (defaults to today).
     const [filterDay, setFilterDay] = useState(() => new Date().toISOString().slice(0, 10));
-    const dayScans = useMemo(() => scans.filter(s => s.at?.startsWith(filterDay)), [scans, filterDay]);
+    const dayScans = useMemo(() => filteredScans.filter(s => s.at?.startsWith(filterDay)), [filteredScans, filterDay]);
 
     const countDay = dayScans.length;
-    const countMonth = useMemo(() => scans.filter(s => s.at?.startsWith(monthIso)).length, [scans, monthIso]);
+    const countMonth = useMemo(() => filteredScans.filter(s => s.at?.startsWith(monthIso)).length, [filteredScans, monthIso]);
     const scannedOk = useMemo(() => dayScans.filter(wasScannedAtBoarding).length, [dayScans]);
 
-    // ---- Inspector reports (free-form write-up per check) ----
+    // ── Inspector reports (free-form write-up per check) ────────────────────
     const [reports, setReports] = useState<InspectorReport[]>([]);
     const [reportsLoading, setReportsLoading] = useState(true);
 
@@ -117,8 +197,86 @@ export default function Inspections() {
         return () => unsub();
     }, [currentUser, isAdmin]);
 
-    const dayReports = useMemo(() => reports.filter(r => r.at?.startsWith(filterDay)), [reports, filterDay]);
+    // Apply inspector filter to reports
+    const filteredReports = useMemo(() =>
+        (isAdmin && filterInspector !== 'all')
+            ? reports.filter(r => r.inspectorId === filterInspector)
+            : reports,
+        [reports, isAdmin, filterInspector]
+    );
 
+    const dayReports = useMemo(() => filteredReports.filter(r => r.at?.startsWith(filterDay)), [filteredReports, filterDay]);
+
+    // ── Monthly stats (admin only) ──────────────────────────────────────────
+    const monthScans = useMemo(() => filteredScans.filter(s => s.at?.startsWith(monthIso)), [filteredScans, monthIso]);
+    const monthReports = useMemo(() => filteredReports.filter(r => r.at?.startsWith(monthIso)), [filteredReports, monthIso]);
+
+    const monthStats = useMemo(() => {
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const dayMap = new Map<string, number>();
+        for (const s of monthScans) {
+            const d = s.at?.slice(0, 10) || '';
+            dayMap.set(d, (dayMap.get(d) || 0) + 1);
+        }
+        const activeDays = dayMap.size;
+        const avgPerDay = activeDays > 0 ? Math.round(monthScans.length / activeDays) : 0;
+        const scannedOkMonth = monthScans.filter(wasScannedAtBoarding).length;
+        const okPct = monthScans.length > 0 ? Math.round((scannedOkMonth / monthScans.length) * 100) : 0;
+        const problemReports = monthReports.filter(r => r.hasProblem).length;
+
+        // Unique routes
+        const routeMap = new Map<string, number>();
+        for (const s of monthScans) {
+            if (s.route) routeMap.set(s.route, (routeMap.get(s.route) || 0) + 1);
+        }
+        const topRoutes = [...routeMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+        // Unique clients
+        const uniqueClients = new Set(monthScans.map(s => s.clientId)).size;
+
+        // Per-inspector monthly
+        const inspMap = new Map<string, { name: string; count: number }>();
+        for (const s of monthScans) {
+            const e = inspMap.get(s.inspectorId) || { name: s.inspectorName, count: 0 };
+            e.count++;
+            inspMap.set(s.inspectorId, e);
+        }
+        const topInspectors = [...inspMap.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+
+        // Daily data for bar chart
+        const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
+            const dayStr = `${monthIso}-${String(i + 1).padStart(2, '0')}`;
+            return { day: i + 1, count: dayMap.get(dayStr) || 0 };
+        });
+        const peakDay = Math.max(...dailyData.map(d => d.count), 1);
+
+        // GPS coverage
+        const withGps = monthScans.filter(s => s.lat != null && s.lng != null).length;
+        const gpsPct = monthScans.length > 0 ? Math.round((withGps / monthScans.length) * 100) : 0;
+
+        return {
+            total: monthScans.length,
+            activeDays,
+            avgPerDay,
+            okPct,
+            scannedOkMonth,
+            reportsTotal: monthReports.length,
+            problemReports,
+            uniqueRoutes: routeMap.size,
+            uniqueClients,
+            topRoutes,
+            topInspectors,
+            dailyData,
+            peakDay,
+            gpsPct,
+        };
+    }, [monthScans, monthReports, monthIso, year, month]);
+
+    // Day-level extras
+    const dayProblems = useMemo(() => dayReports.filter(r => r.hasProblem).length, [dayReports]);
+    const dayUniqueRoutes = useMemo(() => new Set(dayScans.map(s => s.route).filter(Boolean)).size, [dayScans]);
+
+    // ── Report form ────────────────────────────────────────────────────────
     const [rDescription, setRDescription] = useState('');
     const [rChecked, setRChecked] = useState('');
     const [rClientCount, setRClientCount] = useState('');
@@ -234,7 +392,15 @@ export default function Inspections() {
     const isToday = filterDay >= new Date().toISOString().slice(0, 10);
     const scanPct = countDay > 0 ? Math.round((scannedOk / countDay) * 100) : 0;
     const dayLabel = new Date(filterDay + 'T12:00:00').toLocaleDateString('bg-BG', { weekday: 'short', day: '2-digit', month: 'short' });
+    const monthLabel = now.toLocaleDateString('bg-BG', { month: 'long', year: 'numeric' });
     const num = { fontVariantNumeric: 'tabular-nums' as const };
+
+    // ── Monthly stats toggle ───────────────────────────────────────────────
+    const [showMonthly, setShowMonthly] = useState(true);
+
+    const selectedInspectorName = filterInspector === 'all'
+        ? null
+        : (allInspectors.find(i => i.id === filterInspector)?.name ?? filterInspector);
 
     return (
         <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '1.5rem 1rem 4rem' }}>
@@ -245,13 +411,15 @@ export default function Inspections() {
                 .insp-row:hover { background: rgba(255,255,255,0.055); border-color: rgba(0,173,181,0.3); }
                 .insp-seg { transition: background .15s ease, color .15s ease; }
                 .insp-seg:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: #fff; }
-                .insp-chip { transition: border-color .15s ease, background .15s ease; }
-                .insp-chip:hover { border-color: rgba(0,173,181,0.4); }
+                .insp-chip { transition: border-color .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease; cursor: pointer; }
+                .insp-chip:hover { border-color: rgba(0,173,181,0.5) !important; }
+                .insp-chip-active { border-color: var(--primary-color) !important; background: rgba(0,173,181,0.15) !important; color: var(--primary-color) !important; box-shadow: 0 0 0 1px rgba(0,173,181,0.3); }
                 .insp-loc { transition: color .15s ease; }
                 .insp-loc:hover { color: #4de1ea !important; }
                 .insp-layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 2rem; align-items: start; }
                 .insp-report-input:focus, .insp-report-textarea:focus { border-color: rgba(0,173,181,0.5) !important; }
                 .insp-toggle { transition: background .15s ease, color .15s ease, border-color .15s ease; }
+                .insp-stat-bar { transition: width .4s ease; }
                 @media (max-width: 980px) {
                     .insp-layout { grid-template-columns: 1fr; }
                 }
@@ -274,12 +442,197 @@ export default function Inspections() {
                 </div>
             </div>
 
-            <div className="insp-layout">
+            {/* ══ INSPECTOR FILTER (admin only) ════════════════════════════════════ */}
+            {isAdmin && allInspectors.length > 0 && (
+                <div style={{ margin: '1.25rem 0 0', padding: '1rem 1.1rem', background: 'rgba(255,255,255,0.025)', border: '1px solid var(--surface-border)', borderRadius: '16px' }}>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700, marginBottom: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Users size={13} /> Филтър по проверяващ
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <button
+                            className={`insp-chip${filterInspector === 'all' ? ' insp-chip-active' : ''}`}
+                            onClick={() => setFilterInspector('all')}
+                            style={{ padding: '0.38rem 0.85rem', background: filterInspector === 'all' ? 'rgba(0,173,181,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${filterInspector === 'all' ? 'var(--primary-color)' : 'var(--surface-border)'}`, borderRadius: '50px', fontSize: '0.82rem', fontWeight: 700, color: filterInspector === 'all' ? 'var(--primary-color)' : 'var(--text-secondary)' }}
+                        >
+                            Всички
+                        </button>
+                        {allInspectors.map(insp => {
+                            const isActive = filterInspector === insp.id;
+                            const monthCount = scans.filter(s => s.inspectorId === insp.id && s.at?.startsWith(monthIso)).length;
+                            return (
+                                <button
+                                    key={insp.id}
+                                    className={`insp-chip${isActive ? ' insp-chip-active' : ''}`}
+                                    onClick={() => setFilterInspector(isActive ? 'all' : insp.id)}
+                                    style={{ padding: '0.38rem 0.5rem 0.38rem 0.45rem', background: isActive ? 'rgba(0,173,181,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${isActive ? 'var(--primary-color)' : 'var(--surface-border)'}`, borderRadius: '50px', fontSize: '0.82rem', fontWeight: 700, color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}
+                                >
+                                    <span style={{ width: '22px', height: '22px', borderRadius: '50%', background: isActive ? 'rgba(0,173,181,0.25)' : 'rgba(255,255,255,0.07)', color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 900, flexShrink: 0 }}>
+                                        {insp.name.trim().charAt(0).toUpperCase()}
+                                    </span>
+                                    {insp.name}
+                                    {monthCount > 0 && (
+                                        <span style={{ background: isActive ? 'rgba(0,173,181,0.2)' : 'rgba(255,255,255,0.07)', color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)', fontWeight: 900, borderRadius: '50px', padding: '0.05rem 0.45rem', fontSize: '0.75rem', ...num }}>
+                                            {monthCount}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {selectedInspectorName && (
+                        <div style={{ marginTop: '0.55rem', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                            Показват се данни само за: <strong style={{ color: 'var(--primary-color)' }}>{selectedInspectorName}</strong>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            <div className="insp-layout" style={{ marginTop: '1.5rem' }}>
             {/* ==================== LEFT COLUMN ==================== */}
             <div>
 
+            {/* ══ MONTHLY STATS (admin only) ════════════════════════════════════ */}
+            {isAdmin && (
+                <div style={{ marginBottom: '2rem' }}>
+                    <button
+                        onClick={() => setShowMonthly(v => !v)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0.7rem 1rem', background: 'rgba(255,255,255,0.025)', border: '1px solid var(--surface-border)', borderRadius: showMonthly ? '16px 16px 0 0' : '16px', cursor: 'pointer', color: '#fff' }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                            <BarChart3 size={16} color="var(--primary-color)" />
+                            <span style={{ fontWeight: 800, fontSize: '0.88rem', textTransform: 'capitalize' }}>
+                                Месечна статистика — {monthLabel}
+                                {selectedInspectorName ? ` · ${selectedInspectorName}` : ''}
+                            </span>
+                            {monthStats.total > 0 && (
+                                <span style={{ background: 'rgba(0,173,181,0.15)', color: 'var(--primary-color)', fontWeight: 900, borderRadius: '50px', padding: '0.1rem 0.55rem', fontSize: '0.78rem', ...num }}>
+                                    {monthStats.total}
+                                </span>
+                            )}
+                        </div>
+                        {showMonthly ? <ChevronUp size={16} color="var(--text-secondary)" /> : <ChevronDown size={16} color="var(--text-secondary)" />}
+                    </button>
+
+                    {showMonthly && (
+                        <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.018)', border: '1px solid var(--surface-border)', borderTop: 'none', borderRadius: '0 0 16px 16px' }}>
+
+                            {monthStats.total === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                                    Няма данни за {monthLabel}
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Main metric cards */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                        {[
+                                            { icon: ClipboardCheck, label: 'Проверки месеца', value: String(monthStats.total), tint: 'var(--primary-color)', bg: 'rgba(0,173,181,0.08)', border: 'rgba(0,173,181,0.25)' },
+                                            { icon: CalendarDays, label: 'Активни дни', value: String(monthStats.activeDays), tint: '#a78bfa', bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.25)' },
+                                            { icon: TrendingUp, label: 'Ср. на ден', value: String(monthStats.avgPerDay), tint: '#fbbf24', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.25)' },
+                                            { icon: Percent, label: 'Сканирани %', value: `${monthStats.okPct}%`, tint: monthStats.okPct >= 80 ? '#00e676' : monthStats.okPct >= 50 ? '#ffab00' : '#ff5252', bg: monthStats.okPct >= 80 ? 'rgba(0,230,118,0.08)' : monthStats.okPct >= 50 ? 'rgba(255,171,0,0.08)' : 'rgba(255,82,82,0.08)', border: monthStats.okPct >= 80 ? 'rgba(0,230,118,0.25)' : monthStats.okPct >= 50 ? 'rgba(255,171,0,0.25)' : 'rgba(255,82,82,0.25)' },
+                                            { icon: FileText, label: 'Репорти', value: String(monthStats.reportsTotal), tint: '#60a5fa', bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.25)' },
+                                            { icon: AlertTriangle, label: 'Репорти с проблем', value: String(monthStats.problemReports), tint: monthStats.problemReports > 0 ? '#ff5252' : '#00e676', bg: monthStats.problemReports > 0 ? 'rgba(255,82,82,0.08)' : 'rgba(0,230,118,0.08)', border: monthStats.problemReports > 0 ? 'rgba(255,82,82,0.25)' : 'rgba(0,230,118,0.25)' },
+                                            { icon: Route, label: 'Линии', value: String(monthStats.uniqueRoutes), tint: '#34d399', bg: 'rgba(52,211,153,0.08)', border: 'rgba(52,211,153,0.25)' },
+                                            { icon: Users, label: 'Уник. клиенти', value: String(monthStats.uniqueClients), tint: '#f472b6', bg: 'rgba(244,114,182,0.08)', border: 'rgba(244,114,182,0.25)' },
+                                        ].map((c, i) => (
+                                            <div key={i} className="insp-card" style={{ padding: '0.85rem 1rem', background: c.bg, border: `1px solid ${c.border}`, borderRadius: '14px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
+                                                    <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>{c.label}</span>
+                                                    <c.icon size={13} color={c.tint} />
+                                                </div>
+                                                <div style={{ fontSize: '1.7rem', fontWeight: 900, color: c.tint, lineHeight: 1, ...num }}>{c.value}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Activity bar chart */}
+                                    <div style={{ marginBottom: '1.25rem', padding: '1rem', background: 'rgba(255,255,255,0.025)', border: '1px solid var(--surface-border)', borderRadius: '14px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                                            <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>
+                                                Активност по ден
+                                            </span>
+                                            <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', ...num }}>
+                                                Пик: {monthStats.peakDay} проверки
+                                            </span>
+                                        </div>
+                                        <MiniBarChart data={monthStats.dailyData} max={monthStats.peakDay} />
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.25)', ...num }}>
+                                            <span>1</span>
+                                            <span>{Math.round(monthStats.dailyData.length / 2)}</span>
+                                            <span>{monthStats.dailyData.length}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Top routes + Top inspectors */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: filterInspector === 'all' ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
+                                        {/* Top routes */}
+                                        {monthStats.topRoutes.length > 0 && (
+                                            <div style={{ padding: '0.9rem', background: 'rgba(255,255,255,0.025)', border: '1px solid var(--surface-border)', borderRadius: '14px' }}>
+                                                <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700, marginBottom: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                    <Route size={12} /> Топ маршрути
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                    {monthStats.topRoutes.map(([route, count], idx) => {
+                                                        const maxCount = monthStats.topRoutes[0]?.[1] || 1;
+                                                        const pct = Math.round((count / maxCount) * 100);
+                                                        return (
+                                                            <div key={route}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                                                                    <span style={{ fontSize: '0.78rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '75%' }}>
+                                                                        {idx === 0 && <Star size={11} color="#fbbf24" style={{ marginRight: '4px', verticalAlign: '-1px' }} />}
+                                                                        {route}
+                                                                    </span>
+                                                                    <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary-color)', ...num }}>{count}</span>
+                                                                </div>
+                                                                <div style={{ height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                                                                    <div className="insp-stat-bar" style={{ width: `${pct}%`, height: '100%', background: idx === 0 ? 'var(--primary-color)' : 'rgba(0,173,181,0.45)', borderRadius: '4px' }} />
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Top inspectors (only when showing all) */}
+                                        {filterInspector === 'all' && monthStats.topInspectors.length > 0 && (
+                                            <div style={{ padding: '0.9rem', background: 'rgba(255,255,255,0.025)', border: '1px solid var(--surface-border)', borderRadius: '14px' }}>
+                                                <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700, marginBottom: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                    <ShieldCheck size={12} /> Топ проверяващи
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                    {monthStats.topInspectors.map((insp, idx) => {
+                                                        const maxCount = monthStats.topInspectors[0]?.count || 1;
+                                                        const pct = Math.round((insp.count / maxCount) * 100);
+                                                        return (
+                                                            <div key={insp.name}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                                                                    <span style={{ fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                                        <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: idx === 0 ? 'rgba(0,173,181,0.2)' : 'rgba(255,255,255,0.06)', color: idx === 0 ? 'var(--primary-color)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900, flexShrink: 0 }}>
+                                                                            {(insp.name || '?').trim().charAt(0).toUpperCase()}
+                                                                        </span>
+                                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80px' }}>{insp.name}</span>
+                                                                    </span>
+                                                                    <span style={{ fontSize: '0.75rem', fontWeight: 900, color: idx === 0 ? 'var(--primary-color)' : 'var(--text-secondary)', ...num }}>{insp.count}</span>
+                                                                </div>
+                                                                <div style={{ height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                                                                    <div className="insp-stat-bar" style={{ width: `${pct}%`, height: '100%', background: idx === 0 ? 'var(--primary-color)' : 'rgba(0,173,181,0.35)', borderRadius: '4px' }} />
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Day selector (segmented) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', margin: '1.5rem 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', margin: '0 0 1.5rem' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'stretch', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--surface-border)', borderRadius: '12px', overflow: 'hidden' }}>
                     <button className="insp-seg" onClick={() => shiftDay(-1)} title="Предишен ден" style={{ padding: '0 0.7rem', background: 'transparent', border: 'none', borderRight: '1px solid var(--surface-border)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><ChevronLeft size={18} /></button>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 0.85rem', cursor: 'pointer' }}>
@@ -294,31 +647,35 @@ export default function Inspections() {
                 )}
             </div>
 
-            {/* Summary cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.9rem', marginBottom: '2rem' }}>
+            {/* Summary cards (day) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.9rem', marginBottom: '2rem' }}>
                 {[
                     { icon: ClipboardCheck, label: 'Проверки за деня', value: String(countDay), tint: 'var(--primary-color)', bg: 'rgba(0,173,181,0.09)', border: 'rgba(0,173,181,0.28)', sub: null },
                     { icon: CalendarDays, label: 'Този месец', value: String(countMonth), tint: '#e6e6e6', bg: 'rgba(255,255,255,0.035)', border: 'var(--surface-border)', sub: null },
                     { icon: Percent, label: 'Сканирани при качване', value: `${scanPct}%`, tint: scanPct >= 80 ? '#00e676' : scanPct >= 50 ? '#ffab00' : '#ff5252', bg: 'rgba(255,255,255,0.035)', border: 'var(--surface-border)', sub: `${scannedOk} / ${countDay}` },
+                    ...(isAdmin ? [
+                        { icon: AlertTriangle, label: 'Проблеми за деня', value: String(dayProblems), tint: dayProblems > 0 ? '#ff5252' : '#00e676', bg: dayProblems > 0 ? 'rgba(255,82,82,0.08)' : 'rgba(0,230,118,0.06)', border: dayProblems > 0 ? 'rgba(255,82,82,0.25)' : 'rgba(0,230,118,0.2)', sub: null },
+                        { icon: Navigation, label: 'Линии за деня', value: String(dayUniqueRoutes), tint: '#34d399', bg: 'rgba(52,211,153,0.07)', border: 'rgba(52,211,153,0.2)', sub: null },
+                    ] : []),
                 ].map((c, i) => (
-                    <div key={i} className="insp-card" style={{ padding: '1.15rem 1.25rem', background: c.bg, border: `1px solid ${c.border}`, borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                    <div key={i} className="insp-card" style={{ padding: '1.1rem 1.2rem', background: c.bg, border: `1px solid ${c.border}`, borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>{c.label}</span>
-                            <div style={{ width: '30px', height: '30px', borderRadius: '9px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <c.icon size={16} color={c.tint} />
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>{c.label}</span>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <c.icon size={14} color={c.tint} />
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                            <span style={{ fontSize: '2.1rem', fontWeight: 900, color: c.tint, lineHeight: 1, ...num }}>{c.value}</span>
-                            {c.sub && <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 700, ...num }}>{c.sub}</span>}
+                            <span style={{ fontSize: '2rem', fontWeight: 900, color: c.tint, lineHeight: 1, ...num }}>{c.value}</span>
+                            {c.sub && <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', fontWeight: 700, ...num }}>{c.sub}</span>}
                         </div>
                     </div>
                 ))}
             </div>
 
-            {isAdmin && byInspector.length > 0 && (
+            {isAdmin && byInspector.length > 0 && filterInspector === 'all' && (
                 <div style={{ marginBottom: '1.75rem' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 700, marginBottom: '0.65rem' }}>По проверяващ</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 700, marginBottom: '0.65rem' }}>По проверяващ (ден)</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem' }}>
                         {byInspector.map(b => (
                             <div key={b.name} className="insp-chip" style={{ padding: '0.4rem 0.5rem 0.4rem 0.4rem', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--surface-border)', borderRadius: '50px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -380,7 +737,11 @@ export default function Inspections() {
                                         {s.clientName || s.clientId}
                                         {s.clientCard ? <span style={{ color: 'var(--text-secondary)', fontWeight: 600, ...num }}> · №{s.clientCard}</span> : ''}
                                     </div>
-                                    <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>{s.route || '—'}{isAdmin ? ` · ${s.inspectorName}` : ''}</div>
+                                    <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+                                        {s.route || '—'}
+                                        {isAdmin && filterInspector === 'all' ? ` · ${s.inspectorName}` : ''}
+                                        {isAdmin && filterInspector !== 'all' ? ` · ${s.inspectorName}` : ''}
+                                    </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.74rem', fontWeight: 800, padding: '0.28rem 0.65rem', borderRadius: '50px', whiteSpace: 'nowrap', background: ok ? 'rgba(0,230,118,0.13)' : 'rgba(255,82,82,0.13)', color: accent, border: `1px solid ${ok ? 'rgba(0,230,118,0.28)' : 'rgba(255,82,82,0.28)'}` }}>
                                     {ok ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
