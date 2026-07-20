@@ -457,6 +457,8 @@ const AdminPanel: React.FC = () => {
     const [reportRoute, setReportRoute] = useState<string>('all');
     const [reportDistanceFilter, setReportDistanceFilter] = useState<string>('all');
     const [reportMunicipality, setReportMunicipality] = useState<string>('all');
+    const [reportByContract, setReportByContract] = useState<boolean>(false);
+    const [contractMunicipalities, setContractMunicipalities] = useState<string[]>([]);
 
     const [photoError, setPhotoError] = useState<string | null>(null);
     
@@ -2026,7 +2028,11 @@ const AdminPanel: React.FC = () => {
                                     if (cType !== reportCardType) match = false;
                                 }
                                 if (reportRoute !== 'all' && !getClientRoutes(c).includes(reportRoute)) match = false;
-                                if (reportMunicipality !== 'all' && (c.municipality || '') !== reportMunicipality) match = false;
+                                if (reportByContract) {
+                                    if (!contractMunicipalities.includes(c.municipality || '')) match = false;
+                                } else {
+                                    if (reportMunicipality !== 'all' && (c.municipality || '') !== reportMunicipality) match = false;
+                                }
                                 
                                 if (reportPeriodType === 'month') {
                                     if (reportMonth !== 'all') {
@@ -2070,7 +2076,7 @@ const AdminPanel: React.FC = () => {
                             
                             const totalReportRevenue = filteredReportClients.reduce((sum, c) => sum + getReportAmount(c), 0);
 
-                            const showMunicipalityCol = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportMunicipality !== 'all';
+                            const showMunicipalityCol = reportByContract || reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportMunicipality !== 'all';
                             const showAddressCol = reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта';
                             const reportColSpan = 5 /* name, card no, type, route, amount */
                                 + (reportDistanceFilter !== 'all' ? 1 : 0)
@@ -2078,7 +2084,7 @@ const AdminPanel: React.FC = () => {
                                 + (reportCardType === 'Ученическа карта' ? 1 : 0)
                                 + (showMunicipalityCol ? 1 : 0);
 
-                            const useRegisterPrint = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportCardType === 'Инвалидна карта';
+                            const useRegisterPrint = reportByContract || reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportCardType === 'Инвалидна карта';
                             const SHORT_ROUTES = ["Ясен", "Опанец", "Ясен-Дисевица"];
 
                             const registerCategoryLabel = reportCardType === 'Пенсионерска карта' ? 'ПЕНСИОНЕРИ'
@@ -2149,7 +2155,9 @@ const AdminPanel: React.FC = () => {
                                 const periodStr = reportPeriodType === 'month'
                                     ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}`
                                     : `Ден: ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`;
-                                const title = useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : 'ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ';
+                                const title = reportByContract
+                                    ? `РЕГИСТЪР ЗА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ${contractMunicipalities.join(', ').toUpperCase()}`
+                                    : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : 'ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ');
                                 const subStr = [
                                     `Дата: ${dateStr}`,
                                     periodStr,
@@ -2273,7 +2281,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 <span style={{ fontSize: '11px', color: '#666' }}>Дата на съставяне: {new Date().toLocaleDateString('bg-BG')} г.</span>
                                             </div>
                                             <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#000', margin: '0 0 1rem 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
-                                                {useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : "ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ"}
+                                                {reportByContract ? `РЕГИСТЪР ЗА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ${contractMunicipalities.join(', ').toUpperCase()}` : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : "ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ")}
                                             </h1>
                                             
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '12px', color: '#111', marginTop: '1rem', background: '#fafafa', padding: '10px 15px', borderRadius: '8px', border: '1px solid #eee' }}>
@@ -2285,7 +2293,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 <div><strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички видове' : reportCardType}</div>
                                                 <div><strong>Начин на плащане:</strong> {reportPaymentMethod === 'all' ? 'Всички методи' : reportPaymentMethod}</div>
                                                 <div><strong>Маршрут:</strong> {reportRoute === 'all' ? 'Всички маршрути' : reportRoute}</div>
-                                                <div><strong>Община:</strong> {reportMunicipality === 'all' ? 'Всички общини' : reportMunicipality}</div>
+                                                <div><strong>Община:</strong> {reportByContract ? contractMunicipalities.join(', ') : (reportMunicipality === 'all' ? 'Всички общини' : reportMunicipality)}</div>
                                                 <div><strong>Разстояние:</strong> {reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}</div>
                                                 {useRegisterPrint && <div style={{ gridColumn: 'span 3' }}><strong>Линии/Курсове:</strong> {registerLines}</div>}
                                             </div>
@@ -2385,12 +2393,90 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         </div>
                                         
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Община</label>
-                                            <select value={reportMunicipality} onChange={e => setReportMunicipality(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
-                                                <option value="all">Всички Общини</option>
-                                                {MUNICIPALITIES.map(m => <option key={m} value={m}>{m}</option>)}
-                                            </select>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Договор</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const nextVal = !reportByContract;
+                                                    setReportByContract(nextVal);
+                                                    if (nextVal && contractMunicipalities.length === 0) {
+                                                        setContractMunicipalities([...MUNICIPALITIES]);
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '0.6rem',
+                                                    background: reportByContract ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
+                                                    border: '1px solid var(--surface-border)',
+                                                    color: reportByContract ? '#000' : '#fff',
+                                                    borderRadius: '8px',
+                                                    outline: 'none',
+                                                    fontWeight: 600,
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s ease',
+                                                    textAlign: 'center',
+                                                    height: '38px',
+                                                    boxSizing: 'border-box'
+                                                }}
+                                            >
+                                                {reportByContract ? '✓ ПО ДОГОВОР' : 'БЕЗ ДОГОВОР'}
+                                            </button>
                                         </div>
+                                        
+                                        {!reportByContract && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Община</label>
+                                                <select value={reportMunicipality} onChange={e => setReportMunicipality(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
+                                                    <option value="all">Всички Общини</option>
+                                                    {MUNICIPALITIES.map(m => <option key={m} value={m}>{m}</option>)}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {reportByContract && (
+                                            <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', padding: '1rem', background: 'rgba(255,255,255,0.015)', border: '1px dashed var(--surface-border)', borderRadius: '12px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700 }}>Избери общини по договора:</label>
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setContractMunicipalities([...MUNICIPALITIES])}
+                                                            style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '4px', cursor: 'pointer' }}
+                                                        >
+                                                            Всички
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setContractMunicipalities([])}
+                                                            style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', borderRadius: '4px', cursor: 'pointer' }}
+                                                        >
+                                                            Изчисти
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.6rem' }}>
+                                                    {MUNICIPALITIES.map(m => {
+                                                        const isChecked = contractMunicipalities.includes(m);
+                                                        return (
+                                                            <label key={m} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', color: isChecked ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={() => {
+                                                                        if (isChecked) {
+                                                                            setContractMunicipalities(contractMunicipalities.filter(x => x !== m));
+                                                                        } else {
+                                                                            setContractMunicipalities([...contractMunicipalities, m]);
+                                                                        }
+                                                                    }}
+                                                                    style={{ cursor: 'pointer' }}
+                                                                />
+                                                                {m}
+                                                            </label>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {useRegisterPrint && (
