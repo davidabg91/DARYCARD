@@ -2240,8 +2240,9 @@ const AdminPanel: React.FC = () => {
                                     cols,
                                     rows: rowsData,
                                     logo: logoUrl,
-                                     isContract: reportByContract,
-                                    footLeft: '<b>СЪСТАВИЛ:</b> К. ВАСИЛЕВА &nbsp;.............................',
+                                                                isContract: reportByContract,
+                                     periodLabel: formattedPeriodLabel,
+                                     footLeft: '<b>СЪСТАВИЛ:</b> К. ВАСИЛЕВА &nbsp;.............................',
                                     footRight: '<b>Общо записи:</b> ' + rows.length + (!useRegisterPrint ? ' &nbsp;|&nbsp; <b>Общо приход:</b> ' + totalReportRevenue.toFixed(2) + ' €' : ''),
                                 };
                                 const payloadJson = JSON.stringify(payload).replace(/</g, '\\u003c');
