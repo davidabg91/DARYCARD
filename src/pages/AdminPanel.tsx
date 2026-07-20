@@ -458,6 +458,20 @@ const AdminPanel: React.FC = () => {
     const [reportDistanceFilter, setReportDistanceFilter] = useState<string>('all');
     const [reportMunicipality, setReportMunicipality] = useState<string>('all');
     const [reportByContract, setReportByContract] = useState<boolean>(false);
+    const BG_MONTHS: Record<string, string> = {
+        '01': 'ЯНУАРИ',
+        '02': 'ФЕВРУАРИ',
+        '03': 'МАРТ',
+        '04': 'АПРИЛ',
+        '05': 'МАЙ',
+        '06': 'ЮНИ',
+        '07': 'ЮЛИ',
+        '08': 'АВГУСТ',
+        '09': 'СЕПТЕМВРИ',
+        '10': 'ОКТЕМВРИ',
+        '11': 'НОЕМВРИ',
+        '12': 'ДЕКЕМВРИ'
+    };
     const [contractMunicipalities, setContractMunicipalities] = useState<string[]>([]);
 
     const [photoError, setPhotoError] = useState<string | null>(null);
@@ -2151,17 +2165,24 @@ const AdminPanel: React.FC = () => {
                                 const periodStr = reportPeriodType === 'month'
                                     ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}`
                                     : `Ден: ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`;
-                                const formattedMonth = reportMonth === 'all' ? 'Всички месеци' : (() => {
-                                    const parts = reportMonth.split('-');
-                                    return parts.length === 2 ? `${parts[1]}-${parts[0]}г.` : reportMonth;
-                                })();
-                                const formattedDate = (() => {
-                                    if (!reportDate) return '---';
-                                    const d = new Date(reportDate);
-                                    return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG') + 'г.';
-                                })();
+                                
+                                const formattedPeriodLabel = reportPeriodType === 'month'
+                                    ? (() => {
+                                        const parts = reportMonth.split('-');
+                                        if (parts.length === 2) {
+                                            const monthName = BG_MONTHS[parts[1]] || '';
+                                            return `За ${monthName} ${parts[0]}г.`;
+                                        }
+                                        return `За ${reportMonth}`;
+                                    })()
+                                    : `За ${(() => {
+                                        if (!reportDate) return '---';
+                                        const d = new Date(reportDate);
+                                        return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG') + 'г.';
+                                    })()}`;
+
                                 const title = reportByContract
-                                    ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНИ: ${contractMunicipalities.join(', ').toUpperCase()} ${reportPeriodType === 'month' ? `ЗА МЕСЕЦ ${formattedMonth.toUpperCase()}` : `ЗА ДЕН ${formattedDate.toUpperCase()}`}`
+                                    ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНИ: ${contractMunicipalities.join(', ').toUpperCase()}`
                                     : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : 'ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ');
                                 const subStr = [
                                     `Дата: ${dateStr}`,
@@ -2249,20 +2270,24 @@ tr { page-break-inside: avoid; }
 var D = ${payloadJson};
 var esc = function(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(m){ return m==='&'?'&amp;':m==='<'?'&lt;':m==='>'?'&gt;':'&quot;'; }); };
 var logoHtml = D.logo ? '<img class="rep-logo" src="'+D.logo+'"/>' : '';
-function headerHtml(pn, tp){ return '<div class="rep-header"><div class="rep-left">'+logoHtml+'<div><div class="rep-title">'+esc(D.title)+'</div><div class="rep-sub">'+esc(D.sub)+'</div></div></div><div class="rep-page">Страница '+pn+' от '+tp+'</div></div>'; }
+function headerHtml(pn, tp){ 
+    var subHtml = D.isContract ? '' : '<div class="rep-sub">'+esc(D.sub)+'</div>';
+    return '<div class="rep-header"><div class="rep-left">'+logoHtml+'<div><div class="rep-title">'+esc(D.title)+'</div>'+subHtml+'</div></div><div class="rep-page">Страница '+pn+' от '+tp+'</div></div>'; 
+}
+var tableTitleHtml = D.isContract ? '<div style="text-align: center; font-size: 15px; font-weight: bold; margin: 10px 0; text-transform: none;">'+esc(D.periodLabel)+'</div>' : '';
 var thead = '<thead><tr>'+D.cols.map(function(h){return '<th>'+esc(h)+'</th>';}).join('')+'</tr></thead>';
 function rowHtml(r){ return '<tr>'+r.map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>'; }
 var probe = document.createElement('div'); probe.style.cssText='position:absolute;visibility:hidden;height:273mm;'; document.body.appendChild(probe);
 var PAGE_H = probe.offsetHeight - 6; probe.remove();
 var meas = document.createElement('div'); meas.style.cssText='position:absolute;visibility:hidden;left:-10000px;top:0;width:182mm;'; document.body.appendChild(meas);
-function blockH(ch){ meas.innerHTML = headerHtml(1,9)+'<table>'+thead+'<tbody>'+ch.map(rowHtml).join('')+'</tbody></table>'; return meas.offsetHeight; }
+function blockH(ch){ meas.innerHTML = headerHtml(1,9)+tableTitleHtml+'<table>'+thead+'<tbody>'+ch.map(rowHtml).join('')+'</tbody></table>'; return meas.offsetHeight; }
 var chunks=[]; var cur=[];
 for (var i=0;i<D.rows.length;i++){ cur.push(D.rows[i]); if (blockH(cur) > PAGE_H && cur.length>1){ cur.pop(); chunks.push(cur); cur=[D.rows[i]]; } }
 if (cur.length) chunks.push(cur);
 if (chunks.length===0) chunks.push([]);
 meas.remove();
 var tp = chunks.length; var out='';
-for (var p=0;p<tp;p++){ var foot=(p===tp-1)?'<div class="rep-foot"><div>'+D.footLeft+'</div><div>'+D.footRight+'</div></div>':''; out += '<div class="page">'+headerHtml(p+1,tp)+'<table>'+thead+'<tbody>'+chunks[p].map(rowHtml).join('')+'</tbody></table>'+foot+'</div>'; }
+for (var p=0;p<tp;p++){ var foot=(p===tp-1)?'<div class="rep-foot"><div>'+D.footLeft+'</div><div>'+D.footRight+'</div></div>':''; out += '<div class="page">'+headerHtml(p+1,tp)+tableTitleHtml+'<table>'+thead+'<tbody>'+chunks[p].map(rowHtml).join('')+'</tbody></table>'+foot+'</div>'; }
 document.getElementById('pages').innerHTML = out;
 var done=false; function go(){ if(done) return; done=true; window.focus(); window.print(); }
 var imgs=document.images;
@@ -2284,22 +2309,30 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         <div style={{ borderBottom: '3px double #222', paddingBottom: '1.25rem', marginBottom: '1.5rem', fontFamily: 'sans-serif' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                                 <img src={logoMain} alt="Dary Commerce" style={{ height: '44px', width: 'auto', objectFit: 'contain', display: 'block', margin: '0' }} />
-                                                <span style={{ fontSize: '11px', color: '#666' }}>Дата на съставяне: {new Date().toLocaleDateString('bg-BG')} г.</span>
+                                                {!reportByContract && <span style={{ fontSize: '11px', color: '#666' }}>Дата на съставяне: {new Date().toLocaleDateString('bg-BG')} г.</span>}
                                             </div>
                                             <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#000', margin: '0 0 1rem 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
-                                                {reportByContract ? (() => {
-                                                    const formattedMonth = reportMonth === 'all' ? 'Всички месеци' : (() => {
-                                                        const parts = reportMonth.split('-');
-                                                        return parts.length === 2 ? `${parts[1]}-${parts[0]}г.` : reportMonth;
-                                                    })();
-                                                    const formattedDate = (() => {
-                                                        if (!reportDate) return '---';
-                                                        const d = new Date(reportDate);
-                                                        return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG') + 'г.';
-                                                    })();
-                                                    return `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНИ: ${contractMunicipalities.join(', ').toUpperCase()} ${reportPeriodType === 'month' ? `ЗА МЕСЕЦ ${formattedMonth.toUpperCase()}` : `ЗА ДЕН ${formattedDate.toUpperCase()}`}`;
-                                                })() : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : "ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ")}
+                                                {reportByContract ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНИ: ${contractMunicipalities.join(', ').toUpperCase()}` : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : "ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ")}
                                             </h1>
+                                            {reportByContract && (
+                                                <div style={{ fontSize: '15px', fontWeight: 700, color: '#000', margin: '10px 0', textAlign: 'center' }}>
+                                                    {(() => {
+                                                        const formattedMonth = reportMonth === 'all' ? 'Всички месеци' : (() => {
+                                                            const parts = reportMonth.split('-');
+                                                            if (parts.length === 2) {
+                                                                const monthName = BG_MONTHS[parts[1]] || '';
+                                                                return `За ${monthName} ${parts[0]}г.`;
+                                                            }
+                                                            return `За ${reportMonth}`;
+                                                        })();
+                                                        return reportPeriodType === 'month' ? formattedMonth : `За ${(() => {
+                                                            if (!reportDate) return '---';
+                                                            const d = new Date(reportDate);
+                                                            return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG') + 'г.';
+                                                        })()}`;
+                                                    })()}
+                                                </div>
+                                            )}
                                             
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '12px', color: '#111', marginTop: '1rem', background: '#fafafa', padding: '10px 15px', borderRadius: '8px', border: '1px solid #eee' }}>
                                                 <div><strong>Период:</strong> {reportPeriodType === 'month' ? (reportMonth === 'all' ? 'Всички месеци' : reportMonth) : (() => {
