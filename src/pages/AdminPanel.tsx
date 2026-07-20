@@ -2028,11 +2028,7 @@ const AdminPanel: React.FC = () => {
                                     if (cType !== reportCardType) match = false;
                                 }
                                 if (reportRoute !== 'all' && !getClientRoutes(c).includes(reportRoute)) match = false;
-                                if (reportByContract) {
-                                    if (!contractMunicipalities.includes(c.municipality || '')) match = false;
-                                } else {
-                                    if (reportMunicipality !== 'all' && (c.municipality || '') !== reportMunicipality) match = false;
-                                }
+                                if (reportMunicipality !== 'all' && (c.municipality || '') !== reportMunicipality) match = false;
                                 
                                 if (reportPeriodType === 'month') {
                                     if (reportMonth !== 'all') {
@@ -2076,7 +2072,7 @@ const AdminPanel: React.FC = () => {
                             
                             const totalReportRevenue = filteredReportClients.reduce((sum, c) => sum + getReportAmount(c), 0);
 
-                            const showMunicipalityCol = reportByContract || reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportMunicipality !== 'all';
+                            const showMunicipalityCol = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportMunicipality !== 'all';
                             const showAddressCol = reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта';
                             const reportColSpan = 5 /* name, card no, type, route, amount */
                                 + (reportDistanceFilter !== 'all' ? 1 : 0)
@@ -2084,7 +2080,7 @@ const AdminPanel: React.FC = () => {
                                 + (reportCardType === 'Ученическа карта' ? 1 : 0)
                                 + (showMunicipalityCol ? 1 : 0);
 
-                            const useRegisterPrint = reportByContract || reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportCardType === 'Инвалидна карта';
+                            const useRegisterPrint = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportCardType === 'Инвалидна карта';
                             const SHORT_ROUTES = ["Ясен", "Опанец", "Ясен-Дисевица"];
 
                             const registerCategoryLabel = reportCardType === 'Пенсионерска карта' ? 'ПЕНСИОНЕРИ'
@@ -2156,19 +2152,15 @@ const AdminPanel: React.FC = () => {
                                     ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}`
                                     : `Ден: ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`;
                                 const title = reportByContract
-                                    ? `РЕГИСТЪР ЗА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНА : ${contractMunicipalities.join(', ').toUpperCase()}`
+                                    ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНИ: ${reportPeriodType === 'month' ? `ЗА МЕСЕЦ ${reportMonth.toUpperCase()}` : `ЗА ДЕН ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`} и ${contractMunicipalities.join(', ').toUpperCase()}`
                                     : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : 'ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ');
-                                const subStr = reportByContract
-                                    ? (reportPeriodType === 'month'
-                                        ? `МЕСЕЦ: ${reportMonth === 'all' ? 'Всички' : reportMonth.toUpperCase()}`
-                                        : `ДЕН: ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`)
-                                    : [
-                                        `Дата: ${dateStr}`,
-                                        periodStr,
-                                        `Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType}`,
-                                        `Плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod}`,
-                                        `Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute}`,
-                                    ].join(' | ');
+                                const subStr = [
+                                    `Дата: ${dateStr}`,
+                                    periodStr,
+                                    `Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType}`,
+                                    `Плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod}`,
+                                    `Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute}`,
+                                ].join(' | ');
 
                                 const detailLabel = reportCardType === 'Ученическа карта' ? 'Училище'
                                     : (reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') ? 'Адрес' : '';
@@ -2248,24 +2240,20 @@ tr { page-break-inside: avoid; }
 var D = ${payloadJson};
 var esc = function(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(m){ return m==='&'?'&amp;':m==='<'?'&lt;':m==='>'?'&gt;':'&quot;'; }); };
 var logoHtml = D.logo ? '<img class="rep-logo" src="'+D.logo+'"/>' : '';
-function headerHtml(pn, tp){ 
-    var subHtml = D.isContract ? '' : '<div class="rep-sub">'+esc(D.sub)+'</div>';
-    return '<div class="rep-header"><div class="rep-left">'+logoHtml+'<div><div class="rep-title">'+esc(D.title)+'</div>'+subHtml+'</div></div><div class="rep-page">Страница '+pn+' от '+tp+'</div></div>'; 
-}
-var tableTitleHtml = D.isContract ? '<div style="text-align: center; font-size: 15px; font-weight: bold; margin: 10px 0; text-transform: uppercase;">'+esc(D.sub)+'</div>' : '';
+function headerHtml(pn, tp){ return '<div class="rep-header"><div class="rep-left">'+logoHtml+'<div><div class="rep-title">'+esc(D.title)+'</div><div class="rep-sub">'+esc(D.sub)+'</div></div></div><div class="rep-page">Страница '+pn+' от '+tp+'</div></div>'; }
 var thead = '<thead><tr>'+D.cols.map(function(h){return '<th>'+esc(h)+'</th>';}).join('')+'</tr></thead>';
 function rowHtml(r){ return '<tr>'+r.map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>'; }
 var probe = document.createElement('div'); probe.style.cssText='position:absolute;visibility:hidden;height:273mm;'; document.body.appendChild(probe);
 var PAGE_H = probe.offsetHeight - 6; probe.remove();
 var meas = document.createElement('div'); meas.style.cssText='position:absolute;visibility:hidden;left:-10000px;top:0;width:182mm;'; document.body.appendChild(meas);
-function blockH(ch){ meas.innerHTML = headerHtml(1,9)+tableTitleHtml+'<table>'+thead+'<tbody>'+ch.map(rowHtml).join('')+'</tbody></table>'; return meas.offsetHeight; }
+function blockH(ch){ meas.innerHTML = headerHtml(1,9)+'<table>'+thead+'<tbody>'+ch.map(rowHtml).join('')+'</tbody></table>'; return meas.offsetHeight; }
 var chunks=[]; var cur=[];
 for (var i=0;i<D.rows.length;i++){ cur.push(D.rows[i]); if (blockH(cur) > PAGE_H && cur.length>1){ cur.pop(); chunks.push(cur); cur=[D.rows[i]]; } }
 if (cur.length) chunks.push(cur);
 if (chunks.length===0) chunks.push([]);
 meas.remove();
 var tp = chunks.length; var out='';
-for (var p=0;p<tp;p++){ var foot=(p===tp-1)?'<div class="rep-foot"><div>'+D.footLeft+'</div><div>'+D.footRight+'</div></div>':''; out += '<div class="page">'+headerHtml(p+1,tp)+tableTitleHtml+'<table>'+thead+'<tbody>'+chunks[p].map(rowHtml).join('')+'</tbody></table>'+foot+'</div>'; }
+for (var p=0;p<tp;p++){ var foot=(p===tp-1)?'<div class="rep-foot"><div>'+D.footLeft+'</div><div>'+D.footRight+'</div></div>':''; out += '<div class="page">'+headerHtml(p+1,tp)+'<table>'+thead+'<tbody>'+chunks[p].map(rowHtml).join('')+'</tbody></table>'+foot+'</div>'; }
 document.getElementById('pages').innerHTML = out;
 var done=false; function go(){ if(done) return; done=true; window.focus(); window.print(); }
 var imgs=document.images;
@@ -2287,39 +2275,25 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         <div style={{ borderBottom: '3px double #222', paddingBottom: '1.25rem', marginBottom: '1.5rem', fontFamily: 'sans-serif' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                                 <img src={logoMain} alt="Dary Commerce" style={{ height: '44px', width: 'auto', objectFit: 'contain', display: 'block', margin: '0' }} />
-                                                {!reportByContract && (
-                                                    <span style={{ fontSize: '11px', color: '#666' }}>Дата на съставяне: {new Date().toLocaleDateString('bg-BG')} г.</span>
-                                                )}
+                                                <span style={{ fontSize: '11px', color: '#666' }}>Дата на съставяне: {new Date().toLocaleDateString('bg-BG')} г.</span>
                                             </div>
                                             <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#000', margin: '0 0 1rem 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
-                                                {reportByContract ? `РЕГИСТЪР ЗА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНА : ${contractMunicipalities.join(', ').toUpperCase()}` : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : "ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ")}
+                                                {reportByContract ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНИ: ${reportPeriodType === 'month' ? `ЗА МЕСЕЦ ${reportMonth.toUpperCase()}` : `ЗА ДЕН ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`} и ${contractMunicipalities.join(', ').toUpperCase()}` : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : "ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ")}
                                             </h1>
                                             
-                                            {reportByContract ? (
-                                                <div style={{ fontSize: '15px', fontWeight: 700, color: '#000', margin: '12px 0', textTransform: 'uppercase', textAlign: 'center' }}>
-                                                    {reportPeriodType === 'month'
-                                                        ? `МЕСЕЦ: ${reportMonth === 'all' ? 'Всички месеци' : reportMonth}`
-                                                        : `ДЕН: ${(() => {
-                                                            if (!reportDate) return '---';
-                                                            const d = new Date(reportDate);
-                                                            return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG');
-                                                        })()}`}
-                                                </div>
-                                            ) : (
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '12px', color: '#111', marginTop: '1rem', background: '#fafafa', padding: '10px 15px', borderRadius: '8px', border: '1px solid #eee' }}>
-                                                    <div><strong>Период:</strong> {reportPeriodType === 'month' ? (reportMonth === 'all' ? 'Всички месеци' : reportMonth) : (() => {
-                                                        if (!reportDate) return '---';
-                                                        const d = new Date(reportDate);
-                                                        return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG');
-                                                    })()}</div>
-                                                    <div><strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички видове' : reportCardType}</div>
-                                                    <div><strong>Начин на плащане:</strong> {reportPaymentMethod === 'all' ? 'Всички методи' : reportPaymentMethod}</div>
-                                                    <div><strong>Маршрут:</strong> {reportRoute === 'all' ? 'Всички маршрути' : reportRoute}</div>
-                                                    <div><strong>Община:</strong> {reportByContract ? contractMunicipalities.join(', ') : (reportMunicipality === 'all' ? 'Всички общини' : reportMunicipality)}</div>
-                                                    <div><strong>Разстояние:</strong> {reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}</div>
-                                                    {useRegisterPrint && <div style={{ gridColumn: 'span 3' }}><strong>Линии/Курсове:</strong> {registerLines}</div>}
-                                                </div>
-                                            )}
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '12px', color: '#111', marginTop: '1rem', background: '#fafafa', padding: '10px 15px', borderRadius: '8px', border: '1px solid #eee' }}>
+                                                <div><strong>Период:</strong> {reportPeriodType === 'month' ? (reportMonth === 'all' ? 'Всички месеци' : reportMonth) : (() => {
+                                                    if (!reportDate) return '---';
+                                                    const d = new Date(reportDate);
+                                                    return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG');
+                                                })()}</div>
+                                                <div><strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички видове' : reportCardType}</div>
+                                                <div><strong>Начин на плащане:</strong> {reportPaymentMethod === 'all' ? 'Всички методи' : reportPaymentMethod}</div>
+                                                <div><strong>Маршрут:</strong> {reportRoute === 'all' ? 'Всички маршрути' : reportRoute}</div>
+                                                <div><strong>Община:</strong> {reportByContract ? contractMunicipalities.join(', ') : (reportMunicipality === 'all' ? 'Всички общини' : reportMunicipality)}</div>
+                                                <div><strong>Разстояние:</strong> {reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}</div>
+                                                {useRegisterPrint && <div style={{ gridColumn: 'span 3' }}><strong>Линии/Курсове:</strong> {registerLines}</div>}
+                                            </div>
                                         </div>
                                         
                                         
