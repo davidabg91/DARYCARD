@@ -2218,6 +2218,7 @@ const AdminPanel: React.FC = () => {
                                     cols,
                                     rows: rowsData,
                                     logo: logoUrl,
+                                     isContract: reportByContract,
                                     footLeft: '<b>СЪСТАВИЛ:</b> К. ВАСИЛЕВА &nbsp;.............................',
                                     footRight: '<b>Общо записи:</b> ' + rows.length + (!useRegisterPrint ? ' &nbsp;|&nbsp; <b>Общо приход:</b> ' + totalReportRevenue.toFixed(2) + ' €' : ''),
                                 };
@@ -2247,20 +2248,24 @@ tr { page-break-inside: avoid; }
 var D = ${payloadJson};
 var esc = function(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(m){ return m==='&'?'&amp;':m==='<'?'&lt;':m==='>'?'&gt;':'&quot;'; }); };
 var logoHtml = D.logo ? '<img class="rep-logo" src="'+D.logo+'"/>' : '';
-function headerHtml(pn, tp){ return '<div class="rep-header"><div class="rep-left">'+logoHtml+'<div><div class="rep-title">'+esc(D.title)+'</div><div class="rep-sub">'+esc(D.sub)+'</div></div></div><div class="rep-page">Страница '+pn+' от '+tp+'</div></div>'; }
+function headerHtml(pn, tp){ 
+    var subHtml = D.isContract ? '' : '<div class="rep-sub">'+esc(D.sub)+'</div>';
+    return '<div class="rep-header"><div class="rep-left">'+logoHtml+'<div><div class="rep-title">'+esc(D.title)+'</div>'+subHtml+'</div></div><div class="rep-page">Страница '+pn+' от '+tp+'</div></div>'; 
+}
+var tableTitleHtml = D.isContract ? '<div style="text-align: center; font-size: 15px; font-weight: bold; margin: 10px 0; text-transform: uppercase;">'+esc(D.sub)+'</div>' : '';
 var thead = '<thead><tr>'+D.cols.map(function(h){return '<th>'+esc(h)+'</th>';}).join('')+'</tr></thead>';
 function rowHtml(r){ return '<tr>'+r.map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>'; }
 var probe = document.createElement('div'); probe.style.cssText='position:absolute;visibility:hidden;height:273mm;'; document.body.appendChild(probe);
 var PAGE_H = probe.offsetHeight - 6; probe.remove();
 var meas = document.createElement('div'); meas.style.cssText='position:absolute;visibility:hidden;left:-10000px;top:0;width:182mm;'; document.body.appendChild(meas);
-function blockH(ch){ meas.innerHTML = headerHtml(1,9)+'<table>'+thead+'<tbody>'+ch.map(rowHtml).join('')+'</tbody></table>'; return meas.offsetHeight; }
+function blockH(ch){ meas.innerHTML = headerHtml(1,9)+tableTitleHtml+'<table>'+thead+'<tbody>'+ch.map(rowHtml).join('')+'</tbody></table>'; return meas.offsetHeight; }
 var chunks=[]; var cur=[];
 for (var i=0;i<D.rows.length;i++){ cur.push(D.rows[i]); if (blockH(cur) > PAGE_H && cur.length>1){ cur.pop(); chunks.push(cur); cur=[D.rows[i]]; } }
 if (cur.length) chunks.push(cur);
 if (chunks.length===0) chunks.push([]);
 meas.remove();
 var tp = chunks.length; var out='';
-for (var p=0;p<tp;p++){ var foot=(p===tp-1)?'<div class="rep-foot"><div>'+D.footLeft+'</div><div>'+D.footRight+'</div></div>':''; out += '<div class="page">'+headerHtml(p+1,tp)+'<table>'+thead+'<tbody>'+chunks[p].map(rowHtml).join('')+'</tbody></table>'+foot+'</div>'; }
+for (var p=0;p<tp;p++){ var foot=(p===tp-1)?'<div class="rep-foot"><div>'+D.footLeft+'</div><div>'+D.footRight+'</div></div>':''; out += '<div class="page">'+headerHtml(p+1,tp)+tableTitleHtml+'<table>'+thead+'<tbody>'+chunks[p].map(rowHtml).join('')+'</tbody></table>'+foot+'</div>'; }
 document.getElementById('pages').innerHTML = out;
 var done=false; function go(){ if(done) return; done=true; window.focus(); window.print(); }
 var imgs=document.images;
@@ -2291,7 +2296,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             </h1>
                                             
                                             {reportByContract ? (
-                                                <div style={{ fontSize: '14px', fontWeight: 700, color: '#000', marginTop: '10px', textTransform: 'uppercase', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '15px', fontWeight: 700, color: '#000', margin: '12px 0', textTransform: 'uppercase', textAlign: 'center' }}>
                                                     {reportPeriodType === 'month'
                                                         ? `МЕСЕЦ: ${reportMonth === 'all' ? 'Всички месеци' : reportMonth}`
                                                         : `ДЕН: ${(() => {
