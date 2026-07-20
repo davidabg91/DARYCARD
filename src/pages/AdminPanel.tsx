@@ -2156,15 +2156,19 @@ const AdminPanel: React.FC = () => {
                                     ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}`
                                     : `Ден: ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`;
                                 const title = reportByContract
-                                    ? `РЕГИСТЪР ЗА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ${contractMunicipalities.join(', ').toUpperCase()}`
+                                    ? `РЕГИСТЪР ЗА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНА : ${contractMunicipalities.join(', ').toUpperCase()}`
                                     : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : 'ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ');
-                                const subStr = [
-                                    `Дата: ${dateStr}`,
-                                    periodStr,
-                                    `Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType}`,
-                                    `Плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod}`,
-                                    `Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute}`,
-                                ].join(' | ');
+                                const subStr = reportByContract
+                                    ? (reportPeriodType === 'month'
+                                        ? `МЕСЕЦ: ${reportMonth === 'all' ? 'Всички' : reportMonth.toUpperCase()}`
+                                        : `ДЕН: ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`)
+                                    : [
+                                        `Дата: ${dateStr}`,
+                                        periodStr,
+                                        `Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType}`,
+                                        `Плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod}`,
+                                        `Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute}`,
+                                    ].join(' | ');
 
                                 const detailLabel = reportCardType === 'Ученическа карта' ? 'Училище'
                                     : (reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') ? 'Адрес' : '';
@@ -2278,25 +2282,39 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         <div style={{ borderBottom: '3px double #222', paddingBottom: '1.25rem', marginBottom: '1.5rem', fontFamily: 'sans-serif' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                                 <img src={logoMain} alt="Dary Commerce" style={{ height: '44px', width: 'auto', objectFit: 'contain', display: 'block', margin: '0' }} />
-                                                <span style={{ fontSize: '11px', color: '#666' }}>Дата на съставяне: {new Date().toLocaleDateString('bg-BG')} г.</span>
+                                                {!reportByContract && (
+                                                    <span style={{ fontSize: '11px', color: '#666' }}>Дата на съставяне: {new Date().toLocaleDateString('bg-BG')} г.</span>
+                                                )}
                                             </div>
                                             <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#000', margin: '0 0 1rem 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
-                                                {reportByContract ? `РЕГИСТЪР ЗА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ${contractMunicipalities.join(', ').toUpperCase()}` : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : "ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ")}
+                                                {reportByContract ? `РЕГИСТЪР ЗА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНА : ${contractMunicipalities.join(', ').toUpperCase()}` : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : "ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ")}
                                             </h1>
                                             
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '12px', color: '#111', marginTop: '1rem', background: '#fafafa', padding: '10px 15px', borderRadius: '8px', border: '1px solid #eee' }}>
-                                                <div><strong>Период:</strong> {reportPeriodType === 'month' ? (reportMonth === 'all' ? 'Всички месеци' : reportMonth) : (() => {
-                                                    if (!reportDate) return '---';
-                                                    const d = new Date(reportDate);
-                                                    return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG');
-                                                })()}</div>
-                                                <div><strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички видове' : reportCardType}</div>
-                                                <div><strong>Начин на плащане:</strong> {reportPaymentMethod === 'all' ? 'Всички методи' : reportPaymentMethod}</div>
-                                                <div><strong>Маршрут:</strong> {reportRoute === 'all' ? 'Всички маршрути' : reportRoute}</div>
-                                                <div><strong>Община:</strong> {reportByContract ? contractMunicipalities.join(', ') : (reportMunicipality === 'all' ? 'Всички общини' : reportMunicipality)}</div>
-                                                <div><strong>Разстояние:</strong> {reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}</div>
-                                                {useRegisterPrint && <div style={{ gridColumn: 'span 3' }}><strong>Линии/Курсове:</strong> {registerLines}</div>}
-                                            </div>
+                                            {reportByContract ? (
+                                                <div style={{ fontSize: '14px', fontWeight: 700, color: '#000', marginTop: '10px', textTransform: 'uppercase', textAlign: 'center' }}>
+                                                    {reportPeriodType === 'month'
+                                                        ? `МЕСЕЦ: ${reportMonth === 'all' ? 'Всички месеци' : reportMonth}`
+                                                        : `ДЕН: ${(() => {
+                                                            if (!reportDate) return '---';
+                                                            const d = new Date(reportDate);
+                                                            return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG');
+                                                        })()}`}
+                                                </div>
+                                            ) : (
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '12px', color: '#111', marginTop: '1rem', background: '#fafafa', padding: '10px 15px', borderRadius: '8px', border: '1px solid #eee' }}>
+                                                    <div><strong>Период:</strong> {reportPeriodType === 'month' ? (reportMonth === 'all' ? 'Всички месеци' : reportMonth) : (() => {
+                                                        if (!reportDate) return '---';
+                                                        const d = new Date(reportDate);
+                                                        return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG');
+                                                    })()}</div>
+                                                    <div><strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички видове' : reportCardType}</div>
+                                                    <div><strong>Начин на плащане:</strong> {reportPaymentMethod === 'all' ? 'Всички методи' : reportPaymentMethod}</div>
+                                                    <div><strong>Маршрут:</strong> {reportRoute === 'all' ? 'Всички маршрути' : reportRoute}</div>
+                                                    <div><strong>Община:</strong> {reportByContract ? contractMunicipalities.join(', ') : (reportMunicipality === 'all' ? 'Всички общини' : reportMunicipality)}</div>
+                                                    <div><strong>Разстояние:</strong> {reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}</div>
+                                                    {useRegisterPrint && <div style={{ gridColumn: 'span 3' }}><strong>Линии/Курсове:</strong> {registerLines}</div>}
+                                                </div>
+                                            )}
                                         </div>
                                         
                                         
