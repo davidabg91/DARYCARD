@@ -2151,8 +2151,17 @@ const AdminPanel: React.FC = () => {
                                 const periodStr = reportPeriodType === 'month'
                                     ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}`
                                     : `Ден: ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`;
+                                const formattedMonth = reportMonth === 'all' ? 'Всички месеци' : (() => {
+                                    const parts = reportMonth.split('-');
+                                    return parts.length === 2 ? `${parts[1]}-${parts[0]}г.` : reportMonth;
+                                })();
+                                const formattedDate = (() => {
+                                    if (!reportDate) return '---';
+                                    const d = new Date(reportDate);
+                                    return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG') + 'г.';
+                                })();
                                 const title = reportByContract
-                                    ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНИ: ${reportPeriodType === 'month' ? `ЗА МЕСЕЦ ${reportMonth.toUpperCase()}` : `ЗА ДЕН ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`} и ${contractMunicipalities.join(', ').toUpperCase()}`
+                                    ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНИ: ${contractMunicipalities.join(', ').toUpperCase()} ${reportPeriodType === 'month' ? `ЗА МЕСЕЦ ${formattedMonth.toUpperCase()}` : `ЗА ДЕН ${formattedDate.toUpperCase()}`}`
                                     : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : 'ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ');
                                 const subStr = [
                                     `Дата: ${dateStr}`,
@@ -2278,7 +2287,18 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 <span style={{ fontSize: '11px', color: '#666' }}>Дата на съставяне: {new Date().toLocaleDateString('bg-BG')} г.</span>
                                             </div>
                                             <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#000', margin: '0 0 1rem 0', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
-                                                {reportByContract ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНИ: ${reportPeriodType === 'month' ? `ЗА МЕСЕЦ ${reportMonth.toUpperCase()}` : `ЗА ДЕН ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`} и ${contractMunicipalities.join(', ').toUpperCase()}` : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : "ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ")}
+                                                {reportByContract ? (() => {
+                                                    const formattedMonth = reportMonth === 'all' ? 'Всички месеци' : (() => {
+                                                        const parts = reportMonth.split('-');
+                                                        return parts.length === 2 ? `${parts[1]}-${parts[0]}г.` : reportMonth;
+                                                    })();
+                                                    const formattedDate = (() => {
+                                                        if (!reportDate) return '---';
+                                                        const d = new Date(reportDate);
+                                                        return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG') + 'г.';
+                                                    })();
+                                                    return `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНИ: ${contractMunicipalities.join(', ').toUpperCase()} ${reportPeriodType === 'month' ? `ЗА МЕСЕЦ ${formattedMonth.toUpperCase()}` : `ЗА ДЕН ${formattedDate.toUpperCase()}`}`;
+                                                })() : (useRegisterPrint ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${registerCategoryLabel})` : "ФИНАНСОВ ОТЧЕТ НА ПРИХОДИТЕ")}
                                             </h1>
                                             
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '12px', color: '#111', marginTop: '1rem', background: '#fafafa', padding: '10px 15px', borderRadius: '8px', border: '1px solid #eee' }}>
@@ -2402,12 +2422,8 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             <button
                                                 type="button"
                                                 onClick={() => {
-                                                    const nextVal = !reportByContract;
-                                                    setReportByContract(nextVal);
-                                                    if (nextVal && contractMunicipalities.length === 0) {
-                                                        setContractMunicipalities([...MUNICIPALITIES]);
-                                                    }
-                                                }}
+                                                     setReportByContract(!reportByContract);
+                                                 }}
                                                 style={{
                                                     padding: '0.6rem',
                                                     background: reportByContract ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
