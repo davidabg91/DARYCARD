@@ -13,7 +13,7 @@ const Layout: React.FC = () => {
     const navigate = useNavigate();
     const isClientProfilePath = location.pathname.startsWith('/client/');
     const isRentPath = location.pathname === '/rent';
-    const isAdminPath = location.pathname === '/admin' || location.pathname === '/system-admin';
+    const isAdminPath = location.pathname === '/admin' || location.pathname === '/system-admin' || location.pathname === '/inspections';
     const isFullScreen = isClientProfilePath || isRentPath || isAdminPath;
     const { currentUser, logout } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);

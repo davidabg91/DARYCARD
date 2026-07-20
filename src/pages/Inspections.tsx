@@ -403,8 +403,15 @@ export default function Inspections() {
         : (allInspectors.find(i => i.id === filterInspector)?.name ?? filterInspector);
 
     return (
-        <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '1.5rem 1rem 4rem' }}>
+        <div className="insp-container">
             <style>{`
+                .insp-container {
+                    width: 100%;
+                    max-width: 100%;
+                    padding: 1.5rem 2.25rem 4rem;
+                    box-sizing: border-box;
+                    animation: fadeIn 0.4s ease;
+                }
                 .insp-card { transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
                 .insp-card:hover { transform: translateY(-2px); border-color: rgba(0,173,181,0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
                 .insp-row { transition: background .15s ease, border-color .15s ease; }
@@ -422,6 +429,11 @@ export default function Inspections() {
                 .insp-stat-bar { transition: width .4s ease; }
                 @media (max-width: 980px) {
                     .insp-layout { grid-template-columns: 1fr; }
+                }
+                @media (max-width: 768px) {
+                    .insp-container {
+                        padding: 0.75rem 0.75rem 3rem;
+                    }
                 }
                 @media (prefers-reduced-motion: reduce) {
                     .insp-card, .insp-row, .insp-seg, .insp-chip, .insp-loc { transition: none !important; }
