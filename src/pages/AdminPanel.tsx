@@ -2389,15 +2389,13 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             </select>
                                         </div>
                                         
-                                        {!reportByContract && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Община</label>
                                                 <select value={reportMunicipality} onChange={e => setReportMunicipality(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
                                                     <option value="all">Всички Общини</option>
                                                     {MUNICIPALITIES.map(m => <option key={m} value={m}>{m}</option>)}
                                                 </select>
                                             </div>
-                                        )}
 
                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Договор</label>
