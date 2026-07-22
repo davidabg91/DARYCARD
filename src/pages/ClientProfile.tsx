@@ -486,6 +486,14 @@ const ClientProfile: React.FC = () => {
                         return;
                     }
                 }
+            } else if (regCardType === 'Инвалидна карта') {
+                if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) {
+                        setRegAmount((normal * 0.8).toFixed(2));
+                        return;
+                    }
+                }
             }
 
             if (priceStr && priceStr !== '-' && priceStr !== '---') {
@@ -514,6 +522,11 @@ const ClientProfile: React.FC = () => {
                 if (priceStr && priceStr !== '-' && priceStr !== '---') {
                     const normal = parseFloat(priceStr.replace(' €', ''));
                     if (!isNaN(normal)) { setRenewalAmount(Number((normal / 2).toFixed(2))); return; }
+                }
+            } else if (client.cardType === 'Инвалидна карта') {
+                if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) { setRenewalAmount(Number((normal * 0.8).toFixed(2))); return; }
                 }
             }
             if (priceStr && priceStr !== '-' && priceStr !== '---') {

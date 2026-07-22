@@ -213,22 +213,25 @@ const getServiceYearOptions = (): number[] => {
     return [y - 1, y, y + 1, y + 2];
 };
 
-// The card price for a route + card type (pensioner & student = half),
-// mirroring the auto-price logic. Used by bulk renewal. Service cards = 0.
+// The card price for a route + card type, mirroring the auto-price logic.
+// Pensioner & student = 50% off; disabled (Инвалидна карта) = 20% off.
+// Used by bulk renewal. Service cards = 0.
 const computeCardAmount = (route: string, cardType?: string): number => {
     if (cardType === 'Служебна карта') return 0;
     const meta = ROUTE_METADATA[route];
     if (!meta) return 0;
     let priceStr = meta.priceCard;
-    let half = cardType === 'Пенсионерска карта';
-    if (cardType === 'Ученическа карта') {
+    let factor = 1;
+    if (cardType === 'Пенсионерска карта') factor = 0.5;
+    else if (cardType === 'Инвалидна карта') factor = 0.8;
+    else if (cardType === 'Ученическа карта') {
         if (meta.priceCardStudent) priceStr = meta.priceCardStudent;
-        else half = true;
+        else factor = 0.5;
     }
     if (!priceStr || priceStr === '-' || priceStr === '---') return 0;
     const n = parseFloat(priceStr.replace(' €', ''));
     if (isNaN(n)) return 0;
-    return Number((half ? n / 2 : n).toFixed(2));
+    return Number((n * factor).toFixed(2));
 };
 
 // A client's directions. Source of truth is `routes`; falls back to splitting the
@@ -564,6 +567,14 @@ const AdminPanel: React.FC = () => {
                         return;
                     }
                 }
+            } else if (cardType === 'Инвалидна карта') {
+                if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) {
+                        setAmountPaid((normal * 0.8).toFixed(2));
+                        return;
+                    }
+                }
             }
 
             if (priceStr && priceStr !== '-' && priceStr !== '---') {
@@ -596,6 +607,14 @@ const AdminPanel: React.FC = () => {
                     const normal = parseFloat(priceStr.replace(' €', ''));
                     if (!isNaN(normal)) {
                         setNewAmount((normal / 2).toFixed(2));
+                        return;
+                    }
+                }
+            } else if (cType === 'Инвалидна карта') {
+                if (priceStr && priceStr !== '-' && priceStr !== '---') {
+                    const normal = parseFloat(priceStr.replace(' €', ''));
+                    if (!isNaN(normal)) {
+                        setNewAmount((normal * 0.8).toFixed(2));
                         return;
                     }
                 }

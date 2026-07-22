@@ -29,12 +29,12 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Тръстеник": {
     stops: ["Плевен", "Опанец", "Д.М", "Тръстеник"],
     priceSingle: "1.50 €",
-    priceCard: "51.00 €"
+    priceCard: "70.00 €"
   },
   "Рибен": {
     stops: ["Плевен", "Опанец", "Д.М", "Победа", "Рибен"],
     priceSingle: "1.50 €",
-    priceCard: "56.00 €"
+    priceCard: "70.00 €"
   },
   "Долни Дъбник": {
     stops: ["Плевен", "Ясен", "Д. Дъбник"],
@@ -54,17 +54,17 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Славовица": {
     stops: ["Плевен", "Опанец", "Д.М", "Тръстеник", "Славовица"],
     priceSingle: "1.50 €",
-    priceCard: "56.00 €"
+    priceCard: "70.00 €"
   },
   "Байкал": {
     stops: ["Плевен", "Опанец", "Д.М", "Тръстеник", "Славовица", "Байкал"],
     priceSingle: "2.00 €",
-    priceCard: "71.50 €"
+    priceCard: "90.00 €"
   },
   "Гиген": {
     stops: ["Плевен", "Опанец", "Д.М", "Тръстеник", "Славовица", "Гиген"],
     priceSingle: "2.50 €",
-    priceCard: "71.50 €"
+    priceCard: "90.00 €"
   },
   "Бъркач": {
     stops: ["Плевен", "Ясен", "Търнене", "Дисевица", "Градина", "Петърница", "Бъркач"],
@@ -75,17 +75,17 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Горна Митрополия": {
     stops: ["Плевен", "Опанец", "Д.М", "Г.М"],
     priceSingle: "1.50 €",
-    priceCard: "51.00 €"
+    priceCard: "70.00 €"
   },
   "Опанец": {
     stops: ["Плевен", "Опанец"],
     priceSingle: "1.00 €",
-    priceCard: "40.90 €"
+    priceCard: "50.00 €"
   },
   "Долна Митрополия": {
     stops: ["Плевен", "Опанец", "Д.М"],
     priceSingle: "1.50 €",
-    priceCard: "46.00 €"
+    priceCard: "60.00 €"
   },
   "Ясен": {
     stops: ["Плевен", "Ясен"],
@@ -125,12 +125,12 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Биволаре": {
     stops: ["Плевен", "Опанец", "Д.М", "Биволаре"],
     priceSingle: "1.50 €",
-    priceCard: "46.00 €"
+    priceCard: "60.00 €"
   },
   "Победа": {
     stops: ["Плевен", "Опанец", "Д.М", "Победа"],
     priceSingle: "1.50 €",
-    priceCard: "51.00 €"
+    priceCard: "65.00 €"
   },
   "Крушовица": {
     stops: ["Плевен", "Ясен", "Крушовица"],
@@ -140,7 +140,7 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Божурица": {
     stops: ["Плевен", "Опанец", "Д.М", "Победа", "Рибен", "Божурица"],
     priceSingle: "1.50 €",
-    priceCard: "56.00 €"
+    priceCard: "70.00 €"
   },
   "Градина": {
     stops: ["Плевен", "Ясен", "Търнене", "Дисевица", "Градина"],
@@ -150,18 +150,18 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Ореховица": {
     stops: ["Плевен", "Опанец", "Д.М", "Тръстеник", "Славовица", "Ореховица"],
     priceSingle: "1.80 €",
-    priceCard: "56.00 €"
+    priceCard: "70.00 €"
   },
   "Брегаре": {
     stops: ["Плевен", "Опанец", "Д.М", "Тръстеник", "Славовица", "Брегаре"],
     priceSingle: "1.80 €",
-    priceCard: "61.30 €",
+    priceCard: "75.00 €",
     description: "Съвпада с разписанието на Байкал"
   },
   "Крушовене": {
     stops: ["Плевен", "Опанец", "Д.М", "Тръстеник", "Славовица", "Крушовене"],
     priceSingle: "2.00 €",
-    priceCard: "66.40 €",
+    priceCard: "80.00 €",
     description: "Съвпада с разписанието на Байкал"
   },
   "Гривица": {

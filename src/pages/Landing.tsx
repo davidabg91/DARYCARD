@@ -1034,15 +1034,15 @@ const Landing: React.FC = () => {
                                             </div>
                                             <p style={{ margin: 0, lineHeight: 1.4, fontWeight: 500 }}>
                                                 {meta?.priceCardStudent ? (
-                                                    <>Цените за хора с увреждания над 70.99% са с <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-25%</span>, а за ученици цената е <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>{meta.priceCardStudent}</span>.</>
+                                                    <>Цените за хора с увреждания над 70.99% са с <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-20%</span>, а за ученици цената е <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>{meta.priceCardStudent}</span>.</>
                                                 ) : [
                                                     "Гривица", "Згалево", "Пордим", "Одърне", "Каменец", 
                                                     "Вълчитрън", "Катерица", "Борислав", 
                                                     "Пордим - Каменец", "Пордим - Згалево"
                                                 ].includes(line) ? (
-                                                    <>Цените за хора с увреждания над 70.99% са с <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-25%</span>.</>
+                                                    <>Цените за хора с увреждания над 70.99% са с <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-20%</span>.</>
                                                 ) : (
-                                                    <>Цените за ученици и пенсионери са <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-50%</span> от тези цени, а за хора с увреждания над 70.99% са с <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-25%</span>.</>
+                                                    <>Цените за ученици и пенсионери са <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-50%</span> от тези цени, а за хора с увреждания над 70.99% са с <span style={{ color: 'var(--primary-color)', fontWeight: 700 }}>-20%</span>.</>
                                                 )}
                                             </p>
                                         </div>
