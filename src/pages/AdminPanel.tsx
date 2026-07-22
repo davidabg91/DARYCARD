@@ -2196,9 +2196,9 @@ const AdminPanel: React.FC = () => {
                                 let cols: string[];
                                 let rowVals: (c: Client, n: number) => (string | number)[];
                                 if (useRegisterPrint) {
-                                    // Pensioner & student registers are official name lists — drop the
-                                    // "Направление" (route) and "Плащане" (amount) columns for them.
-                                    const hideRoutePayment = reportCardType === 'Пенсионерска карта' || reportCardType === 'Ученическа карта';
+                                    // Pensioner, student & disabled registers are official name lists —
+                                    // drop the "Направление" (route) and "Плащане" (amount) columns.
+                                    const hideRoutePayment = reportCardType === 'Пенсионерска карта' || reportCardType === 'Ученическа карта' || reportCardType === 'Инвалидна карта';
                                     cols = hideRoutePayment
                                         ? ['№', 'ИМЕ', 'Община', detailLabel || '—', 'КАРТА №', 'ДАТА']
                                         : ['№', 'ИМЕ', 'Община', detailLabel || '—', 'КАРТА №', 'ДАТА', 'Направление', 'Плащане'];
