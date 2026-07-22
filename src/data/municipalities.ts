@@ -21,3 +21,14 @@ export const MUNICIPALITY_CUSTOM = "custom";
 
 // Default municipality auto-applied for the predefined (Pleven) schools.
 export const DEFAULT_MUNICIPALITY = "Плевен";
+
+// Card types that carry an община. Normal & service cards do not.
+export const MUNICIPALITY_CARD_TYPES = [
+    "Ученическа карта",
+    "Пенсионерска карта",
+    "Учителска карта",
+    "Инвалидна карта",
+];
+
+export const needsMunicipality = (cardType?: string) =>
+    MUNICIPALITY_CARD_TYPES.includes(cardType || '');

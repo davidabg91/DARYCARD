@@ -31,7 +31,7 @@ import { uploadClientPhoto } from '../utils/photoStorage';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import { MIXED_METHOD } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
-import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY } from '../data/municipalities';
+import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
 import { SCHOOLS, SCHOOL_MUNICIPALITY } from '../data/schools';
 
 interface ClientLog {
@@ -858,7 +858,7 @@ const AdminPanel: React.FC = () => {
 
         // Teachers require an община; disabled cards require an address (like pensioners).
         const resolvedMunicipality = municipality === MUNICIPALITY_CUSTOM ? customMunicipality.trim() : municipality;
-        if ((cardType === 'Учителска карта' || cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта') && !resolvedMunicipality) {
+        if (needsMunicipality(cardType) && !resolvedMunicipality) {
             setMessage({ text: 'Моля, изберете Община.', type: 'error' });
             return;
         }
@@ -968,9 +968,7 @@ const AdminPanel: React.FC = () => {
             address: (cardType === 'Пенсионерска карта' || cardType === 'Инвалидна карта') ? address : '',
             serviceReason: isServiceCard ? serviceReason.trim() : '',
             school: cardType === 'Ученическа карта' ? (selectedSchool === 'custom' ? customSchool : selectedSchool) : '',
-            municipality: (cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта' || cardType === 'Учителска карта')
-                ? (municipality === MUNICIPALITY_CUSTOM ? customMunicipality.trim() : municipality)
-                : '',
+            municipality: needsMunicipality(cardType) ? resolvedMunicipality : '',
             cardNumber: CARDS_MAPPING[sanitizedNfcId] || '',
             createdAt: nowIso,
             renewalHistory: initialRenewalHistory,
@@ -2086,7 +2084,7 @@ const AdminPanel: React.FC = () => {
                             
                             const totalReportRevenue = filteredReportClients.reduce((sum, c) => sum + getReportAmount(c), 0);
 
-                            const showMunicipalityCol = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportMunicipality !== 'all';
+                            const showMunicipalityCol = needsMunicipality(reportCardType) || reportMunicipality !== 'all';
                             const showAddressCol = reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта';
                             const reportColSpan = 5 /* name, card no, type, route, amount */
                                 + (reportDistanceFilter !== 'all' ? 1 : 0)
@@ -2132,7 +2130,7 @@ const AdminPanel: React.FC = () => {
                                     const distancePart = reportDistanceFilter === 'all' ? '' : ` (${distStr})`;
                                     const addressPart = ((reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') && c.address) ? ` - Адрес: ${c.address}` : '';
                                     const schoolPart = (reportCardType === 'Ученическа карта' && c.school) ? ` (${c.school})` : '';
-                                    const municipalityPart = ((c.cardType === 'Ученическа карта' || c.cardType === 'Пенсионерска карта' || c.cardType === 'Учителска карта') && c.municipality) ? ` - Община: ${c.municipality}` : '';
+                                    const municipalityPart = (needsMunicipality(c.cardType) && c.municipality) ? ` - Община: ${c.municipality}` : '';
                                     const cardNum = getClientCardNumber(c);
                                     const cardNumPart = cardNum ? ` (Карта № ${cardNum})` : '';
                                     return `${c.name}${cardNumPart}${schoolPart}${addressPart}${municipalityPart} - ${c.cardType || 'Нормална карта'} - ${c.route}${distancePart} - ${getReportAmount(c)} € (${getReportPaymentBreakdown(c).label})`;
@@ -2653,7 +2651,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                     <b>Училище:</b> {c.school || 'Няма въведено училище'}
                                                                 </div>
                                                             )}
-                                                            {(c.cardType === 'Ученическа карта' || c.cardType === 'Пенсионерска карта' || c.cardType === 'Учителска карта') && (
+                                                            {needsMunicipality(c.cardType) && (
                                                                 <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--accent-color)', fontStyle: 'italic' }}>
                                                                     <b>Община:</b> {c.municipality || 'Няма въведена община'}
                                                                 </div>
@@ -3232,21 +3230,16 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         <select style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }} value={cardType} onChange={e => {
                                             const val = e.target.value;
                                             setCardType(val);
-                                            // Pensioners default to Плевен; students get their община from the
-                                            // school choice; other card types carry no община.
-                                            if (val === 'Пенсионерска карта') {
-                                                setMunicipality(DEFAULT_MUNICIPALITY);
-                                                setCustomMunicipality('');
-                                            } else if (val === 'Ученическа карта') {
+                                            // Students get their община from the school choice; the other
+                                            // община-bearing types default to Плевен; the rest carry none.
+                                            if (val === 'Ученическа карта') {
                                                 setMunicipality(selectedSchool && selectedSchool !== 'custom' ? (SCHOOL_MUNICIPALITY[selectedSchool] || DEFAULT_MUNICIPALITY) : '');
-                                                setCustomMunicipality('');
-                                            } else if (val === 'Учителска карта') {
+                                            } else if (needsMunicipality(val)) {
                                                 setMunicipality(DEFAULT_MUNICIPALITY);
-                                                setCustomMunicipality('');
                                             } else {
                                                 setMunicipality('');
-                                                setCustomMunicipality('');
                                             }
+                                            setCustomMunicipality('');
                                         }} required>
                                             <option value="Нормална карта">Нормална карта</option>
                                             <option value="Ученическа карта">Ученическа карта</option>
@@ -3338,7 +3331,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             )}
                                         </div>
                                     )}
-                                    {(cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта' || cardType === 'Учителска карта') && (
+                                    {needsMunicipality(cardType) && (
                                         <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                             <div>
                                                 <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-color)', fontWeight: 700 }}>Община</label>
@@ -3346,7 +3339,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--surface-border)', color: 'white' }}
                                                     value={municipality}
                                                     onChange={e => { setMunicipality(e.target.value); if (e.target.value !== MUNICIPALITY_CUSTOM) setCustomMunicipality(''); }}
-                                                    required={cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта' || cardType === 'Учителска карта'}
+                                                    required={needsMunicipality(cardType)}
                                                 >
                                                     <option value="">-- Изберете Община --</option>
                                                     {MUNICIPALITIES.map(m => <option key={m} value={m}>{m}</option>)}
