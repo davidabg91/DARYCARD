@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { 
@@ -13,6 +14,7 @@ const BusRental: React.FC = () => {
     const [date, setDate] = useState('');
     const [passengers, setPassengers] = useState('');
     const [destination, setDestination] = useState('');
+    const [consent, setConsent] = useState(false);
     const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const formRef = useRef<HTMLElement>(null);
@@ -29,7 +31,7 @@ const BusRental: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name || !phone || !destination) return;
+        if (!name || !phone || !destination || !consent) return;
 
         setStatus('submitting');
         try {
@@ -50,6 +52,7 @@ const BusRental: React.FC = () => {
             setDate('');
             setPassengers('');
             setDestination('');
+            setConsent(false);
         } catch (error) {
             console.error('Error submitting rental inquiry:', error);
             setStatus('error');
@@ -296,7 +299,21 @@ const BusRental: React.FC = () => {
                                 <textarea required value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Откъде до къде, продължителност..." style={{ padding: '1rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', fontSize: '1rem', minHeight: '100px', outline: 'none', resize: 'vertical' }} />
                             </div>
 
-                            <button type="submit" disabled={status === 'submitting'} style={{ padding: '1.2rem', borderRadius: '14px', background: '#ff5252', color: '#fff', fontWeight: 800, fontSize: '1.1rem', cursor: status === 'submitting' ? 'not-allowed' : 'pointer', border: 'none', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', boxShadow: '0 10px 30px rgba(255,82,82,0.2)' }}>
+                            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer', fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+                                <input
+                                    type="checkbox"
+                                    required
+                                    checked={consent}
+                                    onChange={(e) => setConsent(e.target.checked)}
+                                    style={{ marginTop: '0.2rem', width: '18px', height: '18px', accentColor: '#ff5252', flexShrink: 0, cursor: 'pointer' }}
+                                />
+                                <span>
+                                    Съгласен/на съм предоставените от мен лични данни (име и телефон) да бъдат обработени за целите на изготвяне на оферта за наем съгласно{' '}
+                                    <Link to="/legal" target="_blank" style={{ color: '#ff5252', fontWeight: 700 }}>Политиката за поверителност</Link>.
+                                </span>
+                            </label>
+
+                            <button type="submit" disabled={status === 'submitting' || !consent} style={{ padding: '1.2rem', borderRadius: '14px', background: '#ff5252', color: '#fff', fontWeight: 800, fontSize: '1.1rem', cursor: (status === 'submitting' || !consent) ? 'not-allowed' : 'pointer', border: 'none', transition: 'all 0.3s ease', opacity: (status === 'submitting' || !consent) ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', boxShadow: '0 10px 30px rgba(255,82,82,0.2)' }}>
                                 {status === 'submitting' ? 'ИЗПРАЩАНЕ...' : (
                                     <>
                                         <Send size={18} /> ПОЛУЧИ ОФЕРТА

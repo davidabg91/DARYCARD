@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { AlertCircle, CheckCircle, Send, MessageSquare, Phone, Mail, User } from 'lucide-react';
@@ -9,11 +10,12 @@ const Signal: React.FC = () => {
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
+    const [consent, setConsent] = useState(false);
     const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!message.trim()) return;
+        if (!message.trim() || !consent) return;
 
         setStatus('submitting');
         try {
@@ -32,6 +34,7 @@ const Signal: React.FC = () => {
             setPhone('');
             setEmail('');
             setMessage('');
+            setConsent(false);
         } catch (error) {
             console.error('Error submitting signal:', error);
             setStatus('error');
@@ -189,14 +192,29 @@ const Signal: React.FC = () => {
                         />
                     </div>
 
+                    {/* Consent */}
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer', fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+                        <input
+                            type="checkbox"
+                            required
+                            checked={consent}
+                            onChange={(e) => setConsent(e.target.checked)}
+                            style={{ marginTop: '0.2rem', width: '18px', height: '18px', accentColor: '#ff5252', flexShrink: 0, cursor: 'pointer' }}
+                        />
+                        <span>
+                            Съгласен/на съм предоставените от мен лични данни (име и контакти) да бъдат обработени за целите на разглеждане на този сигнал съгласно{' '}
+                            <Link to="/legal" target="_blank" style={{ color: '#ff5252', fontWeight: 700 }}>Политиката за поверителност</Link>.
+                        </span>
+                    </label>
+
                     {/* Submit */}
                     <button
                         type="submit"
-                        disabled={status === 'submitting'}
+                        disabled={status === 'submitting' || !consent}
                         style={{
                             width: '100%', padding: '1.1rem', borderRadius: '14px', background: type === 'complaint' ? '#ff5252' : '#0091ea',
-                            color: '#fff', fontWeight: 800, fontSize: '1.1rem', cursor: status === 'submitting' ? 'not-allowed' : 'pointer',
-                            border: 'none', transition: 'all 0.3s ease', opacity: status === 'submitting' ? 0.7 : 1,
+                            color: '#fff', fontWeight: 800, fontSize: '1.1rem', cursor: (status === 'submitting' || !consent) ? 'not-allowed' : 'pointer',
+                            border: 'none', transition: 'all 0.3s ease', opacity: (status === 'submitting' || !consent) ? 0.6 : 1,
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem',
                             boxShadow: `0 10px 30px ${type === 'complaint' ? 'rgba(255,82,82,0.2)' : 'rgba(0,145,234,0.2)'}`,
                             marginTop: '0.5rem'
