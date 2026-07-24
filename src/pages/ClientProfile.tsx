@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
 import LoadingScreen from '../components/LoadingScreen';
-import { ROUTE_METADATA, ROUTES } from '../data/routeMetadata';
+import { ROUTE_METADATA, ROUTES, disabledFactor } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import ClientPhoto from '../components/ClientPhoto';
 import LostCardTransfer from '../components/LostCardTransfer';
@@ -490,7 +490,7 @@ const ClientProfile: React.FC = () => {
                 if (priceStr && priceStr !== '-' && priceStr !== '---') {
                     const normal = parseFloat(priceStr.replace(' €', ''));
                     if (!isNaN(normal)) {
-                        setRegAmount((normal * 0.8).toFixed(2));
+                        setRegAmount((normal * disabledFactor(regRoute)).toFixed(2));
                         return;
                     }
                 }
@@ -526,7 +526,7 @@ const ClientProfile: React.FC = () => {
             } else if (client.cardType === 'Инвалидна карта') {
                 if (priceStr && priceStr !== '-' && priceStr !== '---') {
                     const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) { setRenewalAmount(Number((normal * 0.8).toFixed(2))); return; }
+                    if (!isNaN(normal)) { setRenewalAmount(Number((normal * disabledFactor(renewalRoute)).toFixed(2))); return; }
                 }
             }
             if (priceStr && priceStr !== '-' && priceStr !== '---') {

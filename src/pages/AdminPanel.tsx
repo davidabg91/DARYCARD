@@ -26,7 +26,7 @@ import {
     runTransaction
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { ROUTE_METADATA } from '../data/routeMetadata';
+import { ROUTE_METADATA, disabledFactor } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import { MIXED_METHOD } from '../data/paymentMethods';
@@ -223,7 +223,7 @@ const computeCardAmount = (route: string, cardType?: string): number => {
     let priceStr = meta.priceCard;
     let factor = 1;
     if (cardType === 'Пенсионерска карта') factor = 0.5;
-    else if (cardType === 'Инвалидна карта') factor = 0.8;
+    else if (cardType === 'Инвалидна карта') factor = disabledFactor(route);
     else if (cardType === 'Ученическа карта') {
         if (meta.priceCardStudent) priceStr = meta.priceCardStudent;
         else factor = 0.5;
@@ -571,7 +571,7 @@ const AdminPanel: React.FC = () => {
                 if (priceStr && priceStr !== '-' && priceStr !== '---') {
                     const normal = parseFloat(priceStr.replace(' €', ''));
                     if (!isNaN(normal)) {
-                        setAmountPaid((normal * 0.8).toFixed(2));
+                        setAmountPaid((normal * disabledFactor(selectedRoute)).toFixed(2));
                         return;
                     }
                 }
@@ -614,7 +614,7 @@ const AdminPanel: React.FC = () => {
                 if (priceStr && priceStr !== '-' && priceStr !== '---') {
                     const normal = parseFloat(priceStr.replace(' €', ''));
                     if (!isNaN(normal)) {
-                        setNewAmount((normal * 0.8).toFixed(2));
+                        setNewAmount((normal * disabledFactor(newRoute)).toFixed(2));
                         return;
                     }
                 }

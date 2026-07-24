@@ -17,6 +17,22 @@ export interface RouteMetadata {
   description?: string;
 }
 
+// Routes covered by the Долна Митрополия contract (Договор РД-12-46/13.04.2022).
+// Disabled-card discount for these is 20%; every other route keeps 25%.
+export const DM_CONTRACT_ROUTES = new Set<string>([
+  "Опанец", "Долна Митрополия", "Победа", "Биволаре", "Рибен", "Тръстеник",
+  "Ореховица", "Брегаре", "Крушовене", "Байкал", "Горна Митрополия", "Гиген",
+  "Славовица", "Божурица",
+]);
+
+// Discount for a disabled (Инвалидна) card on a given route, as a percentage.
+export const disabledDiscountPct = (route: string): number =>
+  DM_CONTRACT_ROUTES.has(route) ? 20 : 25;
+
+// Multiplier applied to the regular card price for a disabled card (0.80 or 0.75).
+export const disabledFactor = (route: string): number =>
+  1 - disabledDiscountPct(route) / 100;
+
 export const abbreviate = (name: string) => {
   return name
     .replace("Долни Дъбник", "Д. Дъбник")
