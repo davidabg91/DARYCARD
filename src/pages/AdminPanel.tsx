@@ -1261,6 +1261,46 @@ const AdminPanel: React.FC = () => {
         });
     };
 
+    // Remove a direction (route) from a client's profile — e.g. one added by
+    // mistake. Only touches routes/route; recorded payments stay in the history
+    // (a wrong payment can be removed separately). A client must keep at least one.
+    const deleteDirection = async (dir: string) => {
+        if (!selectedClient) return;
+        const dirs = getClientRoutes(selectedClient);
+        if (dirs.length <= 1) {
+            setModalMessage({ text: 'Не може да се премахне единственото направление. Клиентът трябва да има поне едно.', type: 'error' });
+            return;
+        }
+        if (!window.confirm(`Да се премахне ли направление „${dir}" от профила?\n\nЗабележка: маха се само направлението — записаните плащания в историята остават непроменени.`)) return;
+
+        const remaining = dirs.filter(d => d !== dir);
+        try {
+            await updateDoc(doc(db, 'clients', selectedClient.id), {
+                routes: remaining,
+                route: remaining.join(', '),
+                history: arrayUnion({
+                    date: new Date().toISOString(),
+                    action: 'Премахване на направление',
+                    details: `Премахнато направление „${dir}"`,
+                    performedBy: currentUser?.username || 'Админ'
+                })
+            });
+        } catch (err) {
+            console.error(err);
+            setModalMessage({ text: 'Грешка при премахване на направлението.', type: 'error' });
+            return;
+        }
+
+        // Reflect immediately in the open modal.
+        setSelectedClient({ ...selectedClient, routes: remaining, route: remaining.join(', ') });
+        if (!remaining.includes(newRoute)) setNewRoute(remaining[0] || '');
+
+        const cardNum = getClientCardNumber(selectedClient);
+        const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
+        await logGlobalActivity('Премахване на направление', nameWithCard, `Премахнато направление „${dir}".`);
+        setModalMessage({ text: `Направление „${dir}" е премахнато от профила.`, type: 'success' });
+    };
+
     const generateNfcBatch = () => {
         const baseUrl = `${window.location.origin}${window.location.pathname}#/client/`;
         const newLinks = [];
@@ -4027,12 +4067,22 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                 {getClientRoutes(selectedClient).map(dir => {
                                                     const paid = isDirectionPaid(selectedClient, dir, currentMonthIso);
+                                                    const canDelete = isAdmin && getClientRoutes(selectedClient).length > 1;
                                                     return (
-                                                        <div key={dir} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.9rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--surface-border)' }}>
-                                                            <span style={{ fontWeight: 700 }}>{dir}</span>
+                                                        <div key={dir} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0.9rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--surface-border)' }}>
+                                                            <span style={{ fontWeight: 700, marginRight: 'auto' }}>{dir}</span>
                                                             <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '50px', background: paid ? 'rgba(0,230,118,0.12)' : 'rgba(255,82,82,0.12)', color: paid ? '#00e676' : '#ff5252' }}>
                                                                 {paid ? '✓ Платено' : '✗ Неплатено'}
                                                             </span>
+                                                            {canDelete && (
+                                                                <button
+                                                                    onClick={() => deleteDirection(dir)}
+                                                                    title="Премахни направлението"
+                                                                    style={{ background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.3)', color: '#ff5252', borderRadius: '8px', padding: '0.35rem 0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     );
                                                 })}
