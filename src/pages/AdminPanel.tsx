@@ -251,6 +251,16 @@ const isDirectionPaid = (client: Client, direction: string, month: string): bool
     );
 };
 
+// Small cash/card/bank split line for the finance cards (module scope so it
+// never remounts inputs elsewhere). Colors match paymentMethodColor.
+const RevenueSplit: React.FC<{ b: { cash: number; card: number; bank: number }; compact?: boolean }> = ({ b, compact }) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem', fontSize: compact ? '0.68rem' : '0.75rem', color: 'var(--text-secondary)' }}>
+        <span>В брой: <b style={{ color: '#00e676' }}>{b.cash.toFixed(2)} €</b></span>
+        <span>С карта: <b style={{ color: '#29b6f6' }}>{b.card.toFixed(2)} €</b></span>
+        <span>Банка: <b style={{ color: '#b39ddb' }}>{b.bank.toFixed(2)} €</b></span>
+    </div>
+);
+
 interface TabButtonProps {
     id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications';
     icon: React.ElementType;
@@ -1502,6 +1512,58 @@ const AdminPanel: React.FC = () => {
         return acc + monthPayments.reduce((sum, p) => sum + p.amount, 0);
     }, 0);
 
+    // Split received revenue by payment method for a date prefix (YYYY-MM-DD day or
+    // YYYY-MM month). Counted by payment date. A "Смесено" payment is split into its
+    // cash and bank parts so "Каса" reflects actual physical cash. Free/service
+    // entries (amount 0) are ignored.
+    const revenueBreakdown = (datePrefix: string) => {
+        let cash = 0, card = 0, bank = 0, total = 0, count = 0;
+        for (const c of clients) {
+            for (const r of (c.renewalHistory || [])) {
+                if (!r.date || !r.date.startsWith(datePrefix) || r.amount <= 0) continue;
+                total += r.amount;
+                count++;
+                const m = r.paymentMethod || 'В брой';
+                if (m === 'Смесено') {
+                    cash += (r.cashAmount || 0);
+                    bank += (r.bankAmount || 0);
+                } else if (m === 'С карта') {
+                    card += r.amount;
+                } else if (m === 'Банка') {
+                    bank += r.amount;
+                } else {
+                    cash += r.amount; // В брой + legacy/unknown
+                }
+            }
+        }
+        return { cash, card, bank, total, count };
+    };
+
+    const breakdownToday = revenueBreakdown(todayIso);
+    const breakdownMonth = revenueBreakdown(currentMonthIso);
+    const breakdownSelectedDay = revenueBreakdown(selectedDate);
+
+    // Monthly revenue trend (last 6 months, by payment date — subscriptions only,
+    // matching "Приход за месеца"), newest last, with month-over-month change.
+    const monthlyTrend = [...Array(6)].map((_, i) => {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() - (5 - i));
+        const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        let rev = 0;
+        for (const c of clients) {
+            for (const r of (c.renewalHistory || [])) {
+                if (r.date && r.date.startsWith(iso)) rev += r.amount;
+            }
+        }
+        return {
+            month: iso,
+            label: new Date(iso + '-01').toLocaleDateString('bg-BG', { month: 'short', year: '2-digit' }),
+            revenue: rev,
+        };
+    });
+    const monthlyTrendMax = Math.max(1, ...monthlyTrend.map(m => m.revenue));
+
     const unreadSignalsCount = signals.filter(s => s.status === 'new').length;
     const unreadRentalsCount = rentals.filter(r => r.status === 'new').length;
 
@@ -1909,6 +1971,13 @@ const AdminPanel: React.FC = () => {
                             </div>
                             <div style={{ fontSize: isMobile ? '1.75rem' : '2.5rem', fontWeight: 900, color: '#fff' }}>{revenueToday.toFixed(2)} €</div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Регистрирани днес: <b>{registrationsToday}</b></div>
+                            <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px solid var(--surface-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Каса днес (в брой)</span>
+                                    <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#00e676' }}>{breakdownToday.cash.toFixed(2)} €</span>
+                                </div>
+                                <RevenueSplit b={breakdownToday} />
+                            </div>
                         </Card>
 
                         <Card style={{ borderLeft: '4px solid var(--primary-color)', padding: isMobile ? '1.25rem' : '1.5rem' }}>
@@ -1941,6 +2010,9 @@ const AdminPanel: React.FC = () => {
                                 </button>
                             </div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Общо активни този месец</div>
+                            <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px solid var(--surface-border)', filter: showMonthlyRevenue ? 'none' : 'blur(9px)', userSelect: showMonthlyRevenue ? 'auto' : 'none', transition: 'filter 0.25s ease' }}>
+                                <RevenueSplit b={breakdownMonth} />
+                            </div>
                         </Card>
                     </div>
 
@@ -1980,6 +2052,16 @@ const AdminPanel: React.FC = () => {
                                             <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{registrationsSelectedDay}</div>
                                         </div>
                                     </div>
+                                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--surface-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Каса за деня (в брой)</span>
+                                            <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#00e676' }}>{breakdownSelectedDay.cash.toFixed(2)} €</span>
+                                        </div>
+                                        <RevenueSplit b={breakdownSelectedDay} />
+                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', opacity: 0.8 }}>
+                                            Разбивката е само за абонаменти (глобите не пазят начин на плащане). „Оборот" горе включва и глоби.
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </Card>
@@ -2008,6 +2090,35 @@ const AdminPanel: React.FC = () => {
                             </div>
                         </Card>
                     </div>
+
+                    {/* --- MONTHLY REVENUE TREND (last 6 months) --- */}
+                    <Card>
+                        <h3 style={{ marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#00c853' }}>
+                            <TrendingUp size={20} /> Месечен тренд на прихода (последни 6 месеца)
+                        </h3>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                            Приход по месец (по дата на плащане, само абонаменти) и промяна спрямо предходния месец.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                            {monthlyTrend.map((m, idx) => {
+                                const prev = idx > 0 ? monthlyTrend[idx - 1].revenue : null;
+                                const pct = prev && prev > 0 ? ((m.revenue - prev) / prev) * 100 : null;
+                                const isCurrent = idx === monthlyTrend.length - 1;
+                                return (
+                                    <div key={m.month} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{ width: '58px', fontSize: '0.8rem', fontWeight: 700, color: isCurrent ? '#fff' : 'var(--text-secondary)', textTransform: 'capitalize', flexShrink: 0 }}>{m.label}</div>
+                                        <div style={{ flex: 1, height: '22px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', overflow: 'hidden', position: 'relative' }}>
+                                            <div style={{ width: `${(m.revenue / monthlyTrendMax) * 100}%`, height: '100%', background: isCurrent ? 'linear-gradient(90deg, rgba(0,200,83,0.35), rgba(0,200,83,0.6))' : 'rgba(0,173,181,0.35)', borderRadius: '6px', transition: 'width 0.4s ease' }} />
+                                        </div>
+                                        <div style={{ width: '90px', textAlign: 'right', fontSize: '0.85rem', fontWeight: 800, color: m.revenue > 0 ? '#00e676' : 'var(--text-secondary)', flexShrink: 0 }}>{m.revenue.toFixed(2)} €</div>
+                                        <div style={{ width: '62px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0, color: pct === null ? 'var(--text-secondary)' : pct >= 0 ? '#00e676' : '#ff5252' }}>
+                                            {pct === null ? '—' : `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(0)}%`}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </Card>
 
                     {/* --- ACTIVITY BY DAY-OF-MONTH CHART --- */}
                     <Card>
