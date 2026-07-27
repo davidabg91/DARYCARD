@@ -29,7 +29,7 @@ import { useAuth } from '../context/AuthContext';
 import { ROUTE_METADATA, disabledFactor } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
-import { MIXED_METHOD } from '../data/paymentMethods';
+import { MIXED_METHOD, PAYMENT_METHODS } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
 import { SCHOOLS, SCHOOL_MUNICIPALITY } from '../data/schools';
@@ -441,6 +441,8 @@ const AdminPanel: React.FC = () => {
 
     const [filterRoute, setFilterRoute] = useState<string>('all');
     const [filterCardType, setFilterCardType] = useState<string>('all');
+    // Payment-method filter (matches a payment for the selected month via that method).
+    const [filterPayment, setFilterPayment] = useState<string>('all');
     // School filter, only used when the card-type filter is "Ученическа карта".
     const [filterSchool, setFilterSchool] = useState<string>('all');
     // How the clients list is ordered. Defaults to the most recently added.
@@ -450,7 +452,7 @@ const AdminPanel: React.FC = () => {
     // search always starts from the first 20 matches.
     useEffect(() => {
         setVisibleClients(20);
-    }, [searchTerm, filterRoute, filterMonth, filterCardType, filterSchool, sortBy]);
+    }, [searchTerm, filterRoute, filterMonth, filterCardType, filterSchool, filterPayment, sortBy]);
 
     const [reportPeriodType, setReportPeriodType] = useState<'month' | 'day'>('day');
     const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -670,6 +672,26 @@ const AdminPanel: React.FC = () => {
     const getMonthPayment = (client: Client, month: string) => {
         const payment = (client.renewalHistory || []).find(rh => rh.month === month);
         return payment ? payment.amount : 0;
+    };
+
+    // Distinct payment methods used for a client's payments in a given month
+    // (legacy entries without a method count as "В брой").
+    const getMonthPaymentMethods = (client: Client, month: string): string[] => {
+        const methods = (client.renewalHistory || [])
+            .filter(rh => rh.month === month)
+            .map(rh => rh.paymentMethod || 'В брой');
+        return Array.from(new Set(methods));
+    };
+
+    const paymentMethodColor = (method: string): string => {
+        switch (method) {
+            case 'В брой': return '#00e676';
+            case 'С карта': return '#29b6f6';
+            case 'Банка': return '#b39ddb';
+            case 'Смесено': return '#ffab00';
+            case 'Служебна': return '#90a4ae';
+            default: return 'rgba(255,255,255,0.6)';
+        }
     };
 
     const getDayPayment = (client: Client, dateStr: string) => {
@@ -1403,8 +1425,9 @@ const AdminPanel: React.FC = () => {
         const matchesRoute = filterRoute === 'all' || getClientRoutes(c).includes(filterRoute);
         const matchesCardType = filterCardType === 'all' || (c.cardType || 'Нормална карта') === filterCardType;
         const matchesSchool = filterCardType !== 'Ученическа карта' || filterSchool === 'all' || (c.school || '') === filterSchool;
+        const matchesPayment = filterPayment === 'all' || getMonthPaymentMethods(c, filterMonth).includes(filterPayment);
 
-        return matchesSearch && matchesRoute && matchesCardType && matchesSchool;
+        return matchesSearch && matchesRoute && matchesCardType && matchesSchool && matchesPayment;
     }).sort((a, b) => {
         switch (sortBy) {
             case 'alpha':
@@ -1432,6 +1455,29 @@ const AdminPanel: React.FC = () => {
         }
     });
     
+    // Aggregate stats for the currently filtered clients list (shown small under
+    // the filters). Payment counts/sums are for the selected status month.
+    const clientsTabStats = (() => {
+        let paid = 0, unpaid = 0, canceled = 0, totalAmount = 0;
+        const byMethod: Record<string, { count: number; sum: number }> = {};
+        for (const c of filteredClientsByFilters) {
+            const status = getClientStatusForMonth(c, filterMonth);
+            if (status === 'Платен') paid++;
+            else if (status === 'Неплатен') unpaid++;
+            else canceled++;
+            const monthEntries = (c.renewalHistory || []).filter(rh => rh.month === filterMonth);
+            const seen = new Set<string>();
+            monthEntries.forEach(rh => {
+                const m = rh.paymentMethod || 'В брой';
+                if (!byMethod[m]) byMethod[m] = { count: 0, sum: 0 };
+                byMethod[m].sum += rh.amount;
+                totalAmount += rh.amount;
+                if (!seen.has(m)) { byMethod[m].count++; seen.add(m); }
+            });
+        }
+        return { total: filteredClientsByFilters.length, paid, unpaid, canceled, totalAmount, byMethod };
+    })();
+
     // Financial Calculations for Accountant
     const todayIso = new Date().toISOString().split('T')[0];
     const registrationsToday = clients.filter(c => c.createdAt?.startsWith(todayIso)).length;
@@ -2829,7 +2875,34 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                     <option key={r} value={r} style={{ background: '#222' }}>{r}</option>
                                 ))}
                             </select>
+
+                            <select
+                                value={filterPayment}
+                                onChange={(e) => setFilterPayment(e.target.value)}
+                                title={`Начин на плащане (за ${filterMonth})`}
+                                style={{ flex: 1, minWidth: '150px', padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                            >
+                                <option value="all" style={{ background: '#222' }}>Всички плащания</option>
+                                {[...PAYMENT_METHODS, 'Служебна'].map(m => (
+                                    <option key={m} value={m} style={{ background: '#222' }}>{m}</option>
+                                ))}
+                            </select>
                         </div>
+                    </div>
+
+                    {/* Small stats reflecting the current filters (payment for {filterMonth}) */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.9rem', alignItems: 'center', marginBottom: '1.25rem', padding: '0.6rem 1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--surface-border)', borderRadius: '12px', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                        <span>Клиенти: <b style={{ color: '#fff' }}>{clientsTabStats.total}</b></span>
+                        <span style={{ opacity: 0.35 }}>•</span>
+                        <span>Платени за {filterMonth}: <b style={{ color: 'var(--success-color)' }}>{clientsTabStats.paid}</b></span>
+                        <span>Неплатени: <b style={{ color: '#ff5252' }}>{clientsTabStats.unpaid}</b></span>
+                        {clientsTabStats.canceled > 0 && <span>Анулирани: <b style={{ color: '#ff8a80' }}>{clientsTabStats.canceled}</b></span>}
+                        <span style={{ opacity: 0.35 }}>•</span>
+                        <span>Сума за {filterMonth}: <b style={{ color: 'var(--success-color)' }}>{clientsTabStats.totalAmount.toFixed(2)} €</b></span>
+                        {[...PAYMENT_METHODS, 'Служебна'].filter(m => clientsTabStats.byMethod[m]).length > 0 && <span style={{ opacity: 0.35 }}>•</span>}
+                        {[...PAYMENT_METHODS, 'Служебна'].filter(m => clientsTabStats.byMethod[m]).map(m => (
+                            <span key={m}>{m}: <b style={{ color: paymentMethodColor(m) }}>{clientsTabStats.byMethod[m].count}</b> <span style={{ opacity: 0.6 }}>({clientsTabStats.byMethod[m].sum.toFixed(2)} €)</span></span>
+                        ))}
                     </div>
 
                     <div className="desktop-table">
@@ -2855,6 +2928,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         <th>Курс</th>
                                         <th>Вид карта</th>
                                         <th>Платено (€)</th>
+                                        <th>Начин на плащане</th>
                                         <th>Статус за {filterMonth}</th>
                                         <th>Действия</th>
                                     </tr>
@@ -2926,6 +3000,19 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                         {getMonthPayment(client, filterMonth)} €
                                                     </td>
                                                     <td>
+                                                        {(() => {
+                                                            const methods = getMonthPaymentMethods(client, filterMonth);
+                                                            if (methods.length === 0) return <span style={{ color: 'var(--text-secondary)' }}>—</span>;
+                                                            return (
+                                                                <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                                                                    {methods.map(m => (
+                                                                        <span key={m} style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '6px', background: `${paymentMethodColor(m)}1a`, color: paymentMethodColor(m), border: `1px solid ${paymentMethodColor(m)}55`, whiteSpace: 'nowrap' }}>{m}</span>
+                                                                    ))}
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                    <td>
                                                         <span style={{
                                                             padding: '0.25rem 0.75rem', borderRadius: '50px', fontSize: '0.75rem',
                                                             background: status === 'Анулиран' || status === 'Неплатен' ? 'rgba(255,0,0,0.1)' : 'var(--success-bg)',
@@ -2965,7 +3052,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                            <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                                                 Няма намерени клиенти по този критерий.
                                             </td>
                                         </tr>
@@ -3031,6 +3118,17 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             <div>
                                                 <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.1rem' }}>Платено {filterMonth}</div>
                                                 <div style={{ fontWeight: 700, color: isMonthPaid ? 'var(--success-color)' : 'var(--text-secondary)' }}>{getMonthPayment(client, filterMonth)} €</div>
+                                                {(() => {
+                                                    const methods = getMonthPaymentMethods(client, filterMonth);
+                                                    if (methods.length === 0) return null;
+                                                    return (
+                                                        <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                                                            {methods.map(m => (
+                                                                <span key={m} style={{ fontSize: '0.6rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '5px', background: `${paymentMethodColor(m)}1a`, color: paymentMethodColor(m), border: `1px solid ${paymentMethodColor(m)}55` }}>{m}</span>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                             <span style={{
                                                 padding: '0.2rem 0.6rem', borderRadius: '50px', fontSize: '0.7rem', fontWeight: 700,
