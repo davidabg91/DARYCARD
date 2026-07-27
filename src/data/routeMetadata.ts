@@ -23,7 +23,7 @@ export interface RouteMetadata {
 export const DM_CONTRACT_ROUTES = new Set<string>([
   "Опанец", "Долна Митрополия", "Победа", "Биволаре", "Рибен", "Тръстеник",
   "Ореховица", "Брегаре", "Крушовене", "Байкал", "Горна Митрополия", "Гиген",
-  "Славовица", "Божурица",
+  "Славовица", "Божурица", "Долна Митрополия - Горна Митрополия",
 ]);
 
 // Discount for a disabled (Инвалидна) card on a given route, as a percentage.
