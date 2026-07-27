@@ -1846,6 +1846,17 @@ const ClientProfile: React.FC = () => {
                                                     setIsUpdating(false);
                                                     return;
                                                 }
+                                                // Prevent a duplicate payment: this direction is already paid for this month.
+                                                const qrDirs = getClientRoutes(client || { route: '' });
+                                                const qrAlreadyPaid = (client?.renewalHistory || []).some(rh =>
+                                                    rh.month === renewalMonth && (rh.route ? rh.route === renewalRoute : renewalRoute === qrDirs[0])
+                                                );
+                                                if (qrAlreadyPaid) {
+                                                    playErrorSound();
+                                                    alert(`Вече има платен абонамент за „${renewalRoute}" за месец ${renewalMonth}. Второ плащане за същия месец не е разрешено.`);
+                                                    setIsUpdating(false);
+                                                    return;
+                                                }
                                                 const isMixedQR = renewalPaymentMethod === MIXED_METHOD;
                                                 const qrBank = Number(renewalBankAmount) || 0;
                                                 const qrCash = Number(renewalCashAmount) || 0;

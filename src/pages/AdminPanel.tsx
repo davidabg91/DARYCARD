@@ -429,7 +429,7 @@ const AdminPanel: React.FC = () => {
     const [bulkMonth, setBulkMonth] = useState<string>(getDefaultExpiryMonth());
     const [bulkPaymentMethod, setBulkPaymentMethod] = useState('В брой');
     const [bulkProcessing, setBulkProcessing] = useState(false);
-    const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number } | null>(null);
+    const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number; skipped: number } | null>(null);
 
     const toggleClientSelected = (id: string) => {
         setSelectedClientIds(prev => {
@@ -1082,6 +1082,15 @@ const AdminPanel: React.FC = () => {
             return;
         }
 
+        // Prevent a duplicate payment: this direction is already paid for this month.
+        if (isDirectionPaid(selectedClient, newRoute, newMonth)) {
+            setModalMessage({
+                text: `Вече има платен абонамент за направление „${newRoute}" за месец ${newMonth}. Второ плащане за същия месец не е разрешено.`,
+                type: 'error'
+            });
+            return;
+        }
+
         const renewPaymentLabel = isMixedRenew ? `Смесено (Банка: ${renewBank.toFixed(2)} / Кеш: ${renewCash.toFixed(2)})` : newPaymentMethod;
         const renewPaymentFields = isMixedRenew
             ? { paymentMethod: newPaymentMethod, bankAmount: renewBank, cashAmount: renewCash }
@@ -1146,13 +1155,19 @@ const AdminPanel: React.FC = () => {
         if (targets.length === 0) return;
         setBulkProcessing(true);
         setBulkResult(null);
-        let ok = 0, fail = 0;
+        let ok = 0, fail = 0, skipped = 0;
         for (const c of targets) {
             const isoNow = new Date().toISOString();
             const cardNum = getClientCardNumber(c);
             const nameWithCard = cardNum ? `${c.name} (Карта № ${cardNum})` : c.name;
             try {
                 const primaryDir = getClientRoutes(c)[0] || c.route;
+                // Skip clients whose primary direction is already paid for this month
+                // (service cards renew for a whole year, so this guard is for normal cards).
+                if (c.cardType !== 'Служебна карта' && primaryDir && isDirectionPaid(c, primaryDir, bulkMonth)) {
+                    skipped++;
+                    continue;
+                }
                 if (c.cardType === 'Служебна карта') {
                     const year = Number(bulkMonth.slice(0, 4));
                     const entries = buildYearMonths(year).map(m => ({ date: isoNow, amount: 0, month: m, route: primaryDir, paymentMethod: 'Служебна' }));
@@ -1182,7 +1197,7 @@ const AdminPanel: React.FC = () => {
             }
         }
         setBulkProcessing(false);
-        setBulkResult({ ok, fail });
+        setBulkResult({ ok, fail, skipped });
         setSelectedClientIds(new Set());
     };
 
@@ -3049,6 +3064,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>✅</div>
                                         <h3 style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '0.75rem' }}>Готово!</h3>
                                         <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Успешно подновени: <b style={{ color: 'var(--success-color)' }}>{bulkResult.ok}</b> карти за <b>{bulkMonth}</b>.</p>
+                                        {bulkResult.skipped > 0 && <p style={{ color: '#ffab00', marginBottom: '0.5rem' }}>Пропуснати (вече платени за {bulkMonth}): <b>{bulkResult.skipped}</b></p>}
                                         {bulkResult.fail > 0 && <p style={{ color: '#ff5252', marginBottom: '0.5rem' }}>Неуспешни: <b>{bulkResult.fail}</b></p>}
                                         <button onClick={() => { setShowBulkRenew(false); setBulkResult(null); }} style={{ marginTop: '1rem', padding: '0.8rem 2rem', borderRadius: '50px', background: 'var(--primary-color)', color: '#fff', border: 'none', fontWeight: 800, cursor: 'pointer' }}>Затвори</button>
                                     </div>
