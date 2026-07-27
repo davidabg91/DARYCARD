@@ -30,7 +30,13 @@ service cloud.firestore {
     // Function (Admin SDK), which bypasses these rules.
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      // Admins may edit any user; a signed-in user may update ONLY their own
+      // `lastSeen` stamp (used for the "last online" column). Role changes etc.
+      // stay admin-only.
+      allow update: if isAdmin()
+        || (isSignedIn() && request.auth.uid == userId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeen']));
     }
 
     // ---- Clients ----

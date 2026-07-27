@@ -65,8 +65,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             username: fbUser.email || '',
                             passwordHash: '', // Not needed for Firebase
                             role: data.role as UserRole,
-                            createdAt: data.createdAt || new Date().toISOString()
+                            createdAt: data.createdAt || new Date().toISOString(),
+                            lastSeen: data.lastSeen || ''
                         });
+                        // Best-effort "last seen" stamp on each app load / login.
+                        updateDoc(doc(db, 'users', fbUser.uid), { lastSeen: new Date().toISOString() })
+                            .catch(() => { /* rules or offline — ignore */ });
                     } else {
                         // User exists in Auth but not in Firestore - no default role anymore
                         // This prevents unauthorized sign-ups from gaining access
@@ -94,7 +98,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     username: data.username || '',
                     passwordHash: '',
                     role: data.role as UserRole,
-                    createdAt: data.createdAt || ''
+                    createdAt: data.createdAt || '',
+                    lastSeen: data.lastSeen || ''
                 });
             });
             setUsers(userList);

@@ -80,6 +80,18 @@ const ROLE_COLORS: Record<UserRole, string> = {
     inspector: '#ffab00',
 };
 
+// Compact "last seen" label: relative for recent, absolute date+time otherwise.
+const formatLastSeen = (iso?: string): string => {
+    if (!iso) return 'няма данни';
+    const t = new Date(iso).getTime();
+    if (isNaN(t)) return 'няма данни';
+    const secs = Math.floor((Date.now() - t) / 1000);
+    if (secs < 60) return 'преди малко';
+    if (secs < 3600) return `преди ${Math.floor(secs / 60)} мин.`;
+    if (secs < 86400) return `преди ${Math.floor(secs / 3600)} ч.`;
+    return new Date(iso).toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
 // --- Main Component ---
 const SystemAdminPanel: React.FC = () => {
     const { users, currentUser, addUser, updateUserRole, deleteUser } = useAuth();
@@ -661,6 +673,9 @@ const SystemAdminPanel: React.FC = () => {
                                         <div style={{ flex: 1 }}>
                                             <div style={{ fontWeight: 700, fontSize: isMobile ? '1rem' : '1.1rem' }}>{user.username}</div>
                                             <div style={{ fontSize: '0.75rem', color: ROLE_COLORS[user.role], fontWeight: 800 }}>{ROLE_LABELS[user.role]}</div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                                                Последно активен: {formatLastSeen(user.lastSeen)}
+                                            </div>
                                         </div>
                                         {user.id === currentUser?.id && isMobile && <span style={{ fontSize: '0.6rem', padding: '0.25rem 0.6rem', borderRadius: '50px', background: 'rgba(0,173,181,0.1)', color: 'var(--primary-color)', fontWeight: 800 }}>АЗ</span>}
                                     </div>

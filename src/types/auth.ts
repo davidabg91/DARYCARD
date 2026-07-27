@@ -6,4 +6,5 @@ export interface AppUser {
     passwordHash: string; // simple hash for demo
     role: UserRole;
     createdAt: string;
+    lastSeen?: string; // ISO timestamp of the user's last app load / login
 }
