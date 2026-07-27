@@ -684,13 +684,17 @@ const AdminPanel: React.FC = () => {
         return payment ? payment.amount : 0;
     };
 
-    // Distinct payment methods used for a client's payments in a given month
-    // (legacy entries without a method count as "В брой").
-    const getMonthPaymentMethods = (client: Client, month: string): string[] => {
-        const methods = (client.renewalHistory || [])
-            .filter(rh => rh.month === month)
-            .map(rh => rh.paymentMethod || 'В брой');
-        return Array.from(new Set(methods));
+    // The method of the client's most recent payment (by date). Used for the
+    // list column/filter so "how the client paid" is always shown, regardless of
+    // which subscription month the payment covered. Legacy entries → "В брой".
+    const getLatestPaymentMethod = (client: Client): string | null => {
+        const rh = client.renewalHistory || [];
+        if (!rh.length) return null;
+        let latest = rh[0];
+        for (const e of rh) {
+            if ((e.date || '') > (latest.date || '')) latest = e;
+        }
+        return latest.paymentMethod || 'В брой';
     };
 
     const paymentMethodColor = (method: string): string => {
@@ -1435,7 +1439,7 @@ const AdminPanel: React.FC = () => {
         const matchesRoute = filterRoute === 'all' || getClientRoutes(c).includes(filterRoute);
         const matchesCardType = filterCardType === 'all' || (c.cardType || 'Нормална карта') === filterCardType;
         const matchesSchool = filterCardType !== 'Ученическа карта' || filterSchool === 'all' || (c.school || '') === filterSchool;
-        const matchesPayment = filterPayment === 'all' || getMonthPaymentMethods(c, filterMonth).includes(filterPayment);
+        const matchesPayment = filterPayment === 'all' || getLatestPaymentMethod(c) === filterPayment;
 
         return matchesSearch && matchesRoute && matchesCardType && matchesSchool && matchesPayment;
     }).sort((a, b) => {
@@ -2990,7 +2994,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                             <select
                                 value={filterPayment}
                                 onChange={(e) => setFilterPayment(e.target.value)}
-                                title={`Начин на плащане (за ${filterMonth})`}
+                                title="Начин на плащане (по последното плащане)"
                                 style={{ flex: 1, minWidth: '150px', padding: '0.8rem 1rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
                             >
                                 <option value="all" style={{ background: '#222' }}>Всички плащания</option>
@@ -3112,14 +3116,10 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     </td>
                                                     <td>
                                                         {(() => {
-                                                            const methods = getMonthPaymentMethods(client, filterMonth);
-                                                            if (methods.length === 0) return <span style={{ color: 'var(--text-secondary)' }}>—</span>;
+                                                            const m = getLatestPaymentMethod(client);
+                                                            if (!m) return <span style={{ color: 'var(--text-secondary)' }}>—</span>;
                                                             return (
-                                                                <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                                                                    {methods.map(m => (
-                                                                        <span key={m} style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '6px', background: `${paymentMethodColor(m)}1a`, color: paymentMethodColor(m), border: `1px solid ${paymentMethodColor(m)}55`, whiteSpace: 'nowrap' }}>{m}</span>
-                                                                    ))}
-                                                                </div>
+                                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '6px', background: `${paymentMethodColor(m)}1a`, color: paymentMethodColor(m), border: `1px solid ${paymentMethodColor(m)}55`, whiteSpace: 'nowrap' }}>{m}</span>
                                                             );
                                                         })()}
                                                     </td>
@@ -3230,13 +3230,11 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '0.1rem' }}>Платено {filterMonth}</div>
                                                 <div style={{ fontWeight: 700, color: isMonthPaid ? 'var(--success-color)' : 'var(--text-secondary)' }}>{getMonthPayment(client, filterMonth)} €</div>
                                                 {(() => {
-                                                    const methods = getMonthPaymentMethods(client, filterMonth);
-                                                    if (methods.length === 0) return null;
+                                                    const m = getLatestPaymentMethod(client);
+                                                    if (!m) return null;
                                                     return (
-                                                        <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                                                            {methods.map(m => (
-                                                                <span key={m} style={{ fontSize: '0.6rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '5px', background: `${paymentMethodColor(m)}1a`, color: paymentMethodColor(m), border: `1px solid ${paymentMethodColor(m)}55` }}>{m}</span>
-                                                            ))}
+                                                        <div style={{ marginTop: '0.25rem' }}>
+                                                            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '5px', background: `${paymentMethodColor(m)}1a`, color: paymentMethodColor(m), border: `1px solid ${paymentMethodColor(m)}55` }}>{m}</span>
                                                         </div>
                                                     );
                                                 })()}
