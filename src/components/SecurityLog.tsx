@@ -27,7 +27,7 @@ const SecurityLog: React.FC = () => {
     const [attempts, setAttempts] = useState<LoginAttempt[]>([]);
 
     useEffect(() => {
-        const q = query(collection(db, 'login_attempts'), orderBy('timestamp', 'desc'), limit(50));
+        const q = query(collection(db, 'login_attempts'), orderBy('timestamp', 'desc'), limit(3));
         const unsub = onSnapshot(q, (snap) => {
             const list: LoginAttempt[] = [];
             snap.forEach((d) => list.push({ id: d.id, ...d.data() } as LoginAttempt));
