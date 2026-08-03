@@ -283,6 +283,15 @@ const namesMatch = (a: string, b: string): boolean => {
     return false;
 };
 
+// Does a Служебна card's reason mark the holder as a RELATIVE of an employee
+// (съпруг/син/дъщеря/снаха/…)? Such cards are a different person even when the
+// name coincides with a listed employee (e.g. "Калинка Иванова", СЪПРУГА, vs the
+// listed "Калинка Иванова Данкова"), so they must not be matched to the roster.
+// NB: "мед. сестра" (nurse) is a job, not a sibling — "сестра" is intentionally
+// excluded. Uses a lookahead instead of \b, which does not work after Cyrillic.
+const RELATIVE_REASON_RE = /(^|\s)(?:СЪПРУГ|ДЪЩЕР|СНАХ|ПЛЕМЕН|ВНУЧК|ВНУК|РОДНИН|МАЙК|БАЩ|ДЯДО|БАБ|(?:СИН|ЗЕТ|БРАТ)(?=\s|$))/i;
+const looksLikeRelative = (reason?: string): boolean => RELATIVE_REASON_RE.test(reason || '');
+
 // A client's directions. Source of truth is `routes`; falls back to splitting the
 // (possibly comma-joined) `route` display string, then to a single [route].
 const getClientRoutes = (client: { route?: string; routes?: string[] }): string[] => {
@@ -1607,14 +1616,16 @@ const AdminPanel: React.FC = () => {
         for (const r of SERVICE_ROSTERS) for (const e of r.entries) allEntries.push({ roster: r, entry: e });
 
         const cardMatch = new Map<string, { roster: ServiceRoster; entry: ServiceRosterEntry }>();
-        const unauthorized: { client: Client; issuedBy?: string; issuedAt?: string }[] = [];
+        const unauthorized: { client: Client; issuedBy?: string; issuedAt?: string; relative?: boolean }[] = [];
         for (const c of serviceCards) {
-            const m = allEntries.find(x => namesMatch(c.name, x.entry.name));
+            const relative = looksLikeRelative(c.serviceReason);
+            // Relatives are never the listed employee, even on a name coincidence.
+            const m = relative ? undefined : allEntries.find(x => namesMatch(c.name, x.entry.name));
             if (m) {
                 cardMatch.set(c.id, m);
             } else {
                 const creation = (c.history || []).find(h => /Активиране|Създаване/i.test(h.action)) || (c.history || [])[0];
-                unauthorized.push({ client: c, issuedBy: creation?.performedBy, issuedAt: creation?.date || c.createdAt });
+                unauthorized.push({ client: c, issuedBy: creation?.performedBy, issuedAt: creation?.date || c.createdAt, relative });
             }
         }
 
@@ -2316,6 +2327,11 @@ const AdminPanel: React.FC = () => {
                                                                 <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(0, 173, 181, 0.1)', borderRadius: '6px', color: 'var(--primary-color)', fontWeight: 600 }}>
                                                                     {u.client.route || '—'}
                                                                 </span>
+                                                                {u.relative && (
+                                                                    <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(255,152,0,0.15)', borderRadius: '6px', color: '#ff9800', fontWeight: 700 }}>
+                                                                        роднина
+                                                                    </span>
+                                                                )}
                                                                 {u.client.serviceReason && (
                                                                     <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
                                                                         {u.client.serviceReason}
