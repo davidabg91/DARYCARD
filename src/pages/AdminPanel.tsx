@@ -100,6 +100,16 @@ interface PushNotification {
     subscriberCount?: number;
 }
 
+// One card whose last-paid amount differs from the system price for its route.
+interface PriceMismatch {
+    client: Client;
+    route: string;
+    actual: number;   // last amount actually charged
+    expected: number; // computeCardAmount(route, cardType) — the system price
+    diff: number;     // actual - expected (negative = undercharged)
+    month?: string;
+}
+
 const ROUTES = [
     "Бъркач", "Тръстеник", "Биволаре", "Горна Митрополия", "Долни Дъбник",
     "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
@@ -432,6 +442,7 @@ const AdminPanel: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     // Monthly revenue is blurred by default (Revolut-style); the eye icon reveals it.
     const [showMonthlyRevenue, setShowMonthlyRevenue] = useState(false);
+    const [showPriceAudit, setShowPriceAudit] = useState(false);
 
     // Bulk renewal: a selection of client ids + the review modal state.
     const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
@@ -1516,6 +1527,33 @@ const AdminPanel: React.FC = () => {
         return acc + monthPayments.reduce((sum, p) => sum + p.amount, 0);
     }, 0);
 
+    // Cards whose last-charged amount differs from the system price for their route.
+    // The "system price" is computeCardAmount(route, cardType) — the same value the
+    // registration/renewal screens auto-fill. We compare against the MOST RECENT
+    // renewalHistory entry (renewals don't update amountPaid, and each entry keeps
+    // its own route). Служебни карти and routes with no published price ("-"/"---",
+    // where computeCardAmount returns 0) are skipped — those are manual by design.
+    const priceMismatches: PriceMismatch[] = React.useMemo(() => {
+        const rows: PriceMismatch[] = [];
+        for (const c of clients) {
+            if (c.isCanceled || c.cardType === 'Служебна карта') continue;
+            const history = c.renewalHistory || [];
+            const latest = history.length
+                ? history.reduce((a, b) => ((a.date || '') > (b.date || '') ? a : b))
+                : null;
+            const route = latest?.route || getClientRoutes(c)[0] || c.route || '';
+            const actual = latest ? latest.amount : c.amountPaid;
+            if (actual == null || isNaN(actual)) continue;
+            const expected = computeCardAmount(route, c.cardType);
+            if (expected <= 0) continue; // route has no system price → nothing to compare
+            const diff = Number((actual - expected).toFixed(2));
+            if (Math.abs(diff) <= 0.01) continue;
+            rows.push({ client: c, route, actual, expected, diff, month: latest?.month });
+        }
+        rows.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+        return rows;
+    }, [clients]);
+
     // Split received revenue by payment method for a date prefix (YYYY-MM-DD day or
     // YYYY-MM month). Counted by payment date. A "Смесено" payment is split into its
     // cash and bank parts so "Каса" reflects actual physical cash. Free/service
@@ -2019,6 +2057,84 @@ const AdminPanel: React.FC = () => {
                             </div>
                         </Card>
                     </div>
+
+                    {/* Разминаване в цените — карти с ръчно зададена сума, различна от системната */}
+                    <Card style={{ borderLeft: `4px solid ${priceMismatches.length ? '#ff5252' : '#00c853'}` }}>
+                        <div
+                            onClick={() => setShowPriceAudit(v => !v)}
+                            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', gap: '1rem' }}
+                        >
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: priceMismatches.length ? '#ff5252' : '#00c853', margin: 0 }}>
+                                <AlertTriangle size={20} /> Разминаване в цените
+                                {priceMismatches.length > 0 && (
+                                    <span style={{ background: '#ff5252', color: '#fff', borderRadius: '999px', padding: '2px 10px', fontSize: '0.8rem', fontWeight: 900 }}>
+                                        {priceMismatches.length}
+                                    </span>
+                                )}
+                            </h3>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                                {showPriceAudit ? 'Скрий ▲' : 'Покажи ▼'}
+                            </span>
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.6rem', marginBottom: showPriceAudit ? '1.25rem' : 0, lineHeight: 1.5 }}>
+                            Карти, чиято последно платена сума се различава от цената за курса, зададена в системата (според типа карта).
+                            Служебните карти и курсовете без обявена цена се пропускат.
+                        </p>
+                        {showPriceAudit && (
+                            priceMismatches.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                                    Няма разминавания — всички карти съвпадат със системните цени.
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                    {priceMismatches.map(m => {
+                                        const cardNum = getClientCardNumber(m.client);
+                                        const under = m.diff < 0; // платено по-малко от системната цена
+                                        const accent = under ? '#ff5252' : '#ff9800';
+                                        return (
+                                            <a
+                                                key={m.client.id}
+                                                href={`#/client/${m.client.id}`}
+                                                style={{
+                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem',
+                                                    flexWrap: 'wrap', textDecoration: 'none',
+                                                    padding: '0.85rem 1.1rem', background: 'rgba(255,255,255,0.02)',
+                                                    border: `1px solid ${accent}33`, borderLeft: `4px solid ${accent}`, borderRadius: '12px'
+                                                }}
+                                            >
+                                                <div style={{ minWidth: 0 }}>
+                                                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>
+                                                        {m.client.name}{cardNum ? <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}> · №{cardNum}</span> : null}
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+                                                        <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
+                                                            {m.client.cardType || 'Нормална карта'}
+                                                        </span>
+                                                        <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(0, 173, 181, 0.1)', borderRadius: '6px', color: 'var(--primary-color)', fontWeight: 600 }}>
+                                                            {m.route}
+                                                        </span>
+                                                        {m.month && (
+                                                            <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
+                                                                {m.month}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                                        Платено <b style={{ color: accent }}>{m.actual.toFixed(2)} €</b> · Система <b style={{ color: '#fff' }}>{m.expected.toFixed(2)} €</b>
+                                                    </div>
+                                                    <div style={{ fontSize: '1rem', fontWeight: 900, color: accent, marginTop: '0.15rem' }}>
+                                                        {m.diff > 0 ? '+' : ''}{m.diff.toFixed(2)} € {under ? '(по-малко)' : '(повече)'}
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        );
+                                    })}
+                                </div>
+                            )
+                        )}
+                    </Card>
 
                     {/* Historical Lookup */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
