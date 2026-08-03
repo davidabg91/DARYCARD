@@ -33,6 +33,8 @@ import { MIXED_METHOD, PAYMENT_METHODS } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
 import { SCHOOLS, SCHOOL_MUNICIPALITY } from '../data/schools';
+import { SERVICE_ROSTERS } from '../data/serviceRosters';
+import type { ServiceRoster, ServiceRosterEntry } from '../data/serviceRosters';
 
 interface ClientLog {
     date: string;
@@ -244,6 +246,42 @@ const computeCardAmount = (route: string, cardType?: string): number => {
     return Number((n * factor).toFixed(2));
 };
 
+// Split a Bulgarian name into comparable tokens: lowercase, drop quotes/dots,
+// treat hyphens as spaces, keep tokens of >=2 letters (so abbreviations like
+// "Ив." are ignored rather than mismatched).
+const normNameTokens = (s: string): string[] =>
+    (s || '')
+        .toLowerCase()
+        .replace(/[„“”"'`.,]/g, ' ')
+        .replace(/[-–—]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .split(' ')
+        .filter(t => t.length >= 2);
+
+// Do two names refer to the same person? Primary rule: the first name matches
+// AND at least one further name (презиме or фамилия) is shared — tolerates
+// abbreviated middle names and hyphenated/spaced/partially-dropped surnames.
+// Fallback: a name typed without spaces ("ВЕСЕЛКАЦВЕТАНОВА") matches a list
+// entry whose first AND last name both appear as substrings. The fallback
+// deliberately requires both names, so it never produces a spurious match that
+// could hide a fraudulent card (which is the risk we care about most).
+const namesMatch = (a: string, b: string): boolean => {
+    const ta = normNameTokens(a);
+    const tb = normNameTokens(b);
+    if (ta.length && tb.length && ta[0] === tb[0]) {
+        const restA = new Set(ta.slice(1));
+        if (tb.slice(1).some(t => restA.has(t))) return true;
+    }
+    // Concatenated-name fallback (one side collapsed into a single long token).
+    const firstLastIn = (tokens: string[], hay: string): boolean =>
+        tokens.length >= 2 && hay.length >= 8 &&
+        hay.includes(tokens[0]) && hay.includes(tokens[tokens.length - 1]);
+    if (ta.length <= 1 && ta[0] && firstLastIn(tb, ta[0])) return true;
+    if (tb.length <= 1 && tb[0] && firstLastIn(ta, tb[0])) return true;
+    return false;
+};
+
 // A client's directions. Source of truth is `routes`; falls back to splitting the
 // (possibly comma-joined) `route` display string, then to a single [route].
 const getClientRoutes = (client: { route?: string; routes?: string[] }): string[] => {
@@ -443,6 +481,8 @@ const AdminPanel: React.FC = () => {
     // Monthly revenue is blurred by default (Revolut-style); the eye icon reveals it.
     const [showMonthlyRevenue, setShowMonthlyRevenue] = useState(false);
     const [showPriceAudit, setShowPriceAudit] = useState(false);
+    const [showServiceAudit, setShowServiceAudit] = useState(false);
+    const [showServiceMissing, setShowServiceMissing] = useState(false);
 
     // Bulk renewal: a selection of client ids + the review modal state.
     const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
@@ -1554,6 +1594,64 @@ const AdminPanel: React.FC = () => {
         return rows;
     }, [clients]);
 
+    // Служебни-карти fraud audit: cross-check every active service card against
+    // the official authorised-employee rosters (SERVICE_ROSTERS). A cashier could
+    // issue a Служебна карта to someone posing as a listed employee who isn't
+    // actually on any list — those show up as "извън списъците". We also surface
+    // duplicate cards for one authorised person and people on the list without a
+    // card. Matching is by name (service cards carry no община).
+    const serviceAudit = React.useMemo(() => {
+        const serviceCards = clients.filter(c => c.cardType === 'Служебна карта' && !c.isCanceled);
+        const allEntries: { roster: ServiceRoster; entry: ServiceRosterEntry }[] = [];
+        for (const r of SERVICE_ROSTERS) for (const e of r.entries) allEntries.push({ roster: r, entry: e });
+
+        const cardMatch = new Map<string, { roster: ServiceRoster; entry: ServiceRosterEntry }>();
+        const unauthorized: { client: Client; issuedBy?: string; issuedAt?: string }[] = [];
+        for (const c of serviceCards) {
+            const m = allEntries.find(x => namesMatch(c.name, x.entry.name));
+            if (m) {
+                cardMatch.set(c.id, m);
+            } else {
+                const creation = (c.history || []).find(h => /Активиране|Създаване/i.test(h.action)) || (c.history || [])[0];
+                unauthorized.push({ client: c, issuedBy: creation?.performedBy, issuedAt: creation?.date || c.createdAt });
+            }
+        }
+
+        // Map roster entry -> the service cards that matched it.
+        const entryCards = new Map<ServiceRosterEntry, Client[]>();
+        for (const c of serviceCards) {
+            const m = cardMatch.get(c.id);
+            if (!m) continue;
+            const arr = entryCards.get(m.entry) || [];
+            arr.push(c);
+            entryCards.set(m.entry, arr);
+        }
+
+        const duplicates: { entry: ServiceRosterEntry; roster: ServiceRoster; cards: Client[] }[] = [];
+        const missing: { entry: ServiceRosterEntry; roster: ServiceRoster }[] = [];
+        const coverage: { roster: ServiceRoster; have: number; total: number }[] = [];
+        for (const r of SERVICE_ROSTERS) {
+            let have = 0;
+            for (const e of r.entries) {
+                const cs = entryCards.get(e) || [];
+                if (cs.length > 0) have++;
+                if (cs.length > 1) duplicates.push({ entry: e, roster: r, cards: cs });
+                if (cs.length === 0) missing.push({ entry: e, roster: r });
+            }
+            coverage.push({ roster: r, have, total: r.entries.length });
+        }
+
+        unauthorized.sort((a, b) => (b.issuedAt || '').localeCompare(a.issuedAt || ''));
+        return {
+            totalServiceCards: serviceCards.length,
+            matchedCount: serviceCards.length - unauthorized.length,
+            unauthorized,
+            duplicates,
+            missing,
+            coverage,
+        };
+    }, [clients]);
+
     // Split received revenue by payment method for a date prefix (YYYY-MM-DD day or
     // YYYY-MM month). Counted by payment date. A "Смесено" payment is split into its
     // cash and bank parts so "Каса" reflects actual physical cash. Free/service
@@ -2138,6 +2236,156 @@ const AdminPanel: React.FC = () => {
                         )}
                     </Card>
                     )}
+
+                    {/* Одит на служебни карти — засича карти, издадени на хора извън
+                        официалните списъци с правоимащи лица. Видимо само за Администратор. */}
+                    {isAdmin && (() => {
+                        const sa = serviceAudit;
+                        const haveTotal = sa.coverage.reduce((s, c) => s + c.have, 0);
+                        const rosterTotal = sa.coverage.reduce((s, c) => s + c.total, 0);
+                        const alert = sa.unauthorized.length > 0 || sa.duplicates.length > 0;
+                        const fmtDate = (d?: string) => (d || '').slice(0, 10);
+                        return (
+                        <Card style={{ borderLeft: `4px solid ${alert ? '#ff5252' : '#00c853'}` }}>
+                            <div
+                                onClick={() => setShowServiceAudit(v => !v)}
+                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', gap: '1rem' }}
+                            >
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: alert ? '#ff5252' : '#00c853', margin: 0 }}>
+                                    <ShieldCheck size={20} /> Одит на служебни карти
+                                    {sa.unauthorized.length > 0 && (
+                                        <span style={{ background: '#ff5252', color: '#fff', borderRadius: '999px', padding: '2px 10px', fontSize: '0.8rem', fontWeight: 900 }}>
+                                            {sa.unauthorized.length} извън списъка
+                                        </span>
+                                    )}
+                                </h3>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                                    {showServiceAudit ? 'Скрий ▲' : 'Покажи ▼'}
+                                </span>
+                            </div>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.6rem', marginBottom: showServiceAudit ? '1.25rem' : 0, lineHeight: 1.5 }}>
+                                Сверява служебните карти в системата с официалните списъци на правоимащи лица.
+                                Карти, издадени на хора <b>извън списъците</b>, са възможна измама. Сравнението е по име.
+                            </p>
+                            {showServiceAudit && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    {/* Обобщение */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
+                                        {[
+                                            { label: 'Общо служебни', value: sa.totalServiceCards, color: '#fff' },
+                                            { label: 'В списъка', value: sa.matchedCount, color: '#00e676' },
+                                            { label: 'Извън списъка', value: sa.unauthorized.length, color: sa.unauthorized.length ? '#ff5252' : '#00e676' },
+                                            { label: 'Покритие', value: `${haveTotal} / ${rosterTotal}`, color: 'var(--primary-color)' },
+                                            { label: 'Дублирани', value: sa.duplicates.length, color: sa.duplicates.length ? '#ff9800' : '#00e676' },
+                                        ].map((t, i) => (
+                                            <div key={i} style={{ textAlign: 'center', padding: '0.9rem 0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: t.color }}>{t.value}</div>
+                                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginTop: '0.2rem' }}>{t.label}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* ⚠️ Извън списъците — възможна измама */}
+                                    <div>
+                                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff5252', margin: '0 0 0.75rem' }}>
+                                            <AlertTriangle size={16} /> Служебни карти извън списъците ({sa.unauthorized.length})
+                                        </h4>
+                                        {sa.unauthorized.length === 0 ? (
+                                            <div style={{ textAlign: 'center', padding: '1.5rem 1rem', color: '#00e676', background: 'rgba(0,200,83,0.04)', borderRadius: '12px', border: '1px dashed rgba(0,200,83,0.2)' }}>
+                                                Всички служебни карти съвпадат с човек от списъците. ✓
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                                {sa.unauthorized.map(u => (
+                                                    <a
+                                                        key={u.client.id}
+                                                        href={`#/client/${u.client.id}`}
+                                                        style={{
+                                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+                                                            textDecoration: 'none', padding: '0.85rem 1.1rem', background: 'rgba(255,82,82,0.04)',
+                                                            border: '1px solid rgba(255,82,82,0.2)', borderLeft: '4px solid #ff5252', borderRadius: '12px'
+                                                        }}
+                                                    >
+                                                        <div style={{ minWidth: 0 }}>
+                                                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>
+                                                                {u.client.name}
+                                                                {getClientCardNumber(u.client) ? <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}> · №{getClientCardNumber(u.client)}</span> : null}
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+                                                                <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(0, 173, 181, 0.1)', borderRadius: '6px', color: 'var(--primary-color)', fontWeight: 600 }}>
+                                                                    {u.client.route || '—'}
+                                                                </span>
+                                                                {u.client.serviceReason && (
+                                                                    <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
+                                                                        {u.client.serviceReason}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                                            <div>Издал: <b style={{ color: '#ff9800' }}>{u.issuedBy || '—'}</b></div>
+                                                            <div style={{ marginTop: '0.15rem' }}>{fmtDate(u.issuedAt) || '—'}</div>
+                                                        </div>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Дублирани карти за един човек от списъка */}
+                                    {sa.duplicates.length > 0 && (
+                                        <div>
+                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ff9800', margin: '0 0 0.75rem' }}>
+                                                <AlertCircle size={16} /> Дублирани служебни карти ({sa.duplicates.length})
+                                            </h4>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                                {sa.duplicates.map((d, i) => (
+                                                    <div key={i} style={{ padding: '0.85rem 1.1rem', background: 'rgba(255,152,0,0.04)', border: '1px solid rgba(255,152,0,0.2)', borderLeft: '4px solid #ff9800', borderRadius: '12px' }}>
+                                                        <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#fff' }}>
+                                                            №{d.entry.no} {d.entry.name} <span style={{ color: '#ff9800', fontWeight: 700 }}>— {d.cards.length} активни карти</span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+                                                            {d.cards.map(c => (
+                                                                <a key={c.id} href={`#/client/${c.id}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--primary-color)', textDecoration: 'none' }}>
+                                                                    {c.name} · {c.route || '—'}{getClientCardNumber(c) ? ` · №${getClientCardNumber(c)}` : ''}
+                                                                </a>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* От списъка без издадена карта */}
+                                    {sa.missing.length > 0 && (
+                                        <div>
+                                            <div
+                                                onClick={() => setShowServiceMissing(v => !v)}
+                                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', gap: '1rem' }}
+                                            >
+                                                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                                    <Users size={16} /> От списъка без издадена карта ({sa.missing.length})
+                                                </h4>
+                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{showServiceMissing ? 'Скрий ▲' : 'Покажи ▼'}</span>
+                                            </div>
+                                            {showServiceMissing && (
+                                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.4rem', marginTop: '0.75rem' }}>
+                                                    {sa.missing.map((m, i) => (
+                                                        <div key={i} style={{ fontSize: '0.75rem', padding: '0.45rem 0.7rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--surface-border)', color: 'var(--text-secondary)' }}>
+                                                            <b style={{ color: '#fff' }}>№{m.entry.no}</b> {m.entry.name}
+                                                            <div style={{ fontSize: '0.65rem', opacity: 0.7 }}>{m.entry.position}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </Card>
+                        );
+                    })()}
 
                     {/* Historical Lookup */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
