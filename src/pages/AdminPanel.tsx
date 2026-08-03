@@ -2058,7 +2058,9 @@ const AdminPanel: React.FC = () => {
                         </Card>
                     </div>
 
-                    {/* Разминаване в цените — карти с ръчно зададена сума, различна от системната */}
+                    {/* Разминаване в цените — карти с ръчно зададена сума, различна от системната.
+                        Видимо само за профил Администратор. */}
+                    {isAdmin && (
                     <Card style={{ borderLeft: `4px solid ${priceMismatches.length ? '#ff5252' : '#00c853'}` }}>
                         <div
                             onClick={() => setShowPriceAudit(v => !v)}
@@ -2135,6 +2137,7 @@ const AdminPanel: React.FC = () => {
                             )
                         )}
                     </Card>
+                    )}
 
                     {/* Historical Lookup */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
