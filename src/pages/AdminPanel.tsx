@@ -259,19 +259,21 @@ const normNameTokens = (s: string): string[] =>
         .split(' ')
         .filter(t => t.length >= 2);
 
-// Do two names refer to the same person? Primary rule: the first name matches
-// AND at least one further name (презиме or фамилия) is shared — tolerates
-// abbreviated middle names and hyphenated/spaced/partially-dropped surnames.
+// Do two names refer to the same person? Primary rule: the first name AND the
+// family (last) name both match. We deliberately require the LAST token rather
+// than "any shared further name", because the презиме (patronymic middle name,
+// e.g. Иванова/Петрова/Георгиева) is extremely common and matching on it merges
+// two different people — e.g. "Калинка ИВАНОВА" (a spouse) vs the listed
+// "Калинка ИВАНОВА Данкова". Hyphenated surnames still work because they are
+// split into tokens and the trailing part is compared.
 // Fallback: a name typed without spaces ("ВЕСЕЛКАЦВЕТАНОВА") matches a list
 // entry whose first AND last name both appear as substrings. The fallback
-// deliberately requires both names, so it never produces a spurious match that
-// could hide a fraudulent card (which is the risk we care about most).
+// deliberately requires both names, so it never produces a spurious match.
 const namesMatch = (a: string, b: string): boolean => {
     const ta = normNameTokens(a);
     const tb = normNameTokens(b);
-    if (ta.length && tb.length && ta[0] === tb[0]) {
-        const restA = new Set(ta.slice(1));
-        if (tb.slice(1).some(t => restA.has(t))) return true;
+    if (ta.length && tb.length && ta[0] === tb[0] && ta[ta.length - 1] === tb[tb.length - 1]) {
+        return true;
     }
     // Concatenated-name fallback (one side collapsed into a single long token).
     const firstLastIn = (tokens: string[], hay: string): boolean =>
