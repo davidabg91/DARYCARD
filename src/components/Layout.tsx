@@ -442,7 +442,14 @@ const Layout: React.FC = () => {
                         onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
                     >
                         <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>Powered by</span>
-                        <span style={{ fontWeight: 800 }}>TransitFlow</span>
+                        <span style={{
+                            fontWeight: 800,
+                            backgroundImage: 'linear-gradient(90deg, #7dd3fc 0%, #2563eb 100%)',
+                            WebkitBackgroundClip: 'text',
+                            backgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            color: 'transparent'
+                        }}>TransitFlow</span>
                     </a>
                 </div>
             </footer>
