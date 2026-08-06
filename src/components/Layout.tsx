@@ -441,9 +441,8 @@ const Layout: React.FC = () => {
                         onMouseOver={(e) => e.currentTarget.style.color = '#ff5252'}
                         onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
                     >
-                        <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>Developed by</span>
+                        <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>Powered by</span>
                         <span style={{ fontWeight: 800 }}>TransitFlow</span>
-                        <span style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800 }}>&lt;/&gt;</span>
                     </a>
                 </div>
             </footer>
