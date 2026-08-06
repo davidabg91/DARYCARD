@@ -427,7 +427,7 @@ const Layout: React.FC = () => {
                     <InstallPWA compact={true} />
                     {(!isMobile || isClientProfilePath) && <span style={{ opacity: 0.3 }}>•</span>}
                     <a 
-                        href="http://davidax.org/" 
+                        href="https://transitflow.org/"
                         target="_blank" 
                         rel="noopener noreferrer"
                         style={{ 
@@ -442,7 +442,7 @@ const Layout: React.FC = () => {
                         onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
                     >
                         <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>Developed by</span>
-                        <span style={{ fontWeight: 800 }}>DavidaX</span>
+                        <span style={{ fontWeight: 800 }}>TransitFlow</span>
                         <span style={{ fontSize: '0.7rem', color: '#ff5252', fontWeight: 800 }}>&lt;/&gt;</span>
                     </a>
                 </div>
