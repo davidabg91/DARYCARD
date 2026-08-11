@@ -530,7 +530,7 @@ const AdminPanel: React.FC = () => {
     const [reportPaymentMethod, setReportPaymentMethod] = useState<string>('В брой');
     const [reportMonth, setReportMonth] = useState<string>('all');
     const [reportCardType, setReportCardType] = useState<string>('all');
-    const [reportRoute, setReportRoute] = useState<string>('all');
+    const [reportRoutes, setReportRoutes] = useState<string[]>(['all']); // ['all'] = всички маршрути; иначе списък от избрани
     const [reportDistanceFilter, setReportDistanceFilter] = useState<string>('all');
     const [reportMunicipality, setReportMunicipality] = useState<string>('all');
     const [reportByContract, setReportByContract] = useState<boolean>(false);
@@ -2658,7 +2658,7 @@ const AdminPanel: React.FC = () => {
                                     const cType = c.cardType || 'Нормална карта';
                                     if (cType !== reportCardType) match = false;
                                 }
-                                if (reportRoute !== 'all' && !getClientRoutes(c).includes(reportRoute)) match = false;
+                                if (!reportRoutes.includes('all') && !getClientRoutes(c).some(r => reportRoutes.includes(r))) match = false;
                                 if (reportMunicipality !== 'all' && (c.municipality || '') !== reportMunicipality) match = false;
                                 
                                 if (reportPeriodType === 'month') {
@@ -2718,8 +2718,8 @@ const AdminPanel: React.FC = () => {
                                 : reportCardType === 'Учителска карта' ? 'УЧИТЕЛИ'
                                 : reportCardType === 'Инвалидна карта' ? 'ИНВАЛИДИ'
                                 : 'УЧЕНИЦИ';
-                            const registerLines = (reportRoute !== 'all'
-                                ? [reportRoute]
+                            const registerLines = (!reportRoutes.includes('all')
+                                ? reportRoutes
                                 : reportDistanceFilter === 'under10' ? SHORT_ROUTES
                                 : reportDistanceFilter === 'over10' ? ROUTES.filter(r => !SHORT_ROUTES.includes(r))
                                 : ROUTES).join(', ');
@@ -2742,7 +2742,7 @@ const AdminPanel: React.FC = () => {
                             
                             const handleShareReport = async () => {
                                 const periodStr = reportPeriodType === 'month' ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}` : `Ден: ${reportDate}`;
-                                const header = `Финансов Отчет DARY COMMERCE\n${periodStr} | Начин на плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute} | Община: ${reportMunicipality === 'all' ? 'Всички' : reportMunicipality} | Дистанция: ${reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}\n---\n`;
+                                const header = `Финансов Отчет DARY COMMERCE\n${periodStr} | Начин на плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoutes.includes('all') ? 'Всички' : reportRoutes.join(', ')} | Община: ${reportMunicipality === 'all' ? 'Всички' : reportMunicipality} | Дистанция: ${reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}\n---\n`;
                                 const rows = filteredReportClients.map(c => {
                                     const isShort = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
                                     const distStr = isShort ? "До 10 км" : "Над 10 км";
@@ -2806,7 +2806,7 @@ const AdminPanel: React.FC = () => {
                                     periodStr,
                                     `Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType}`,
                                     `Плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod}`,
-                                    `Маршрут: ${reportRoute === 'all' ? 'Всички' : reportRoute}`,
+                                    `Маршрут: ${reportRoutes.includes('all') ? 'Всички' : reportRoutes.join(', ')}`,
                                 ].join(' | ');
 
                                 const detailLabel = reportCardType === 'Ученическа карта' ? 'Училище'
@@ -2960,7 +2960,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 })()}</div>
                                                 <div><strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички видове' : reportCardType}</div>
                                                 <div><strong>Начин на плащане:</strong> {reportPaymentMethod === 'all' ? 'Всички методи' : reportPaymentMethod}</div>
-                                                <div><strong>Маршрут:</strong> {reportRoute === 'all' ? 'Всички маршрути' : reportRoute}</div>
+                                                <div><strong>Маршрут:</strong> {reportRoutes.includes('all') ? 'Всички маршрути' : reportRoutes.join(', ')}</div>
                                                 <div><strong>Община:</strong> {reportByContract ? contractMunicipalities.join(', ') : (reportMunicipality === 'all' ? 'Всички общини' : reportMunicipality)}</div>
                                                 <div><strong>Разстояние:</strong> {reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}</div>
                                                 {useRegisterPrint && <div style={{ gridColumn: 'span 3' }}><strong>Линии/Курсове:</strong> {registerLines}</div>}
@@ -3052,12 +3052,59 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             </select>
                                         </div>
                                         
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Маршрут</label>
-                                            <select value={reportRoute} onChange={e => setReportRoute(e.target.value)} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
-                                                <option value="all">Всички Маршрути</option>
-                                                {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
-                                            </select>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', gridColumn: '1 / -1' }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Маршрут (изберете един или повече)</label>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', maxHeight: '160px', overflowY: 'auto', padding: '0.5rem', background: 'rgba(0,0,0,0.1)', borderRadius: '12px' }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setReportRoutes(['all'])}
+                                                    style={{
+                                                        padding: '0.5rem 1rem',
+                                                        borderRadius: '50px',
+                                                        border: '1px solid var(--surface-border)',
+                                                        background: reportRoutes.includes('all') ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
+                                                        color: reportRoutes.includes('all') ? '#fff' : 'var(--text-secondary)',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 800,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.3s'
+                                                    }}
+                                                >
+                                                    ВСИЧКИ МАРШРУТИ
+                                                </button>
+                                                {ROUTES.map(r => {
+                                                    const isSelected = reportRoutes.includes(r);
+                                                    return (
+                                                        <button
+                                                            key={r}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (reportRoutes.includes('all')) {
+                                                                    setReportRoutes([r]);
+                                                                } else if (isSelected) {
+                                                                    const next = reportRoutes.filter(x => x !== r);
+                                                                    setReportRoutes(next.length === 0 ? ['all'] : next);
+                                                                } else {
+                                                                    setReportRoutes([...reportRoutes, r]);
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                padding: '0.5rem 1rem',
+                                                                borderRadius: '50px',
+                                                                border: `1px solid ${isSelected ? getRouteColor(r) : 'var(--surface-border)'}`,
+                                                                background: isSelected ? `${getRouteColor(r)}22` : 'rgba(255,255,255,0.05)',
+                                                                color: isSelected ? getRouteColor(r) : 'var(--text-secondary)',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: 800,
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.3s'
+                                                            }}
+                                                        >
+                                                            {r}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                         
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
