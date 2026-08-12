@@ -10,6 +10,7 @@ import {
     Eye, EyeOff
 } from 'lucide-react';
 import Card from '../components/Card';
+import UnpaidAlertsButton from '../components/UnpaidAlertsButton';
 import logoMain from '../assets/logo_main.png';
 import { db } from '../firebase';
 import {
@@ -4323,6 +4324,10 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
 
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
                                             Показва всяко сканиране на карта, която за съответния месец няма платен абонамент (или е анулирана). Целта е да се види кой пътува без абонамент и дали шофьорите реагират.
+                                        </div>
+
+                                        <div style={{ marginBottom: '1.5rem' }}>
+                                            <UnpaidAlertsButton />
                                         </div>
 
                                         {unpaidLoading ? (

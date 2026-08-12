@@ -308,3 +308,99 @@ export const sendPushNotification = functions.firestore
             console.error("Error broadcasting push notification:", error);
         }
     });
+
+/**
+ * Alerts subscribed admins the moment a card is scanned WITHOUT a valid
+ * subscription for that month (or while canceled) — so they can go inspect
+ * the bus. Triggered on every real (non-passback) scan; only invalid ones
+ * fire an alert. Throttled per card to avoid flooding.
+ *
+ * Subscribers = admin_push_tokens docs with `unpaidAlerts == true`
+ * (enabled via the UnpaidAlertsButton in the admin panel).
+ */
+const UNPAID_ALERT_THROTTLE_MS = 15 * 60 * 1000; // не по-често от веднъж на 15 мин за една карта
+
+export const alertUnpaidScan = functions.firestore
+    .document("clients/{clientId}/scans/{scanId}")
+    .onCreate(async (snap, context) => {
+        const scan = snap.data() || {};
+        const at = String(scan.at || "");
+        if (!at) return;
+        const clientId = context.params.clientId as string;
+        const db = admin.firestore();
+
+        const clientRef = db.collection("clients").doc(clientId);
+        const clientSnap = await clientRef.get();
+        if (!clientSnap.exists) return;
+        const client = clientSnap.data() || {};
+
+        // Валидност (огледало на TransitView): има ли плащане за месеца на сканирането
+        // и не е ли анулирана. Служебните карти имат записи за всеки месец → валидни.
+        const month = at.slice(0, 7);
+        const renewalHistory = Array.isArray(client.renewalHistory) ? client.renewalHistory : [];
+        const hasPaid = renewalHistory.some((rh: { month?: string }) => rh && rh.month === month);
+        const isCanceled = client.isCanceled === true;
+        if (hasPaid && !isCanceled) return; // валидно пътуване — без известие
+
+        // Throttle per card (атомарно), за да не спами при чести сканирания.
+        const now = Date.now();
+        let shouldAlert = false;
+        await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(clientRef);
+            const last = (fresh.data()?.lastUnpaidAlertAt as number) || 0;
+            if (now - last >= UNPAID_ALERT_THROTTLE_MS) {
+                shouldAlert = true;
+                tx.update(clientRef, { lastUnpaidAlertAt: now });
+            }
+        });
+        if (!shouldAlert) return;
+
+        // Абонирани админ устройства.
+        const tokensSnap = await db.collection("admin_push_tokens").where("unpaidAlerts", "==", true).get();
+        const tokens: string[] = [];
+        tokensSnap.forEach((t) => { const tok = t.data().token; if (tok) tokens.push(tok); });
+        if (tokens.length === 0) return;
+
+        const name = String(client.name || "Без име");
+        const rawCard = String(client.cardNumber || "");
+        const cardNum = rawCard.replace(/^0+/, "") || rawCard;
+        const route = String(scan.route || client.route || "");
+        const timeStr = (() => {
+            const d = new Date(at);
+            return isNaN(d.getTime()) ? at : d.toLocaleTimeString("bg-BG", { timeZone: "Europe/Sofia", hour: "2-digit", minute: "2-digit" });
+        })();
+        const reason = !hasPaid ? "без платен абонамент" : "анулирана карта";
+        const cardPart = cardNum ? ` (Карта № ${cardNum})` : "";
+        const routePart = route ? ` по ${route}` : "";
+
+        const message = {
+            notification: {
+                title: "🚨 Пътуване без абонамент",
+                body: `${name}${cardPart} се качи${routePart} в ${timeStr} ч. — ${reason}.`,
+            },
+            webpush: {
+                notification: {
+                    title: "🚨 Пътуване без абонамент",
+                    body: `${name}${cardPart} се качи${routePart} в ${timeStr} ч. — ${reason}.`,
+                    icon: "https://darycommerce.com/pwa-icon.png",
+                    badge: "https://darycommerce.com/favicon.png",
+                    tag: `unpaid-${clientId}`,
+                },
+                fcmOptions: { link: "https://darycommerce.com/" },
+            },
+            android: { notification: { icon: "stock_white_24dp", color: "#ff5252" } },
+            tokens,
+        };
+
+        const response = await admin.messaging().sendEachForMulticast(message);
+        // Изчистване на невалидни токени.
+        response.responses.forEach((res, i) => {
+            if (!res.success) {
+                const code = res.error?.code;
+                if (code === "messaging/registration-token-not-registered" ||
+                    code === "messaging/invalid-registration-token") {
+                    tokensSnap.docs[i].ref.delete().catch(() => { /* ignore */ });
+                }
+            }
+        });
+    });
