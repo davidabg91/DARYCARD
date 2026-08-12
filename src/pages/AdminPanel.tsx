@@ -5037,7 +5037,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     {profileScansLoading ? (
                                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', padding: '0.5rem 0' }}>Зареждане...</div>
                                                     ) : (profileScans && profileScans.length > 0) ? (
-                                                        <div style={{ maxHeight: '380px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                             {monthsSorted.map(m => {
                                                                 const monthScans = byMonth[m];
                                                                 return (
