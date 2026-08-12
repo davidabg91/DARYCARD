@@ -23,7 +23,8 @@ import {
     query,
     increment,
     arrayUnion,
-    runTransaction
+    runTransaction,
+    getDocs
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { ROUTE_METADATA, disabledFactor } from '../data/routeMetadata';
@@ -473,6 +474,38 @@ const AdminPanel: React.FC = () => {
 
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
     const [modalMessage, setModalMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+    // Пътувания (сканирания) на отворения профил — четат се лениво само за админ,
+    // при отваряне на модала, от подколекцията clients/{id}/scans.
+    const [profileScans, setProfileScans] = useState<{ at: string; route?: string }[] | null>(null);
+    const [profileScansLoading, setProfileScansLoading] = useState(false);
+
+    // Зареждане на пътуванията (сканиранията) на отворения профил. Само за админ и
+    // само когато модалът е отворен — една заявка към clients/{id}/scans за конкретния
+    // клиент. Без orderBy (за да не изисква индекс) — сортира се в паметта.
+    useEffect(() => {
+        if (!showActionModal || !selectedClient || !isAdmin) {
+            setProfileScans(null);
+            return;
+        }
+        let cancelled = false;
+        const clientId = selectedClient.id;
+        setProfileScansLoading(true);
+        getDocs(collection(db, 'clients', clientId, 'scans'))
+            .then(snap => {
+                if (cancelled) return;
+                const list = snap.docs
+                    .map(d => ({ at: (d.data().at as string) || '', route: d.data().route as string | undefined }))
+                    .filter(s => s.at)
+                    .sort((a, b) => b.at.localeCompare(a.at));
+                setProfileScans(list);
+            })
+            .catch(err => {
+                console.error('Грешка при зареждане на пътуванията:', err);
+                if (!cancelled) setProfileScans([]);
+            })
+            .finally(() => { if (!cancelled) setProfileScansLoading(false); });
+        return () => { cancelled = true; };
+    }, [showActionModal, selectedClient, isAdmin]);
     
     // Duplicate Check State
     const [duplicateCheckClient, setDuplicateCheckClient] = useState<Client | null>(null);
@@ -4855,6 +4888,62 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 </div>
                                             </div>
                                         )}
+
+                                        {/* Пътувания (сканирания) — само за админ, заредени лениво */}
+                                        {isAdmin && (() => {
+                                            const totalTravels = selectedClient.scanCount ?? (profileScans ? profileScans.length : 0);
+                                            const byDay: Record<string, number> = {};
+                                            (profileScans || []).forEach(s => {
+                                                const day = s.at.slice(0, 10);
+                                                byDay[day] = (byDay[day] || 0) + 1;
+                                            });
+                                            const daysSorted = Object.entries(byDay).sort((a, b) => b[0].localeCompare(a[0]));
+                                            const fmtDay = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
+                                            const fmtTime = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }); };
+                                            return (
+                                                <div style={{ padding: '1.25rem', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(0,173,181,0.06) 0%, rgba(255,255,255,0.01) 100%)', border: '1px solid var(--surface-border)' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                                                        <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                            <Bus size={18} /> Пътувания (сканирания)
+                                                        </h4>
+                                                        <span style={{ fontWeight: 900, fontSize: '0.85rem', color: 'var(--primary-color)', background: 'rgba(0,173,181,0.12)', padding: '4px 12px', borderRadius: '50px' }}>
+                                                            Общо: {totalTravels}
+                                                        </span>
+                                                    </div>
+
+                                                    {profileScansLoading ? (
+                                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', padding: '0.5rem 0' }}>Зареждане...</div>
+                                                    ) : (profileScans && profileScans.length > 0) ? (
+                                                        <>
+                                                            {/* Обобщение по дни */}
+                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                                                                {daysSorted.slice(0, 40).map(([day, n]) => (
+                                                                    <span key={day} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 700, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '4px 8px' }}>
+                                                                        {fmtDay(day)} <span style={{ color: 'var(--primary-color)', fontWeight: 900 }}>×{n}</span>
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                            {/* Хронологичен списък (последни 60) */}
+                                                            <div style={{ maxHeight: '260px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                                {profileScans.slice(0, 60).map((s, idx) => (
+                                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '8px' }}>
+                                                                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{fmtDay(s.at)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>· {fmtTime(s.at)} ч.</span></span>
+                                                                        {s.route && <span style={{ fontSize: '0.72rem', fontWeight: 700, color: getRouteColor(s.route), background: `${getRouteColor(s.route)}18`, padding: '2px 8px', borderRadius: '6px' }}>{s.route}</span>}
+                                                                    </div>
+                                                                ))}
+                                                                {profileScans.length > 60 && (
+                                                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textAlign: 'center', paddingTop: '0.3rem' }}>
+                                                                        Показани последните 60 от {profileScans.length}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', padding: '0.5rem 0' }}>Няма записани пътувания.</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
 
                                         <div style={{ borderTop: '1px solid var(--surface-border)', paddingTop: '1rem' }}>
                                             <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
