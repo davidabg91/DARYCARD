@@ -24,7 +24,9 @@ import {
     increment,
     arrayUnion,
     runTransaction,
-    getDocs
+    getDocs,
+    collectionGroup,
+    where
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { ROUTE_METADATA, disabledFactor } from '../data/routeMetadata';
@@ -321,12 +323,12 @@ const RevenueSplit: React.FC<{ b: { cash: number; card: number; bank: number }; 
 );
 
 interface TabButtonProps {
-    id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications';
+    id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications' | 'unpaid';
     icon: React.ElementType;
     badgeColor?: string;
     label: string;
-    activeTab: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications';
-    setActiveTab: (id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications') => void;
+    activeTab: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications' | 'unpaid';
+    setActiveTab: (id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications' | 'unpaid') => void;
     activeColor?: string;
     badge?: number;
     isMobile?: boolean;
@@ -399,7 +401,7 @@ const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
     const isAdmin = currentUser?.role === 'admin';
-    const [activeTab, setActiveTab] = useState<'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications'>(
+    const [activeTab, setActiveTab] = useState<'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications' | 'unpaid'>(
         'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
@@ -506,7 +508,32 @@ const AdminPanel: React.FC = () => {
             .finally(() => { if (!cancelled) setProfileScansLoading(false); });
         return () => { cancelled = true; };
     }, [showActionModal, selectedClient, isAdmin]);
-    
+
+    // Пътувания без платен абонамент — всички сканирания за последните N дни,
+    // прочетени лениво (само когато табът е активен) чрез collection-group заявка.
+    const [unpaidScansRaw, setUnpaidScansRaw] = useState<{ clientId: string; at: string; route?: string }[] | null>(null);
+    const [unpaidLoading, setUnpaidLoading] = useState(false);
+    const [unpaidWindowDays, setUnpaidWindowDays] = useState(30);
+    useEffect(() => {
+        if (activeTab !== 'unpaid' || !isAdmin) return;
+        let cancelled = false;
+        const windowStart = new Date(Date.now() - unpaidWindowDays * 86400000).toISOString().slice(0, 10);
+        setUnpaidLoading(true);
+        getDocs(query(collectionGroup(db, 'scans'), where('at', '>=', windowStart)))
+            .then(snap => {
+                if (cancelled) return;
+                const list = snap.docs.map(d => ({
+                    clientId: d.ref.parent.parent?.id ?? '',
+                    at: (d.data().at as string) || '',
+                    route: d.data().route as string | undefined,
+                })).filter(s => s.at && s.clientId);
+                setUnpaidScansRaw(list);
+            })
+            .catch(err => { console.error('Грешка при зареждане на сканиранията:', err); if (!cancelled) setUnpaidScansRaw([]); })
+            .finally(() => { if (!cancelled) setUnpaidLoading(false); });
+        return () => { cancelled = true; };
+    }, [activeTab, isAdmin, unpaidWindowDays]);
+
     // Duplicate Check State
     const [duplicateCheckClient, setDuplicateCheckClient] = useState<Client | null>(null);
     const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
@@ -1848,6 +1875,7 @@ const AdminPanel: React.FC = () => {
                     {isAdmin && (
                         <>
                             <TabButton id="notifications" icon={Bell} label="ИЗВЕСТИЯ" activeColor="#ff4081" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
+                            <TabButton id="unpaid" icon={AlertTriangle} label={isMobile ? "БЕЗ АБОНАМЕНТ" : "БЕЗ АБОНАМЕНТ"} activeColor="#ff5252" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                             <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                         </>
                     )}
@@ -4248,6 +4276,98 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                     </div>
                 )}
 
+                {activeTab === 'unpaid' && isAdmin && (
+                    <div style={{ animation: 'fadeIn 0.4s ease' }}>
+                        <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
+                            {(() => {
+                                const clientMap = new Map(clients.map(c => [c.id, c]));
+                                const fmtDay = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
+                                const fmtTime = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }); };
+                                // Сканиране е "без абонамент", ако за месеца на сканирането няма
+                                // плащане, или картата е анулирана. Служебните карти имат записи
+                                // за всеки месец, така че автоматично отпадат.
+                                const unpaid = (unpaidScansRaw || []).map(s => {
+                                    const client = clientMap.get(s.clientId);
+                                    if (!client) return { ...s, name: 'Изтрит профил', cardNumber: '', reason: 'Непознат/изтрит профил' };
+                                    const month = s.at.slice(0, 7);
+                                    const hasPayment = (client.renewalHistory || []).some(rh => rh.month === month);
+                                    if (hasPayment && !client.isCanceled) return null;
+                                    return {
+                                        ...s,
+                                        name: client.name,
+                                        cardNumber: getClientCardNumber(client) || '',
+                                        reason: !hasPayment ? 'Без плащане за месеца' : 'Анулирана карта',
+                                    };
+                                }).filter((x): x is { clientId: string; at: string; route?: string; name: string; cardNumber: string; reason: string } => x !== null)
+                                  .sort((a, b) => b.at.localeCompare(a.at));
+
+                                const distinctCards = new Set(unpaid.map(u => u.clientId)).size;
+                                const CAP = 400;
+
+                                return (
+                                    <>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+                                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#ff5252', margin: 0 }}>
+                                                <AlertTriangle size={20} /> Пътувания без платен абонамент
+                                            </h3>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Период:</span>
+                                                <select value={unpaidWindowDays} onChange={e => setUnpaidWindowDays(Number(e.target.value))} style={{ padding: '0.5rem 0.75rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
+                                                    <option value={7}>Последните 7 дни</option>
+                                                    <option value={30}>Последните 30 дни</option>
+                                                    <option value={60}>Последните 60 дни</option>
+                                                    <option value={90}>Последните 90 дни</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                                            Показва всяко сканиране на карта, която за съответния месец няма платен абонамент (или е анулирана). Целта е да се види кой пътува без абонамент и дали шофьорите реагират.
+                                        </div>
+
+                                        {unpaidLoading ? (
+                                            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Зареждане...</div>
+                                        ) : unpaid.length === 0 ? (
+                                            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--success-color)', fontWeight: 700 }}>Няма пътувания без платен абонамент за избрания период. 🎉</div>
+                                        ) : (
+                                            <>
+                                                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+                                                    <div style={{ flex: 1, minWidth: '160px', padding: '1rem', background: 'rgba(255,82,82,0.08)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: '12px' }}>
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Общо сканирания без абонамент</div>
+                                                        <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#ff5252' }}>{unpaid.length}</div>
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: '160px', padding: '1rem', background: 'rgba(255,152,0,0.08)', border: '1px solid rgba(255,152,0,0.25)', borderRadius: '12px' }}>
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Различни карти</div>
+                                                        <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#ff9800' }}>{distinctCards}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                    {unpaid.slice(0, CAP).map((u, idx) => (
+                                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', padding: '0.7rem 0.9rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderLeft: '3px solid #ff5252', borderRadius: '10px' }}>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: '180px' }}>
+                                                                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{u.name}{u.cardNumber ? <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}> · Карта № {u.cardNumber}</span> : null}</span>
+                                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{fmtDay(u.at)} · {fmtTime(u.at)} ч.</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                                {u.route && <span style={{ fontSize: '0.72rem', fontWeight: 700, color: getRouteColor(u.route), background: `${getRouteColor(u.route)}18`, padding: '3px 9px', borderRadius: '6px' }}>{u.route}</span>}
+                                                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#ff5252', background: 'rgba(255,82,82,0.12)', padding: '3px 9px', borderRadius: '6px' }}>{u.reason}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {unpaid.length > CAP && (
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', paddingTop: '0.5rem' }}>Показани първите {CAP} от {unpaid.length}. Стеснете периода за пълен списък.</div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </>
+                                );
+                            })()}
+                        </Card>
+                    </div>
+                )}
+
                 {activeTab === 'nfc' && isAdmin && (
                     <div style={{ animation: 'fadeIn 0.4s ease' }}>
                         <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
@@ -4925,7 +5045,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                         {/* Заглавие на месеца + общо за месеца */}
                                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 0.85rem', background: 'rgba(0,173,181,0.10)', borderBottom: '1px solid var(--surface-border)' }}>
                                                                             <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{monthLabel(m)}</span>
-                                                                            <span style={{ fontWeight: 900, fontSize: '0.8rem', color: 'var(--primary-color)', background: 'rgba(0,173,181,0.14)', padding: '3px 10px', borderRadius: '50px' }}>{monthScans.length} пътувания</span>
+                                                                            <span style={{ fontWeight: 900, fontSize: '0.8rem', color: 'var(--primary-color)', background: 'rgba(0,173,181,0.14)', padding: '3px 10px', borderRadius: '50px' }}>{monthScans.length} {monthScans.length === 1 ? 'пътуване' : 'пътувания'}</span>
                                                                         </div>
                                                                         {/* Списък на пътуванията за месеца */}
                                                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -4938,7 +5058,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                         </div>
                                                                         {/* Край на месеца */}
                                                                         <div style={{ padding: '0.45rem 0.85rem', background: 'rgba(0,0,0,0.25)', borderTop: '1px dashed var(--surface-border)', fontSize: '0.72rem', color: 'var(--text-secondary)', textAlign: 'center', fontWeight: 700 }}>
-                                                                            — Край на {monthLabel(m)} (до {monthEndDate(m)} г.) —
+                                                                            — Край на {monthLabel(m)} (до {monthEndDate(m)}) —
                                                                         </div>
                                                                     </div>
                                                                 );
