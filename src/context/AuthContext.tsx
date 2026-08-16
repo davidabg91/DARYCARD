@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         const data = userDoc.data();
                         setCurrentUser({
                             id: fbUser.uid,
-                            username: fbUser.email || '',
+                            username: data.username || fbUser.email || '',
                             passwordHash: '', // Not needed for Firebase
                             role: data.role as UserRole,
                             createdAt: data.createdAt || new Date().toISOString(),
