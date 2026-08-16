@@ -842,22 +842,18 @@ const ClientProfile: React.FC = () => {
 
     useEffect(() => {
         // Record the scan for everyone who opens a registered card — drivers do NOT
-        // log in, so we must not gate this on currentUser. The Firestore rules allow
-        // an anonymous write to ONLY scanCount/lastScanAt + the scans subcollection.
-        // Wait for auth to resolve (authLoading) so we know the role before deciding
-        // whether this is an inspector check (separate stats) or a normal scan.
+        // Record the scan for everyone who opens a registered card — drivers/passengers do NOT
+        // log in, so we must not gate this on currentUser.
         if (!id || loading || authLoading || !hasClient || scannedRef.current === id) return;
         scannedRef.current = id;
 
-        // Any LOGGED-IN staff scan is kept OUT of the general traffic stats
-        // (scanCount / scans subcollection). Only anonymous driver scans — the
-        // real passenger boardings — count toward traffic analysis.
-        //  - Inspectors & admins: record a separate inspection WITH geolocation.
-        //  - Moderators: view only, nothing recorded.
+        const isoNow = new Date().toISOString();
+        const clientRef = doc(db, 'clients', id);
+        const cardNum = client?.cardNumber || CARDS_MAPPING[id] || '';
+
+        // Staff scans vs Anonymous passenger/driver scans
         if (currentUser) {
             if (currentUser.role === 'inspector' || currentUser.role === 'admin') {
-                const isoNow = new Date().toISOString();
-                const cardNum = client?.cardNumber || CARDS_MAPPING[id] || '';
                 const base = {
                     inspectorId: currentUser.id,
                     inspectorName: currentUser.username,
@@ -868,9 +864,6 @@ const ClientProfile: React.FC = () => {
                     route: client?.route ?? '',
                     at: isoNow,
                 };
-                // Read the boarding scan at SAVE time from the latest snapshot (the
-                // geolocation lookup takes a moment, during which Firestore usually
-                // replaces the stale offline-cache value with the fresh server one).
                 const save = (extra: Record<string, unknown>) =>
                     addDoc(collection(db, 'inspector_scans'), { ...base, boardingScanAt: latestClientRef.current?.lastScanAt ?? null, ...extra })
                         .catch(err => console.error('Inspection log failed:', err));
@@ -878,7 +871,6 @@ const ClientProfile: React.FC = () => {
                     navigator.geolocation.getCurrentPosition(
                         pos => {
                             const lat = pos.coords.latitude, lng = pos.coords.longitude;
-                            // Resolve a readable address, then save (falls back to coords only).
                             reverseGeocode(lat, lng).then(address =>
                                 save({ lat, lng, accuracy: pos.coords.accuracy, address: address || null })
                             );
@@ -891,46 +883,63 @@ const ClientProfile: React.FC = () => {
                 }
                 setScanFeedback({ type: 'inspection' });
             } else if (currentUser.role === 'moderator') {
-                const clientRef = doc(db, 'clients', id);
-                const isoNow = new Date().toISOString();
-                setDoc(doc(collection(clientRef, 'scans')), { 
+                const modScanData = { 
                     at: isoNow, 
                     route: client?.route ?? '',
                     scannedBy: 'moderator',
                     scannedByName: currentUser.username || 'Модератор',
                     role: 'moderator'
-                }).catch(err => console.error('Moderator scan record failed:', err));
-                updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow })
-                    .catch(err => console.error('Scan counter update failed:', err));
+                };
+                addDoc(collection(db, 'clients', id, 'scans'), modScanData)
+                    .catch(err => console.error('Moderator scan subcollection write failed:', err));
+                updateDoc(clientRef, { 
+                    scanCount: increment(1), 
+                    lastScanAt: isoNow,
+                    scanHistory: arrayUnion(modScanData)
+                }).catch(err => {
+                    console.error('Moderator scan updateDoc failed, fallback to counters:', err);
+                    updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow }).catch(() => {});
+                });
                 setScanFeedback({ type: 'recorded' });
             }
             return;
         }
 
-        // Anti-passback: if this card was scanned less than 180s (3 min) ago, flag
-        // it (yellow warning) and do NOT record another scan. Beyond that,
-        // if it was scanned < 300s (5 min) ago, show the warning but DO record the scan.
+        // Anonymous driver / validator scan (not logged in)
         const lastMs = client?.lastScanAt ? new Date(client.lastScanAt).getTime() : 0;
         const secsSince = lastMs ? Math.round((Date.now() - lastMs) / 1000) : Infinity;
-        if (secsSince >= 0 && secsSince < 180) {
-            setScanFeedback({ type: 'passback', secs: secsSince });
+
+        // Ignore instant duplicate renders (< 5s)
+        if (secsSince >= 0 && secsSince < 5) {
             return;
         }
-        if (secsSince >= 180 && secsSince < 300) {
+
+        if (secsSince >= 0 && secsSince < 180) {
+            setScanFeedback({ type: 'passback', secs: secsSince });
+        } else if (secsSince >= 180 && secsSince < 300) {
             setScanFeedback({ type: 'recent', secs: secsSince });
         } else {
             setScanFeedback({ type: 'recorded' });
         }
-        const clientRef = doc(db, 'clients', id);
-        const isoNow = new Date().toISOString();
-        // TWO INDEPENDENT writes (NOT an atomic batch): the scan document is what the
-        // traffic analysis reads, so it must not be taken down if the counter update
-        // is rejected. Drivers are not logged in; the rules allow the anonymous
-        // scan-create + the scanCount/lastScanAt bump.
-        setDoc(doc(collection(clientRef, 'scans')), { at: isoNow, route: client?.route ?? '' })
-            .catch(err => console.error('Scan record failed:', err));
-        updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow })
-            .catch(err => console.error('Scan counter update failed:', err));
+
+        const anonScanData = { 
+            at: isoNow, 
+            route: client?.route ?? '',
+            scannedBy: 'driver',
+            scannedByName: 'Валидатор / Шофьор',
+            role: 'driver'
+        };
+
+        addDoc(collection(db, 'clients', id, 'scans'), anonScanData)
+            .catch(err => console.error('Anonymous scan subcollection write failed:', err));
+        updateDoc(clientRef, { 
+            scanCount: increment(1), 
+            lastScanAt: isoNow,
+            scanHistory: arrayUnion(anonScanData)
+        }).catch(err => {
+            console.error('Anonymous scan updateDoc failed, fallback to counters:', err);
+            updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow }).catch(() => {});
+        });
     }, [id, loading, authLoading, hasClient, currentUser, client?.route, client?.lastScanAt, client?.name, client?.cardNumber]);
 
     useEffect(() => {

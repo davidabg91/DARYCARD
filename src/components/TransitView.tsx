@@ -408,24 +408,26 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
 
                     if (!passback) {
                         const isoNow = new Date().toISOString();
-                        const updateData = {
-                            scanCount: increment(1),
-                            lastScanAt: isoNow,
-                            ...(nfcCounter !== undefined && nfcCounter !== null ? { lastScanCounter: nfcCounter } : {})
-                        };
                         const scanDocData = {
                             at: isoNow,
                             route: data.route ?? '',
-                            ...(currentUser ? {
-                                scannedBy: currentUser.role,
-                                scannedByName: currentUser.username || (currentUser.role === 'moderator' ? 'Модератор' : currentUser.role),
-                                role: currentUser.role
-                            } : {})
+                            scannedBy: currentUser ? currentUser.role : 'driver',
+                            scannedByName: currentUser ? (currentUser.username || (currentUser.role === 'moderator' ? 'Модератор' : currentUser.role)) : 'Валидатор / Шофьор',
+                            role: currentUser ? currentUser.role : 'driver'
                         };
-                        setDoc(doc(collection(db, 'clients', snap.id, 'scans')), scanDocData)
-                            .catch(err => console.error('Transit scan record failed:', err));
+                        const updateData = {
+                            scanCount: increment(1),
+                            lastScanAt: isoNow,
+                            scanHistory: arrayUnion(scanDocData),
+                            ...(nfcCounter !== undefined && nfcCounter !== null ? { lastScanCounter: nfcCounter } : {})
+                        };
+                        addDoc(collection(db, 'clients', snap.id, 'scans'), scanDocData)
+                            .catch(err => console.error('Transit scan subcollection write failed:', err));
                         updateDoc(doc(db, 'clients', snap.id), updateData)
-                            .catch(err => console.error('Transit scan counter update failed:', err));
+                            .catch(err => {
+                                console.error('Transit scan counter update failed, fallback:', err);
+                                updateDoc(doc(db, 'clients', snap.id), { scanCount: increment(1), lastScanAt: isoNow }).catch(() => {});
+                            });
                     }
 
                     // Preset Renewal Form

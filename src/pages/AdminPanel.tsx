@@ -491,11 +491,22 @@ const AdminPanel: React.FC = () => {
         }
         let cancelled = false;
         const clientId = selectedClient.id;
+        const legacyScans: { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string }[] = 
+            (((selectedClient as { scanHistory?: { at?: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string }[] }).scanHistory || []))
+                .filter(s => !!s.at)
+                .map(s => ({
+                    at: s.at || '',
+                    route: s.route,
+                    scannedBy: s.scannedBy || (s.role === 'moderator' ? 'moderator' : undefined),
+                    scannedByName: s.scannedByName,
+                    role: s.role
+                }));
+
         setProfileScansLoading(true);
         getDocs(collection(db, 'clients', clientId, 'scans'))
             .then(snap => {
                 if (cancelled) return;
-                const list = snap.docs
+                const subList = snap.docs
                     .map(d => {
                         const data = d.data();
                         return {
@@ -506,13 +517,25 @@ const AdminPanel: React.FC = () => {
                             role: data.role as string | undefined
                         };
                     })
-                    .filter(s => s.at)
-                    .sort((a, b) => b.at.localeCompare(a.at));
+                    .filter(s => s.at);
+
+                // Merge subcollection + scanHistory array with timestamp deduplication
+                const scanMap = new Map<string, { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string }>();
+                [...subList, ...legacyScans].forEach(s => {
+                    const key = s.at.slice(0, 19); // YYYY-MM-DDTHH:MM:SS
+                    if (!scanMap.has(key) || s.scannedBy) {
+                        scanMap.set(key, s);
+                    }
+                });
+
+                const list = Array.from(scanMap.values()).sort((a, b) => b.at.localeCompare(a.at));
                 setProfileScans(list);
             })
             .catch(err => {
-                console.error('Грешка при зареждане на пътуванията:', err);
-                if (!cancelled) setProfileScans([]);
+                console.error('Грешка при зареждане на пътуванията от подколекция, ползване на локален архив:', err);
+                if (!cancelled) {
+                    setProfileScans(legacyScans.sort((a, b) => b.at.localeCompare(a.at)));
+                }
             })
             .finally(() => { if (!cancelled) setProfileScansLoading(false); });
         return () => { cancelled = true; };
@@ -5121,6 +5144,23 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                                                 }} title="Сканирано от инспектор">
                                                                                                     <Shield size={12} />
                                                                                                     Инспектор{s.scannedByName ? ` (${s.scannedByName.split('@')[0]})` : ''}
+                                                                                                </span>
+                                                                                            )}
+                                                                                            {!isMod && !isAdm && !isInsp && (
+                                                                                                <span style={{
+                                                                                                    display: 'inline-flex',
+                                                                                                    alignItems: 'center',
+                                                                                                    gap: '0.3rem',
+                                                                                                    fontSize: '0.72rem',
+                                                                                                    fontWeight: 700,
+                                                                                                    color: '#00e676',
+                                                                                                    background: 'rgba(0, 230, 118, 0.12)',
+                                                                                                    border: '1px solid rgba(0, 230, 118, 0.3)',
+                                                                                                    padding: '2px 7px',
+                                                                                                    borderRadius: '6px'
+                                                                                                }} title="Сканирано от валидатор / шофьор">
+                                                                                                    <Bus size={12} />
+                                                                                                    {s.scannedByName || 'Валидатор / Шофьор'}
                                                                                                 </span>
                                                                                             )}
                                                                                         </div>

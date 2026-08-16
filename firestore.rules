@@ -48,23 +48,25 @@ service cloud.firestore {
       allow list: if isStaff();
       allow create: if isStaff();
       // Staff may edit anything. Anonymous devices (drivers do NOT log in) may
-      // bump ONLY the scan counters — never route/expiry/name/photo/etc.
+      // bump ONLY the scan counters & scanHistory — never route/expiry/name/photo/etc.
       allow update: if isStaff()
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount', 'lastScanAt', 'lastScanCounter', 'nfcUid', 'dailyScanCount', 'lastScanDate']);
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount', 'lastScanAt', 'lastScanCounter', 'nfcUid', 'dailyScanCount', 'lastScanDate', 'scanHistory']);
       allow delete: if isAdmin();
 
+      match /scans/{scanId} {
+        allow read: if isStaff();
+        allow create: if true;
+        allow update, delete: if isAdmin();
+      }
     }
 
     // ---- Scans Collection Group ----
-    // Per-scan records (moved out of the unbounded scanHistory array on the
-    // client doc). Created on every scan — public, because drivers are not
-    // logged in. Read by staff only (analytics/abuse). The public `get` on the
-    // parent doc does NOT expose this subcollection (rules are independent).
+    // Per-scan records created on every scan — public, because drivers are not
+    // logged in. Read by staff only (analytics/abuse).
     // Uses recursive wildcard matching to support collection group queries.
     match /{path=**}/scans/{scanId} {
       allow read: if isStaff();
-      allow create: if request.resource.data.keys().hasOnly(['at', 'route', 'scannedBy', 'scannedByName', 'role'])
-        && request.resource.data.at is string;
+      allow create: if true;
       allow update, delete: if isAdmin();
     }
 
