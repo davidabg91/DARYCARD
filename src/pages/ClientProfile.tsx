@@ -935,21 +935,16 @@ const ClientProfile: React.FC = () => {
 
         const anonScanData = { 
             at: isoNow, 
-            route: client?.route ?? '',
-            scannedBy: 'driver',
-            scannedByName: 'Валидатор / Шофьор',
-            role: 'driver'
+            route: client?.route ?? ''
         };
 
         addDoc(collection(db, 'clients', id, 'scans'), anonScanData)
             .catch(err => console.error('Anonymous scan subcollection write failed:', err));
         updateDoc(clientRef, { 
             scanCount: increment(1), 
-            lastScanAt: isoNow,
-            scanHistory: arrayUnion(anonScanData)
+            lastScanAt: isoNow
         }).catch(err => {
-            console.error('Anonymous scan updateDoc failed, fallback to counters:', err);
-            updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow }).catch(() => {});
+            console.error('Anonymous scan updateDoc failed:', err);
         });
     }, [id, loading, authLoading, hasClient, currentUser, client?.route, client?.lastScanAt, client?.name, client?.cardNumber]);
 

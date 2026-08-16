@@ -408,25 +408,26 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
 
                     if (!passback) {
                         const isoNow = new Date().toISOString();
+                        const isStaffUser = currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator' || currentUser.role === 'inspector');
                         const scanDocData = {
                             at: isoNow,
                             route: data.route ?? '',
-                            scannedBy: currentUser ? currentUser.role : 'driver',
-                            scannedByName: currentUser ? (currentUser.username || (currentUser.role === 'moderator' ? 'Модератор' : currentUser.role)) : 'Валидатор / Шофьор',
-                            role: currentUser ? currentUser.role : 'driver'
+                            ...(isStaffUser ? {
+                                scannedBy: currentUser.role,
+                                scannedByName: currentUser.username || (currentUser.role === 'moderator' ? 'Модератор' : currentUser.role),
+                                role: currentUser.role
+                            } : {})
                         };
                         const updateData = {
                             scanCount: increment(1),
                             lastScanAt: isoNow,
-                            scanHistory: arrayUnion(scanDocData),
                             ...(nfcCounter !== undefined && nfcCounter !== null ? { lastScanCounter: nfcCounter } : {})
                         };
                         addDoc(collection(db, 'clients', snap.id, 'scans'), scanDocData)
                             .catch((err: unknown) => console.error('Transit scan subcollection write failed:', err));
                         updateDoc(doc(db, 'clients', snap.id), updateData)
                             .catch((err: unknown) => {
-                                console.error('Transit scan counter update failed, fallback:', err);
-                                updateDoc(doc(db, 'clients', snap.id), { scanCount: increment(1), lastScanAt: isoNow }).catch(() => {});
+                                console.error('Transit scan counter update failed:', err);
                             });
                     }
 

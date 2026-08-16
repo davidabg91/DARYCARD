@@ -528,13 +528,28 @@ const AdminPanel: React.FC = () => {
                     }
                 });
 
+                if (selectedClient.lastScanAt && !scanMap.has(selectedClient.lastScanAt.slice(0, 19))) {
+                    scanMap.set(selectedClient.lastScanAt.slice(0, 19), {
+                        at: selectedClient.lastScanAt,
+                        route: selectedClient.route
+                    });
+                }
+
                 const list = Array.from(scanMap.values()).sort((a, b) => b.at.localeCompare(a.at));
                 setProfileScans(list);
             })
             .catch(err => {
                 console.error('Грешка при зареждане на пътуванията от подколекция, ползване на локален архив:', err);
                 if (!cancelled) {
-                    setProfileScans(legacyScans.sort((a, b) => b.at.localeCompare(a.at)));
+                    const fallbackMap = new Map<string, { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string }>();
+                    legacyScans.forEach(s => fallbackMap.set(s.at.slice(0, 19), s));
+                    if (selectedClient.lastScanAt && !fallbackMap.has(selectedClient.lastScanAt.slice(0, 19))) {
+                        fallbackMap.set(selectedClient.lastScanAt.slice(0, 19), {
+                            at: selectedClient.lastScanAt,
+                            route: selectedClient.route
+                        });
+                    }
+                    setProfileScans(Array.from(fallbackMap.values()).sort((a, b) => b.at.localeCompare(a.at)));
                 }
             })
             .finally(() => { if (!cancelled) setProfileScansLoading(false); });
