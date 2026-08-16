@@ -173,6 +173,17 @@ const compressImage = (dataUrl: string, maxWidth: number, maxHeight: number, qua
     });
 };
 
+const formatBGMonth = (monthStr: string) => {
+    if (!monthStr || !monthStr.includes('-')) return monthStr;
+    const [year, month] = monthStr.split('-');
+    const monthsBG: Record<string, string> = {
+        '01': 'ЯНУАРИ', '02': 'ФЕВРУАРИ', '03': 'МАРТ', '04': 'АПРИЛ',
+        '05': 'МАЙ', '06': 'ЮНИ', '07': 'ЮЛИ', '08': 'АВГУСТ',
+        '09': 'СЕПТЕМВРИ', '10': 'ОКТОМВРИ', '11': 'НОЕМВРИ', '12': 'ДЕКЕМВРИ'
+    };
+    return `${monthsBG[month] || month} ${year}`;
+};
+
 const ClientProfile: React.FC = () => {
     const { id: rawId } = useParams<{ id: string }>();
     const id = sanitizeId(rawId);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { doc, getDoc, updateDoc, arrayUnion, increment, setDoc, collection } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, increment, setDoc, collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { CheckCircle, XCircle, RefreshCw, Settings, UserPlus, Zap, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -422,9 +422,9 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                             ...(nfcCounter !== undefined && nfcCounter !== null ? { lastScanCounter: nfcCounter } : {})
                         };
                         addDoc(collection(db, 'clients', snap.id, 'scans'), scanDocData)
-                            .catch(err => console.error('Transit scan subcollection write failed:', err));
+                            .catch((err: unknown) => console.error('Transit scan subcollection write failed:', err));
                         updateDoc(doc(db, 'clients', snap.id), updateData)
-                            .catch(err => {
+                            .catch((err: unknown) => {
                                 console.error('Transit scan counter update failed, fallback:', err);
                                 updateDoc(doc(db, 'clients', snap.id), { scanCount: increment(1), lastScanAt: isoNow }).catch(() => {});
                             });
@@ -472,7 +472,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
         return () => {
             isMounted = false;
         };
-    }, [id, nfcCounter, checkActualStatus, physicalUid]);
+    }, [id, nfcCounter, checkActualStatus, physicalUid, currentUser]);
 
     // IDLE DETECTION & SLIDESHOW LOGIC
     useEffect(() => {
