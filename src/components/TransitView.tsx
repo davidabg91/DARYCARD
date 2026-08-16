@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import AdSlideshow from './AdSlideshow';
 import ClientPhoto from './ClientPhoto';
 import PaymentMethodSelector from './PaymentMethodSelector';
+import ModeratorInactivityWarningModal from './ModeratorInactivityWarningModal';
 import { MIXED_METHOD } from '../data/paymentMethods';
 import MyPosSmartSdk from '../services/MyPosSmartSdk';
 import { Capacitor } from '@capacitor/core';
@@ -86,6 +87,12 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     const [renewalCashAmount, setRenewalCashAmount] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
 
+    // Moderator Inactivity / Renewal Guard State
+    const [hasMadeChange, setHasMadeChange] = useState(false);
+    const [showInactivityModal, setShowInactivityModal] = useState(false);
+    const [inactivityModalReason, setInactivityModalReason] = useState<'timeout' | 'action'>('timeout');
+    const [isWarningDismissed, setIsWarningDismissed] = useState(false);
+    const [pendingClose, setPendingClose] = useState<(() => void) | null>(null);
 
     // Ads Slideshow States
     const [showAds, setShowAds] = useState(false);
@@ -102,6 +109,9 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
         setPassbackSecs(null);
         setIsCloned(false);
         setOfflineNoData(false);
+        setHasMadeChange(false);
+        setShowInactivityModal(false);
+        setIsWarningDismissed(false);
     }
 
     // Use refs for values needed in the effect timer to avoid dependency loops
@@ -112,6 +122,48 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     useEffect(() => { unregisteredRef.current = unregistered; }, [unregistered]);
     
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'moderator';
+
+    // 20-second inactivity guard for moderator
+    useEffect(() => {
+        if (currentUser?.role !== 'moderator' || !client || loading || hasMadeChange || isWarningDismissed) return;
+
+        const timer = setTimeout(() => {
+            if (!hasMadeChange && !isWarningDismissed) {
+                playErrorRef.current();
+                setInactivityModalReason('timeout');
+                setShowInactivityModal(true);
+            }
+        }, 20000);
+
+        return () => clearTimeout(timer);
+    }, [currentUser?.role, client, loading, hasMadeChange, isWarningDismissed]);
+
+    const handleGuardedClose = (customCallback?: () => void) => {
+        if (currentUser?.role === 'moderator' && !hasMadeChange && !isWarningDismissed) {
+            playErrorRef.current();
+            setInactivityModalReason('action');
+            setPendingClose(() => customCallback || onClose);
+            setShowInactivityModal(true);
+            return;
+        }
+        if (customCallback) customCallback();
+        else onClose();
+    };
+
+    const handleStayAndRenew = () => {
+        setShowInactivityModal(false);
+        setShowQuickRenew(true);
+    };
+
+    const handleContinueWithoutChange = () => {
+        setIsWarningDismissed(true);
+        setShowInactivityModal(false);
+        if (pendingClose) {
+            const cb = pendingClose;
+            setPendingClose(null);
+            cb();
+        }
+    };
 
     // Bulgarian Month Formatter
     const formatBGMonth = (monthStr: string) => {
@@ -608,7 +660,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
             fontFamily: '"Outfit", "Inter", sans-serif',
             color: '#fff',
             WebkitOverflowScrolling: 'touch'
-        }} onClick={onClose}>
+        }} onClick={() => handleGuardedClose()}>
             
             {/* Environmental Glow */}
             <div style={{ 
@@ -893,6 +945,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                                         })
                                                     });
                                                     playSuccessSound();
+                                                    setHasMadeChange(true);
+                                                    setShowInactivityModal(false);
                                                     setShowQuickRenew(false);
                                                     setShowSuccessModal(true);
                                                 } catch (err) {
@@ -921,7 +975,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                         ) : (
                             <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <button 
-                                    onClick={() => { onClose(); navigate(`/client/${client?.id}`); }}
+                                    onClick={() => handleGuardedClose(() => { onClose(); navigate(`/client/${client?.id}`); })}
                                     style={{ width: '100%', background: '#fff', color: '#000', padding: '1.8rem', borderRadius: '24px', border: 'none', fontWeight: 900, fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}
                                 >
                                     <RefreshCw size={26} /> ПЛАТИ СЕГА / ОНЛАЙН
@@ -1021,6 +1075,19 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                     clientPhoto={client?.photo}
                 />
             )}
+
+            {/* Moderator Inactivity & Renewal Warning Modal */}
+            <ModeratorInactivityWarningModal
+                isOpen={showInactivityModal}
+                reason={inactivityModalReason}
+                clientName={client?.name || 'Клиент'}
+                clientRoute={client?.route}
+                cardNumber={client?.cardNumber || (client ? CARDS_MAPPING[client.id] : '')}
+                lastPaidMonth={client?.renewalHistory && client.renewalHistory.length > 0 ? formatBGMonth(client.renewalHistory[client.renewalHistory.length - 1].month) : undefined}
+                isPaidCurrentMonth={client?.renewalHistory ? client.renewalHistory.some(rh => rh.month === new Date().toISOString().slice(0, 7)) : false}
+                onStayAndRenew={handleStayAndRenew}
+                onContinueWithoutChange={handleContinueWithoutChange}
+            />
         </div>
     );
 };

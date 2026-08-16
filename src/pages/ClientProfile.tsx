@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
@@ -10,6 +10,7 @@ import { uploadClientPhoto } from '../utils/photoStorage';
 import ClientPhoto from '../components/ClientPhoto';
 import LostCardTransfer from '../components/LostCardTransfer';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
+import ModeratorInactivityWarningModal from '../components/ModeratorInactivityWarningModal';
 import { MIXED_METHOD } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
@@ -386,6 +387,8 @@ const ClientProfile: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const hasPlayedSound = useRef(false);
 
+    const navigate = useNavigate();
+
     // Quick Renewal States
     const [showQuickRenew, setShowQuickRenew] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -396,6 +399,14 @@ const ClientProfile: React.FC = () => {
     const [renewalBankAmount, setRenewalBankAmount] = useState('');
     const [renewalCashAmount, setRenewalCashAmount] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
+
+    // Moderator Inactivity / Renewal Guard State
+    const [hasMadeChange, setHasMadeChange] = useState(false);
+    const [showInactivityModal, setShowInactivityModal] = useState(false);
+    const [inactivityModalReason, setInactivityModalReason] = useState<'timeout' | 'action'>('timeout');
+    const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+    const [isWarningDismissed, setIsWarningDismissed] = useState(false);
+    const quickRenewRef = useRef<HTMLDivElement>(null);
 
     const audioContextRef = useRef<AudioContext | null>(null);
     const audioInitializedRef = useRef(false);
@@ -566,6 +577,52 @@ const ClientProfile: React.FC = () => {
         hasPlayedSound.current = false;
         initAudio();
     }, [id, initAudio]);
+
+    // 20-second inactivity guard for moderator
+    useEffect(() => {
+        if (currentUser?.role !== 'moderator' || !client || loading || hasMadeChange || isWarningDismissed) return;
+
+        const timer = setTimeout(() => {
+            if (!hasMadeChange && !isWarningDismissed) {
+                playErrorSound();
+                setInactivityModalReason('timeout');
+                setShowInactivityModal(true);
+            }
+        }, 20000);
+
+        return () => clearTimeout(timer);
+    }, [currentUser?.role, client, loading, hasMadeChange, isWarningDismissed, playErrorSound]);
+
+    // Intercept navigation / button clicks before making a change
+    const handleModeratorGuardedAction = (actionCallback?: () => void) => {
+        if (currentUser?.role === 'moderator' && !hasMadeChange && !isWarningDismissed) {
+            playErrorSound();
+            setInactivityModalReason('action');
+            setPendingAction(() => actionCallback || null);
+            setShowInactivityModal(true);
+            return false;
+        }
+        if (actionCallback) actionCallback();
+        return true;
+    };
+
+    const handleStayAndRenew = () => {
+        setShowInactivityModal(false);
+        setShowQuickRenew(true);
+        setTimeout(() => {
+            quickRenewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+    };
+
+    const handleContinueWithoutChange = () => {
+        setIsWarningDismissed(true);
+        setShowInactivityModal(false);
+        if (pendingAction) {
+            const act = pendingAction;
+            setPendingAction(null);
+            act();
+        }
+    };
 
     const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -1708,7 +1765,7 @@ const ClientProfile: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         
                         {/* Quick Renewal Panel */}
-                        <div style={{ background: '#18181b', borderRadius: '28px', border: '1px solid #00e67633', overflow: 'hidden' }}>
+                        <div ref={quickRenewRef} style={{ background: '#18181b', borderRadius: '28px', border: '1px solid #00e67633', overflow: 'hidden' }}>
                             {!showQuickRenew ? (
                                 <button 
                                     onClick={() => setShowQuickRenew(true)}
@@ -1818,12 +1875,10 @@ const ClientProfile: React.FC = () => {
                                         onClick={async () => {
                                             setIsUpdating(true);
                                             try {
-                                                // Service cards renew for a whole year (unpaid): append all 12
-                                                // monthly entries of the chosen year, expiry = that December.
                                                 if (client?.cardType === 'Служебна карта') {
                                                     if (!renewalRoute) { playErrorSound(); setIsUpdating(false); return; }
                                                     const svcIso = new Date().toISOString();
-                                                    const svcCur = getClientRoutes(client);
+                                                    const svcCur = getClientRoutes(client || { route: '' });
                                                     const svcNew = svcCur.includes(renewalRoute) ? svcCur : [...svcCur, renewalRoute];
                                                     const svcEntries = buildYearMonths(renewServiceYear).map(m => ({ date: svcIso, amount: 0, month: m, route: renewalRoute, paymentMethod: 'Служебна' }));
                                                     const clientRefSvc = doc(db, 'clients', client?.id || '');
@@ -1853,13 +1908,14 @@ const ClientProfile: React.FC = () => {
                                                             amount: 0
                                                         });
                                                     } catch (logErr) { console.error("Log error", logErr); }
+                                                    setHasMadeChange(true);
+                                                    setShowInactivityModal(false);
                                                     playSuccessSound();
                                                     setShowQuickRenew(false);
                                                     setShowSuccessModal(true);
                                                     setIsUpdating(false);
                                                     return;
                                                 }
-                                                // Prevent a duplicate payment: this direction is already paid for this month.
                                                 const qrDirs = getClientRoutes(client || { route: '' });
                                                 const qrAlreadyPaid = (client?.renewalHistory || []).some(rh =>
                                                     rh.month === renewalMonth && (rh.route ? rh.route === renewalRoute : renewalRoute === qrDirs[0])
@@ -1923,6 +1979,8 @@ const ClientProfile: React.FC = () => {
                                                     console.log(`[DARY_BRIDGE_LOG]: Подновяване на ${nameWithCard} за месец ${renewalMonth} - Сума: ${qrAmount.toFixed(2)} €`);
                                                 } catch (logErr) { console.error("Log error", logErr); }
 
+                                                setHasMadeChange(true);
+                                                setShowInactivityModal(false);
                                                 playSuccessSound();
                                                 setShowQuickRenew(false);
                                                 setShowSuccessModal(true);
@@ -1966,9 +2024,26 @@ const ClientProfile: React.FC = () => {
                             )}
                         </div>
 
-                        <Link to={`/admin?edit=${client?.id}`} style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', padding: '1.2rem', borderRadius: '20px', textDecoration: 'none', fontWeight: 800, fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <button 
+                            onClick={() => handleModeratorGuardedAction(() => navigate(`/admin?edit=${client?.id}`))}
+                            style={{ 
+                                background: 'rgba(255,255,255,0.05)', 
+                                color: '#fff', 
+                                padding: '1.2rem', 
+                                borderRadius: '20px', 
+                                border: '1px solid rgba(255,255,255,0.1)', 
+                                fontWeight: 800, 
+                                fontSize: '0.9rem', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                gap: '8px', 
+                                cursor: 'pointer',
+                                width: '100%'
+                            }}
+                        >
                             <Settings size={18} /> УПРАВЛЕНИЕ В АДМИН ПАНЕЛ
-                        </Link>
+                        </button>
                     </div>
                 )}
 
@@ -1992,6 +2067,19 @@ const ClientProfile: React.FC = () => {
                 )}
             </div>
             </div>{/* /.profile-layout */}
+
+            {/* Moderator Inactivity & Renewal Warning Modal */}
+            <ModeratorInactivityWarningModal
+                isOpen={showInactivityModal}
+                reason={inactivityModalReason}
+                clientName={client?.name || 'Клиент'}
+                clientRoute={client?.route}
+                cardNumber={client?.cardNumber || (client ? CARDS_MAPPING[client.id] : '')}
+                lastPaidMonth={lastPaidMonth ? formatBGMonth(lastPaidMonth) : undefined}
+                isPaidCurrentMonth={hasPaidCurrentMonth}
+                onStayAndRenew={handleStayAndRenew}
+                onContinueWithoutChange={handleContinueWithoutChange}
+            />
 
             <div style={{ marginTop: '2rem', textAlign: 'center', opacity: 0.2, fontSize: '0.7rem', fontWeight: 700 }}>
                 {scanTime} • {client.id.toUpperCase()}
