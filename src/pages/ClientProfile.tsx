@@ -833,6 +833,19 @@ const ClientProfile: React.FC = () => {
                     save({ lat: null, lng: null, locationError: true });
                 }
                 setScanFeedback({ type: 'inspection' });
+            } else if (currentUser.role === 'moderator') {
+                const clientRef = doc(db, 'clients', id);
+                const isoNow = new Date().toISOString();
+                setDoc(doc(collection(clientRef, 'scans')), { 
+                    at: isoNow, 
+                    route: client?.route ?? '',
+                    scannedBy: 'moderator',
+                    scannedByName: currentUser.username || 'Модератор',
+                    role: 'moderator'
+                }).catch(err => console.error('Moderator scan record failed:', err));
+                updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow })
+                    .catch(err => console.error('Scan counter update failed:', err));
+                setScanFeedback({ type: 'recorded' });
             }
             return;
         }

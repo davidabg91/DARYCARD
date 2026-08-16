@@ -477,16 +477,15 @@ const AdminPanel: React.FC = () => {
 
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
     const [modalMessage, setModalMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
-    // Пътувания (сканирания) на отворения профил — четат се лениво само за админ,
-    // при отваряне на модала, от подколекцията clients/{id}/scans.
-    const [profileScans, setProfileScans] = useState<{ at: string; route?: string }[] | null>(null);
+    // Пътувания (сканирания) на отворения профил — четат се лениво при отваряне на модала,
+    // от подколекцията clients/{id}/scans.
+    const [profileScans, setProfileScans] = useState<{ at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string }[] | null>(null);
     const [profileScansLoading, setProfileScansLoading] = useState(false);
 
-    // Зареждане на пътуванията (сканиранията) на отворения профил. Само за админ и
-    // само когато модалът е отворен — една заявка към clients/{id}/scans за конкретния
-    // клиент. Без orderBy (за да не изисква индекс) — сортира се в паметта.
+    // Зареждане на пътуванията (сканиранията) на отворения профил — една заявка
+    // към clients/{id}/scans за конкретния клиент. Без orderBy (за да не изисква индекс) — сортира се в паметта.
     useEffect(() => {
-        if (!showActionModal || !selectedClient || !isAdmin) {
+        if (!showActionModal || !selectedClient) {
             setProfileScans(null);
             return;
         }
@@ -497,7 +496,16 @@ const AdminPanel: React.FC = () => {
             .then(snap => {
                 if (cancelled) return;
                 const list = snap.docs
-                    .map(d => ({ at: (d.data().at as string) || '', route: d.data().route as string | undefined }))
+                    .map(d => {
+                        const data = d.data();
+                        return {
+                            at: (data.at as string) || '',
+                            route: data.route as string | undefined,
+                            scannedBy: (data.scannedBy || (data.role === 'moderator' ? 'moderator' : undefined)) as string | undefined,
+                            scannedByName: (data.scannedByName || data.performedBy) as string | undefined,
+                            role: data.role as string | undefined
+                        };
+                    })
                     .filter(s => s.at)
                     .sort((a, b) => b.at.localeCompare(a.at));
                 setProfileScans(list);
@@ -508,7 +516,7 @@ const AdminPanel: React.FC = () => {
             })
             .finally(() => { if (!cancelled) setProfileScansLoading(false); });
         return () => { cancelled = true; };
-    }, [showActionModal, selectedClient, isAdmin]);
+    }, [showActionModal, selectedClient]);
 
     // Пътувания без платен абонамент — всички сканирания за последните N дни,
     // прочетени лениво (само когато табът е активен) чрез collection-group заявка.
@@ -5014,13 +5022,13 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             </div>
                                         )}
 
-                                        {/* Пътувания (сканирания) — само за админ, заредени лениво, групирани по месец */}
-                                        {isAdmin && (() => {
+                                        {/* Пътувания (сканирания) — заредени лениво, групирани по месец */}
+                                        {(() => {
                                             const totalTravels = selectedClient.scanCount ?? (profileScans ? profileScans.length : 0);
                                             const fmtDay = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
                                             const fmtTime = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }); };
                                             // Групиране по месец (YYYY-MM). profileScans вече е сортиран низходящо.
-                                            const byMonth: Record<string, { at: string; route?: string }[]> = {};
+                                            const byMonth: Record<string, { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string }[]> = {};
                                             (profileScans || []).forEach(s => {
                                                 const m = s.at.slice(0, 7);
                                                 (byMonth[m] = byMonth[m] || []).push(s);
@@ -5054,12 +5062,76 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                         </div>
                                                                         {/* Списък на пътуванията за месеца */}
                                                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                                            {monthScans.map((s, idx) => (
-                                                                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '0.45rem 0.85rem', borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                                                                                    <span style={{ fontSize: '0.83rem', fontWeight: 600 }}>{fmtDay(s.at)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>· {fmtTime(s.at)} ч.</span></span>
-                                                                                    {s.route && <span style={{ fontSize: '0.72rem', fontWeight: 700, color: getRouteColor(s.route), background: `${getRouteColor(s.route)}18`, padding: '2px 8px', borderRadius: '6px' }}>{s.route}</span>}
-                                                                                </div>
-                                                                            ))}
+                                                                            {monthScans.map((s, idx) => {
+                                                                                const isMod = s.scannedBy === 'moderator' || s.role === 'moderator';
+                                                                                const isAdm = s.scannedBy === 'admin' || s.role === 'admin';
+                                                                                const isInsp = s.scannedBy === 'inspector' || s.role === 'inspector';
+                                                                                return (
+                                                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.8rem', padding: '0.5rem 0.85rem', borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none', flexWrap: 'wrap' }}>
+                                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                                                            <span style={{ fontSize: '0.83rem', fontWeight: 600 }}>
+                                                                                                {fmtDay(s.at)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>· {fmtTime(s.at)} ч.</span>
+                                                                                            </span>
+                                                                                            {isMod && (
+                                                                                                <span style={{
+                                                                                                    display: 'inline-flex',
+                                                                                                    alignItems: 'center',
+                                                                                                    gap: '0.3rem',
+                                                                                                    fontSize: '0.72rem',
+                                                                                                    fontWeight: 700,
+                                                                                                    color: '#00adb5',
+                                                                                                    background: 'rgba(0, 173, 181, 0.12)',
+                                                                                                    border: '1px solid rgba(0, 173, 181, 0.3)',
+                                                                                                    padding: '2px 7px',
+                                                                                                    borderRadius: '6px'
+                                                                                                }} title="Сканирано от модератор">
+                                                                                                    <Shield size={12} />
+                                                                                                    Сканирана от модератор{s.scannedByName ? ` (${s.scannedByName.split('@')[0]})` : ''}
+                                                                                                </span>
+                                                                                            )}
+                                                                                            {isAdm && (
+                                                                                                <span style={{
+                                                                                                    display: 'inline-flex',
+                                                                                                    alignItems: 'center',
+                                                                                                    gap: '0.3rem',
+                                                                                                    fontSize: '0.72rem',
+                                                                                                    fontWeight: 700,
+                                                                                                    color: '#ff5252',
+                                                                                                    background: 'rgba(255, 82, 82, 0.12)',
+                                                                                                    border: '1px solid rgba(255, 82, 82, 0.3)',
+                                                                                                    padding: '2px 7px',
+                                                                                                    borderRadius: '6px'
+                                                                                                }} title="Сканирано от администратор">
+                                                                                                    <ShieldCheck size={12} />
+                                                                                                    Сканирана от админ{s.scannedByName ? ` (${s.scannedByName.split('@')[0]})` : ''}
+                                                                                                </span>
+                                                                                            )}
+                                                                                            {isInsp && (
+                                                                                                <span style={{
+                                                                                                    display: 'inline-flex',
+                                                                                                    alignItems: 'center',
+                                                                                                    gap: '0.3rem',
+                                                                                                    fontSize: '0.72rem',
+                                                                                                    fontWeight: 700,
+                                                                                                    color: '#ffab00',
+                                                                                                    background: 'rgba(255, 171, 0, 0.12)',
+                                                                                                    border: '1px solid rgba(255, 171, 0, 0.3)',
+                                                                                                    padding: '2px 7px',
+                                                                                                    borderRadius: '6px'
+                                                                                                }} title="Сканирано от инспектор">
+                                                                                                    <Shield size={12} />
+                                                                                                    Инспектор{s.scannedByName ? ` (${s.scannedByName.split('@')[0]})` : ''}
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        {s.route && (
+                                                                                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: getRouteColor(s.route), background: `${getRouteColor(s.route)}18`, padding: '2px 8px', borderRadius: '6px' }}>
+                                                                                                {s.route}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
                                                                         </div>
                                                                         {/* Край на месеца */}
                                                                         <div style={{ padding: '0.45rem 0.85rem', background: 'rgba(0,0,0,0.25)', borderTop: '1px dashed var(--surface-border)', fontSize: '0.72rem', color: 'var(--text-secondary)', textAlign: 'center', fontWeight: 700 }}>

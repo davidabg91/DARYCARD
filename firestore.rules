@@ -63,7 +63,7 @@ service cloud.firestore {
     // Uses recursive wildcard matching to support collection group queries.
     match /{path=**}/scans/{scanId} {
       allow read: if isStaff();
-      allow create: if request.resource.data.keys().hasOnly(['at', 'route'])
+      allow create: if request.resource.data.keys().hasOnly(['at', 'route', 'scannedBy', 'scannedByName', 'role'])
         && request.resource.data.at is string;
       allow update, delete: if isAdmin();
     }

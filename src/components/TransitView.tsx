@@ -361,10 +361,16 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                             lastScanAt: isoNow,
                             ...(nfcCounter !== undefined && nfcCounter !== null ? { lastScanCounter: nfcCounter } : {})
                         };
-                        // Two independent writes (NOT a batch): the scan doc drives the
-                        // traffic analysis and must not be taken down if the counter
-                        // update is rejected for an anonymous (not-logged-in) device.
-                        setDoc(doc(collection(db, 'clients', snap.id, 'scans')), { at: isoNow, route: data.route ?? '' })
+                        const scanDocData = {
+                            at: isoNow,
+                            route: data.route ?? '',
+                            ...(currentUser ? {
+                                scannedBy: currentUser.role,
+                                scannedByName: currentUser.username || (currentUser.role === 'moderator' ? 'Модератор' : currentUser.role),
+                                role: currentUser.role
+                            } : {})
+                        };
+                        setDoc(doc(collection(db, 'clients', snap.id, 'scans')), scanDocData)
                             .catch(err => console.error('Transit scan record failed:', err));
                         updateDoc(doc(db, 'clients', snap.id), updateData)
                             .catch(err => console.error('Transit scan counter update failed:', err));
