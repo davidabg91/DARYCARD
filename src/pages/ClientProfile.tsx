@@ -604,6 +604,29 @@ const ClientProfile: React.FC = () => {
         return () => clearTimeout(timer);
     }, [currentUser?.role, client, loading, hasMadeChange, isWarningDismissed, playErrorSound]);
 
+    // Global navigation interceptor for navbar, logo, and external link clicks
+    useEffect(() => {
+        if (currentUser?.role === 'moderator' && client && !hasMadeChange && !isWarningDismissed) {
+            (window as unknown as { __moderatorGuardActive?: boolean }).__moderatorGuardActive = true;
+            (window as unknown as { __triggerModeratorGuard?: (onConfirmProceed?: () => void) => void }).__triggerModeratorGuard = (onConfirmProceed) => {
+                playErrorSound();
+                setInactivityModalReason('action');
+                if (onConfirmProceed) {
+                    setPendingAction(() => onConfirmProceed);
+                }
+                setShowInactivityModal(true);
+            };
+        } else {
+            (window as unknown as { __moderatorGuardActive?: boolean }).__moderatorGuardActive = false;
+            (window as unknown as { __triggerModeratorGuard?: unknown }).__triggerModeratorGuard = undefined;
+        }
+
+        return () => {
+            (window as unknown as { __moderatorGuardActive?: boolean }).__moderatorGuardActive = false;
+            (window as unknown as { __triggerModeratorGuard?: unknown }).__triggerModeratorGuard = undefined;
+        };
+    }, [currentUser?.role, client, hasMadeChange, isWarningDismissed, playErrorSound]);
+
     // Intercept navigation / button clicks before making a change
     const handleModeratorGuardedAction = (actionCallback?: () => void) => {
         if (currentUser?.role === 'moderator' && !hasMadeChange && !isWarningDismissed) {
@@ -1002,7 +1025,7 @@ const ClientProfile: React.FC = () => {
                     <Ban size={64} color="var(--error-color)" style={{ marginBottom: '1.5rem' }} />
                     <h1 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--error-color)', marginBottom: '0.5rem' }}>Картата не е намерена</h1>
                     <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>{error}</p>
-                    <Link to="/" style={{ padding: '0.8rem 2rem', background: 'var(--primary-color)', color: '#fff', borderRadius: '50px', textDecoration: 'none', fontWeight: 600 }}>Към Начало</Link>
+                    <Link to="/" onClick={(e) => { if (!handleModeratorGuardedAction(() => navigate('/'))) e.preventDefault(); }} style={{ padding: '0.8rem 2rem', background: 'var(--primary-color)', color: '#fff', borderRadius: '50px', textDecoration: 'none', fontWeight: 600 }}>Към Начало</Link>
                 </div>
             </div>
         );
@@ -1027,7 +1050,7 @@ const ClientProfile: React.FC = () => {
                                 <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem', lineHeight: '1.6' }}>
                                     Моля, сканирайте картата <b>отново</b> — по-бавно и плътно до четеца — и проверете дали в адреса излиза пълен код.
                                 </p>
-                                <Link to="/" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
+                                <Link to="/" onClick={(e) => { if (!handleModeratorGuardedAction(() => navigate('/'))) e.preventDefault(); }} style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
                             </>
                         ) : currentUser && !CARDS_MAPPING[id] ? (
                             // Id is a full length but is NOT in the printed-card list, so it has
@@ -1043,7 +1066,7 @@ const ClientProfile: React.FC = () => {
                                 <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem', lineHeight: '1.6' }}>
                                     Проверете картата и сканирайте <b>отново</b>. Ако е нова карта, тя първо трябва да бъде добавена в списъка с картите.
                                 </p>
-                                <Link to="/" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
+                                <Link to="/" onClick={(e) => { if (!handleModeratorGuardedAction(() => navigate('/'))) e.preventDefault(); }} style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
                             </>
                         ) : (
                         <>
@@ -1061,7 +1084,7 @@ const ClientProfile: React.FC = () => {
                                 {currentUser && (
                                     <button onClick={() => setShowLostCard(true)} style={{ padding: '0.95rem', background: 'rgba(255,82,82,0.08)', color: '#ff8a8a', borderRadius: '50px', border: '1px solid rgba(255,82,82,0.3)', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer' }}>Загубена карта</button>
                                 )}
-                                <Link to="/" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
+                                <Link to="/" onClick={(e) => { if (!handleModeratorGuardedAction(() => navigate('/'))) e.preventDefault(); }} style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
                             </div>
                         </>
                         )

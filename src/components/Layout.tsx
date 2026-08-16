@@ -57,11 +57,28 @@ const Layout: React.FC = () => {
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
     const closeMenu = () => setIsMenuOpen(false);
 
+    const handleGuardedNavigation = (e: React.MouseEvent, targetPath: string) => {
+        const win = window as unknown as { 
+            __moderatorGuardActive?: boolean; 
+            __triggerModeratorGuard?: (onConfirmProceed?: () => void) => void; 
+        };
+        if (win.__moderatorGuardActive && typeof win.__triggerModeratorGuard === 'function') {
+            e.preventDefault();
+            e.stopPropagation();
+            closeMenu();
+            win.__triggerModeratorGuard(() => {
+                navigate(targetPath);
+            });
+            return;
+        }
+        closeMenu();
+    };
+
     const navLinks = (
         <>
             <Link
                 to="/"
-                onClick={closeMenu}
+                onClick={(e) => handleGuardedNavigation(e, '/')}
                 style={{
                     color: location.pathname === '/' ? '#ff5252' : '#fff',
                     fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
@@ -76,7 +93,7 @@ const Layout: React.FC = () => {
                 <>
                     <Link
                         to="/signal"
-                        onClick={closeMenu}
+                        onClick={(e) => handleGuardedNavigation(e, '/signal')}
                         style={{
                             color: location.pathname === '/signal' ? '#ff5252' : '#fff',
                             fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
@@ -88,7 +105,7 @@ const Layout: React.FC = () => {
                     >Сигнал</Link>
                     <Link
                         to="/rent"
-                        onClick={closeMenu}
+                        onClick={(e) => handleGuardedNavigation(e, '/rent')}
                         style={{
                             color: location.pathname === '/rent' ? '#ff5252' : '#fff',
                             fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
@@ -106,7 +123,7 @@ const Layout: React.FC = () => {
                     {currentUser.role !== 'inspector' && (
                     <Link
                         to="/admin"
-                        onClick={closeMenu}
+                        onClick={(e) => handleGuardedNavigation(e, '/admin')}
                         style={{
                             color: isAdminPath && location.pathname === '/admin' ? '#ff5252' : '#fff',
                             fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
@@ -131,7 +148,7 @@ const Layout: React.FC = () => {
                         {(currentUser.role === 'admin' || currentUser.role === 'inspector') && (
                             <Link
                                 to="/inspections"
-                                onClick={closeMenu}
+                                onClick={(e) => handleGuardedNavigation(e, '/inspections')}
                                 style={{
                                     color: location.pathname === '/inspections' ? '#ffab00' : '#fff',
                                     fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
@@ -144,7 +161,7 @@ const Layout: React.FC = () => {
                         {currentUser.role === 'admin' && (
                             <Link
                                 to="/system-admin"
-                                onClick={closeMenu}
+                                onClick={(e) => handleGuardedNavigation(e, '/system-admin')}
                                 style={{
                                     color: location.pathname === '/system-admin' ? '#ff5252' : '#fff',
                                     fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
@@ -156,7 +173,7 @@ const Layout: React.FC = () => {
 
                     <Link
                         to="/help"
-                        onClick={closeMenu}
+                        onClick={(e) => handleGuardedNavigation(e, '/help')}
                         style={{
                             color: location.pathname === '/help' ? '#ff5252' : '#fff',
                             fontWeight: 600, fontSize: '0.95rem', transition: 'color 0.2s',
@@ -198,7 +215,7 @@ const Layout: React.FC = () => {
             {!currentUser && (
                 <Link
                     to="/login"
-                    onClick={closeMenu}
+                    onClick={(e) => handleGuardedNavigation(e, '/login')}
                     style={{
                         padding: '0.5rem 1.5rem', borderRadius: '10px',
                         background: '#e53935', color: '#fff',
@@ -213,17 +230,17 @@ const Layout: React.FC = () => {
 
     const mobileNavLinks = (
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <Link to="/" onClick={closeMenu} className="mobile-nav-link">Начало</Link>
+            <Link to="/" onClick={(e) => handleGuardedNavigation(e, '/')} className="mobile-nav-link">Начало</Link>
             {(!currentUser || currentUser.role === 'admin') && (
                 <>
-                    <Link to="/signal" onClick={closeMenu} className="mobile-nav-link">Сигнал</Link>
-                    <Link to="/rent" onClick={closeMenu} className="mobile-nav-link">Наеми автобус</Link>
+                    <Link to="/signal" onClick={(e) => handleGuardedNavigation(e, '/signal')} className="mobile-nav-link">Сигнал</Link>
+                    <Link to="/rent" onClick={(e) => handleGuardedNavigation(e, '/rent')} className="mobile-nav-link">Наеми автобус</Link>
                 </>
             )}
             {currentUser && (
                 <>
                     {currentUser.role !== 'inspector' && (
-                    <Link to="/admin" onClick={closeMenu} className="mobile-nav-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Link to="/admin" onClick={(e) => handleGuardedNavigation(e, '/admin')} className="mobile-nav-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         Мениджър
                         {totalUnread > 0 && (
                             <span style={{
@@ -234,12 +251,12 @@ const Layout: React.FC = () => {
                     </Link>
                     )}
                     {(currentUser.role === 'admin' || currentUser.role === 'inspector') && (
-                        <Link to="/inspections" onClick={closeMenu} className="mobile-nav-link">Проверки</Link>
+                        <Link to="/inspections" onClick={(e) => handleGuardedNavigation(e, '/inspections')} className="mobile-nav-link">Проверки</Link>
                     )}
                     {currentUser.role === 'admin' && (
-                        <Link to="/system-admin" onClick={closeMenu} className="mobile-nav-link">Админ Панел</Link>
+                        <Link to="/system-admin" onClick={(e) => handleGuardedNavigation(e, '/system-admin')} className="mobile-nav-link">Админ Панел</Link>
                     )}
-                    <Link to="/help" onClick={closeMenu} className="mobile-nav-link">Помощ</Link>
+                    <Link to="/help" onClick={(e) => handleGuardedNavigation(e, '/help')} className="mobile-nav-link">Помощ</Link>
                     <div style={{ padding: '0.8rem 1.2rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
                         {currentUser.role === 'admin' ? <ShieldCheck size={18} color="#ff5252" /> : <Shield size={18} color="var(--primary-color)" />}
                         <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{currentUser.username}</span>
@@ -250,7 +267,7 @@ const Layout: React.FC = () => {
                 </>
             )}
             {!currentUser && (
-                <Link to="/login" onClick={closeMenu} className="mobile-nav-link" style={{ background: '#e53935', color: '#fff', textAlign: 'center', marginTop: '1rem', border: 'none' }}>Вход</Link>
+                <Link to="/login" onClick={(e) => handleGuardedNavigation(e, '/login')} className="mobile-nav-link" style={{ background: '#e53935', color: '#fff', textAlign: 'center', marginTop: '1rem', border: 'none' }}>Вход</Link>
             )}
         </nav>
     );
@@ -272,7 +289,7 @@ const Layout: React.FC = () => {
                 boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
                 width: '100%',
             }}>
-                <Link to="/" onClick={closeMenu} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', gap: '0', userSelect: 'none' }}>
+                <Link to="/" onClick={(e) => handleGuardedNavigation(e, '/')} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', gap: '0', userSelect: 'none' }}>
                     <div style={{
                         padding: '0',
                         display: 'flex',
