@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     BarChart, Users as UsersIcon, History as HistoryIcon,
     TrendingUp, DollarSign,
@@ -105,6 +105,7 @@ const SystemAdminPanel: React.FC = () => {
     const [fines, setFines] = useState<{ amount: number; month: string; date: string }[]>([]);
     const [logLimit, setLogLimit] = useState(20);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
     // One-off maintenance (delete legacy scanHistory arrays)
@@ -142,20 +143,35 @@ const SystemAdminPanel: React.FC = () => {
             const list: Client[] = [];
             snap.forEach(d => list.push({ id: d.id, ...d.data() } as Client));
             setClients(list);
+            setLoadError(null);
+            setLoading(false);
+        }, (err) => {
+            // Previously there was no error callback at all, so a rules/offline error
+            // left `loading` true and the tab pulsed a skeleton forever with no hint
+            // why. Surface it instead — never fall through to rendering zeroes, which
+            // would read as "no revenue" rather than "not loaded".
+            console.error('Clients listener error:', err);
+            setLoadError(err instanceof Error ? err.message : 'Неизвестна грешка');
             setLoading(false);
         });
         return () => unsub();
     }, []);
 
+    // Start of the scan window the dashboard needs: 60 days back for the abuse
+    // detector, stretched further only if the chart is pointed at an older day.
+    // Memoised so that picking another date inside the normal 60-day range yields
+    // the SAME string — otherwise the listener below would tear down and re-download
+    // all ~15k scan documents on every click of the date picker.
+    const scanWindowStart = useMemo(() => {
+        const sixtyDaysAgo = new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0];
+        return selectedDate < sixtyDaysAgo ? selectedDate : sixtyDaysAgo;
+    }, [selectedDate]);
+
     // Scans — read from the clients/{id}/scans subcollection via a collection-group
-    // query, bounded to a recent window (covers the abuse detector's ~60 days and
-    // the selected day for the hourly chart). Requires the scans.at collection-group
+    // query, bounded to the window above. Requires the scans.at collection-group
     // index in firestore.indexes.json.
     useEffect(() => {
-        const sixtyDaysAgo = new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0];
-        const windowStart = selectedDate < sixtyDaysAgo ? selectedDate : sixtyDaysAgo;
-
-        const qScans = query(collectionGroup(db, 'scans'), where('at', '>=', windowStart));
+        const qScans = query(collectionGroup(db, 'scans'), where('at', '>=', scanWindowStart));
         const unsub = onSnapshot(qScans, (snap) => {
             const list: ScanRecord[] = snap.docs.map(d => ({
                 clientId: d.ref.parent.parent?.id ?? '',
@@ -165,7 +181,7 @@ const SystemAdminPanel: React.FC = () => {
             setScans(list);
         }, (err) => console.error('Scans listener error:', err));
         return () => unsub();
-    }, [selectedDate]);
+    }, [scanWindowStart]);
 
     // Fines (Глоби) — standalone charges (e.g. lost-card fee) that count toward
     // revenue but live outside renewalHistory so they don't affect card validity.
@@ -341,6 +357,13 @@ const SystemAdminPanel: React.FC = () => {
     // so the legacy inline scanHistory arrays are dead weight. This deletes them in
     // write batches. Safe to remove this button once it has been run.
     const handleCleanupScanHistory = async () => {
+        // The clients list is what this scans for legacy arrays. It is now possible to
+        // reach this button before that download finishes (the panel no longer blocks
+        // on it), and running against an empty list would silently report "0 cleaned".
+        if (loading) {
+            setCleanupMsg('Клиентите още се зареждат. Изчакай малко и опитай пак.');
+            return;
+        }
         if (!window.confirm('Изтриване на старите scanHistory масиви от всички клиенти? Това освобождава място и не може да се върне.')) return;
         setCleanupRunning(true);
         setCleanupMsg(null);
@@ -379,7 +402,11 @@ const SystemAdminPanel: React.FC = () => {
         } finally { setUserLoading(false); }
     };
 
-    if (loading) return (
+    // Shown only inside ТАБЛО while the clients collection is still downloading.
+    // It used to replace the WHOLE panel, which meant ОДИТ and ПОТРЕБИТЕЛИ — neither
+    // of which reads `clients` — sat behind a ~28 MB download before they could even
+    // be clicked.
+    const dashboardSkeleton = (
         <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             <div style={{ height: '200px', background: 'rgba(255,255,255,0.03)', borderRadius: '24px', animation: 'pulse 2s infinite' }} />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
@@ -409,7 +436,22 @@ const SystemAdminPanel: React.FC = () => {
             </div>
 
             {/* Dashboard Tab - Support Horizontal Scroll on Mobile only */}
-            {activeTab === 'dashboard' && (
+            {activeTab === 'dashboard' && loading && dashboardSkeleton}
+
+            {activeTab === 'dashboard' && !loading && loadError && (
+                <Card style={{ padding: '2rem', border: '1px solid rgba(255,82,82,0.3)', background: 'rgba(255,82,82,0.05)' }}>
+                    <h3 style={{ margin: '0 0 0.6rem', color: '#ff5252', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem' }}>
+                        <AlertTriangle size={20} /> Данните не се заредиха
+                    </h3>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                        Клиентските данни не можаха да се прочетат, затова таблото не се показва (числата щяха да са нули, а не реални).
+                        Провери връзката и презареди страницата. Табовете <b>ПОТРЕБИТЕЛИ</b> и <b>ОДИТ</b> работят нормално.
+                    </p>
+                    <code style={{ display: 'block', marginTop: '0.9rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)' }}>{loadError}</code>
+                </Card>
+            )}
+
+            {activeTab === 'dashboard' && !loading && !loadError && (
                 <div style={{ position: 'relative', width: '100%' }}>
                     <div className={isMobile ? 'admin-scroll-fix' : ''}>
                         <div className={isMobile ? 'admin-scroll-content' : ''} style={!isMobile ? { display: 'flex', flexDirection: 'column', gap: '2.5rem' } : {}}>
