@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import Card from '../components/Card';
 import UnpaidAlertsButton from '../components/UnpaidAlertsButton';
+import ClientPhoto from '../components/ClientPhoto';
 import logoMain from '../assets/logo_main.png';
 import { db } from '../firebase';
 import {
@@ -3812,7 +3813,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                         />
                                                     </td>
                                                     <td style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                        <img src={client.photo} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                        <ClientPhoto src={client.photo} thumb={client.photoThumb} style={{ width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0 }} />
                                                         <div>
                                                             <div style={{ fontWeight: 600 }}>{client.name}</div>
                                                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -3937,7 +3938,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     onChange={() => toggleClientSelected(client.id)}
                                                     style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: 'var(--primary-color)', marginTop: '0.4rem', flexShrink: 0 }}
                                                 />
-                                                <img src={client.photo} style={{ width: '50px', height: '50px', borderRadius: '12px', objectFit: 'cover' }} />
+                                                <ClientPhoto src={client.photo} thumb={client.photoThumb} style={{ width: '50px', height: '50px', borderRadius: '12px', flexShrink: 0 }} />
                                                 <div>
                                                     <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{client.name}</div>
                                                     <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.2rem' }}>
@@ -5021,7 +5022,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                             {/* Header */}
                             <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <img src={selectedClient.photo} style={{ width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover' }} />
+                                    <ClientPhoto src={selectedClient.photo} thumb={selectedClient.photoThumb} style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0 }} />
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{selectedClient.name}</h3>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>ID: {selectedClient.id}</div>
