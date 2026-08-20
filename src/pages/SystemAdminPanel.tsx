@@ -5,7 +5,7 @@ import {
     RefreshCw, Search, Clock, Shield,
     UserPlus, Trash2, AlertTriangle
 } from 'lucide-react';
-import { collection, collectionGroup, query, where, orderBy, limit, onSnapshot, updateDoc, doc, writeBatch, deleteField } from 'firebase/firestore';
+import { collection, collectionGroup, query, where, orderBy, limit, onSnapshot, updateDoc, doc, writeBatch, deleteField, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
@@ -136,9 +136,29 @@ const SystemAdminPanel: React.FC = () => {
     // Audit State
     const [auditSearch, setAuditSearch] = useState('');
 
+    // Audit logs — newest first, paginated in batches of 20. Declared FIRST on
+    // purpose: React runs effects in declaration order, so this tiny query goes out
+    // before the dashboard's large ones instead of queueing behind them.
+    useEffect(() => {
+        const qLogs = query(collection(db, 'activity_logs'), orderBy('timestamp', 'desc'), limit(logLimit));
+        const unsub = onSnapshot(qLogs, (snap) => {
+            const logs: GlobalLog[] = [];
+            snap.forEach(d => logs.push({ id: d.id, ...d.data() } as GlobalLog));
+            setGlobalLogs(logs);
+        });
+        return () => unsub();
+    }, [logLimit]);
+
+    // Only ТАБЛО reads clients and scans. Both are large, and the Web SDK funnels
+    // every listener through ONE connection, so subscribing to them from the other
+    // tabs made ОДИТ's 20-document query queue behind ~11.7 MB it has no use for.
+    const dashboardActive = activeTab === 'dashboard';
+
     // Clients — loaded in full because the dashboard aggregates (revenue, route
     // stats, abuse) need every client.
     useEffect(() => {
+        if (!dashboardActive) return;
+        setLoading(true);
         const unsub = onSnapshot(query(collection(db, 'clients')), (snap) => {
             const list: Client[] = [];
             snap.forEach(d => list.push({ id: d.id, ...d.data() } as Client));
@@ -155,7 +175,7 @@ const SystemAdminPanel: React.FC = () => {
             setLoading(false);
         });
         return () => unsub();
-    }, []);
+    }, [dashboardActive]);
 
     // Start of the scan window the dashboard needs: 60 days back for the abuse
     // detector, stretched further only if the chart is pointed at an older day.
@@ -171,6 +191,7 @@ const SystemAdminPanel: React.FC = () => {
     // query, bounded to the window above. Requires the scans.at collection-group
     // index in firestore.indexes.json.
     useEffect(() => {
+        if (!dashboardActive) return;
         const qScans = query(collectionGroup(db, 'scans'), where('at', '>=', scanWindowStart));
         const unsub = onSnapshot(qScans, (snap) => {
             const list: ScanRecord[] = snap.docs.map(d => ({
@@ -181,7 +202,7 @@ const SystemAdminPanel: React.FC = () => {
             setScans(list);
         }, (err) => console.error('Scans listener error:', err));
         return () => unsub();
-    }, [scanWindowStart]);
+    }, [dashboardActive, scanWindowStart]);
 
     // Fines (Глоби) — standalone charges (e.g. lost-card fee) that count toward
     // revenue but live outside renewalHistory so they don't affect card validity.
@@ -195,16 +216,6 @@ const SystemAdminPanel: React.FC = () => {
         return () => unsub();
     }, []);
 
-    // Audit logs — newest first, paginated in batches of 20.
-    useEffect(() => {
-        const qLogs = query(collection(db, 'activity_logs'), orderBy('timestamp', 'desc'), limit(logLimit));
-        const unsub = onSnapshot(qLogs, (snap) => {
-            const logs: GlobalLog[] = [];
-            snap.forEach(d => logs.push({ id: d.id, ...d.data() } as GlobalLog));
-            setGlobalLogs(logs);
-        });
-        return () => unsub();
-    }, [logLimit]);
 
     // --- Helper Functions ---
     const isExpired = (monthStr: string | undefined, client?: Client) => {
@@ -357,18 +368,20 @@ const SystemAdminPanel: React.FC = () => {
     // so the legacy inline scanHistory arrays are dead weight. This deletes them in
     // write batches. Safe to remove this button once it has been run.
     const handleCleanupScanHistory = async () => {
-        // The clients list is what this scans for legacy arrays. It is now possible to
-        // reach this button before that download finishes (the panel no longer blocks
-        // on it), and running against an empty list would silently report "0 cleaned".
-        if (loading) {
-            setCleanupMsg('Клиентите още се зареждат. Изчакай малко и опитай пак.');
-            return;
-        }
         if (!window.confirm('Изтриване на старите scanHistory масиви от всички клиенти? Това освобождава място и не може да се върне.')) return;
         setCleanupRunning(true);
         setCleanupMsg(null);
         try {
-            const targets = clients.filter(c => Array.isArray((c as { scanHistory?: unknown }).scanHistory));
+            // This button lives in the ПОТРЕБИТЕЛИ tab, which deliberately does not
+            // subscribe to clients, so read them once here instead of running against
+            // an empty in-memory list and reporting "0 cleaned".
+            let targets = clients.filter(c => Array.isArray((c as { scanHistory?: unknown }).scanHistory));
+            if (!clients.length) {
+                const snap = await getDocs(collection(db, 'clients'));
+                targets = snap.docs
+                    .filter(d => Array.isArray((d.data() as { scanHistory?: unknown }).scanHistory))
+                    .map(d => ({ id: d.id }) as Client);
+            }
             for (let i = 0; i < targets.length; i += 400) {
                 const batch = writeBatch(db);
                 targets.slice(i, i + 400).forEach(c => {
