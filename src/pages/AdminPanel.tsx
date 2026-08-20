@@ -3813,7 +3813,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                         />
                                                     </td>
                                                     <td style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                        <ClientPhoto src={client.photo} thumb={client.photoThumb} style={{ width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0 }} />
+                                                        <ClientPhoto src={client.photoThumb ? undefined : client.photo} thumb={client.photoThumb} style={{ width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0 }} />
                                                         <div>
                                                             <div style={{ fontWeight: 600 }}>{client.name}</div>
                                                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -3938,7 +3938,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     onChange={() => toggleClientSelected(client.id)}
                                                     style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: 'var(--primary-color)', marginTop: '0.4rem', flexShrink: 0 }}
                                                 />
-                                                <ClientPhoto src={client.photo} thumb={client.photoThumb} style={{ width: '50px', height: '50px', borderRadius: '12px', flexShrink: 0 }} />
+                                                <ClientPhoto src={client.photoThumb ? undefined : client.photo} thumb={client.photoThumb} style={{ width: '50px', height: '50px', borderRadius: '12px', flexShrink: 0 }} />
                                                 <div>
                                                     <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{client.name}</div>
                                                     <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.2rem' }}>
@@ -4091,7 +4091,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Няма избрани клиенти.</div>
                                                 ) : selectedList.map(c => (
                                                     <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                                        <img src={c.photo} style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                                                        <ClientPhoto src={c.photoThumb ? undefined : c.photo} thumb={c.photoThumb} style={{ width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0 }} />
                                                         <div style={{ flex: 1, minWidth: 0 }}>
                                                             <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
                                                             <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{c.route} · {c.cardType || 'Нормална карта'}</div>
@@ -4493,7 +4493,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             <div style={{ marginBottom: '1.5rem', border: '1px solid var(--surface-border)', borderRadius: '12px', padding: '1rem', background: 'rgba(255,255,255,0.03)', width: '100%' }}>
                                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>СЪЩЕСТВУВАЩ ПРОФИЛ:</div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
-                                                    <img src={duplicateCheckClient.photo} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary-color)' }} />
+                                                    <ClientPhoto src={duplicateCheckClient.photoThumb ? undefined : duplicateCheckClient.photo} thumb={duplicateCheckClient.photoThumb} style={{ width: '60px', height: '60px', borderRadius: '50%', border: '2px solid var(--primary-color)', flexShrink: 0 }} />
                                                     <div style={{ textAlign: 'left' }}>
                                                         <div style={{ fontWeight: 700 }}>{duplicateCheckClient.name}</div>
                                                         <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{duplicateCheckClient.route}</div>
@@ -5022,7 +5022,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                             {/* Header */}
                             <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <ClientPhoto src={selectedClient.photo} thumb={selectedClient.photoThumb} style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0 }} />
+                                    <ClientPhoto src={selectedClient.photoThumb ? undefined : selectedClient.photo} thumb={selectedClient.photoThumb} style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0 }} />
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{selectedClient.name}</h3>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>ID: {selectedClient.id}</div>
