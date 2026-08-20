@@ -3,6 +3,7 @@ import {
     HelpCircle, RefreshCw, CheckCircle, XCircle, Search, User,
     ScanLine, Camera, Phone, Sparkles, Info, Ban, UserPlus,
     PencilLine, Palette, MousePointerClick, Smartphone, CreditCard,
+    ArrowLeftRight,
 } from 'lucide-react';
 
 /* ---- Design tokens (brand teal/green/red + a real gold for the "golden rule") ---- */
@@ -188,6 +189,18 @@ const Help: React.FC = () => {
                     <Step n={2} tone="teal">Кликни бутона <Pill tone="teal">Управление</Pill> до името му.</Step>
                     <Step n={3} tone="teal">Натисни бутона <Pill tone="green">ПОДНОВИ</Pill>.</Step>
                     <Step n={4} tone="teal">Избери <b>месеца</b> и сумата — готово!</Step>
+                </GuideCard>
+
+                <GuideCard tone="teal" icon={<ArrowLeftRight size={20} color={TEAL} />} title="Смени направление">
+                    <p style={{ margin: '0 0 0.3rem', color: 'var(--text-secondary)', fontSize: '0.92rem' }}>Ако клиентът вече пътува по друга линия:</p>
+                    <Step n={1} tone="teal">Отиди на <Pill tone="teal">Управление</Pill> до името на клиента.</Step>
+                    <Step n={2} tone="teal">Влез в таб <Pill>Действие</Pill>.</Step>
+                    <Step n={3} tone="teal">В <b>Направления</b> натисни <Pill tone="teal">⇄</Pill> до направлението.</Step>
+                    <Step n={4} tone="teal">Избери новото направление и натисни <Pill tone="teal">Смени</Pill>.</Step>
+                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', marginTop: '0.3rem', padding: '0.75rem 0.9rem', background: `${TEAL}14`, border: `1px solid ${TEAL}33`, borderRadius: '12px' }}>
+                        <Info size={17} color={TEAL} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <span style={{ fontSize: '0.85rem', color: '#bfeff2', lineHeight: 1.5 }}>Клиентът <b>не плаща втори път</b> — платените месеци от текущия нататък се прехвърлят към новото направление. Миналите месеци остават към старото, за да не се разваля отчетът. Смяната се записва в <b>одит лога</b>.</span>
+                    </div>
                 </GuideCard>
 
                 <GuideCard tone="red" icon={<Ban size={20} color={RED} />} title="Спри (анулирай) карта">

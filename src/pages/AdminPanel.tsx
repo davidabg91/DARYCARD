@@ -7,7 +7,7 @@ import {
     ShieldCheck, Shield, TrendingUp,
     PiggyBank, AlertTriangle, Share2,
     AlertCircle, Bus, Send, Bell, BarChart3,
-    Eye, EyeOff
+    Eye, EyeOff, ArrowLeftRight
 } from 'lucide-react';
 import Card from '../components/Card';
 import UnpaidAlertsButton from '../components/UnpaidAlertsButton';
@@ -402,6 +402,9 @@ const AdminPanel: React.FC = () => {
     const { currentUser } = useAuth();
     const location = useLocation();
     const isAdmin = currentUser?.role === 'admin';
+    // Moderators share most day-to-day client actions with admins (changing a
+    // direction, renewing); only destructive ones stay admin-only.
+    const isStaff = isAdmin || currentUser?.role === 'moderator';
     const [activeTab, setActiveTab] = useState<'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications' | 'unpaid'>(
         'clients'
     );
@@ -477,6 +480,18 @@ const AdminPanel: React.FC = () => {
 
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
     const [modalMessage, setModalMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+    // Inline "смени направление" editor in Управление → ДЕЙСТВИЯ: which direction is
+    // being re-routed and the route picked to replace it.
+    const [changingDir, setChangingDir] = useState<string | null>(null);
+    const [changeDirTo, setChangeDirTo] = useState('');
+    const [changeDirBusy, setChangeDirBusy] = useState(false);
+
+    // Never let the open editor carry over to another profile.
+    useEffect(() => {
+        setChangingDir(null);
+        setChangeDirTo('');
+    }, [selectedClient?.id, showActionModal]);
+
     // Пътувания (сканирания) на отворения профил — четат се лениво при отваряне на модала,
     // от подколекцията clients/{id}/scans.
     const [profileScans, setProfileScans] = useState<{ at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string }[] | null>(null);
@@ -1503,6 +1518,102 @@ const AdminPanel: React.FC = () => {
         const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
         await logGlobalActivity('Премахване на направление', nameWithCard, `Премахнато направление „${dir}".`);
         setModalMessage({ text: `Направление „${dir}" е премахнато от профила.`, type: 'success' });
+    };
+
+    // Change (re-route) one of a client's directions — e.g. the passenger moved and
+    // now travels another line. The direction is swapped in place and any payment
+    // for the CURRENT or a FUTURE month follows it, so someone who already paid this
+    // month doesn't pay twice. Past months stay attributed to the old direction so
+    // the finance reports keep showing where the money actually came from.
+    // Moderators may do this too (unlike deleting) — every change is written to the
+    // global activity log, where admins see it in ОДИТ.
+    const changeDirection = async (oldDir: string, targetDir: string) => {
+        if (!selectedClient || !isStaff) return;
+        if (!targetDir || targetDir === oldDir) {
+            setModalMessage({ text: 'Изберете различно направление.', type: 'error' });
+            return;
+        }
+        if (getClientRoutes(selectedClient).includes(targetDir)) {
+            setModalMessage({ text: `Клиентът вече има направление „${targetDir}". Изберете друго.`, type: 'error' });
+            return;
+        }
+        const thisMonth = new Date().toISOString().substring(0, 7);
+        if (!window.confirm(
+            `Да се смени ли направление „${oldDir}" с „${targetDir}"?\n\n` +
+            `Платените месеци от ${thisMonth} нататък се прехвърлят към новото направление. ` +
+            `Миналите месеци остават записани към „${oldDir}".`
+        )) return;
+
+        const isoNow = new Date().toISOString();
+        let newRoutes: string[] = [];
+        let newRenewalHistory: NonNullable<Client['renewalHistory']> = [];
+        let moved = 0;
+
+        // Transaction: rewriting the whole renewalHistory array from the freshest
+        // document (not the stale in-memory copy) keeps a payment another moderator
+        // added in the meantime from being wiped.
+        setChangeDirBusy(true);
+        try {
+            await runTransaction(db, async (tx) => {
+                const ref = doc(db, 'clients', selectedClient.id);
+                const snap = await tx.get(ref);
+                if (!snap.exists()) throw new Error('Клиентът не съществува.');
+                const data = snap.data() as Client;
+
+                const liveDirs = getClientRoutes(data);
+                if (!liveDirs.includes(oldDir)) throw new Error(`Направление „${oldDir}" вече не е в профила.`);
+                if (liveDirs.includes(targetDir)) throw new Error(`Клиентът вече има направление „${targetDir}".`);
+                newRoutes = liveDirs.map(d => (d === oldDir ? targetDir : d));
+
+                // Legacy entries carry no `route` and count toward the FIRST direction.
+                // Stamp them explicitly here, otherwise changing the first direction
+                // would silently drag the client's whole payment history along.
+                const primary = liveDirs[0];
+                moved = 0;
+                newRenewalHistory = (data.renewalHistory || []).map(rh => {
+                    if ((rh.route || primary) !== oldDir) return rh;
+                    if (rh.month >= thisMonth) { moved++; return { ...rh, route: targetDir }; }
+                    return { ...rh, route: oldDir };
+                });
+
+                tx.update(ref, {
+                    routes: newRoutes,
+                    route: newRoutes.join(', '),
+                    renewalHistory: newRenewalHistory,
+                    history: [...(data.history || []), {
+                        date: isoNow,
+                        action: 'Смяна на направление',
+                        details: `„${oldDir}" → „${targetDir}"` + (moved ? ` (прехвърлени ${moved} платени месеца от ${thisMonth} нататък)` : ''),
+                        performedBy: currentUser?.username || 'Служител'
+                    }]
+                });
+            });
+        } catch (err) {
+            console.error(err);
+            setChangeDirBusy(false);
+            setModalMessage({ text: err instanceof Error ? err.message : 'Грешка при смяна на направлението.', type: 'error' });
+            return;
+        }
+        setChangeDirBusy(false);
+
+        // Reflect immediately in the open modal (the clients listener refreshes the
+        // list, but `selectedClient` is a separate copy).
+        setSelectedClient({ ...selectedClient, routes: newRoutes, route: newRoutes.join(', '), renewalHistory: newRenewalHistory });
+        if (newRoute === oldDir) setNewRoute(targetDir);
+        setChangingDir(null);
+        setChangeDirTo('');
+
+        const cardNumCh = getClientCardNumber(selectedClient);
+        const nameCh = cardNumCh ? `${selectedClient.name} (Карта № ${cardNumCh})` : selectedClient.name;
+        await logGlobalActivity(
+            'Смяна на направление',
+            nameCh,
+            `„${oldDir}" → „${targetDir}"` + (moved ? ` | Прехвърлени ${moved} платени месеца (от ${thisMonth} нататък)` : ' | Без прехвърлени плащания')
+        );
+        setModalMessage({
+            text: `Направлението е сменено: „${oldDir}" → „${targetDir}".` + (moved ? ` Прехвърлени са ${moved} платени месеца.` : ''),
+            type: 'success'
+        });
     };
 
     const generateNfcBatch = () => {
@@ -4910,20 +5021,58 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 {getClientRoutes(selectedClient).map(dir => {
                                                     const paid = isDirectionPaid(selectedClient, dir, currentMonthIso);
                                                     const canDelete = isAdmin && getClientRoutes(selectedClient).length > 1;
+                                                    const isChanging = changingDir === dir;
+                                                    const taken = getClientRoutes(selectedClient);
                                                     return (
-                                                        <div key={dir} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0.9rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--surface-border)' }}>
-                                                            <span style={{ fontWeight: 700, marginRight: 'auto' }}>{dir}</span>
-                                                            <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '50px', background: paid ? 'rgba(0,230,118,0.12)' : 'rgba(255,82,82,0.12)', color: paid ? '#00e676' : '#ff5252' }}>
-                                                                {paid ? '✓ Платено' : '✗ Неплатено'}
-                                                            </span>
-                                                            {canDelete && (
-                                                                <button
-                                                                    onClick={() => deleteDirection(dir)}
-                                                                    title="Премахни направлението"
-                                                                    style={{ background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.3)', color: '#ff5252', borderRadius: '8px', padding: '0.35rem 0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
-                                                                >
-                                                                    <Trash2 size={14} />
-                                                                </button>
+                                                        <div key={dir} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.6rem 0.9rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: `1px solid ${isChanging ? 'rgba(0,173,181,0.45)' : 'var(--surface-border)'}` }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                                <span style={{ fontWeight: 700, marginRight: 'auto' }}>{dir}</span>
+                                                                <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: '50px', background: paid ? 'rgba(0,230,118,0.12)' : 'rgba(255,82,82,0.12)', color: paid ? '#00e676' : '#ff5252' }}>
+                                                                    {paid ? '✓ Платено' : '✗ Неплатено'}
+                                                                </span>
+                                                                {isStaff && (
+                                                                    <button
+                                                                        onClick={() => { setChangingDir(isChanging ? null : dir); setChangeDirTo(''); }}
+                                                                        title="Смени направлението"
+                                                                        style={{ background: isChanging ? 'rgba(0,173,181,0.25)' : 'rgba(0,173,181,0.1)', border: '1px solid rgba(0,173,181,0.35)', color: 'var(--primary-color)', borderRadius: '8px', padding: '0.35rem 0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                                                                    >
+                                                                        <ArrowLeftRight size={14} />
+                                                                    </button>
+                                                                )}
+                                                                {canDelete && (
+                                                                    <button
+                                                                        onClick={() => deleteDirection(dir)}
+                                                                        title="Премахни направлението"
+                                                                        style={{ background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.3)', color: '#ff5252', borderRadius: '8px', padding: '0.35rem 0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {isChanging && (
+                                                                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.5rem', borderTop: '1px dashed var(--surface-border)', paddingTop: '0.6rem' }}>
+                                                                    <select
+                                                                        value={changeDirTo}
+                                                                        onChange={e => setChangeDirTo(e.target.value)}
+                                                                        style={{ flex: 1, minWidth: 0, padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', colorScheme: 'dark', fontSize: '0.85rem' }}
+                                                                    >
+                                                                        <option value="" style={{ background: '#222' }}>— ново направление —</option>
+                                                                        {ROUTES.filter(r => !taken.includes(r)).map(r => <option key={r} value={r} style={{ background: '#222' }}>{r}</option>)}
+                                                                    </select>
+                                                                    <button
+                                                                        onClick={() => changeDirection(dir, changeDirTo)}
+                                                                        disabled={!changeDirTo || changeDirBusy}
+                                                                        style={{ background: 'var(--primary-color)', border: 'none', color: '#fff', borderRadius: '8px', padding: '0.55rem 1rem', fontWeight: 800, fontSize: '0.8rem', cursor: (!changeDirTo || changeDirBusy) ? 'default' : 'pointer', opacity: (!changeDirTo || changeDirBusy) ? 0.45 : 1, flexShrink: 0 }}
+                                                                    >
+                                                                        {changeDirBusy ? 'Записване...' : 'Смени'}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => { setChangingDir(null); setChangeDirTo(''); }}
+                                                                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--surface-border)', color: 'var(--text-secondary)', borderRadius: '8px', padding: '0.55rem 1rem', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', flexShrink: 0 }}
+                                                                    >
+                                                                        Отказ
+                                                                    </button>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     );
@@ -4931,6 +5080,8 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             </div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem' }}>
                                                 За да <b>добавиш ново направление</b> или да <b>подновиш</b> — избери маршрута долу в „Подновяване". Ново направление се добавя; съществуващо се подновява.
+                                                <br />
+                                                За да <b>смениш направление</b> (клиентът пътува по друга линия) — натисни ⇄ до него. Платените месеци от текущия нататък се прехвърлят; миналите остават към старото.
                                             </div>
                                         </div>
 

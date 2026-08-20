@@ -208,6 +208,8 @@ const SystemAdminPanel: React.FC = () => {
         if (a.includes('създаване')) return '#00e676'; // Green
         if (a.includes('изтриване') || a.includes('анулиране') || a.includes('триене') || a.includes('изтрито')) return '#ff5252'; // Red
         if (a.includes('подновяване')) return '#2196f3'; // Blue
+        if (a.includes('смяна')) return '#ab47bc'; // Purple — direction changed
+        if (a.includes('направление')) return '#ffd54f'; // Amber — direction added/removed
         if (a.includes('генериране') || a.includes('копиране')) return '#00bcd4'; // Cyan
         return '#ffab00'; // Default Orange
     };
