@@ -610,8 +610,17 @@ const AdminPanel: React.FC = () => {
     const [unpaidScansRaw, setUnpaidScansRaw] = useState<{ clientId: string; at: string; route?: string }[] | null>(null);
     const [unpaidLoading, setUnpaidLoading] = useState(false);
     const [unpaidWindowDays, setUnpaidWindowDays] = useState(30);
+    // This report is a collection-group read over every scan in the window — 30 days
+    // is ~12,000 documents (~5 MB). It used to re-run that on every visit to the tab,
+    // so leaving and coming back paid for it again. Remember which window is already
+    // in memory and skip the refetch; the „Обнови" button forces a fresh read.
+    const [unpaidReloadKey, setUnpaidReloadKey] = useState(0);
+    const unpaidLoadedKey = useRef<string | null>(null);
     useEffect(() => {
         if (activeTab !== 'unpaid' || !isAdmin) return;
+        const key = `${unpaidWindowDays}:${unpaidReloadKey}`;
+        if (unpaidLoadedKey.current === key) return;
+        unpaidLoadedKey.current = key;
         let cancelled = false;
         const windowStart = new Date(Date.now() - unpaidWindowDays * 86400000).toISOString().slice(0, 10);
         setUnpaidLoading(true);
@@ -628,7 +637,7 @@ const AdminPanel: React.FC = () => {
             .catch(err => { console.error('Грешка при зареждане на сканиранията:', err); if (!cancelled) setUnpaidScansRaw([]); })
             .finally(() => { if (!cancelled) setUnpaidLoading(false); });
         return () => { cancelled = true; };
-    }, [activeTab, isAdmin, unpaidWindowDays]);
+    }, [activeTab, isAdmin, unpaidWindowDays, unpaidReloadKey]);
 
     // Duplicate Check State
     const [duplicateCheckClient, setDuplicateCheckClient] = useState<Client | null>(null);
@@ -4576,6 +4585,14 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     <option value={60}>Последните 60 дни</option>
                                                     <option value={90}>Последните 90 дни</option>
                                                 </select>
+                                                <button
+                                                    onClick={() => setUnpaidReloadKey(k => k + 1)}
+                                                    disabled={unpaidLoading}
+                                                    title="Прочети сканиранията наново"
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.8rem', cursor: unpaidLoading ? 'default' : 'pointer', opacity: unpaidLoading ? 0.5 : 1 }}
+                                                >
+                                                    <RefreshCw size={14} /> Обнови
+                                                </button>
                                             </div>
                                         </div>
 

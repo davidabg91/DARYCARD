@@ -705,9 +705,12 @@ const SystemAdminPanel: React.FC = () => {
                 </div>
             )}
 
-            {/* Users Tab */}
-            {activeTab === 'users' && (
-                <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.3s ease' }}>
+            {/* Users Tab — kept mounted and merely hidden when another tab is on screen.
+                Its queries are tiny (login_attempts is ~21 documents), but issuing them
+                only on tab open meant landing mid-way through the dashboard's 6.8 MB
+                abuse read and queueing behind it on the single Firestore connection.
+                Mounted here they resolve during the panel's first idle moment. */}
+            <div style={{ display: activeTab === 'users' ? 'flex' : 'none', maxWidth: '900px', margin: '0 auto', flexDirection: 'column', gap: '2rem' }}>
                     <AdminAlertsButton />
                     <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
                         <SecurityLog />
@@ -805,8 +808,7 @@ const SystemAdminPanel: React.FC = () => {
                         </button>
                         {cleanupMsg && <div style={{ marginTop: '1rem', fontSize: '0.85rem', fontWeight: 700, color: '#00c853' }}>{cleanupMsg}</div>}
                     </Card>
-                </div>
-            )}
+            </div>
 
             {/* Audit Tab */}
             {activeTab === 'audit' && (
