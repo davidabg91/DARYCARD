@@ -7,7 +7,7 @@ import {
     ShieldCheck, Shield, TrendingUp,
     PiggyBank, AlertTriangle, Share2,
     AlertCircle, Bus, Send, Bell, BarChart3,
-    Eye, EyeOff, ArrowLeftRight
+    Eye, EyeOff, ArrowLeftRight, GraduationCap
 } from 'lucide-react';
 import Card from '../components/Card';
 import UnpaidAlertsButton from '../components/UnpaidAlertsButton';
@@ -485,12 +485,45 @@ const AdminPanel: React.FC = () => {
     const [changingDir, setChangingDir] = useState<string | null>(null);
     const [changeDirTo, setChangeDirTo] = useState('');
     const [changeDirBusy, setChangeDirBusy] = useState(false);
+    // Inline "смени училище" editor for student cards, same place. Kept separate
+    // from the registration form's school/община state so opening it here can
+    // never clobber a half-filled new card.
+    const [changingSchool, setChangingSchool] = useState(false);
+    const [schoolEdit, setSchoolEdit] = useState('');
+    const [schoolEditCustom, setSchoolEditCustom] = useState('');
+    const [schoolEditMunicipality, setSchoolEditMunicipality] = useState('');
+    const [schoolEditCustomMunicipality, setSchoolEditCustomMunicipality] = useState('');
+    const [schoolEditBusy, setSchoolEditBusy] = useState(false);
 
-    // Never let the open editor carry over to another profile.
+    // Never let an open editor carry over to another profile.
     useEffect(() => {
         setChangingDir(null);
         setChangeDirTo('');
+        setChangingSchool(false);
     }, [selectedClient?.id, showActionModal]);
+
+    // Prefill the school editor from the client when it is opened. A school or
+    // община that isn't in the dropdowns (entered by hand back then) reopens as
+    // "Друго" with the saved text, so nothing is silently lost.
+    const openSchoolEditor = () => {
+        const school = selectedClient?.school || '';
+        const muni = selectedClient?.municipality || '';
+        if (school && SCHOOLS.includes(school)) {
+            setSchoolEdit(school);
+            setSchoolEditCustom('');
+        } else {
+            setSchoolEdit(school ? 'custom' : '');
+            setSchoolEditCustom(school);
+        }
+        if (muni && MUNICIPALITIES.includes(muni)) {
+            setSchoolEditMunicipality(muni);
+            setSchoolEditCustomMunicipality('');
+        } else {
+            setSchoolEditMunicipality(muni ? MUNICIPALITY_CUSTOM : '');
+            setSchoolEditCustomMunicipality(muni);
+        }
+        setChangingSchool(true);
+    };
 
     // Пътувания (сканирания) на отворения профил — четат се лениво при отваряне на модала,
     // от подколекцията clients/{id}/scans.
@@ -1612,6 +1645,72 @@ const AdminPanel: React.FC = () => {
         );
         setModalMessage({
             text: `Направлението е сменено: „${oldDir}" → „${targetDir}".` + (moved ? ` Прехвърлени са ${moved} платени месеца.` : ''),
+            type: 'success'
+        });
+    };
+
+    // Move a student to another school — e.g. the child transferred. The община
+    // follows the school (that's what the "по договор с общини" report groups by),
+    // auto-filled for the predefined schools and editable for a hand-typed one.
+    // Open to moderators as well as admins; the change lands in ОДИТ.
+    const changeSchool = async () => {
+        if (!selectedClient || !isStaff) return;
+        const targetSchool = (schoolEdit === 'custom' ? schoolEditCustom : schoolEdit).trim();
+        if (!targetSchool) {
+            setModalMessage({ text: 'Изберете или въведете училище.', type: 'error' });
+            return;
+        }
+        const targetMunicipality = (schoolEditMunicipality === MUNICIPALITY_CUSTOM ? schoolEditCustomMunicipality : schoolEditMunicipality).trim();
+        if (!targetMunicipality) {
+            setModalMessage({ text: 'Изберете община за новото училище.', type: 'error' });
+            return;
+        }
+
+        const oldSchool = selectedClient.school || '';
+        const oldMunicipality = selectedClient.municipality || '';
+        if (targetSchool === oldSchool && targetMunicipality === oldMunicipality) {
+            setModalMessage({ text: 'Няма промяна — училището и общината са същите.', type: 'error' });
+            return;
+        }
+
+        const muniChanged = targetMunicipality !== oldMunicipality;
+        const details = `„${oldSchool || 'няма'}" → „${targetSchool}"`
+            + (muniChanged ? ` | Община: „${oldMunicipality || 'няма'}" → „${targetMunicipality}"` : '');
+
+        if (!window.confirm(
+            `Да се премести ли ученикът от „${oldSchool || 'няма въведено училище'}" в „${targetSchool}"?`
+            + (muniChanged ? `\n\nОбщината се сменя от „${oldMunicipality || 'няма'}" на „${targetMunicipality}".` : '')
+        )) return;
+
+        setSchoolEditBusy(true);
+        try {
+            await updateDoc(doc(db, 'clients', selectedClient.id), {
+                school: targetSchool,
+                municipality: targetMunicipality,
+                history: arrayUnion({
+                    date: new Date().toISOString(),
+                    action: 'Смяна на училище',
+                    details,
+                    performedBy: currentUser?.username || 'Служител'
+                })
+            });
+        } catch (err) {
+            console.error(err);
+            setSchoolEditBusy(false);
+            setModalMessage({ text: 'Грешка при смяна на училището.', type: 'error' });
+            return;
+        }
+        setSchoolEditBusy(false);
+
+        // Reflect immediately in the open modal (`selectedClient` is a separate copy).
+        setSelectedClient({ ...selectedClient, school: targetSchool, municipality: targetMunicipality });
+        setChangingSchool(false);
+
+        const cardNumSc = getClientCardNumber(selectedClient);
+        const nameSc = cardNumSc ? `${selectedClient.name} (Карта № ${cardNumSc})` : selectedClient.name;
+        await logGlobalActivity('Смяна на училище', nameSc, details);
+        setModalMessage({
+            text: `Училището е сменено на „${targetSchool}".` + (muniChanged ? ` Общината е обновена на „${targetMunicipality}".` : ''),
             type: 'success'
         });
     };
@@ -5084,6 +5183,103 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 За да <b>смениш направление</b> (клиентът пътува по друга линия) — натисни ⇄ до него. Платените месеци от текущия нататък се прехвърлят; миналите остават към старото.
                                             </div>
                                         </div>
+
+                                        {/* School (student cards only) */}
+                                        {selectedClient.cardType === 'Ученическа карта' && (
+                                        <div style={{ padding: isMobile ? '1.25rem' : '1.5rem', borderRadius: '12px', background: 'rgba(255,171,0,0.04)', border: '1px solid rgba(255,171,0,0.15)' }}>
+                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ffab00', margin: '0 0 1rem 0', fontSize: isMobile ? '1rem' : '1.1rem' }}><GraduationCap size={18} /> Училище</h4>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0.9rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--surface-border)' }}>
+                                                <div style={{ marginRight: 'auto', minWidth: 0 }}>
+                                                    <div style={{ fontWeight: 700 }}>{selectedClient.school || 'Няма въведено училище'}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Община: {selectedClient.municipality || '—'}</div>
+                                                </div>
+                                                {isStaff && (
+                                                    <button
+                                                        onClick={() => (changingSchool ? setChangingSchool(false) : openSchoolEditor())}
+                                                        title="Смени училището"
+                                                        style={{ background: changingSchool ? 'rgba(255,171,0,0.25)' : 'rgba(255,171,0,0.1)', border: '1px solid rgba(255,171,0,0.35)', color: '#ffab00', borderRadius: '8px', padding: '0.35rem 0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                                                    >
+                                                        <ArrowLeftRight size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {changingSchool && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.75rem' }}>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Ново училище</label>
+                                                        <select
+                                                            value={schoolEdit}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                setSchoolEdit(val);
+                                                                // A predefined school carries its община with it; a hand-typed
+                                                                // one leaves the field to the operator.
+                                                                if (val === 'custom' || val === '') {
+                                                                    setSchoolEditMunicipality('');
+                                                                } else {
+                                                                    setSchoolEditMunicipality(SCHOOL_MUNICIPALITY[val] || DEFAULT_MUNICIPALITY);
+                                                                }
+                                                                setSchoolEditCustomMunicipality('');
+                                                            }}
+                                                            style={{ width: '100%', padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', colorScheme: 'dark', fontSize: '0.85rem' }}
+                                                        >
+                                                            <option value="" style={{ background: '#222' }}>-- Изберете училище --</option>
+                                                            {SCHOOLS.map(sc => <option key={sc} value={sc} style={{ background: '#222' }}>{sc}</option>)}
+                                                            <option value="custom" style={{ background: '#222' }}>Друго (въведи ръчно)...</option>
+                                                        </select>
+                                                    </div>
+                                                    {schoolEdit === 'custom' && (
+                                                        <input
+                                                            type="text"
+                                                            value={schoolEditCustom}
+                                                            onChange={e => setSchoolEditCustom(e.target.value)}
+                                                            placeholder="Име на училището..."
+                                                            style={{ width: '100%', padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', fontSize: '0.85rem' }}
+                                                        />
+                                                    )}
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Община</label>
+                                                        <select
+                                                            value={schoolEditMunicipality}
+                                                            onChange={e => { setSchoolEditMunicipality(e.target.value); if (e.target.value !== MUNICIPALITY_CUSTOM) setSchoolEditCustomMunicipality(''); }}
+                                                            style={{ width: '100%', padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', colorScheme: 'dark', fontSize: '0.85rem' }}
+                                                        >
+                                                            <option value="" style={{ background: '#222' }}>-- Изберете община --</option>
+                                                            {MUNICIPALITIES.map(m => <option key={m} value={m} style={{ background: '#222' }}>{m}</option>)}
+                                                            <option value={MUNICIPALITY_CUSTOM} style={{ background: '#222' }}>Друго (въведи ръчно)...</option>
+                                                        </select>
+                                                    </div>
+                                                    {schoolEditMunicipality === MUNICIPALITY_CUSTOM && (
+                                                        <input
+                                                            type="text"
+                                                            value={schoolEditCustomMunicipality}
+                                                            onChange={e => setSchoolEditCustomMunicipality(e.target.value)}
+                                                            placeholder="Име на общината..."
+                                                            style={{ width: '100%', padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', fontSize: '0.85rem' }}
+                                                        />
+                                                    )}
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <button
+                                                            onClick={changeSchool}
+                                                            disabled={schoolEditBusy}
+                                                            style={{ flex: 1, background: '#ffab00', border: 'none', color: '#1a1a1a', borderRadius: '8px', padding: '0.55rem 1rem', fontWeight: 800, fontSize: '0.8rem', cursor: schoolEditBusy ? 'default' : 'pointer', opacity: schoolEditBusy ? 0.45 : 1 }}
+                                                        >
+                                                            {schoolEditBusy ? 'Записване...' : 'Запази училището'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setChangingSchool(false)}
+                                                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--surface-border)', color: 'var(--text-secondary)', borderRadius: '8px', padding: '0.55rem 1rem', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', flexShrink: 0 }}
+                                                        >
+                                                            Отказ
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem' }}>
+                                                Ако детето се е преместило — натисни ⇄ и избери новото училище. Общината се обновява автоматично и смяната се записва в одит лога.
+                                            </div>
+                                        </div>
+                                        )}
 
                                         {/* Renew / add direction */}
                                         <div style={{ padding: isMobile ? '1.25rem' : '1.5rem', borderRadius: '12px', background: 'rgba(0,255,150,0.03)', border: '1px solid rgba(0,255,150,0.1)' }}>

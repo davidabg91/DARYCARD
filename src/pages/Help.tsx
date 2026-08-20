@@ -3,7 +3,7 @@ import {
     HelpCircle, RefreshCw, CheckCircle, XCircle, Search, User,
     ScanLine, Camera, Phone, Sparkles, Info, Ban, UserPlus,
     PencilLine, Palette, MousePointerClick, Smartphone, CreditCard,
-    ArrowLeftRight,
+    ArrowLeftRight, GraduationCap,
 } from 'lucide-react';
 
 /* ---- Design tokens (brand teal/green/red + a real gold for the "golden rule") ---- */
@@ -200,6 +200,18 @@ const Help: React.FC = () => {
                     <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', marginTop: '0.3rem', padding: '0.75rem 0.9rem', background: `${TEAL}14`, border: `1px solid ${TEAL}33`, borderRadius: '12px' }}>
                         <Info size={17} color={TEAL} style={{ flexShrink: 0, marginTop: '2px' }} />
                         <span style={{ fontSize: '0.85rem', color: '#bfeff2', lineHeight: 1.5 }}>Клиентът <b>не плаща втори път</b> — платените месеци от текущия нататък се прехвърлят към новото направление. Миналите месеци остават към старото, за да не се разваля отчетът. Смяната се записва в <b>одит лога</b>.</span>
+                    </div>
+                </GuideCard>
+
+                <GuideCard tone="gold" icon={<GraduationCap size={20} color={GOLD} />} title="Смени училище (ученици)">
+                    <p style={{ margin: '0 0 0.3rem', color: 'var(--text-secondary)', fontSize: '0.92rem' }}>Ако детето се е преместило в друго училище:</p>
+                    <Step n={1} tone="gold">Отиди на <Pill tone="teal">Управление</Pill> до името на ученика.</Step>
+                    <Step n={2} tone="gold">Влез в таб <Pill>Действие</Pill>.</Step>
+                    <Step n={3} tone="gold">В <b>Училище</b> натисни <Pill tone="gold">⇄</Pill>.</Step>
+                    <Step n={4} tone="gold">Избери новото училище и натисни <Pill tone="gold">Запази училището</Pill>.</Step>
+                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', marginTop: '0.3rem', padding: '0.75rem 0.9rem', background: `${GOLD}14`, border: `1px solid ${GOLD}33`, borderRadius: '12px' }}>
+                        <Info size={17} color={GOLD} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <span style={{ fontSize: '0.85rem', color: '#ffe0a3', lineHeight: 1.5 }}>Панелът се вижда само при <b>Ученическа карта</b>. <b>Общината се сменя сама</b> заедно с училището (важно за отчета по договор с общини) — ако училището го няма в списъка, избери „Друго" и я посочи ръчно. Смяната се записва в <b>одит лога</b>.</span>
                     </div>
                 </GuideCard>
 
