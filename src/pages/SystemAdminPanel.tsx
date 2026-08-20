@@ -99,7 +99,13 @@ const SystemAdminPanel: React.FC = () => {
 
     // Global Data
     const [clients, setClients] = useState<Client[]>([]);
-    const [scans, setScans] = useState<ScanRecord[]>([]);
+    // Two separate scan reads. АНАЛИЗ НА ТРАФИКА only ever looks at the selected
+    // day (~0.24 MB); КОНТРОЛ НА ЗЛОУПОТРЕБИ is the one that needs 60 days (~6.8 MB).
+    // Serving both from one 60-day listener made the chart wait ~6 s for data it
+    // does not use.
+    const [dayScans, setDayScans] = useState<ScanRecord[]>([]);
+    const [abuseScans, setAbuseScans] = useState<ScanRecord[]>([]);
+    const [abuseLoading, setAbuseLoading] = useState(true);
 
     const [globalLogs, setGlobalLogs] = useState<GlobalLog[]>([]);
     const [fines, setFines] = useState<{ amount: number; month: string; date: string }[]>([]);
@@ -149,16 +155,21 @@ const SystemAdminPanel: React.FC = () => {
         return () => unsub();
     }, [logLimit]);
 
-    // Only ТАБЛО reads clients and scans. Both are large, and the Web SDK funnels
-    // every listener through ONE connection, so subscribing to them from the other
-    // tabs made ОДИТ's 20-document query queue behind ~11.7 MB it has no use for.
-    const dashboardActive = activeTab === 'dashboard';
+    // Only ТАБЛО reads clients and scans, and both are large, so the other tabs must
+    // not pay for them — the Web SDK funnels every listener through ONE connection.
+    // This is a LATCH, not a live flag: once ТАБЛО has been opened the listeners stay
+    // subscribed. Tearing them down on every tab change meant coming back to ТАБЛО
+    // re-downloaded everything from scratch and flashed the skeleton again, and the
+    // re-download then starved the small queries on the other tabs.
+    const [dashboardOpened, setDashboardOpened] = useState(activeTab === 'dashboard');
+    useEffect(() => {
+        if (activeTab === 'dashboard') setDashboardOpened(true);
+    }, [activeTab]);
 
     // Clients — loaded in full because the dashboard aggregates (revenue, route
     // stats, abuse) need every client.
     useEffect(() => {
-        if (!dashboardActive) return;
-        setLoading(true);
+        if (!dashboardOpened) return;
         const unsub = onSnapshot(query(collection(db, 'clients')), (snap) => {
             const list: Client[] = [];
             snap.forEach(d => list.push({ id: d.id, ...d.data() } as Client));
@@ -175,34 +186,50 @@ const SystemAdminPanel: React.FC = () => {
             setLoading(false);
         });
         return () => unsub();
-    }, [dashboardActive]);
+    }, [dashboardOpened]);
 
-    // Start of the scan window the dashboard needs: 60 days back for the abuse
-    // detector, stretched further only if the chart is pointed at an older day.
-    // Memoised so that picking another date inside the normal 60-day range yields
-    // the SAME string — otherwise the listener below would tear down and re-download
-    // all ~15k scan documents on every click of the date picker.
-    const scanWindowStart = useMemo(() => {
-        const sixtyDaysAgo = new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0];
-        return selectedDate < sixtyDaysAgo ? selectedDate : sixtyDaysAgo;
-    }, [selectedDate]);
+    const toScanRecords = (snap: { docs: { ref: { parent: { parent: { id: string } | null } }; data: () => Record<string, unknown> }[] }): ScanRecord[] =>
+        snap.docs.map(d => ({
+            clientId: d.ref.parent.parent?.id ?? '',
+            at: (d.data().at as string) ?? '',
+            route: (d.data().route as string) ?? '',
+        }));
 
-    // Scans — read from the clients/{id}/scans subcollection via a collection-group
-    // query, bounded to the window above. Requires the scans.at collection-group
-    // index in firestore.indexes.json.
+    // Day of scans behind АНАЛИЗ НА ТРАФИКА — one day is ~0.24 MB, so re-reading it
+    // when the date picker moves costs nothing. `dayEnd` bounds the range so the
+    // query cannot widen into the whole history.
     useEffect(() => {
-        if (!dashboardActive) return;
-        const qScans = query(collectionGroup(db, 'scans'), where('at', '>=', scanWindowStart));
-        const unsub = onSnapshot(qScans, (snap) => {
-            const list: ScanRecord[] = snap.docs.map(d => ({
-                clientId: d.ref.parent.parent?.id ?? '',
-                at: (d.data().at as string) ?? '',
-                route: (d.data().route as string) ?? '',
-            }));
-            setScans(list);
-        }, (err) => console.error('Scans listener error:', err));
+        if (!dashboardOpened) return;
+        const dayEnd = selectedDate + '\uf8ff';
+        const qDay = query(collectionGroup(db, 'scans'), where('at', '>=', selectedDate), where('at', '<=', dayEnd));
+        const unsub = onSnapshot(qDay, (snap) => setDayScans(toScanRecords(snap)),
+            (err) => console.error('Day scans listener error:', err));
         return () => unsub();
-    }, [dashboardActive, scanWindowStart]);
+    }, [dashboardOpened, selectedDate]);
+
+    // The 60-day window behind КОНТРОЛ НА ЗЛОУПОТРЕБИ — 15.8k documents, ~6.8 MB.
+    // Deliberately started only after the clients snapshot has landed, so the rest of
+    // ТАБЛО (and any small query on another tab) is not stuck behind it.
+    const abuseWindowStart = useMemo(
+        () => new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0],
+        []);
+    // Armed the first time ТАБЛО is on screen AND the clients snapshot has landed —
+    // then left armed. So jumping straight to ОДИТ never starts this 6.8 MB read,
+    // but once it has started, changing tabs does not throw the result away.
+    const [abuseArmed, setAbuseArmed] = useState(false);
+    useEffect(() => {
+        if (activeTab === 'dashboard' && !loading) setAbuseArmed(true);
+    }, [activeTab, loading]);
+
+    useEffect(() => {
+        if (!abuseArmed) return;
+        const qAbuse = query(collectionGroup(db, 'scans'), where('at', '>=', abuseWindowStart));
+        const unsub = onSnapshot(qAbuse, (snap) => {
+            setAbuseScans(toScanRecords(snap));
+            setAbuseLoading(false);
+        }, (err) => { console.error('Abuse scans listener error:', err); setAbuseLoading(false); });
+        return () => unsub();
+    }, [abuseArmed, abuseWindowStart]);
 
     // Fines (Глоби) — standalone charges (e.g. lost-card fee) that count toward
     // revenue but live outside renewalHistory so they don't affect card validity.
@@ -279,7 +306,7 @@ const SystemAdminPanel: React.FC = () => {
 
     const hourlyDistribution = (() => {
         const dist = Array(24).fill(0);
-        scans.forEach(s => {
+        dayScans.forEach(s => {
             if (s.at.startsWith(selectedDate)) {
                 if (chartRoute === 'all_routes' || s.route === chartRoute) {
                     dist[new Date(s.at).getHours()]++;
@@ -318,7 +345,7 @@ const SystemAdminPanel: React.FC = () => {
     // client, then flag days with more than 3 scans on the same card.
     const scansByClient = (() => {
         const map: Record<string, string[]> = {};
-        scans.forEach(s => {
+        abuseScans.forEach(s => {
             if (!s.clientId) return;
             if (!map[s.clientId]) map[s.clientId] = [];
             map[s.clientId].push(s.at);
@@ -655,7 +682,12 @@ const SystemAdminPanel: React.FC = () => {
                                                                 ))}
                                                             </div>
                                                         </div>
-                                                    )) : <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.3, fontWeight: 700 }}>Няма засечени нарушения към момента.</div>}
+                                                    )) : abuseLoading ? (
+                                                        <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.45, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                                                            <div style={{ width: '26px', height: '26px', border: '3px solid rgba(255,82,82,0.2)', borderTopColor: '#ff5252', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                                                            Проверяват се сканиранията за последните 60 дни...
+                                                        </div>
+                                                    ) : <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.3, fontWeight: 700 }}>Няма засечени нарушения към момента.</div>}
                                                 </div>
                                             </Card>
                                         </div>
