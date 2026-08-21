@@ -17,7 +17,13 @@ export interface RouteMetadata {
   stops: string[];
   priceSingle: string;
   priceCard: string;
+  // Per-card-type prices. Set one only when the route's price for that card is
+  // not the standard discount off priceCard (student & pensioner -50%,
+  // disabled -20%/-25%); cardPrice() falls back to the discount otherwise.
   priceCardStudent?: string;
+  priceCardPensioner?: string;
+  priceCardTeacher?: string;
+  priceCardDisabled?: string;
   description?: string;
 }
 
@@ -30,12 +36,26 @@ export const DM_CONTRACT_ROUTES = new Set<string>([
 ]);
 
 // Discount for a disabled (Инвалидна) card on a given route, as a percentage.
-export const disabledDiscountPct = (route: string): number =>
-  DM_CONTRACT_ROUTES.has(route) ? 20 : 25;
+// A route carrying an explicit priceCardDisabled is quoted from that price, so
+// report the discount it actually works out to rather than the contract rate.
+export const disabledDiscountPct = (route: string): number => {
+  const meta = ROUTE_METADATA[route];
+  const base = parsePrice(meta?.priceCard);
+  const override = parsePrice(meta?.priceCardDisabled);
+  if (base && override !== null) return Number((100 - (override / base) * 100).toFixed(2));
+  return DM_CONTRACT_ROUTES.has(route) ? 20 : 25;
+};
 
 // Multiplier applied to the regular card price for a disabled card (0.80 or 0.75).
 export const disabledFactor = (route: string): number =>
   1 - disabledDiscountPct(route) / 100;
+
+// A price cell ("50.00 €") as a number, or null when the route has no such price.
+const parsePrice = (value?: string): number | null => {
+  if (!value || value === '-' || value === '---') return null;
+  const n = parseFloat(value.replace(' €', '').trim());
+  return isNaN(n) ? null : n;
+};
 
 export const abbreviate = (name: string) => {
   return name
@@ -54,12 +74,14 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Рибен": {
     stops: ["Плевен", "Опанец", "Д.М", "Победа", "Рибен"],
     priceSingle: "2.00 €",
-    priceCard: "70.00 €"
+    priceCard: "70.00 €",
+    priceCardDisabled: "52.50 €"
   },
   "Долни Дъбник": {
     stops: ["Плевен", "Ясен", "Д. Дъбник"],
     priceSingle: "2.00 €",
-    priceCard: "50.00 €"
+    priceCard: "50.00 €",
+    priceCardTeacher: "40.00 €"
   },
   "Ясен-Долни Дъбник": {
     stops: ["Ясен", "Д. Дъбник"],
@@ -150,7 +172,8 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Биволаре": {
     stops: ["Плевен", "Опанец", "Д.М", "Биволаре"],
     priceSingle: "2.00 €",
-    priceCard: "60.00 €"
+    priceCard: "60.00 €",
+    priceCardDisabled: "45.00 €"
   },
   "Победа": {
     stops: ["Плевен", "Опанец", "Д.М", "Победа"],
@@ -198,13 +221,15 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
     stops: ["Плевен", "Гривица", "Згалево"],
     priceSingle: "2.00 €",
     priceCard: "50.00 €",
-    priceCardStudent: "30.00 €"
+    priceCardStudent: "30.00 €",
+    priceCardPensioner: "30.00 €"
   },
   "Пордим": {
     stops: ["Плевен", "Гривица", "Згалево", "Пордим"],
     priceSingle: "2.50 €",
     priceCard: "55.00 €",
-    priceCardStudent: "36.00 €"
+    priceCardStudent: "36.00 €",
+    priceCardPensioner: "36.00 €"
   },
   "Одърне": {
     stops: ["Плевен", "Гривица", "Згалево", "Пордим", "Одърне"],
@@ -288,4 +313,28 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
     priceSingle: "---",
     priceCard: "-"
   }
+};
+
+// The price of a card on a route, or null when the route has no card price and
+// the caller should leave the amount alone. A route may override the price for
+// a card type; otherwise student & pensioner are half of priceCard, disabled
+// takes the route's discount, and every other card pays the full price.
+export const cardPrice = (route: string, cardType?: string): number | null => {
+  if (cardType === 'Служебна карта') return 0;
+  const meta = ROUTE_METADATA[route];
+  if (!meta) return null;
+
+  const override =
+    cardType === 'Ученическа карта' ? meta.priceCardStudent :
+    cardType === 'Пенсионерска карта' ? meta.priceCardPensioner :
+    cardType === 'Учителска карта' ? meta.priceCardTeacher :
+    cardType === 'Инвалидна карта' ? meta.priceCardDisabled :
+    undefined;
+  if (override !== undefined) return parsePrice(override);
+
+  const base = parsePrice(meta.priceCard);
+  if (base === null) return null;
+  if (cardType === 'Ученическа карта' || cardType === 'Пенсионерска карта') return Number((base / 2).toFixed(2));
+  if (cardType === 'Инвалидна карта') return Number((base * disabledFactor(route)).toFixed(2));
+  return base;
 };

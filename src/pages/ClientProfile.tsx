@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
 import LoadingScreen from '../components/LoadingScreen';
-import { ROUTE_METADATA, ROUTES, disabledFactor } from '../data/routeMetadata';
+import { ROUTE_METADATA, ROUTES, cardPrice } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import ClientPhoto from '../components/ClientPhoto';
 import LostCardTransfer from '../components/LostCardTransfer';
@@ -487,41 +487,8 @@ const ClientProfile: React.FC = () => {
     useEffect(() => {
         if (regCardType === 'Служебна карта') { setRegAmount('0'); return; }
         if (regRoute && ROUTE_METADATA[regRoute]) {
-            const meta = ROUTE_METADATA[regRoute];
-            let priceStr = meta.priceCard;
-            
-            if (regCardType === 'Ученическа карта') {
-                if (meta.priceCardStudent) {
-                    priceStr = meta.priceCardStudent;
-                } else if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) {
-                        setRegAmount((normal / 2).toFixed(2));
-                        return;
-                    }
-                }
-            } else if (regCardType === 'Пенсионерска карта') {
-                if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) {
-                        setRegAmount((normal / 2).toFixed(2));
-                        return;
-                    }
-                }
-            } else if (regCardType === 'Инвалидна карта') {
-                if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) {
-                        setRegAmount((normal * disabledFactor(regRoute)).toFixed(2));
-                        return;
-                    }
-                }
-            }
-
-            if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                const numericPrice = priceStr.replace(' €', '').trim();
-                setRegAmount(numericPrice);
-            }
+            const price = cardPrice(regRoute, regCardType);
+            if (price !== null) setRegAmount(price.toFixed(2));
         }
     }, [regRoute, regCardType]);
 
@@ -531,30 +498,8 @@ const ClientProfile: React.FC = () => {
     useEffect(() => {
         if (!client || client.cardType === 'Служебна карта') return;
         if (renewalRoute && ROUTE_METADATA[renewalRoute]) {
-            const meta = ROUTE_METADATA[renewalRoute];
-            let priceStr = meta.priceCard;
-            if (client.cardType === 'Ученическа карта') {
-                if (meta.priceCardStudent) {
-                    priceStr = meta.priceCardStudent;
-                } else if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) { setRenewalAmount(Number((normal / 2).toFixed(2))); return; }
-                }
-            } else if (client.cardType === 'Пенсионерска карта') {
-                if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) { setRenewalAmount(Number((normal / 2).toFixed(2))); return; }
-                }
-            } else if (client.cardType === 'Инвалидна карта') {
-                if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) { setRenewalAmount(Number((normal * disabledFactor(renewalRoute)).toFixed(2))); return; }
-                }
-            }
-            if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                const n = parseFloat(priceStr.replace(' €', '').trim());
-                if (!isNaN(n)) setRenewalAmount(n);
-            }
+            const price = cardPrice(renewalRoute, client.cardType);
+            if (price !== null) setRenewalAmount(price);
         }
     }, [renewalRoute, client]);
 

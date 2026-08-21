@@ -7,7 +7,7 @@ import {
     ShieldCheck, Shield, TrendingUp,
     PiggyBank, AlertTriangle, Share2,
     AlertCircle, Bus, Send, Bell, BarChart3,
-    Eye, EyeOff, ArrowLeftRight, GraduationCap
+    Eye, EyeOff, ArrowLeftRight, GraduationCap, CheckCircle, Undo2
 } from 'lucide-react';
 import Card from '../components/Card';
 import UnpaidAlertsButton from '../components/UnpaidAlertsButton';
@@ -25,13 +25,14 @@ import {
     query,
     increment,
     arrayUnion,
+    deleteField,
     runTransaction,
     getDocs,
     collectionGroup,
     where
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { ROUTE_METADATA, disabledFactor } from '../data/routeMetadata';
+import { ROUTE_METADATA, cardPrice } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import { MIXED_METHOD, PAYMENT_METHODS } from '../data/paymentMethods';
@@ -73,6 +74,11 @@ interface Client {
     municipality?: string;
     photoThumb?: string;
     cardNumber?: string;
+    // Служебна карта извън списъците, одобрена ръчно от админ. Важи само за
+    // тази календарна година — на следващата картата пак излиза за одобрение.
+    serviceApprovedYear?: number;
+    serviceApprovedBy?: string;
+    serviceApprovedAt?: string;
 }
 
 interface Signal {
@@ -230,26 +236,10 @@ const getServiceYearOptions = (): number[] => {
     return [y - 1, y, y + 1, y + 2];
 };
 
-// The card price for a route + card type, mirroring the auto-price logic.
-// Pensioner & student = 50% off; disabled (Инвалидна карта) = 20% off.
-// Used by bulk renewal. Service cards = 0.
-const computeCardAmount = (route: string, cardType?: string): number => {
-    if (cardType === 'Служебна карта') return 0;
-    const meta = ROUTE_METADATA[route];
-    if (!meta) return 0;
-    let priceStr = meta.priceCard;
-    let factor = 1;
-    if (cardType === 'Пенсионерска карта') factor = 0.5;
-    else if (cardType === 'Инвалидна карта') factor = disabledFactor(route);
-    else if (cardType === 'Ученическа карта') {
-        if (meta.priceCardStudent) priceStr = meta.priceCardStudent;
-        else factor = 0.5;
-    }
-    if (!priceStr || priceStr === '-' || priceStr === '---') return 0;
-    const n = parseFloat(priceStr.replace(' €', ''));
-    if (isNaN(n)) return 0;
-    return Number((n * factor).toFixed(2));
-};
+// The card price for a route + card type, used by bulk renewal. Routes without
+// a card price (and service cards) count as 0.
+const computeCardAmount = (route: string, cardType?: string): number =>
+    cardPrice(route, cardType) ?? 0;
 
 // Split a Bulgarian name into comparable tokens: lowercase, drop quotes/dots,
 // treat hyphens as spaces, keep tokens of >=2 letters (so abbreviations like
@@ -657,6 +647,8 @@ const AdminPanel: React.FC = () => {
     const [showMonthlyRevenue, setShowMonthlyRevenue] = useState(false);
     const [showPriceAudit, setShowPriceAudit] = useState(false);
     const [showServiceAudit, setShowServiceAudit] = useState(false);
+    const [showApprovedService, setShowApprovedService] = useState(false);
+    const [serviceApprovalBusy, setServiceApprovalBusy] = useState<string | null>(null);
     const [showServiceMissing, setShowServiceMissing] = useState(false);
 
     // Bulk renewal: a selection of client ids + the review modal state.
@@ -784,41 +776,8 @@ const AdminPanel: React.FC = () => {
     useEffect(() => {
         if (cardType === 'Служебна карта') { setAmountPaid('0'); return; }
         if (selectedRoute && ROUTE_METADATA[selectedRoute]) {
-            const meta = ROUTE_METADATA[selectedRoute];
-            let priceStr = meta.priceCard;
-            
-            if (cardType === 'Ученическа карта') {
-                if (meta.priceCardStudent) {
-                    priceStr = meta.priceCardStudent;
-                } else if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) {
-                        setAmountPaid((normal / 2).toFixed(2));
-                        return;
-                    }
-                }
-            } else if (cardType === 'Пенсионерска карта') {
-                if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) {
-                        setAmountPaid((normal / 2).toFixed(2));
-                        return;
-                    }
-                }
-            } else if (cardType === 'Инвалидна карта') {
-                if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) {
-                        setAmountPaid((normal * disabledFactor(selectedRoute)).toFixed(2));
-                        return;
-                    }
-                }
-            }
-
-            if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                const numericPrice = priceStr.replace(' €', '').trim();
-                setAmountPaid(numericPrice);
-            }
+            const price = cardPrice(selectedRoute, cardType);
+            if (price !== null) setAmountPaid(price.toFixed(2));
         }
     }, [selectedRoute, cardType]);
 
@@ -826,42 +785,8 @@ const AdminPanel: React.FC = () => {
     useEffect(() => {
         if (selectedClient?.cardType === 'Служебна карта') { setNewAmount('0'); return; }
         if (newRoute && ROUTE_METADATA[newRoute] && selectedClient) {
-            const meta = ROUTE_METADATA[newRoute];
-            let priceStr = meta.priceCard;
-            const cType = selectedClient.cardType;
-            
-            if (cType === 'Ученическа карта') {
-                if (meta.priceCardStudent) {
-                    priceStr = meta.priceCardStudent;
-                } else if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) {
-                        setNewAmount((normal / 2).toFixed(2));
-                        return;
-                    }
-                }
-            } else if (cType === 'Пенсионерска карта') {
-                if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) {
-                        setNewAmount((normal / 2).toFixed(2));
-                        return;
-                    }
-                }
-            } else if (cType === 'Инвалидна карта') {
-                if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                    const normal = parseFloat(priceStr.replace(' €', ''));
-                    if (!isNaN(normal)) {
-                        setNewAmount((normal * disabledFactor(newRoute)).toFixed(2));
-                        return;
-                    }
-                }
-            }
-
-            if (priceStr && priceStr !== '-' && priceStr !== '---') {
-                const numericPrice = priceStr.replace(' €', '').trim();
-                setNewAmount(numericPrice);
-            }
+            const price = cardPrice(newRoute, selectedClient.cardType);
+            if (price !== null) setNewAmount(price.toFixed(2));
         }
     }, [newRoute, selectedClient]);
 
@@ -1742,6 +1667,62 @@ const AdminPanel: React.FC = () => {
         logGlobalActivity('Копиране на NFC линкове', 'Система', `Копирани ${generatedLinks.length} NFC линка в клипборда.`);
     };
 
+    // Одобряване на служебна карта, издадена на човек извън официалните списъци.
+    // Одобрението важи само за текущата календарна година — то се записва като
+    // година, а одитът приема само `serviceApprovedYear === тази година`, така че
+    // на 1 януари картата пак излиза за проверка срещу новите списъци.
+    const setServiceApproval = async (client: Client, approve: boolean) => {
+        const year = new Date().getFullYear();
+        const cardNum = getClientCardNumber(client);
+        const nameWithCard = cardNum ? `${client.name} (Карта № ${cardNum})` : client.name;
+
+        if (!window.confirm(approve
+            ? `Да се одобри ли служебната карта на „${client.name}" за ${year} г.?
+
+Картата излиза от списъка с карти извън списъците, но само за ${year} г. През ${year + 1} г. ще излезе отново за одобрение.`
+            : `Да се върне ли „${client.name}" в списъка за проверка?
+
+Одобрението за ${year} г. ще бъде оттеглено.`
+        )) return;
+
+        setServiceApprovalBusy(client.id);
+        try {
+            await updateDoc(doc(db, 'clients', client.id), {
+                serviceApprovedYear: approve ? year : deleteField(),
+                serviceApprovedBy: approve ? (currentUser?.username || 'Админ') : deleteField(),
+                serviceApprovedAt: approve ? new Date().toISOString() : deleteField(),
+                history: arrayUnion({
+                    date: new Date().toISOString(),
+                    action: approve ? 'Одобрена служебна карта' : 'Оттеглено одобрение',
+                    details: approve
+                        ? `Одобрена извън списъците за ${year} г.`
+                        : `Оттеглено одобрение за ${year} г. — картата се връща за проверка.`,
+                    performedBy: currentUser?.username || 'Админ'
+                })
+            });
+        } catch (err) {
+            console.error(err);
+            setServiceApprovalBusy(null);
+            setMessage({ text: 'Грешка при записване на одобрението.', type: 'error' });
+            return;
+        }
+        setServiceApprovalBusy(null);
+
+        await logGlobalActivity(
+            approve ? 'Одобрена служебна карта' : 'Оттеглено одобрение',
+            nameWithCard,
+            approve
+                ? `Служебната карта е одобрена извън списъците за ${year} г.`
+                : `Одобрението за ${year} г. е оттеглено — картата се връща в одита.`
+        );
+        setMessage({
+            text: approve
+                ? `„${client.name}" е одобрен за ${year} г.`
+                : `„${client.name}" се връща в списъка за проверка.`,
+            type: 'success'
+        });
+    };
+
     const cancelClient = async () => {
         if (!selectedClient || !cancelReason) return;
         
@@ -1937,13 +1918,18 @@ const AdminPanel: React.FC = () => {
     // actually on any list — those show up as "извън списъците". We also surface
     // duplicate cards for one authorised person and people on the list without a
     // card. Matching is by name (service cards carry no община).
+    //
+    // A card outside the rosters can be cleared by an admin (serviceApprovedYear),
+    // which only holds for that calendar year — come January it is flagged again,
+    // so every service card is re-checked against the new year's rosters.
     const serviceAudit = React.useMemo(() => {
+        const year = new Date().getFullYear();
         const serviceCards = clients.filter(c => c.cardType === 'Служебна карта' && !c.isCanceled);
         const allEntries: { roster: ServiceRoster; entry: ServiceRosterEntry }[] = [];
         for (const r of SERVICE_ROSTERS) for (const e of r.entries) allEntries.push({ roster: r, entry: e });
 
         const cardMatch = new Map<string, { roster: ServiceRoster; entry: ServiceRosterEntry }>();
-        const unauthorized: { client: Client; issuedBy?: string; issuedAt?: string; relative?: boolean }[] = [];
+        const outside: { client: Client; issuedBy?: string; issuedAt?: string; relative?: boolean }[] = [];
         for (const c of serviceCards) {
             const relative = looksLikeRelative(c.serviceReason);
             // Relatives are never the listed employee, even on a name coincidence.
@@ -1952,7 +1938,7 @@ const AdminPanel: React.FC = () => {
                 cardMatch.set(c.id, m);
             } else {
                 const creation = (c.history || []).find(h => /Активиране|Създаване/i.test(h.action)) || (c.history || [])[0];
-                unauthorized.push({ client: c, issuedBy: creation?.performedBy, issuedAt: creation?.date || c.createdAt, relative });
+                outside.push({ client: c, issuedBy: creation?.performedBy, issuedAt: creation?.date || c.createdAt, relative });
             }
         }
 
@@ -1980,11 +1966,14 @@ const AdminPanel: React.FC = () => {
             coverage.push({ roster: r, have, total: r.entries.length });
         }
 
-        unauthorized.sort((a, b) => (b.issuedAt || '').localeCompare(a.issuedAt || ''));
+        outside.sort((a, b) => (b.issuedAt || '').localeCompare(a.issuedAt || ''));
         return {
+            year,
             totalServiceCards: serviceCards.length,
-            matchedCount: serviceCards.length - unauthorized.length,
-            unauthorized,
+            matchedCount: serviceCards.length - outside.length,
+            // Still to be checked, vs. cleared by an admin for this year.
+            unauthorized: outside.filter(u => u.client.serviceApprovedYear !== year),
+            approved: outside.filter(u => u.client.serviceApprovedYear === year),
             duplicates,
             missing,
             coverage,
@@ -2606,6 +2595,7 @@ const AdminPanel: React.FC = () => {
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.6rem', marginBottom: showServiceAudit ? '1.25rem' : 0, lineHeight: 1.5 }}>
                                 Сверява служебните карти в системата с официалните списъци на правоимащи лица.
                                 Карти, издадени на хора <b>извън списъците</b>, са възможна измама. Сравнението е по име.
+                                Проверена карта може да се одобри, но одобрението важи само за {sa.year} г. — през {sa.year + 1} г. картата излиза отново за проверка.
                             </p>
                             {showServiceAudit && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -2615,6 +2605,7 @@ const AdminPanel: React.FC = () => {
                                             { label: 'Общо служебни', value: sa.totalServiceCards, color: '#fff' },
                                             { label: 'В списъка', value: sa.matchedCount, color: '#00e676' },
                                             { label: 'Извън списъка', value: sa.unauthorized.length, color: sa.unauthorized.length ? '#ff5252' : '#00e676' },
+                                            { label: `Одобрени за ${sa.year}`, value: sa.approved.length, color: sa.approved.length ? '#00e676' : 'var(--text-secondary)' },
                                             { label: 'Покритие', value: `${haveTotal} / ${rosterTotal}`, color: 'var(--primary-color)' },
                                             { label: 'Дублирани', value: sa.duplicates.length, color: sa.duplicates.length ? '#ff9800' : '#00e676' },
                                         ].map((t, i) => (
@@ -2637,16 +2628,15 @@ const AdminPanel: React.FC = () => {
                                         ) : (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                                                 {sa.unauthorized.map(u => (
-                                                    <a
+                                                    <div
                                                         key={u.client.id}
-                                                        href={`#/client/${u.client.id}`}
                                                         style={{
                                                             display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
-                                                            textDecoration: 'none', padding: '0.85rem 1.1rem', background: 'rgba(255,82,82,0.04)',
+                                                            padding: '0.85rem 1.1rem', background: 'rgba(255,82,82,0.04)',
                                                             border: '1px solid rgba(255,82,82,0.2)', borderLeft: '4px solid #ff5252', borderRadius: '12px'
                                                         }}
                                                     >
-                                                        <div style={{ minWidth: 0 }}>
+                                                        <a href={`#/client/${u.client.id}`} style={{ minWidth: 0, flex: '1 1 12rem', textDecoration: 'none' }}>
                                                             <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>
                                                                 {u.client.name}
                                                                 {getClientCardNumber(u.client) ? <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}> · №{getClientCardNumber(u.client)}</span> : null}
@@ -2666,16 +2656,99 @@ const AdminPanel: React.FC = () => {
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                        </div>
+                                                        </a>
                                                         <div style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
                                                             <div>Издал: <b style={{ color: '#ff9800' }}>{u.issuedBy || '—'}</b></div>
                                                             <div style={{ marginTop: '0.15rem' }}>{fmtDate(u.issuedAt) || '—'}</div>
                                                         </div>
-                                                    </a>
+                                                        <button
+                                                            onClick={() => setServiceApproval(u.client, true)}
+                                                            disabled={serviceApprovalBusy === u.client.id}
+                                                            title={`Одобрява картата само за ${sa.year} г.`}
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0,
+                                                                padding: '0.5rem 0.9rem', borderRadius: '10px',
+                                                                cursor: serviceApprovalBusy === u.client.id ? 'wait' : 'pointer',
+                                                                background: 'rgba(0,200,83,0.12)', border: '1px solid rgba(0,200,83,0.35)',
+                                                                color: '#00e676', fontWeight: 800, fontSize: '0.75rem',
+                                                                opacity: serviceApprovalBusy === u.client.id ? 0.5 : 1
+                                                            }}
+                                                        >
+                                                            <CheckCircle size={14} /> Одобри за {sa.year}
+                                                        </button>
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Одобрени за тази година — извън списъците, но проверени от админ.
+                                        Само за текущата година; на следващата пак влизат в списъка горе. */}
+                                    {sa.approved.length > 0 && (
+                                        <div>
+                                            <div
+                                                onClick={() => setShowApprovedService(v => !v)}
+                                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', cursor: 'pointer', margin: '0 0 0.75rem' }}
+                                            >
+                                                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#00e676', margin: 0 }}>
+                                                    <CheckCircle size={16} /> Одобрени за {sa.year} г. ({sa.approved.length})
+                                                </h4>
+                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                                                    {showApprovedService ? 'Скрий ▲' : 'Покажи ▼'}
+                                                </span>
+                                            </div>
+                                            {showApprovedService && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                                    {sa.approved.map(u => (
+                                                        <div
+                                                            key={u.client.id}
+                                                            style={{
+                                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+                                                                padding: '0.85rem 1.1rem', background: 'rgba(0,200,83,0.04)',
+                                                                border: '1px solid rgba(0,200,83,0.2)', borderLeft: '4px solid #00c853', borderRadius: '12px'
+                                                            }}
+                                                        >
+                                                            <a href={`#/client/${u.client.id}`} style={{ minWidth: 0, flex: '1 1 12rem', textDecoration: 'none' }}>
+                                                                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>
+                                                                    {u.client.name}
+                                                                    {getClientCardNumber(u.client) ? <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}> · №{getClientCardNumber(u.client)}</span> : null}
+                                                                </div>
+                                                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+                                                                    <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(0, 173, 181, 0.1)', borderRadius: '6px', color: 'var(--primary-color)', fontWeight: 600 }}>
+                                                                        {u.client.route || '—'}
+                                                                    </span>
+                                                                    {u.client.serviceReason && (
+                                                                        <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
+                                                                            {u.client.serviceReason}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </a>
+                                                            <div style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                                                <div>Одобрил: <b style={{ color: '#00e676' }}>{u.client.serviceApprovedBy || '—'}</b></div>
+                                                                <div style={{ marginTop: '0.15rem' }}>{fmtDate(u.client.serviceApprovedAt) || '—'}</div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => setServiceApproval(u.client, false)}
+                                                                disabled={serviceApprovalBusy === u.client.id}
+                                                                title="Връща картата в списъка за проверка"
+                                                                style={{
+                                                                    display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0,
+                                                                    padding: '0.5rem 0.9rem', borderRadius: '10px',
+                                                                    cursor: serviceApprovalBusy === u.client.id ? 'wait' : 'pointer',
+                                                                    background: 'rgba(255,255,255,0.04)', border: '1px solid var(--surface-border)',
+                                                                    color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.75rem',
+                                                                    opacity: serviceApprovalBusy === u.client.id ? 0.5 : 1
+                                                                }}
+                                                            >
+                                                                <Undo2 size={14} /> Върни за проверка
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* Дублирани карти за един човек от списъка */}
                                     {sa.duplicates.length > 0 && (
