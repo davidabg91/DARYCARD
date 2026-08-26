@@ -597,7 +597,7 @@ const AdminPanel: React.FC = () => {
 
     // Пътувания без платен абонамент — всички сканирания за последните N дни,
     // прочетени лениво (само когато табът е активен) чрез collection-group заявка.
-    const [unpaidScansRaw, setUnpaidScansRaw] = useState<{ clientId: string; at: string; route?: string }[] | null>(null);
+    const [unpaidScansRaw, setUnpaidScansRaw] = useState<{ clientId: string; at: string; route?: string; scannedBy?: string }[] | null>(null);
     const [unpaidLoading, setUnpaidLoading] = useState(false);
     const [unpaidWindowDays, setUnpaidWindowDays] = useState(30);
     // This report is a collection-group read over every scan in the window — 30 days
@@ -617,11 +617,18 @@ const AdminPanel: React.FC = () => {
         getDocs(query(collectionGroup(db, 'scans'), where('at', '>=', windowStart)))
             .then(snap => {
                 if (cancelled) return;
-                const list = snap.docs.map(d => ({
-                    clientId: d.ref.parent.parent?.id ?? '',
-                    at: (d.data().at as string) || '',
-                    route: d.data().route as string | undefined,
-                })).filter(s => s.at && s.clientId);
+                // Сканиранията с `scannedBy`/`role` са направени от логнат служител
+                // (модератор/админ/инспектор) — това не е качване в автобус, а
+                // прочитане на картата в офиса (напр. при подновяване), така че отпада.
+                const list = snap.docs.map(d => {
+                    const data = d.data();
+                    return {
+                        clientId: d.ref.parent.parent?.id ?? '',
+                        at: (data.at as string) || '',
+                        route: data.route as string | undefined,
+                        scannedBy: (data.scannedBy || data.role) as string | undefined,
+                    };
+                }).filter(s => s.at && s.clientId && !s.scannedBy);
                 setUnpaidScansRaw(list);
             })
             .catch(err => { console.error('Грешка при зареждане на сканиранията:', err); if (!cancelled) setUnpaidScansRaw([]); })
@@ -4670,7 +4677,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         </div>
 
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                                            Показва всяко сканиране на карта, която за съответния месец няма платен абонамент (или е анулирана). Целта е да се види кой пътува без абонамент и дали шофьорите реагират.
+                                            Показва всяко сканиране на карта, която за съответния месец няма платен абонамент (или е анулирана). Целта е да се види кой пътува без абонамент и дали шофьорите реагират. Сканиранията, направени от логнат служител (модератор, админ или инспектор), не се броят — те са прочитане на картата в офиса, а не пътуване.
                                         </div>
 
                                         <div style={{ marginBottom: '1.5rem' }}>

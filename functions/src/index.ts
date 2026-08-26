@@ -326,6 +326,9 @@ export const alertUnpaidScan = functions.firestore
         const scan = snap.data() || {};
         const at = String(scan.at || "");
         if (!at) return;
+        // Сканиране от логнат служител (модератор/админ/инспектор) не е качване в
+        // автобус — картата се чете в офиса, напр. при подновяване на абонамента.
+        if (scan.scannedBy || scan.role) return;
         const clientId = context.params.clientId as string;
         const db = admin.firestore();
 
