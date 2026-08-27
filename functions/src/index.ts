@@ -319,6 +319,15 @@ export const sendPushNotification = functions.firestore
  * (enabled via the UnpaidAlertsButton in the admin panel).
  */
 const UNPAID_ALERT_THROTTLE_MS = 15 * 60 * 1000; // не по-често от веднъж на 15 мин за една карта
+// Едно прочитане на картата може да остави два записа (оверлеят ТРАНЗИТ и профилът,
+// понякога от различни браузъри). Записи на една карта в този прозорец се смятат за
+// едно и също прочитане.
+const TWIN_WINDOW_MS = 90 * 1000;
+// Картата се чете и в офиса — при създаване на профил и при подновяване. Такова
+// прочитане е около момента на регистрацията или на плащането, а не качване в
+// автобус, затова не влиза в отчета. Измерено: 156 от 600 реда бяха в рамките на
+// 5 минути от регистрация/плащане, а след 30 минути потокът е практически нулев.
+const OFFICE_READ_WINDOW_MS = 30 * 60 * 1000;
 
 export const alertUnpaidScan = functions.firestore
     .document("clients/{clientId}/scans/{scanId}")
@@ -341,7 +350,7 @@ export const alertUnpaidScan = functions.firestore
             const stale = near.docs.filter((d) => {
                 const other = String(d.data().at || "");
                 const ms = new Date(other).getTime();
-                return isFinite(ms) && Math.abs(ms - atMs) <= 90000;
+                return isFinite(ms) && Math.abs(ms - atMs) <= TWIN_WINDOW_MS;
             });
             await Promise.all(stale.map((d) => d.ref.delete().catch(() => { /* ignore */ })));
             if (stale.length) console.log(`Премахнати ${stale.length} анонимни близнака за ${clientId}`);
@@ -359,10 +368,27 @@ export const alertUnpaidScan = functions.firestore
                     { merge: true })
                 .catch((err) => console.error("unpaid_scans write failed:", err));
 
+        // Другата посока на близнака: анонимният запис може да дойде ПРЕДИ служебния
+        // (разликата е под секунда), затова изтриването по-горе не го хваща. Преди да
+        // отбележим нарушение, проверяваме дали същата карта няма служебно сканиране
+        // наблизо — така прочитането на картата в офиса (при създаване или подновяване
+        // на абонамент) не влиза в отчета, независимо кой запис пристигне пръв.
+        const hasStaffTwin = async () => {
+            const all = await db.collection("clients").doc(clientId).collection("scans").get();
+            const atMs = new Date(at).getTime();
+            return all.docs.some((d) => {
+                const other = d.data() || {};
+                if (!(other.scannedBy || other.role)) return false;
+                const ms = new Date(String(other.at || "")).getTime();
+                return isFinite(ms) && Math.abs(ms - atMs) <= TWIN_WINDOW_MS;
+            });
+        };
+
         const clientRef = db.collection("clients").doc(clientId);
         const clientSnap = await clientRef.get();
         if (!clientSnap.exists) {
             // Сканиране върху изтрит профил — влиза в отчета, но няма кого да опишем.
+            if (await hasStaffTwin()) return;
             await recordUnpaid({ reason: "unknown_client", name: "", cardNumber: "" });
             return;
         }
@@ -375,6 +401,20 @@ export const alertUnpaidScan = functions.firestore
         const hasPaid = renewalHistory.some((rh: { month?: string }) => rh && rh.month === month);
         const isCanceled = client.isCanceled === true;
         if (hasPaid && !isCanceled) return; // валидно пътуване — без известие
+        if (await hasStaffTwin()) return;   // прочитане на картата в офиса, не пътуване
+
+        // Прочитане при създаване на профила или при подновяване на абонамента.
+        // Новите карти се плащат за СЛЕДВАЩИЯ месец, затова сканирането в деня на
+        // регистрацията иначе изглежда като пътуване без абонамент за текущия.
+        const atMs = new Date(at).getTime();
+        const officeMoments: string[] = [
+            String(client.createdAt || ""),
+            ...renewalHistory.map((rh: { date?: string }) => String((rh && rh.date) || "")),
+        ].filter(Boolean);
+        if (officeMoments.some((m) => {
+            const ms = new Date(m).getTime();
+            return isFinite(ms) && Math.abs(ms - atMs) <= OFFICE_READ_WINDOW_MS;
+        })) return;
 
         await recordUnpaid({
             reason: !hasPaid ? "no_payment" : "canceled",

@@ -4682,12 +4682,27 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                 // задним числом платен месец изчезва от списъка.
                                 const deepRan = unpaidScansRaw !== null;
                                 const source: UnpaidRow[] = deepRan ? unpaidScansRaw : (unpaidRows || []);
+                                // Прочитане на картата в офиса — при създаване на профил или
+                                // при подновяване — не е пътуване. Новите карти се плащат за
+                                // следващия месец, затова сканирането в деня на регистрацията
+                                // иначе изглежда като пътуване без абонамент за текущия.
+                                const OFFICE_READ_MS = 30 * 60 * 1000;
+                                const isOfficeRead = (client: Client, at: string) => {
+                                    const atMs = new Date(at).getTime();
+                                    if (!isFinite(atMs)) return false;
+                                    const moments = [client.createdAt, ...(client.renewalHistory || []).map(rh => rh.date)];
+                                    return moments.some(m => {
+                                        const ms = m ? new Date(m).getTime() : NaN;
+                                        return isFinite(ms) && Math.abs(ms - atMs) <= OFFICE_READ_MS;
+                                    });
+                                };
                                 const unpaid = source.map(s => {
                                     const client = clientMap.get(s.clientId);
                                     if (!client) return { ...s, name: s.name || 'Изтрит профил', cardNumber: s.cardNumber || '', reason: 'Непознат/изтрит профил' };
                                     const month = s.at.slice(0, 7);
                                     const hasPayment = (client.renewalHistory || []).some(rh => rh.month === month);
                                     if (hasPayment && !client.isCanceled) return null;
+                                    if (isOfficeRead(client, s.at)) return null;
                                     return {
                                         ...s,
                                         name: client.name,
