@@ -862,6 +862,16 @@ const ClientProfile: React.FC = () => {
                 }
                 setScanFeedback({ type: 'inspection' });
             } else if (currentUser.role === 'moderator') {
+                // Едно прочитане на картата минава и през оверлея ТРАНЗИТ, и през
+                // този профил. Ако ТРАНЗИТ вече е записал сканирането преди секунди,
+                // не създаваме втори документ за същото качване — иначе в историята
+                // излизат две пътувания за едно сканиране.
+                const lastModMs = latestClientRef.current?.lastScanAt ? new Date(latestClientRef.current.lastScanAt).getTime() : 0;
+                const secsSinceMod = lastModMs ? (Date.now() - lastModMs) / 1000 : Infinity;
+                if (secsSinceMod >= 0 && secsSinceMod < 20) {
+                    setScanFeedback({ type: 'recorded' });
+                    return;
+                }
                 const modScanData = { 
                     at: isoNow, 
                     route: client?.route ?? '',

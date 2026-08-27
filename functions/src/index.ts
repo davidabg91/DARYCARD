@@ -326,11 +326,27 @@ export const alertUnpaidScan = functions.firestore
         const scan = snap.data() || {};
         const at = String(scan.at || "");
         if (!at) return;
-        // Сканиране от логнат служител (модератор/админ/инспектор) не е качване в
-        // автобус — картата се чете в офиса, напр. при подновяване на абонамента.
-        if (scan.scannedBy || scan.role) return;
         const clientId = context.params.clientId as string;
         const db = admin.firestore();
+
+        // Сканиране от логнат служител (модератор/админ/инспектор) не е качване в
+        // автобус — картата се чете в офиса, напр. при подновяване на абонамента.
+        // Освен това чистим анонимния близнак: едно прочитане на картата може да
+        // мине и през оверлея ТРАНЗИТ, и през профила, а ако Auth още не се е
+        // възстановил, първият запис излиза анонимен и попада в отчета. Щом видим
+        // служебно сканиране на същата карта в рамките на 90 s, махаме реда.
+        if (scan.scannedBy || scan.role) {
+            const near = await db.collection("unpaid_scans").where("clientId", "==", clientId).get();
+            const atMs = new Date(at).getTime();
+            const stale = near.docs.filter((d) => {
+                const other = String(d.data().at || "");
+                const ms = new Date(other).getTime();
+                return isFinite(ms) && Math.abs(ms - atMs) <= 90000;
+            });
+            await Promise.all(stale.map((d) => d.ref.delete().catch(() => { /* ignore */ })));
+            if (stale.length) console.log(`Премахнати ${stale.length} анонимни близнака за ${clientId}`);
+            return;
+        }
 
         const scanId = context.params.scanId as string;
         // Един малък документ на нарушение, за да не се налага отчетът да чете

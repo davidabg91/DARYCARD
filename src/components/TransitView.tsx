@@ -62,7 +62,7 @@ const formatTimeAgo = (totalSecs: number) => {
 
 const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, onClose }) => {
     const navigate = useNavigate();
-    const { currentUser } = useAuth();
+    const { currentUser, loading: authLoading } = useAuth();
     const [client, setClient] = useState<Client | null>(null);
     const [loading, setLoading] = useState(true);
     const [showManagement, setShowManagement] = useState(false);
@@ -285,6 +285,12 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     const checkStatusRef = useRef(checkActualStatus);
     useEffect(() => { checkStatusRef.current = checkActualStatus; }, [checkActualStatus]);
 
+    // Едно прочитане на картата = един запис. Компонентът се монтира наново за
+    // всяко сканиране (`key={scanNonce}` в App.tsx), а ефектът по-долу се пуска
+    // повторно, когато Firebase Auth се възстанови — рефът пази броячите и скан
+    // документа да не се запишат два пъти.
+    const recordedRef = useRef(false);
+
     useEffect(() => {
         let isMounted = true;
         if (!id) return;
@@ -394,8 +400,19 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                     const todayCount = isSameDay ? (data.dailyScanCount || 0) : 0;
                     const newDailyCount = isSameDay ? (data.dailyScanCount || 0) + 1 : 1;
 
+                    // Записваме сканирането ЕДВА след като Firebase Auth се възстанови.
+                    // Иначе при прясно зареждане на страницата `currentUser` още е null
+                    // и сканирането на служител се записва като анонимно („Валидатор /
+                    // Шофьор"), а после профилът добавя втори, вече маркиран запис —
+                    // едно прочитане на картата излизаше като две пътувания, от които
+                    // анонимното влизаше в отчета „без абонамент". На устройство без
+                    // логнат потребител authLoading пада моментално (няма профил за
+                    // четене), така че сканиранията в автобус не се забавят.
+                    const canRecord = !authLoading && !recordedRef.current;
+                    if (canRecord) recordedRef.current = true;
+
                     // Always update daily counter (regardless of passback)
-                    if (!clonedVal) {
+                    if (!clonedVal && canRecord) {
                         updateDoc(doc(db, 'clients', snap.id), {
                             lastScanDate: todayStr,
                             dailyScanCount: newDailyCount,
@@ -406,7 +423,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                         }
                     }
 
-                    if (!passback) {
+                    if (!passback && canRecord) {
                         const isoNow = new Date().toISOString();
                         const isStaffUser = currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator' || currentUser.role === 'inspector');
                         const scanDocData = {
@@ -473,7 +490,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
         return () => {
             isMounted = false;
         };
-    }, [id, nfcCounter, checkActualStatus, physicalUid, currentUser]);
+    }, [id, nfcCounter, checkActualStatus, physicalUid, currentUser, authLoading]);
 
     // IDLE DETECTION & SLIDESHOW LOGIC
     useEffect(() => {
