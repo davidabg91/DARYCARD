@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
     Users, PlusCircle, ExternalLink, 
@@ -7,7 +7,7 @@ import {
     ShieldCheck, Shield, TrendingUp,
     PiggyBank, AlertTriangle, Share2,
     AlertCircle, Bus, Send, Bell, BarChart3,
-    Eye, EyeOff, ArrowLeftRight, GraduationCap, CheckCircle, Undo2
+    Eye, EyeOff, ArrowLeftRight, GraduationCap, CheckCircle, Undo2, Search
 } from 'lucide-react';
 import Card from '../components/Card';
 import UnpaidAlertsButton from '../components/UnpaidAlertsButton';
@@ -314,6 +314,18 @@ const RevenueSplit: React.FC<{ b: { cash: number; card: number; bank: number }; 
     </div>
 );
 
+/** Ред в отчета „Пътувания без платен абонамент". `name`/`cardNumber` са
+ *  снимка от момента на сканирането — ползват се само ако профилът вече е изтрит;
+ *  иначе се взимат от живия клиентски документ. */
+type UnpaidRow = {
+    clientId: string;
+    at: string;
+    route?: string;
+    name?: string;
+    cardNumber?: string;
+    scannedBy?: string;
+};
+
 interface TabButtonProps {
     id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications' | 'unpaid';
     icon: React.ElementType;
@@ -595,32 +607,65 @@ const AdminPanel: React.FC = () => {
         return () => { cancelled = true; };
     }, [showActionModal, selectedClient]);
 
-    // Пътувания без платен абонамент — всички сканирания за последните N дни,
-    // прочетени лениво (само когато табът е активен) чрез collection-group заявка.
-    const [unpaidScansRaw, setUnpaidScansRaw] = useState<{ clientId: string; at: string; route?: string; scannedBy?: string }[] | null>(null);
+    // Пътувания без платен абонамент.
+    //
+    // Бърз път (по подразбиране): колекцията `unpaid_scans` — по един малък
+    // документ на нарушение, записан от alertUnpaidScan в момента на сканирането.
+    // За 30 дни това са десетки документи вместо ~13 800 сканирания (около 6 MB), които
+    // старият отчет теглеше, за да покаже около 40 реда.
+    //
+    // Бавен път (бутонът „Пълна проверка"): старата collection-group заявка по
+    // всички сканирания — оставена като контролен вариант, ако има съмнение, че
+    // материализираният отчет е пропуснал нещо.
+    const [unpaidRows, setUnpaidRows] = useState<UnpaidRow[] | null>(null);
+    const [unpaidScansRaw, setUnpaidScansRaw] = useState<UnpaidRow[] | null>(null);
     const [unpaidLoading, setUnpaidLoading] = useState(false);
+    const [unpaidDeepLoading, setUnpaidDeepLoading] = useState(false);
     const [unpaidWindowDays, setUnpaidWindowDays] = useState(30);
-    // This report is a collection-group read over every scan in the window — 30 days
-    // is ~12,000 documents (~5 MB). It used to re-run that on every visit to the tab,
-    // so leaving and coming back paid for it again. Remember which window is already
-    // in memory and skip the refetch; the „Обнови" button forces a fresh read.
+    // Помни кой прозорец вече е в паметта, за да не се чете наново при всяко
+    // влизане в таба; бутонът „Обнови" налага свежо четене.
     const [unpaidReloadKey, setUnpaidReloadKey] = useState(0);
     const unpaidLoadedKey = useRef<string | null>(null);
+    const unpaidWindowStart = useMemo(
+        () => new Date(Date.now() - unpaidWindowDays * 86400000).toISOString().slice(0, 10),
+        [unpaidWindowDays]
+    );
+
     useEffect(() => {
         if (activeTab !== 'unpaid' || !isAdmin) return;
         const key = `${unpaidWindowDays}:${unpaidReloadKey}`;
         if (unpaidLoadedKey.current === key) return;
         unpaidLoadedKey.current = key;
         let cancelled = false;
-        const windowStart = new Date(Date.now() - unpaidWindowDays * 86400000).toISOString().slice(0, 10);
         setUnpaidLoading(true);
-        getDocs(query(collectionGroup(db, 'scans'), where('at', '>=', windowStart)))
+        setUnpaidScansRaw(null); // нов прозорец → старата пълна проверка вече не важи
+        getDocs(query(collection(db, 'unpaid_scans'), where('at', '>=', unpaidWindowStart)))
             .then(snap => {
                 if (cancelled) return;
-                // Сканиранията с `scannedBy`/`role` са направени от логнат служител
-                // (модератор/админ/инспектор) — това не е качване в автобус, а
-                // прочитане на картата в офиса (напр. при подновяване), така че отпада.
-                const list = snap.docs.map(d => {
+                setUnpaidRows(snap.docs.map(d => {
+                    const data = d.data();
+                    return {
+                        clientId: (data.clientId as string) || '',
+                        at: (data.at as string) || '',
+                        route: data.route as string | undefined,
+                        name: data.name as string | undefined,
+                        cardNumber: data.cardNumber as string | undefined,
+                    };
+                }).filter(r => r.at));
+            })
+            .catch(err => { console.error('Грешка при зареждане на отчета:', err); if (!cancelled) setUnpaidRows([]); })
+            .finally(() => { if (!cancelled) setUnpaidLoading(false); });
+        return () => { cancelled = true; };
+    }, [activeTab, isAdmin, unpaidWindowDays, unpaidReloadKey, unpaidWindowStart]);
+
+    // Пълна проверка по заявка: чете ВСИЧКИ сканирания в прозореца. Сканиранията
+    // с `scannedBy`/`role` са направени от логнат служител (прочитане на картата в
+    // офиса, напр. при подновяване) и не са пътуване — отпадат.
+    const runDeepUnpaidScan = useCallback(() => {
+        setUnpaidDeepLoading(true);
+        getDocs(query(collectionGroup(db, 'scans'), where('at', '>=', unpaidWindowStart)))
+            .then(snap => {
+                setUnpaidScansRaw(snap.docs.map(d => {
                     const data = d.data();
                     return {
                         clientId: d.ref.parent.parent?.id ?? '',
@@ -628,13 +673,11 @@ const AdminPanel: React.FC = () => {
                         route: data.route as string | undefined,
                         scannedBy: (data.scannedBy || data.role) as string | undefined,
                     };
-                }).filter(s => s.at && s.clientId && !s.scannedBy);
-                setUnpaidScansRaw(list);
+                }).filter(r => r.at && r.clientId && !r.scannedBy));
             })
-            .catch(err => { console.error('Грешка при зареждане на сканиранията:', err); if (!cancelled) setUnpaidScansRaw([]); })
-            .finally(() => { if (!cancelled) setUnpaidLoading(false); });
-        return () => { cancelled = true; };
-    }, [activeTab, isAdmin, unpaidWindowDays, unpaidReloadKey]);
+            .catch(err => { console.error('Грешка при пълната проверка:', err); setUnpaidScansRaw([]); })
+            .finally(() => setUnpaidDeepLoading(false));
+    }, [unpaidWindowStart]);
 
     // Duplicate Check State
     const [duplicateCheckClient, setDuplicateCheckClient] = useState<Client | null>(null);
@@ -4633,9 +4676,15 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                 // Сканиране е "без абонамент", ако за месеца на сканирането няма
                                 // плащане, или картата е анулирана. Служебните карти имат записи
                                 // за всеки месец, така че автоматично отпадат.
-                                const unpaid = (unpaidScansRaw || []).map(s => {
+                                // Ако е пусната пълна проверка, показваме нейния резултат;
+                                // иначе — материализирания отчет. И в двата случая всеки
+                                // ред се сверява наново с живия клиентски документ, така че
+                                // задним числом платен месец изчезва от списъка.
+                                const deepRan = unpaidScansRaw !== null;
+                                const source: UnpaidRow[] = deepRan ? unpaidScansRaw : (unpaidRows || []);
+                                const unpaid = source.map(s => {
                                     const client = clientMap.get(s.clientId);
-                                    if (!client) return { ...s, name: 'Изтрит профил', cardNumber: '', reason: 'Непознат/изтрит профил' };
+                                    if (!client) return { ...s, name: s.name || 'Изтрит профил', cardNumber: s.cardNumber || '', reason: 'Непознат/изтрит профил' };
                                     const month = s.at.slice(0, 7);
                                     const hasPayment = (client.renewalHistory || []).some(rh => rh.month === month);
                                     if (hasPayment && !client.isCanceled) return null;
@@ -4673,19 +4722,30 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 >
                                                     <RefreshCw size={14} /> Обнови
                                                 </button>
+                                                <button
+                                                    onClick={runDeepUnpaidScan}
+                                                    disabled={unpaidDeepLoading || unpaidLoading}
+                                                    title="Проверява всички сканирания в периода едно по едно (бавно — тегли няколко MB). Ползвай само за контрола."
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.8rem', cursor: (unpaidDeepLoading || unpaidLoading) ? 'default' : 'pointer', opacity: (unpaidDeepLoading || unpaidLoading) ? 0.5 : 1 }}
+                                                >
+                                                    <Search size={14} /> {unpaidDeepLoading ? 'Проверява...' : 'Пълна проверка'}
+                                                </button>
                                             </div>
                                         </div>
 
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
                                             Показва всяко сканиране на карта, която за съответния месец няма платен абонамент (или е анулирана). Целта е да се види кой пътува без абонамент и дали шофьорите реагират. Сканиранията, направени от логнат служител (модератор, админ или инспектор), не се броят — те са прочитане на картата в офиса, а не пътуване.
+                                            {deepRan
+                                                ? ' Показан е резултатът от пълна проверка на всички сканирания в периода.'
+                                                : ' Списъкът се води в момента на сканирането, затова се отваря веднага. „Пълна проверка" пресмята наново по всички сканирания — бавно е, ползвай го само за контрола.'}
                                         </div>
 
                                         <div style={{ marginBottom: '1.5rem' }}>
                                             <UnpaidAlertsButton />
                                         </div>
 
-                                        {unpaidLoading ? (
-                                            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Зареждане...</div>
+                                        {(unpaidLoading || unpaidDeepLoading) ? (
+                                            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>{unpaidDeepLoading ? 'Пълна проверка на всички сканирания в периода...' : 'Зареждане...'}</div>
                                         ) : unpaid.length === 0 ? (
                                             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--success-color)', fontWeight: 700 }}>Няма пътувания без платен абонамент за избрания период. 🎉</div>
                                         ) : (

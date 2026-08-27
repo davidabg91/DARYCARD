@@ -332,9 +332,24 @@ export const alertUnpaidScan = functions.firestore
         const clientId = context.params.clientId as string;
         const db = admin.firestore();
 
+        const scanId = context.params.scanId as string;
+        // Един малък документ на нарушение, за да не се налага отчетът да чете
+        // всички сканирания (13 849 за 30 дни, от които ~42 са без абонамент).
+        // Идентификаторът е производен от пътя на сканирането → повторно изпълнение
+        // на функцията презаписва същия ред, не създава дубликат.
+        const recordUnpaid = (data: Record<string, unknown>) =>
+            db.collection("unpaid_scans").doc(`${clientId}__${scanId}`)
+                .set({ clientId, scanId, at, month: at.slice(0, 7), route: String(scan.route || ""), ...data },
+                    { merge: true })
+                .catch((err) => console.error("unpaid_scans write failed:", err));
+
         const clientRef = db.collection("clients").doc(clientId);
         const clientSnap = await clientRef.get();
-        if (!clientSnap.exists) return;
+        if (!clientSnap.exists) {
+            // Сканиране върху изтрит профил — влиза в отчета, но няма кого да опишем.
+            await recordUnpaid({ reason: "unknown_client", name: "", cardNumber: "" });
+            return;
+        }
         const client = clientSnap.data() || {};
 
         // Валидност (огледало на TransitView): има ли плащане за месеца на сканирането
@@ -344,6 +359,12 @@ export const alertUnpaidScan = functions.firestore
         const hasPaid = renewalHistory.some((rh: { month?: string }) => rh && rh.month === month);
         const isCanceled = client.isCanceled === true;
         if (hasPaid && !isCanceled) return; // валидно пътуване — без известие
+
+        await recordUnpaid({
+            reason: !hasPaid ? "no_payment" : "canceled",
+            name: String(client.name || ""),
+            cardNumber: String(client.cardNumber || ""),
+        });
 
         // Throttle per card (атомарно), за да не спами при чести сканирания.
         const now = Date.now();

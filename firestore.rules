@@ -48,16 +48,14 @@ service cloud.firestore {
       allow list: if isStaff();
       allow create: if isStaff();
       // Staff may edit anything. Anonymous devices (drivers do NOT log in) may
-      // bump ONLY the scan counters & scanHistory — never route/expiry/name/photo/etc.
+      // bump ONLY the scan counters — never route/expiry/name/photo/etc.
       allow update: if isStaff()
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount', 'lastScanAt', 'lastScanCounter', 'nfcUid', 'dailyScanCount', 'lastScanDate', 'scanHistory']);
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount', 'lastScanAt', 'lastScanCounter', 'nfcUid', 'dailyScanCount', 'lastScanDate']);
       allow delete: if isAdmin();
 
-      match /scans/{scanId} {
-        allow read: if isStaff();
-        allow create: if true;
-        allow update, delete: if isAdmin();
-      }
+      // NB: no `match /scans/...` block here on purpose — the collection-group
+      // rule below is the single place that governs scan documents. A second,
+      // looser match would win (rules OR together) and defeat its field check.
     }
 
     // ---- Scans Collection Group ----
@@ -66,8 +64,27 @@ service cloud.firestore {
     // Uses recursive wildcard matching to support collection group queries.
     match /{path=**}/scans/{scanId} {
       allow read: if isStaff();
-      allow create: if true;
+      // Анонимно сканиране в автобус: {at, route}. Сканиране от логнат служител
+      // носи и кой го е направил, за да може отчетът да отличи прочитане на
+      // картата в офиса от качване в автобус. Маркерите за служител могат да се
+      // пишат САМО от логнат служител — иначе анонимно устройство би могло да се
+      // представи за модератор и така да скрие пътуването си от отчета.
+      allow create: if request.resource.data.keys()
+            .hasOnly(['at', 'route', 'scannedBy', 'scannedByName', 'role'])
+        && request.resource.data.at is string
+        && (!request.resource.data.keys().hasAny(['scannedBy', 'scannedByName', 'role'])
+            || isStaff() || isInspector());
       allow update, delete: if isAdmin();
+    }
+
+    // ---- Пътувания без платен абонамент (материализиран отчет) ----
+    // Пише се САМО от Cloud Function-а alertUnpaidScan (Admin SDK, който
+    // заобикаля правилата) — по един малък документ на сканиране без валиден
+    // абонамент. Отчетът чете тази колекция вместо всички сканирания.
+    match /unpaid_scans/{docId} {
+      allow read: if isStaff();
+      allow create, update: if false;
+      allow delete: if isAdmin();
     }
 
     // ---- NFC UID -> client mapping ----
