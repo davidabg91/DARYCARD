@@ -74,11 +74,11 @@ export const SCHEDULES: Record<string, RouteSchedule> = {
     fromPleven: ["06:30", "08:30", "11:50", "16:40", "18:40"],
     fromDestination: ["05:30", "07:15", "09:15", "13:00", "17:30"],
     saturday: {
-        fromPleven: ["08:30", "11:50", "16:30", "18:30"],
+        fromPleven: ["08:30", "11:50", "16:30", "18:40"],
         fromDestination: ["07:15", "09:15", "13:00", "17:30"]
     },
     sunday: {
-        fromPleven: ["08:30", "11:50", "16:30", "18:30"],
+        fromPleven: ["08:30", "11:50", "16:30", "18:40"],
         fromDestination: ["07:15", "09:15", "13:00", "17:30"]
     }
   },
