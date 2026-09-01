@@ -260,6 +260,7 @@ const SystemAdminPanel: React.FC = () => {
     const getActionColor = (action: string) => {
         const a = action.toLowerCase();
         if (a.includes('създаване')) return '#00e676'; // Green
+        if (a.includes('премахнато анулиране')) return '#00e676'; // Green — картата се връща в оборот
         if (a.includes('изтриване') || a.includes('анулиране') || a.includes('триене') || a.includes('изтрито')) return '#ff5252'; // Red
         if (a.includes('подновяване')) return '#2196f3'; // Blue
         if (a.includes('смяна')) return '#ab47bc'; // Purple — direction changed

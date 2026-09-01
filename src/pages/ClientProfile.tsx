@@ -3,7 +3,7 @@ import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection, deleteField } from 'firebase/firestore';
 import LoadingScreen from '../components/LoadingScreen';
 import { ROUTE_METADATA, ROUTES, cardPrice } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
@@ -1756,7 +1756,63 @@ const ClientProfile: React.FC = () => {
                 {/* Admin Quick Actions */}
                 {currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator') && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        
+
+                        {/* Премахване на анулирането — напр. когато картата е анулирана
+                            по грешка вместо да се изтрие плащане. Абонаментът не се пипа. */}
+                        {isCanceled && (
+                            <div style={{ background: '#18181b', borderRadius: '28px', border: '1px solid #ffab0033', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffab00', fontWeight: 900, fontSize: '0.9rem' }}>
+                                    <Ban size={18} /> КАРТАТА Е АНУЛИРАНА
+                                </div>
+                                {client?.cancelReason && (
+                                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>Причина: {client.cancelReason}</div>
+                                )}
+                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>
+                                    Докато е анулирана, картата не се чете при сканиране. Премахни анулирането, за да я подновиш.
+                                </div>
+                                <button
+                                    disabled={isUpdating}
+                                    onClick={async () => {
+                                        setIsUpdating(true);
+                                        try {
+                                            const prevReason = client?.cancelReason || '—';
+                                            const isoNow = new Date().toISOString();
+                                            await updateDoc(doc(db, 'clients', client?.id || ''), {
+                                                isCanceled: false,
+                                                cancelReason: deleteField(),
+                                                history: arrayUnion({
+                                                    date: isoNow,
+                                                    action: 'Премахнато анулиране',
+                                                    details: `Анулирането е премахнато (предишна причина: ${prevReason}).`,
+                                                    performedBy: currentUser?.username
+                                                })
+                                            });
+                                            try {
+                                                await addDoc(collection(db, 'activity_logs'), {
+                                                    timestamp: isoNow,
+                                                    performedBy: currentUser?.username || 'Admin',
+                                                    action: 'Премахнато анулиране',
+                                                    targetName: client?.name || 'Клиент',
+                                                    details: `Премахнато анулиране (предишна причина: ${prevReason}).`,
+                                                    amount: 0
+                                                });
+                                            } catch (logErr) { console.error("Log error", logErr); }
+                                            setHasMadeChange(true);
+                                            playSuccessSound();
+                                        } catch (err) {
+                                            console.error(err);
+                                            playErrorSound();
+                                        } finally {
+                                            setIsUpdating(false);
+                                        }
+                                    }}
+                                    style={{ width: '100%', background: '#ffab00', color: '#000', padding: '1rem', borderRadius: '16px', border: 'none', fontWeight: 900, fontSize: '0.95rem', letterSpacing: '0.5px', cursor: 'pointer' }}
+                                >
+                                    {isUpdating ? 'ОБРАБОТКА...' : 'ПРЕМАХНИ АНУЛИРАНЕТО'}
+                                </button>
+                            </div>
+                        )}
+
                         {/* Quick Renewal Panel */}
                         <div ref={quickRenewRef} style={{ background: '#18181b', borderRadius: '28px', border: '1px solid #00e67633', overflow: 'hidden' }}>
                             {!showQuickRenew ? (
@@ -1940,6 +1996,9 @@ const ClientProfile: React.FC = () => {
                                                     expiryDate: qrExpiry,
                                                     route: qrNew.join(', '),
                                                     routes: qrNew,
+                                                    // Платеният абонамент връща анулирана карта в оборот — както
+                                                    // при подновяване от админ панела.
+                                                    isCanceled: false,
                                                     renewalHistory: arrayUnion({
                                                         date: new Date().toISOString(),
                                                         amount: qrAmount,

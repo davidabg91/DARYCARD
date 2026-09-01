@@ -949,6 +949,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                                     await updateDoc(clientRef, {
                                                         expiryDate: renewalMonth,
                                                         route: renewalRoute,
+                                                        // Платеният абонамент връща анулирана карта в оборот.
+                                                        isCanceled: false,
                                                         renewalHistory: arrayUnion({
                                                             date: new Date().toISOString(),
                                                             amount: qrAmount,

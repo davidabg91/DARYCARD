@@ -1804,6 +1804,40 @@ const AdminPanel: React.FC = () => {
         setCancelReason('');
     };
 
+    // Връща анулирана карта обратно в оборот — напр. когато е анулирана по
+    // грешка вместо да се изтрие плащане. Абонаментът НЕ се пипа: картата пак е
+    // "Неплатен", докато няма плащане за текущия месец.
+    const restoreClient = async () => {
+        if (!selectedClient || !selectedClient.isCanceled) return;
+
+        const prevReason = selectedClient.cancelReason || '—';
+        try {
+            await updateDoc(doc(db, 'clients', selectedClient.id), {
+                isCanceled: false,
+                cancelReason: deleteField(),
+                history: arrayUnion({
+                    date: new Date().toISOString(),
+                    action: 'Премахнато анулиране',
+                    details: `Анулирането е премахнато (предишна причина: ${prevReason}).`,
+                    performedBy: currentUser?.username || 'Админ'
+                })
+            });
+        } catch (err) {
+            console.error(err);
+            setModalMessage({ text: 'Грешка при премахване на анулирането.', type: 'error' });
+            return;
+        }
+
+        const cardNum = getClientCardNumber(selectedClient);
+        const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
+        await logGlobalActivity('Премахнато анулиране', nameWithCard, `Премахнато анулиране (предишна причина: ${prevReason}).`);
+        setModalMessage({
+            text: 'Анулирането бе премахнато. Картата може да се поднови.',
+            type: 'success'
+        });
+        setCancelReason('');
+    };
+
     const handleDeleteClient = async (id: string, name: string) => {
         if (currentUser?.role !== 'admin') return;
         if (window.confirm(`Сигурни ли сте, че искате да ИЗТРИЕТЕ ПОСТОЯННО клиента "${name}"? Това ще премахне цялата история и плащания!`)) {
@@ -5513,7 +5547,16 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
                                         </div>
 
-                                        {/* Cancel */}
+                                        {/* Cancel / restore — анулирана карта се връща обратно оттук */}
+                                        {selectedClient.isCanceled ? (
+                                        <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(0,230,118,0.03)', border: '1px solid rgba(0,230,118,0.15)' }}>
+                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)', margin: '0 0 1rem 0' }}><Undo2 size={18} /> Премахване на анулирането</h4>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: 1.5 }}>
+                                                Картата е анулирана{selectedClient.cancelReason ? ` (причина: ${selectedClient.cancelReason})` : ''}. Премахни анулирането, за да може отново да се подновява и да се чете при сканиране. Абонаментът не се променя.
+                                            </div>
+                                            <button onClick={restoreClient} style={{ width: '100%', background: 'var(--success-color)', color: '#fff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Премахни Анулирането</button>
+                                        </div>
+                                        ) : (
                                         <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(255,0,0,0.03)', border: '1px solid rgba(255,0,0,0.1)' }}>
                                             <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--error-color)', margin: '0 0 1rem 0' }}><Trash2 size={18} /> Анулиране</h4>
                                             <textarea
@@ -5523,6 +5566,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             />
                                             <button onClick={cancelClient} style={{ width: '100%', background: 'var(--error-color)', color: '#fff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Анулирай Картата</button>
                                         </div>
+                                        )}
                                     </div>
                                 )}
 
