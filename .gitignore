@@ -21,6 +21,9 @@ serviceAccountKey.json
 photo-backup-*.jsonl
 scripts/node_modules
 
+# Compiled output of scripts/test-card-writer.ts
+.tmp-cwtest
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

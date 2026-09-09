@@ -7,7 +7,7 @@ import {
     ShieldCheck, Shield, TrendingUp,
     PiggyBank, AlertTriangle, Share2,
     AlertCircle, Bus, Send, Bell, BarChart3,
-    Eye, EyeOff, ArrowLeftRight, GraduationCap, CheckCircle, Undo2, Search
+    Eye, EyeOff, ArrowLeftRight, GraduationCap, CheckCircle, Undo2, Search, Smartphone
 } from 'lucide-react';
 import Card from '../components/Card';
 import UnpaidAlertsButton from '../components/UnpaidAlertsButton';
@@ -37,6 +37,15 @@ import { uploadClientPhoto } from '../utils/photoStorage';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import { MIXED_METHOD, PAYMENT_METHODS } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
+import CardWriter from '../components/CardWriter';
+import { isWebNfcAvailable, type BatchCard } from '../utils/nfcCardWriter';
+import {
+    formatCardNumber,
+    lookupCardNumber,
+    markCardAssigned,
+    registerGeneratedCards,
+    reserveCardNumbers,
+} from '../utils/cardRegistry';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
 import { SCHOOLS, SCHOOL_MUNICIPALITY } from '../data/schools';
 import { SERVICE_ROSTERS } from '../data/serviceRosters';
@@ -686,8 +695,11 @@ const AdminPanel: React.FC = () => {
     
     // NFC Tools State
     const [nfcQuantity, setNfcQuantity] = useState<number>(100);
-    const [generatedLinks, setGeneratedLinks] = useState<string[]>([]);
-    
+    // Всяка генерирана карта носи и физическия си номер, заделен от брояча в Firestore.
+    const [generatedCards, setGeneratedCards] = useState<BatchCard[]>([]);
+    const [generatingBatch, setGeneratingBatch] = useState(false);
+    const [showCardWriter, setShowCardWriter] = useState(false);
+
 
     const [filterMonth, setFilterMonth] = useState<string>(() => {
         const now = new Date();
@@ -1167,6 +1179,12 @@ const AdminPanel: React.FC = () => {
 
         const generatedId = sanitizedNfcId || generateClientId();
 
+        // Физическият номер на картата: новите партиди си го носят в card_registry
+        // (записан при генерирането), а отпечатаните първи 1000 остават в
+        // статичния CARDS_MAPPING. Така getClientCardNumber работи без промяна.
+        const registryCardNumber = await lookupCardNumber(generatedId);
+        const resolvedCardNumber = registryCardNumber || CARDS_MAPPING[generatedId] || '';
+
         // Upload the photo to Storage and keep only its URL in the document.
         // Falls back to the inline base64 if the upload fails, so registration never
         // breaks just because of a transient Storage error.
@@ -1226,7 +1244,7 @@ const AdminPanel: React.FC = () => {
             serviceReason: isServiceCard ? serviceReason.trim() : '',
             school: cardType === 'Ученическа карта' ? (selectedSchool === 'custom' ? customSchool : selectedSchool) : '',
             municipality: needsMunicipality(cardType) ? resolvedMunicipality : '',
-            cardNumber: CARDS_MAPPING[sanitizedNfcId] || '',
+            cardNumber: resolvedCardNumber,
             createdAt: nowIso,
             renewalHistory: initialRenewalHistory,
             history: [{
@@ -1239,6 +1257,8 @@ const AdminPanel: React.FC = () => {
         };
 
         await saveClient(newClient);
+        // Отбелязваме в регистъра, че картата вече е дадена (само за новите партиди).
+        if (registryCardNumber) await markCardAssigned(generatedId, generatedId);
         const cardNum = getClientCardNumber(newClient);
         const nameWithCard = cardNum ? `${newClient.name} (Карта № ${cardNum})` : newClient.name;
         const logDetails = isServiceCard
@@ -1701,21 +1721,61 @@ const AdminPanel: React.FC = () => {
         });
     };
 
-    const generateNfcBatch = () => {
-        const baseUrl = `${window.location.origin}${window.location.pathname}#/client/`;
-        const newLinks = [];
-        for (let i = 0; i < nfcQuantity; i++) {
-            newLinks.push(`${baseUrl}${generateClientId()}`);
+    // Генерира партида: заделя толкова физически номера от брояча в Firestore
+    // (продължава от 1001 нагоре), после записва код + номер + линк в card_registry,
+    // за да се знае коя карта какъв линк носи, преди да е дадена на човек.
+    // Номерата се заделят ПРЕДИ записа — при грешка се получава дупка в номерата,
+    // но никога повторен номер.
+    const generateNfcBatch = async () => {
+        const quantity = Math.floor(Number(nfcQuantity));
+        if (!Number.isFinite(quantity) || quantity < 1) {
+            setMessage({ text: 'Въведете количество поне 1.', type: 'error' });
+            return;
         }
-        setGeneratedLinks(newLinks);
-        logGlobalActivity('Генериране на NFC линкове', 'Система', `Генерирани ${nfcQuantity} NFC линка.`);
+        if (generatingBatch) return;
+
+        setGeneratingBatch(true);
+        try {
+            const baseUrl = `${window.location.origin}${window.location.pathname}#/client/`;
+            const startNumber = await reserveCardNumbers(quantity);
+            const cards: BatchCard[] = Array.from({ length: quantity }, (_, i) => {
+                const code = generateClientId();
+                return {
+                    code,
+                    cardNumber: formatCardNumber(startNumber + i),
+                    link: `${baseUrl}${code}`,
+                };
+            });
+
+            const batchId = new Date().toISOString();
+            await registerGeneratedCards(cards, { batchId, createdBy: currentUser?.username || 'Админ' });
+
+            setGeneratedCards(cards);
+            const firstNum = cards[0].cardNumber;
+            const lastNum = cards[cards.length - 1].cardNumber;
+            setMessage({ text: `Генерирани ${quantity} карти: № ${firstNum} – № ${lastNum}.`, type: 'success' });
+            await logGlobalActivity(
+                'Генериране на NFC линкове',
+                'Система',
+                `Генерирани ${quantity} NFC линка с номера № ${firstNum} – № ${lastNum}.`
+            );
+        } catch (err) {
+            console.error('Генерирането на партидата се провали:', err);
+            setGeneratedCards([]);
+            setMessage({
+                text: 'Партидата НЕ беше генерирана (грешка при записа в базата). Опитайте отново — номера няма да се повторят.',
+                type: 'error'
+            });
+        } finally {
+            setGeneratingBatch(false);
+        }
     };
 
     const copyLinksToClipboard = () => {
-        const text = generatedLinks.join(',');
+        const text = generatedCards.map(c => c.link).join(',');
         navigator.clipboard.writeText(text);
         setMessage({ text: 'Линковете са копирани в клипборда!', type: 'success' });
-        logGlobalActivity('Копиране на NFC линкове', 'Система', `Копирани ${generatedLinks.length} NFC линка в клипборда.`);
+        logGlobalActivity('Копиране на NFC линкове', 'Система', `Копирани ${generatedCards.length} NFC линка в клипборда.`);
     };
 
     // Одобряване на служебна карта, издадена на човек извън официалните списъци.
@@ -4858,44 +4918,63 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff', outline: 'none' }}
                                     />
                                 </div>
-                                <button 
+                                <button
                                     onClick={generateNfcBatch}
-                                    style={{ padding: '0.8rem 2rem', borderRadius: '12px', background: 'var(--accent-color)', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                                    disabled={generatingBatch}
+                                    style={{ padding: '0.8rem 2rem', borderRadius: '12px', background: generatingBatch ? 'rgba(255,255,255,0.12)' : 'var(--accent-color)', color: '#fff', border: 'none', fontWeight: 700, cursor: generatingBatch ? 'wait' : 'pointer' }}
                                 >
-                                    Генерирай
+                                    {generatingBatch ? 'Генерирам…' : 'Генерирай'}
                                 </button>
                             </div>
 
-                            {generatedLinks.length > 0 && (
+                            {generatedCards.length > 0 && (
                                 <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                        <h3 style={{ fontSize: '1rem' }}>Генерирани линкове ({generatedLinks.length})</h3>
-                                        <button 
-                                            onClick={copyLinksToClipboard}
-                                            style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-                                        >
-                                            Копирай Списъка
-                                        </button>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                                        <h3 style={{ fontSize: '1rem' }}>
+                                            Генерирани карти ({generatedCards.length}) · № {generatedCards[0].cardNumber} – № {generatedCards[generatedCards.length - 1].cardNumber}
+                                        </h3>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            <button
+                                                onClick={copyLinksToClipboard}
+                                                style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
+                                            >
+                                                Копирай Списъка
+                                            </button>
+                                            {/* Само там, където Web NFC съществува — Chrome на Android. */}
+                                            {isWebNfcAvailable() && (
+                                                <button
+                                                    onClick={() => setShowCardWriter(true)}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#00c853', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700 }}
+                                                >
+                                                    <Smartphone size={15} /> Запиши от телефона
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div style={{ 
-                                        maxHeight: '400px', 
-                                        overflowY: 'auto', 
-                                        background: 'rgba(0,0,0,0.3)', 
-                                        borderRadius: '12px', 
+                                    <div style={{
+                                        maxHeight: '400px',
+                                        overflowY: 'auto',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        borderRadius: '12px',
                                         padding: '1rem',
                                         border: '1px solid var(--surface-border)',
                                         fontFamily: 'monospace',
                                         fontSize: '0.85rem'
                                     }}>
-                                        {generatedLinks.map((link, idx) => (
-                                            <div key={idx} style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--primary-color)' }}>
-                                                {link}
+                                        {generatedCards.map((card) => (
+                                            <div key={card.code} style={{ padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <span style={{ fontWeight: 700, color: '#fff' }}>№ {card.cardNumber}</span>
+                                                <span style={{ color: 'var(--primary-color)', wordBreak: 'break-all' }}> · {card.link}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
                         </Card>
+
+                        {showCardWriter && generatedCards.length > 0 && (
+                            <CardWriter cards={generatedCards} onClose={() => setShowCardWriter(false)} />
+                        )}
                     </div>
                 )}
 

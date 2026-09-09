@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import { CARDS_MAPPING } from '../data/cardsMapping';
+import { lookupCardNumber, markCardAssigned } from '../utils/cardRegistry';
 import { LOST_CARD_FINE } from '../data/lostCard';
 import { Search, X, AlertTriangle, CreditCard, CheckCircle, Loader2, ArrowRight } from 'lucide-react';
 
@@ -122,6 +123,11 @@ const LostCardTransfer: React.FC<Props> = ({ newCardId, newCardUid = '', onClose
                 }
             }
 
+            // Физическият номер на новата карта: новите партиди си го носят в
+            // card_registry, отпечатаните първи 1000 — в статичния CARDS_MAPPING.
+            const registryCardNumber = await lookupCardNumber(newCardId);
+            const resolvedCardNumber = registryCardNumber || CARDS_MAPPING[newCardId] || '';
+
             const renewalHistory = hasSubForMonth
                 ? [{ date: nowIso, amount: 0, month, route: selected.route || '', paymentMethod: 'Прехвърлен от загубена карта' }]
                 : [];
@@ -137,7 +143,7 @@ const LostCardTransfer: React.FC<Props> = ({ newCardId, newCardUid = '', onClose
                 serviceReason: selected.serviceReason || '',
                 school: selected.school || '',
                 municipality: selected.municipality || '',
-                cardNumber: CARDS_MAPPING[newCardId] || '',
+                cardNumber: resolvedCardNumber,
                 expiryDate: hasSubForMonth ? month : '',
                 photo: photoValue,
                 photoThumb: selected.photoThumb || '',
@@ -187,6 +193,7 @@ const LostCardTransfer: React.FC<Props> = ({ newCardId, newCardUid = '', onClose
             });
 
             await batch.commit();
+            if (registryCardNumber) await markCardAssigned(newCardId, newCardId);
             onDone();
         } catch (e) {
             console.error('Lost card transfer failed:', e);

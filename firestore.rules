@@ -87,6 +87,32 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ---- Card number counter ----
+    // Брояч на физическите номера на картите: counters/cards { next }.
+    // Отпечатаните първи 1000 са в статичния cardsMapping.ts, така че броячът
+    // тръгва от 1001. Живее в базата (а не в браузъра), за да не се повтарят
+    // номера при генериране от друго устройство. Само админ — единствено той
+    // генерира партиди.
+    match /counters/{counterId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---- Card registry (code -> printed card number) ----
+    // Пише се при генериране на партида: код в чипа, физически номер и линк
+    // заедно, преди картата да е дадена на човек.
+    // `get` е за служител, защото при активиране (регистрация на клиент или
+    // прехвърляне от загубена карта) номерът се чете по вече сканирания код —
+    // а картите се активират и от модератори. Изброяването на целия регистър,
+    // както и всякакъв запис, остават за админ. Единственото изключение:
+    // служител може да отбележи, че картата е дадена (assignedTo/assignedAt).
+    match /card_registry/{code} {
+      allow get: if isStaff();
+      allow list: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isStaff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assignedTo', 'assignedAt']));
+    }
+
     // ---- NFC UID -> client mapping ----
     // Lets a terminal that read only the chip's physical UID (fast swipe, printed
     // URL not read) resolve it to the client id. Public `get` (like a single
