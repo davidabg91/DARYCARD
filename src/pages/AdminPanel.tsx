@@ -1185,6 +1185,18 @@ const AdminPanel: React.FC = () => {
         const registryCardNumber = await lookupCardNumber(generatedId);
         const resolvedCardNumber = registryCardNumber || CARDS_MAPPING[generatedId] || '';
 
+        // Същата спирачка като при активиране чрез сканиране (ClientProfile): карта
+        // без номер не се регистрира. Номер имат само отпечатаните 1000
+        // (CARDS_MAPPING) и тези, излезли от NFC генератора (card_registry) — така
+        // чужд или ръчно записан чип не може да стане карта.
+        if (!resolvedCardNumber) {
+            setMessage({
+                text: `Кодът „${generatedId}" не е в списъка с картите на системата, затова няма номер на карта. Активирането е спряно, за да не се създаде профил без номер. Ако е нова карта, тя първо трябва да се генерира от таб NFC КОДОВЕ.`,
+                type: 'error'
+            });
+            return;
+        }
+
         // Upload the photo to Storage and keep only its URL in the document.
         // Falls back to the inline base64 if the upload fails, so registration never
         // breaks just because of a transient Storage error.

@@ -13,6 +13,7 @@ import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import ModeratorInactivityWarningModal from '../components/ModeratorInactivityWarningModal';
 import { MIXED_METHOD } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
+import { lookupCardNumber, markCardAssigned } from '../utils/cardRegistry';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
 import { SCHOOLS, SCHOOL_MUNICIPALITY } from '../data/schools';
 
@@ -196,6 +197,10 @@ const ClientProfile: React.FC = () => {
     const [scanTime] = useState(new Date().toLocaleTimeString('bg-BG'));
     const [showPhotoModal, setShowPhotoModal] = useState(false);
     const [isRegistering, setIsRegistering] = useState(false);
+    // Физическият номер на картата, ако тя е от новите партиди (card_registry).
+    // `null` = още не е проверено, `''` = проверено и я няма в регистъра.
+    // Отпечатаните първи 1000 не минават оттук — те са в CARDS_MAPPING.
+    const [registryCardNumber, setRegistryCardNumber] = useState<string | null>(null);
     const [showLostCard, setShowLostCard] = useState(false);
     const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     
@@ -631,10 +636,14 @@ const ClientProfile: React.FC = () => {
             alert(`Картата изглежда прочетена НЕПЪЛНО (къс код: "${id}").\n\nМоля, сканирайте картата отново — по-бавно и плътно до четеца — преди да я активирате.`);
             return;
         }
-        // The id must correspond to a real printed card (i.e. exist in the card
-        // list with a number). Otherwise the profile would have no card number.
-        if (!CARDS_MAPPING[id]) {
-            alert(`Кодът "${id}" не е в списъка с картите на системата, затова няма номер на карта.\n\nПроверете картата и сканирайте отново. Ако е нова карта, първо трябва да се добави в списъка.`);
+        // The id must correspond to a real card that HAS a number — either one of
+        // the printed 1000 (CARDS_MAPPING) or a card issued by the NFC generator
+        // (card_registry). Otherwise the profile would have no card number.
+        // Четем регистъра наново, за да не зависи спирачката от състояние,
+        // което може още да не е дошло.
+        const knownCardNumber = CARDS_MAPPING[id] || registryCardNumber || await lookupCardNumber(id);
+        if (!knownCardNumber) {
+            alert(`Кодът "${id}" не е в списъка с картите на системата, затова няма номер на карта.\n\nПроверете картата и сканирайте отново. Ако е нова карта, тя първо трябва да се генерира от таб NFC КОДОВЕ.`);
             return;
         }
         // Teachers require an община; disabled cards require an address (like pensioners).
@@ -704,7 +713,7 @@ const ClientProfile: React.FC = () => {
             serviceReason: isServiceCard ? regServiceReason.trim() : '',
             school: regCardType === 'Ученическа карта' ? (regSelectedSchool === 'custom' ? regCustomSchool : regSelectedSchool) : '',
             municipality: needsMunicipality(regCardType) ? resolvedMunicipality : '',
-            cardNumber: CARDS_MAPPING[id] || '',
+            cardNumber: knownCardNumber,
             expiryDate: expiryMonth,
             photo: photoValue,
             photoThumb,
@@ -722,6 +731,8 @@ const ClientProfile: React.FC = () => {
         try {
             setLoading(true);
             await setDoc(doc(db, 'clients', id), newClient);
+            // Отбелязваме в регистъра, че картата вече е дадена (само за новите партиди).
+            if (!CARDS_MAPPING[id]) await markCardAssigned(id, id);
             
             try {
                 await addDoc(collection(db, 'activity_logs'), {
@@ -734,7 +745,7 @@ const ClientProfile: React.FC = () => {
                         : `Нова карта (NFC): ${id}. Сума: ${regEffectiveAmount.toFixed(2)} €. Регион: ${regRoute} | Начин на плащане: ${regPaymentLabel}`,
                     amount: isServiceCard ? 0 : regEffectiveAmount
                 });
-                const cardNum = CARDS_MAPPING[id] || '';
+                const cardNum = knownCardNumber;
                 const nameWithCard = cardNum ? `${regName} (Карта № ${cardNum})` : regName;
                 console.log(`[DARY_BRIDGE_LOG]: Нов профил на ${nameWithCard} (${regRoute}) - Сума: ${regAmount} €`);
             } catch (logErr) {
@@ -749,6 +760,22 @@ const ClientProfile: React.FC = () => {
             setLoading(false);
         }
     };
+
+    // Новите карти носят номерата си в card_registry, а не в cardsMapping.ts. Четем
+    // го веднага, за да може екранът да реши позната ли е картата, преди да предложи
+    // активиране. Регистърът е за служители — анонимно устройство не го чете и не
+    // му трябва (регистрираните карти вече си носят cardNumber в документа).
+    const isSignedIn = !!currentUser;
+    useEffect(() => {
+        if (!id || CARDS_MAPPING[id] || !isSignedIn) {
+            setRegistryCardNumber('');
+            return;
+        }
+        let alive = true;
+        setRegistryCardNumber(null);
+        lookupCardNumber(id).then(num => { if (alive) setRegistryCardNumber(num); });
+        return () => { alive = false; };
+    }, [id, isSignedIn]);
 
     useEffect(() => {
         if (!id) return;
@@ -1007,9 +1034,20 @@ const ClientProfile: React.FC = () => {
                                 </p>
                                 <Link to="/" onClick={(e) => { if (!handleModeratorGuardedAction(() => navigate('/'))) e.preventDefault(); }} style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
                             </>
-                        ) : currentUser && !CARDS_MAPPING[id] ? (
-                            // Id is a full length but is NOT in the printed-card list, so it has
-                            // no real card number. Block activation to avoid a numberless profile.
+                        ) : currentUser && !CARDS_MAPPING[id] && registryCardNumber === null ? (
+                            // Регистърът се чете — докато не знаем дали картата е от нова
+                            // партида, нито предлагаме активиране, нито я обявяваме за непозната.
+                            <>
+                                <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                    <CreditCard size={48} color="rgba(255,255,255,0.35)" />
+                                </div>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem' }}>Проверявам картата…</h2>
+                                <p style={{ color: 'rgba(255,255,255,0.5)', lineHeight: '1.6' }}>Търся номера на тази карта в системата.</p>
+                            </>
+                        ) : currentUser && !CARDS_MAPPING[id] && !registryCardNumber ? (
+                            // Id is a full length but is in NEITHER the printed-card list nor the
+                            // generator's registry, so it has no real card number. Block activation
+                            // to avoid a numberless profile.
                             <>
                                 <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,171,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', border: '1px solid rgba(255,171,0,0.3)' }}>
                                     <AlertTriangle size={48} color="#ffab00" />
@@ -1019,7 +1057,7 @@ const ClientProfile: React.FC = () => {
                                     Кодът <b style={{ color: '#fff', fontFamily: 'monospace' }}>„{id}"</b> не е в списъка с картите на системата, затова няма номер на карта. Активиране е спряно, за да не се създаде сгрешен профил.
                                 </p>
                                 <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '2.5rem', lineHeight: '1.6' }}>
-                                    Проверете картата и сканирайте <b>отново</b>. Ако е нова карта, тя първо трябва да бъде добавена в списъка с картите.
+                                    Проверете картата и сканирайте <b>отново</b>. Ако е нова карта, тя първо трябва да се генерира от таб NFC КОДОВЕ и линкът да се запише в чипа.
                                 </p>
                                 <Link to="/" onClick={(e) => { if (!handleModeratorGuardedAction(() => navigate('/'))) e.preventDefault(); }} style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
                             </>
@@ -1046,9 +1084,9 @@ const ClientProfile: React.FC = () => {
                     ) : (
                         <div style={{ animation: 'fadeIn 0.4s ease', textAlign: 'left', background: 'rgba(255,255,255,0.03)', padding: '2rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.08)' }}>
                             <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', textAlign: 'center' }}>Регистрация на Карта</h3>
-                            {CARDS_MAPPING[id] && (
+                            {(CARDS_MAPPING[id] || registryCardNumber) && (
                                 <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-color)', textAlign: 'center', marginBottom: '1.5rem' }}>
-                                    Номер на Карта: {CARDS_MAPPING[id]}
+                                    Номер на Карта: {CARDS_MAPPING[id] || registryCardNumber}
                                 </div>
                             )}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
