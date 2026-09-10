@@ -767,8 +767,15 @@ const ClientProfile: React.FC = () => {
     // му трябва (регистрираните карти вече си носят cardNumber в документа).
     const isSignedIn = !!currentUser;
     useEffect(() => {
-        if (!id || CARDS_MAPPING[id] || !isSignedIn) {
-            setRegistryCardNumber('');
+        if (!id || CARDS_MAPPING[id]) {
+            setRegistryCardNumber('');          // отпечатана карта — няма какво да се чете
+            return;
+        }
+        if (!isSignedIn) {
+            // Остава НЕПРОВЕРЕНО, а не „проверено и го няма". Иначе в кадъра
+            // между „логинът се появи" и „ефектът се изпълни" би мигнало
+            // „НЕПОЗНАТА КАРТА" за един кадър.
+            setRegistryCardNumber(null);
             return;
         }
         let alive = true;
@@ -996,7 +1003,13 @@ const ClientProfile: React.FC = () => {
 
 
 
-    if (loading && !client) {
+    // Докато няма клиент за показване, държим въртележката, докато не се знае
+    // всичко, което решава кой екран да излезе. Иначе се редят три екрана:
+    // логинът още не е възстановен → „НЕВАЛИДЕН АБОНАМЕНТ", после се чете
+    // регистърът → още един междинен екран, и чак накрая „АКТИВИРАЙ КАРТАТА".
+    // Отпечатаните 1000 са в CARDS_MAPPING и не чакат нищо допълнително.
+    const cardNumberPending = !!currentUser && !CARDS_MAPPING[id] && registryCardNumber === null;
+    if ((loading || authLoading || cardNumberPending) && !client) {
         return <LoadingScreen />;
     }
 
@@ -1033,16 +1046,6 @@ const ClientProfile: React.FC = () => {
                                     Моля, сканирайте картата <b>отново</b> — по-бавно и плътно до четеца — и проверете дали в адреса излиза пълен код.
                                 </p>
                                 <Link to="/" onClick={(e) => { if (!handleModeratorGuardedAction(() => navigate('/'))) e.preventDefault(); }} style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>Към Начало</Link>
-                            </>
-                        ) : currentUser && !CARDS_MAPPING[id] && registryCardNumber === null ? (
-                            // Регистърът се чете — докато не знаем дали картата е от нова
-                            // партида, нито предлагаме активиране, нито я обявяваме за непозната.
-                            <>
-                                <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                    <CreditCard size={48} color="rgba(255,255,255,0.35)" />
-                                </div>
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem' }}>Проверявам картата…</h2>
-                                <p style={{ color: 'rgba(255,255,255,0.5)', lineHeight: '1.6' }}>Търся номера на тази карта в системата.</p>
                             </>
                         ) : currentUser && !CARDS_MAPPING[id] && !registryCardNumber ? (
                             // Id is a full length but is in NEITHER the printed-card list nor the
