@@ -54,6 +54,14 @@ interface DeviceError {
 const NFC_SILENT_MS = 12 * 60 * 60 * 1000;
 
 /**
+ * Изключен терминал НЕ е проблем — вечер всички са изключени. Затова липсата на
+ * връзка се вижда само по реда („Последно преди 2 ч.") и не влиза в брояча.
+ * Проблем е чак когато устройство мълчи с дни: тогава или е забравено някъде,
+ * или е счупено.
+ */
+const LOST_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
+
+/**
  * Минала ли е вече грешката на четеца — тоест има ли успешно четене СЛЕД нея.
  * Плъгинът помни само последната грешка и я връща, докато приложението не се
  * рестартира; без тази проверка едно изпуснато допиране стои на екрана с дни и
@@ -90,7 +98,10 @@ const describeNfcError = (raw: string): string => {
  */
 const findProblems = (d: DeviceDoc, online: boolean, newestVersion: string, now: number): Problem[] => {
     const problems: Problem[] = [];
-    if (!online) problems.push({ text: `Не е на линия (${fmtAgo(d.lastSeen, now)})`, hard: true });
+    const silentFor = d.lastSeen ? now - new Date(d.lastSeen).getTime() : Infinity;
+    if (!online && silentFor > LOST_AFTER_MS) {
+        problems.push({ text: `Не се е обаждало ${fmtAgo(d.lastSeen, now)}`, hard: false });
+    }
     if (typeof d.batteryLevel === 'number' && d.batteryLevel <= LOW_BATTERY && !d.batteryCharging) {
         problems.push({ text: `Батерия ${d.batteryLevel}%`, hard: d.batteryLevel <= 10 });
     }
