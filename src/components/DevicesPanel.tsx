@@ -81,14 +81,21 @@ const describeNfcError = (raw: string): string => {
     return detail ? `${hit.text} (${detail})` : hit.text;
 };
 
-const findProblems = (d: DeviceDoc, online: boolean, latestVersion: string, now: number): Problem[] => {
+/**
+ * `newestVersion` е най-новата версия СРЕД ТЕРМИНАЛИТЕ, а не версията на сайта.
+ * Версията в терминала се сменя само с ново APK, а сайтът се обновява и заради
+ * промени, които изобщо не го засягат — сравнението със сайта светеше винаги и
+ * не значеше нищо. Така етикетът излиза точно когато един терминал е пропуснал
+ * обновяване, което другите са получили.
+ */
+const findProblems = (d: DeviceDoc, online: boolean, newestVersion: string, now: number): Problem[] => {
     const problems: Problem[] = [];
     if (!online) problems.push({ text: `Не е на линия (${fmtAgo(d.lastSeen, now)})`, hard: true });
     if (typeof d.batteryLevel === 'number' && d.batteryLevel <= LOW_BATTERY && !d.batteryCharging) {
         problems.push({ text: `Батерия ${d.batteryLevel}%`, hard: d.batteryLevel <= 10 });
     }
-    if (latestVersion && d.appVersion && d.appVersion !== latestVersion) {
-        problems.push({ text: `Стара версия (${d.appVersion})`, hard: false });
+    if (newestVersion && d.appVersion && d.appVersion < newestVersion) {
+        problems.push({ text: `По-стара версия от другите терминали (${d.appVersion})`, hard: false });
     }
     if (online && d.scanDate !== new Date(now).toISOString().slice(0, 10)) {
         problems.push({ text: 'Няма сканирания днес', hard: false });
@@ -107,7 +114,6 @@ const findProblems = (d: DeviceDoc, online: boolean, latestVersion: string, now:
 const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
     const [devices, setDevices] = useState<(DeviceDoc & { id: string })[]>([]);
     const [loading, setLoading] = useState(true);
-    const [latestVersion, setLatestVersion] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draftName, setDraftName] = useState('');
     // Дневникът се чете чак при разгъване — няма смисъл да се тегли за всяко
@@ -131,25 +137,21 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
         return () => { unsub(); clearInterval(timer); };
     }, []);
 
-    // Публикуваната версия — по нея се вижда кой терминал е с остаряло приложение.
-    useEffect(() => {
-        fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' })
-            .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d?.version) setLatestVersion(String(d.version)); })
-            .catch(() => { /* без сравнение на версии */ });
-    }, []);
-
     const rows = useMemo(() => {
+        // Версиите са с водещи нули (ГГГГ.ММ.ДД.ЧЧ.ММ), значи азбучният ред съвпада
+        // с хронологичния и най-новата се намира с обикновено сравнение.
+        const newestVersion = devices.reduce(
+            (max, d) => (d.appVersion && d.appVersion > max ? d.appVersion : max), '');
         return devices
             .map(d => {
                 const online = !!d.lastSeen && (now - new Date(d.lastSeen).getTime()) < OFFLINE_AFTER_MS;
-                return { ...d, online, problems: findProblems(d, online, latestVersion, now) };
+                return { ...d, online, problems: findProblems(d, online, newestVersion, now) };
             })
             .sort((a, b) => {
                 if (a.online !== b.online) return a.online ? -1 : 1;
                 return (b.lastSeen || '').localeCompare(a.lastSeen || '');
             });
-    }, [devices, latestVersion, now]);
+    }, [devices, now]);
 
     const onlineCount = rows.filter(r => r.online).length;
     const troubled = rows.filter(r => r.problems.some(p => p.hard)).length;
