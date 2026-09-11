@@ -12,6 +12,8 @@
 import { Capacitor } from '@capacitor/core';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import MyPosSmartSdk from '../services/MyPosSmartSdk';
+import { captureDeviceErrors } from './deviceErrors';
 
 const DEVICE_ID_KEY = 'dary_device_id';
 const SCAN_COUNT_PREFIX = 'dary_device_scans_';
@@ -42,6 +44,12 @@ export interface DeviceDoc {
     lastScanAt?: string;
     scansToday?: number;
     scanDate?: string;
+    /** Здраве на NFC четеца, както го докладва нативният плъгин. */
+    nfcBound?: boolean | null;
+    nfcScanning?: boolean | null;
+    nfcLastTagAt?: string | null;
+    nfcLastError?: string | null;
+    nfcLastErrorAt?: string | null;
 }
 
 const nowIso = () => new Date().toISOString();
@@ -73,6 +81,25 @@ const describeDevice = (): string => {
     const match = ua.match(/Android[^;]*;\s*([^;)]+)/);
     const model = match?.[1]?.trim();
     return model && model.length > 1 ? model : 'Устройство';
+};
+
+/**
+ * Пита нативния плъгин как е четецът. Старите APK-та нямат този метод — тогава
+ * се връща null и екранът просто не показва нищо за NFC, вместо да лъже.
+ */
+const readNfcStatus = async (): Promise<Partial<DeviceDoc>> => {
+    try {
+        const s = await MyPosSmartSdk.getNfcStatus();
+        return {
+            nfcBound: !!s.bound,
+            nfcScanning: !!s.scanning,
+            nfcLastTagAt: s.lastTagAt ? new Date(s.lastTagAt).toISOString() : null,
+            nfcLastError: s.lastError || null,
+            nfcLastErrorAt: s.lastErrorAt ? new Date(s.lastErrorAt).toISOString() : null,
+        };
+    } catch {
+        return {};
+    }
 };
 
 interface BatteryLike {
@@ -150,13 +177,17 @@ export const startDeviceHeartbeat = (appVersion: string): (() => void) => {
 
     const beat = () => {
         if (stopped) return;
-        void writeDevice(id, {
-            lastSeen: nowIso(),
-            appVersion,
-            batteryLevel: battery ? Math.round(battery.level * 100) : null,
-            batteryCharging: battery ? battery.charging : null,
-            batteryAt: battery ? nowIso() : null,
-        }, appVersion);
+        void readNfcStatus().then(nfc => {
+            if (stopped) return;
+            void writeDevice(id, {
+                lastSeen: nowIso(),
+                appVersion,
+                batteryLevel: battery ? Math.round(battery.level * 100) : null,
+                batteryCharging: battery ? battery.charging : null,
+                batteryAt: battery ? nowIso() : null,
+                ...nfc,
+            }, appVersion);
+        });
     };
 
     void readBattery().then(b => {
@@ -169,6 +200,7 @@ export const startDeviceHeartbeat = (appVersion: string): (() => void) => {
         beat();
     });
 
+    const stopCapture = captureDeviceErrors(id, appVersion);
     const timer = setInterval(beat, HEARTBEAT_MS);
     const onVisible = () => { if (document.visibilityState === 'visible') beat(); };
     document.addEventListener('visibilitychange', onVisible);
@@ -176,6 +208,7 @@ export const startDeviceHeartbeat = (appVersion: string): (() => void) => {
 
     return () => {
         stopped = true;
+        stopCapture();
         clearInterval(timer);
         document.removeEventListener('visibilitychange', onVisible);
         window.removeEventListener('online', beat);

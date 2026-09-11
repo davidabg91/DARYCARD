@@ -37,6 +37,18 @@ public class DaryNfcPlugin extends Plugin {
     // pages 4..35 = 128 bytes, the same as the office PC reader.
     private static final int URL_READ_BYTES = 128;
 
+    // Здраве на четеца, за да може сайтът да каже „NFC-то не работи" вместо да гадае
+    // по това дали са идвали сканирания (автобус може цял ден да е без пътници).
+    private volatile long lastTagAtMs = 0;
+    private volatile long lastErrorAtMs = 0;
+    private volatile String lastError = "";
+
+    private void noteError(String where, Exception e) {
+        String msg = (e == null || e.getMessage() == null) ? where : where + ": " + e.getMessage();
+        lastError = msg.length() > 200 ? msg.substring(0, 200) : msg;
+        lastErrorAtMs = System.currentTimeMillis();
+    }
+
     @Override
     public void load() {
         super.load();
@@ -63,6 +75,7 @@ public class DaryNfcPlugin extends Plugin {
             });
         } catch (Exception e) {
             android.util.Log.e(TAG, "Binding Error: " + e.getMessage());
+            noteError("SDK binding", e);
         }
     }
 
@@ -78,6 +91,18 @@ public class DaryNfcPlugin extends Plugin {
         // IMMORTAL PROTOCOL: We ignore stop requests to ensure zero-latency
         Log.d(TAG, "NFC Stop request ignored by Hardware Immortal protocol.");
         call.resolve();
+    }
+
+    /** Състоянието на четеца — чете се от регистъра на устройствата. */
+    @PluginMethod
+    public void getNfcStatus(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("bound", isBound.get());
+        ret.put("scanning", isScanningEnabled.get() && scanThread != null && scanThread.isAlive());
+        ret.put("lastTagAt", lastTagAtMs);
+        ret.put("lastError", lastError);
+        ret.put("lastErrorAt", lastErrorAtMs);
+        call.resolve(ret);
     }
 
     @PluginMethod
@@ -140,11 +165,13 @@ public class DaryNfcPlugin extends Plugin {
                             Thread.sleep(10); 
                         } catch (Exception e) {
                             Log.e(TAG, "Detection Error: " + e.getMessage());
+                            noteError("Detection", e);
                             break; 
                         }
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Hardware Loop Error: " + e.getMessage());
+                    noteError("Hardware loop", e);
                 } finally {
                     try {
                         UltralightManagement.getInstance().close(50);
@@ -175,7 +202,11 @@ public class DaryNfcPlugin extends Plugin {
                 tagId = bytesToHex(uidBytes).toLowerCase();
             }
 
-            if (tagId == null) return;
+            if (tagId == null) {
+                noteError("UID read", null);
+                return;
+            }
+            lastTagAtMs = System.currentTimeMillis();
 
             // STABILITY WALL: the same card counts again only after it has been lifted off the
             // reader; the timer is just a floor for a card that blinks out of range without leaving.
@@ -253,6 +284,7 @@ public class DaryNfcPlugin extends Plugin {
             });
         } catch (Exception e) {
             android.util.Log.e(TAG, "Process Error: " + e.getMessage());
+            noteError("Process", e);
         }
     }
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
     LOW_BATTERY,
@@ -8,7 +8,8 @@ import {
 } from '../utils/deviceHeartbeat';
 import {
     Smartphone, Wifi, WifiOff, BatteryFull, BatteryLow, BatteryCharging,
-    Check, Pencil, Trash2, X, AlertTriangle, CreditCard, RefreshCw
+    Check, Pencil, Trash2, X, AlertTriangle, CreditCard, RefreshCw,
+    Radio, RadioTower, Bug, ChevronDown, ChevronRight
 } from 'lucide-react';
 import BatteryAlertsButton from './BatteryAlertsButton';
 
@@ -40,6 +41,18 @@ const fmtWhen = (iso?: string): string => {
 
 interface Problem { text: string; hard: boolean }
 
+interface DeviceError {
+    id: string;
+    message?: string;
+    source?: string;
+    appVersion?: string;
+    lastAt?: string;
+    count?: number;
+}
+
+/** След толкова без нито един прочетен чип вече е подозрително. */
+const NFC_SILENT_MS = 12 * 60 * 60 * 1000;
+
 const findProblems = (d: DeviceDoc, online: boolean, latestVersion: string, now: number): Problem[] => {
     const problems: Problem[] = [];
     if (!online) problems.push({ text: `Не е на линия (${fmtAgo(d.lastSeen, now)})`, hard: true });
@@ -52,6 +65,14 @@ const findProblems = (d: DeviceDoc, online: boolean, latestVersion: string, now:
     if (online && d.scanDate !== new Date(now).toISOString().slice(0, 10)) {
         problems.push({ text: 'Няма сканирания днес', hard: false });
     }
+    // Здравето на четеца го докладва нативният плъгин. `undefined` значи старо
+    // APK, което още не го докладва — тогава мълчим, вместо да лъжем.
+    if (online && d.nfcBound === false) {
+        problems.push({ text: 'NFC четецът не е вързан', hard: true });
+    } else if (online && d.nfcBound === true && d.nfcLastTagAt
+        && now - new Date(d.nfcLastTagAt).getTime() > NFC_SILENT_MS) {
+        problems.push({ text: `NFC мълчи от ${fmtAgo(d.nfcLastTagAt, now)}`, hard: false });
+    }
     return problems;
 };
 
@@ -61,6 +82,11 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
     const [latestVersion, setLatestVersion] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draftName, setDraftName] = useState('');
+    // Дневникът се чете чак при разгъване — няма смисъл да се тегли за всяко
+    // устройство при отваряне на таба.
+    const [openLog, setOpenLog] = useState<string | null>(null);
+    const [logs, setLogs] = useState<Record<string, DeviceError[]>>({});
+    const [logLoading, setLogLoading] = useState(false);
     // Прекроява екрана веднъж в минута, за да не остарява „преди 3 мин.".
     const [now, setNow] = useState(() => Date.now());
 
@@ -111,6 +137,39 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
             setEditingId(null);
         } catch (err) {
             console.error('Името не се записа:', err);
+        }
+    };
+
+    const toggleLog = async (id: string) => {
+        if (openLog === id) { setOpenLog(null); return; }
+        setOpenLog(id);
+        if (logs[id]) return;
+        setLogLoading(true);
+        try {
+            const snap = await getDocs(query(
+                collection(db, 'devices', id, 'errors'),
+                orderBy('lastAt', 'desc'),
+                limit(25)
+            ));
+            setLogs(prev => ({ ...prev, [id]: snap.docs.map(d => ({ ...(d.data() as DeviceError), id: d.id })) }));
+        } catch (err) {
+            console.error('Дневникът не се зареди:', err);
+            setLogs(prev => ({ ...prev, [id]: [] }));
+        } finally {
+            setLogLoading(false);
+        }
+    };
+
+    const clearLog = async (id: string) => {
+        if (!window.confirm('Да изчистя ли дневника на това устройство?')) return;
+        try {
+            const snap = await getDocs(collection(db, 'devices', id, 'errors'));
+            const batch = writeBatch(db);
+            snap.docs.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+            setLogs(prev => ({ ...prev, [id]: [] }));
+        } catch (err) {
+            console.error('Дневникът не се изчисти:', err);
         }
     };
 
@@ -245,6 +304,24 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                                     <RefreshCw size={13} /> {d.appVersion || '—'}
                                 </span>
+                                {d.nfcBound !== undefined && d.nfcBound !== null && (
+                                    <span style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                                        color: d.nfcBound ? '#00c853' : '#ff5252', fontWeight: 700
+                                    }}>
+                                        {d.nfcBound ? <RadioTower size={13} /> : <Radio size={13} />}
+                                        {d.nfcBound
+                                            ? `NFC работи${d.nfcLastTagAt ? ` · четене ${fmtAgo(d.nfcLastTagAt, now)}` : ''}`
+                                            : 'NFC не е вързан'}
+                                    </span>
+                                )}
+                                <button
+                                    onClick={() => toggleLog(d.id)}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', fontWeight: 700, padding: 0 }}
+                                >
+                                    {openLog === d.id ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                    <Bug size={13} /> Грешки
+                                </button>
                                 {isAdmin && (
                                     <button
                                         onClick={() => removeDevice(d.id, label)}
@@ -254,6 +331,47 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                     </button>
                                 )}
                             </div>
+
+                            {d.nfcLastError && (
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#ff9800' }}>
+                                    Последна NFC грешка: {d.nfcLastError}
+                                    {d.nfcLastErrorAt ? ` (${fmtAgo(d.nfcLastErrorAt, now)})` : ''}
+                                </div>
+                            )}
+
+                            {openLog === d.id && (
+                                <div style={{ marginTop: '0.7rem', padding: '0.7rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '10px' }}>
+                                    {logLoading && !logs[d.id] ? (
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Зареждам…</div>
+                                    ) : !logs[d.id] || logs[d.id].length === 0 ? (
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Няма записани грешки.</div>
+                                    ) : (
+                                        <>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                {logs[d.id].map(e => (
+                                                    <div key={e.id} style={{ fontSize: '0.78rem', lineHeight: 1.45 }}>
+                                                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                                                            <span style={{ fontWeight: 800, color: '#ff9800' }}>{e.count || 1}×</span>
+                                                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem', background: 'rgba(255,255,255,0.06)', padding: '1px 6px', borderRadius: '5px' }}>{e.source || '?'}</span>
+                                                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>{fmtWhen(e.lastAt)}</span>
+                                                            {e.appVersion && <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>v{e.appVersion}</span>}
+                                                        </div>
+                                                        <div style={{ fontFamily: 'monospace', wordBreak: 'break-word', color: 'rgba(255,255,255,0.8)' }}>{e.message}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={() => clearLog(d.id)}
+                                                    style={{ marginTop: '0.7rem', background: 'transparent', border: 'none', color: '#ff5252', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, padding: 0 }}
+                                                >
+                                                    Изчисти дневника
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            )}
 
                             {d.problems.length > 0 && (
                                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>

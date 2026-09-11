@@ -136,14 +136,32 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
              'deviceId', 'firstSeen', 'autoName', 'platform', 'userAgent', 'appVersion',
              'lastSeen', 'batteryLevel', 'batteryCharging', 'batteryAt',
-             'lastScanAt', 'scanDate', 'scansToday'
+             'lastScanAt', 'scanDate', 'scansToday',
+             'nfcBound', 'nfcScanning', 'nfcLastTagAt', 'nfcLastError', 'nfcLastErrorAt'
            ]);
       allow update: if isStaff()
         || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
              'lastSeen', 'appVersion', 'batteryLevel', 'batteryCharging', 'batteryAt',
-             'lastScanAt', 'scanDate', 'scansToday'
+             'lastScanAt', 'scanDate', 'scansToday',
+             'nfcBound', 'nfcScanning', 'nfcLastTagAt', 'nfcLastError', 'nfcLastErrorAt'
            ]);
       allow delete: if isAdmin();
+
+      // Дневник на грешките: един документ на РАЗЛИЧНА грешка, повторенията
+      // само вдигат брояча. Пише го анонимно устройство, затова списъкът от
+      // полета е закован, а четенето е само за служител.
+      match /errors/{errorId} {
+        allow read: if isStaff();
+        allow create: if request.resource.data.keys()
+              .hasOnly(['message', 'source', 'appVersion', 'lastAt', 'count'])
+          && request.resource.data.message is string
+          && request.resource.data.message.size() <= 300;
+        allow update: if isStaff()
+          || (request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['message', 'source', 'appVersion', 'lastAt', 'count'])
+              && request.resource.data.message.size() <= 300);
+        allow delete: if isAdmin();
+      }
     }
 
     // ---- Public intake forms ----
