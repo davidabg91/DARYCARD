@@ -53,6 +53,34 @@ interface DeviceError {
 /** След толкова без нито един прочетен чип вече е подозрително. */
 const NFC_SILENT_MS = 12 * 60 * 60 * 1000;
 
+/**
+ * Минала ли е вече грешката на четеца — тоест има ли успешно четене СЛЕД нея.
+ * Плъгинът помни само последната грешка и я връща, докато приложението не се
+ * рестартира; без тази проверка едно изпуснато допиране стои на екрана с дни и
+ * изглежда като текущ проблем.
+ */
+const isNfcErrorSuperseded = (d: DeviceDoc): boolean => {
+    const errAt = d.nfcLastErrorAt ? new Date(d.nfcLastErrorAt).getTime() : 0;
+    const tagAt = d.nfcLastTagAt ? new Date(d.nfcLastTagAt).getTime() : 0;
+    return errAt > 0 && tagAt > errAt;
+};
+
+/** Съобщенията идват от плъгина на английски и с кратко име на мястото. */
+const NFC_ERROR_TEXT: { prefix: string; text: string }[] = [
+    { prefix: 'UID read', text: 'Картата е усетена, но номерът на чипа не се прочете — бързо прекарване, слаб контакт или чужда карта' },
+    { prefix: 'Detection', text: 'Прекъснато откриване на карта' },
+    { prefix: 'Hardware loop', text: 'Прекъсване в четящия цикъл' },
+    { prefix: 'Process', text: 'Грешка при обработката на картата' },
+    { prefix: 'SDK binding', text: 'myPOS четецът не се върза към приложението' },
+];
+
+const describeNfcError = (raw: string): string => {
+    const hit = NFC_ERROR_TEXT.find(e => raw.startsWith(e.prefix));
+    if (!hit) return raw;
+    const detail = raw.slice(hit.prefix.length).replace(/^:\s*/, '').trim();
+    return detail ? `${hit.text} (${detail})` : hit.text;
+};
+
 const findProblems = (d: DeviceDoc, online: boolean, latestVersion: string, now: number): Problem[] => {
     const problems: Problem[] = [];
     if (!online) problems.push({ text: `Не е на линия (${fmtAgo(d.lastSeen, now)})`, hard: true });
@@ -333,9 +361,13 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                             </div>
 
                             {d.nfcLastError && (
-                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#ff9800' }}>
-                                    Последна NFC грешка: {d.nfcLastError}
-                                    {d.nfcLastErrorAt ? ` (${fmtAgo(d.nfcLastErrorAt, now)})` : ''}
+                                <div style={{
+                                    marginTop: '0.5rem', fontSize: '0.75rem', lineHeight: 1.45,
+                                    color: isNfcErrorSuperseded(d) ? 'var(--text-secondary)' : '#ff9800'
+                                }}>
+                                    {isNfcErrorSuperseded(d) ? 'Последно неуспешно допиране' : 'NFC грешка при последното допиране'}
+                                    {d.nfcLastErrorAt ? ` ${fmtAgo(d.nfcLastErrorAt, now)}` : ''}: {describeNfcError(d.nfcLastError)}
+                                    {isNfcErrorSuperseded(d) && ' — след него картите се четат нормално.'}
                                 </div>
                             )}
 
