@@ -484,3 +484,93 @@ export const alertUnpaidScan = functions.firestore
             }
         });
     });
+
+// ---- Изтощена батерия на терминал ----
+const LOW_BATTERY = 20;
+const CRITICAL_BATTERY = 10;
+// Не по-често от веднъж на три часа за едно устройство.
+const BATTERY_ALERT_THROTTLE_MS = 3 * 60 * 60 * 1000;
+
+/**
+ * Изпраща push известие, когато батерията на терминал СЛЕЗЕ под 20%
+ * (и пак под 10%), без да е на зарядно. Прагът се брои за прекрачен САМО
+ * при слизане под него — иначе пулсът на всеки две минути би пращал известие
+ * при всяко записване.
+ *
+ * Собственият запис на `lastBatteryAlertAt` пак вдига функцията, но тогава
+ * нивото преди и след е едно и също, тоест праг не е прекрачен и се излиза веднага.
+ */
+export const alertLowBattery = functions.firestore
+    .document("devices/{deviceId}")
+    .onWrite(async (change, context) => {
+        if (!change.after.exists) return;
+        const after = change.after.data() || {};
+        const before = change.before.exists ? (change.before.data() || {}) : {};
+
+        const level = typeof after.batteryLevel === "number" ? after.batteryLevel : null;
+        if (level === null) return;
+        if (after.batteryCharging === true) return;   // на зарядно — не е проблем
+
+        const prevLevel = typeof before.batteryLevel === "number" ? before.batteryLevel : null;
+        const prevCharging = before.batteryCharging === true;
+        const crossed = (threshold: number) =>
+            level <= threshold && (prevLevel === null || prevLevel > threshold || prevCharging);
+
+        const critical = crossed(CRITICAL_BATTERY);
+        if (!critical && !crossed(LOW_BATTERY)) return;
+
+        const deviceId = context.params.deviceId as string;
+        const db = admin.firestore();
+        const deviceRef = db.collection("devices").doc(deviceId);
+
+        const now = Date.now();
+        let shouldAlert = false;
+        await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(deviceRef);
+            const last = (fresh.data()?.lastBatteryAlertAt as number) || 0;
+            // Критичното ниво минава и през задръжката — тогава вече е важно.
+            if (critical || now - last >= BATTERY_ALERT_THROTTLE_MS) {
+                shouldAlert = true;
+                tx.update(deviceRef, { lastBatteryAlertAt: now });
+            }
+        });
+        if (!shouldAlert) return;
+
+        const tokensSnap = await db.collection("admin_push_tokens").where("batteryAlerts", "==", true).get();
+        const tokens: string[] = [];
+        tokensSnap.forEach((t) => { const tok = t.data().token; if (tok) tokens.push(tok); });
+        if (tokens.length === 0) return;
+
+        const label = String(after.name || after.autoName || deviceId);
+        const title = critical ? "Терминал пред изгасяне" : "Изтощена батерия";
+        const body = critical
+            ? `${label} е на ${level}% — включете го на зарядно веднага.`
+            : `${label} е на ${level}% и не е на зарядно.`;
+
+        const message = {
+            notification: { title, body },
+            webpush: {
+                notification: {
+                    title,
+                    body,
+                    icon: "https://darycommerce.com/pwa-icon.png",
+                    badge: "https://darycommerce.com/favicon.png",
+                    tag: `battery-${deviceId}`,
+                },
+                fcmOptions: { link: "https://darycommerce.com/" },
+            },
+            android: { notification: { icon: "stock_white_24dp", color: critical ? "#ff5252" : "#ff9800" } },
+            tokens,
+        };
+
+        const response = await admin.messaging().sendEachForMulticast(message);
+        response.responses.forEach((res, i) => {
+            if (!res.success) {
+                const code = res.error?.code;
+                if (code === "messaging/registration-token-not-registered" ||
+                    code === "messaging/invalid-registration-token") {
+                    tokensSnap.docs[i].ref.delete().catch(() => { /* ignore */ });
+                }
+            }
+        });
+    });

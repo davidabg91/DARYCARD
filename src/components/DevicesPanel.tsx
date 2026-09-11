@@ -10,6 +10,7 @@ import {
     Smartphone, Wifi, WifiOff, BatteryFull, BatteryLow, BatteryCharging,
     Check, Pencil, Trash2, X, AlertTriangle, CreditCard, RefreshCw
 } from 'lucide-react';
+import BatteryAlertsButton from './BatteryAlertsButton';
 
 interface Props {
     /** Админ може да трие изчезнали устройства; модератор само гледа и преименува. */
@@ -98,6 +99,10 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
 
     const onlineCount = rows.filter(r => r.online).length;
     const troubled = rows.filter(r => r.problems.some(p => p.hard)).length;
+    // Изтощените батерии са на върха на екрана, не само като етикет на реда —
+    // това е нещото, което иска да се види от вратата.
+    const lowBattery = rows.filter(r =>
+        typeof r.batteryLevel === 'number' && r.batteryLevel <= LOW_BATTERY && !r.batteryCharging);
 
     const saveName = async (id: string) => {
         const name = draftName.trim();
@@ -124,13 +129,16 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
 
     if (!rows.length) {
         return (
-            <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                <Smartphone size={40} style={{ opacity: 0.4, marginBottom: '1rem' }} />
-                <div style={{ fontWeight: 700, marginBottom: '0.4rem', color: '#fff' }}>Още няма вписано устройство</div>
-                <div style={{ fontSize: '0.85rem', lineHeight: 1.6 }}>
-                    Всеки терминал се вписва сам при пускане на приложението — до две минути
-                    след като APK-то с тази промяна влезе на него. Браузър и PWA не се вписват.
+            <div>
+                <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <Smartphone size={40} style={{ opacity: 0.4, marginBottom: '1rem' }} />
+                    <div style={{ fontWeight: 700, marginBottom: '0.4rem', color: '#fff' }}>Още няма вписано устройство</div>
+                    <div style={{ fontSize: '0.85rem', lineHeight: 1.6 }}>
+                        Всеки терминал се вписва сам при пускане на приложението — до две минути
+                        след като APK-то с тази промяна влезе на него. Браузър и PWA не се вписват.
+                    </div>
                 </div>
+                <BatteryAlertsButton />
             </div>
         );
     }
@@ -147,6 +155,24 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                     <div style={{ fontSize: '1.6rem', fontWeight: 900, color: troubled ? '#ff5252' : 'var(--text-secondary)' }}>{troubled}</div>
                 </div>
             </div>
+
+            {lowBattery.length > 0 && (
+                <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: '0.7rem',
+                    padding: '0.9rem 1rem', marginBottom: '1.25rem', borderRadius: '12px',
+                    background: 'rgba(255,152,0,0.1)', border: '1px solid rgba(255,152,0,0.4)'
+                }}>
+                    <BatteryLow size={22} color="#ff9800" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div style={{ lineHeight: 1.5 }}>
+                        <div style={{ fontWeight: 800, color: '#ff9800', marginBottom: '0.2rem' }}>
+                            {lowBattery.length === 1 ? 'Изтощена батерия' : `Изтощени батерии: ${lowBattery.length}`}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)' }}>
+                            {lowBattery.map(d => `${d.name || d.autoName || d.id} — ${d.batteryLevel}%`).join(' · ')}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                 {rows.map(d => {
@@ -247,6 +273,10 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                         </div>
                     );
                 })}
+            </div>
+
+            <div style={{ marginTop: '1.5rem' }}>
+                <BatteryAlertsButton />
             </div>
         </div>
     );
