@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { NFCService } from './services/NFCService';
+import { recordDeviceScan, startDeviceHeartbeat } from './utils/deviceHeartbeat';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
@@ -20,6 +21,10 @@ const BusRental = lazy(() => import('./pages/BusRental'));
 const Legal = lazy(() => import('./pages/Legal'));
 
 const PageLoader = () => <LoadingScreen />;
+
+// The true bundle version. Живее извън компонента, защото и регистърът
+// на устройствата я докладва, за да се вижда кой терминал е със старо APK.
+const INTERNAL_APP_VERSION = "2026.09.11.13.14";
 
 function ClientProfileWrapper() {
   return <ClientProfile />;
@@ -44,6 +49,8 @@ function DeepLinkHandler() {
     // Ignore duplicate events from the same physical tap (some readers fire twice).
     if (lastTriggerRef.current.id === finalId && now - lastTriggerRef.current.t < 2000) return;
     lastTriggerRef.current = { id: finalId, t: now };
+    // Регистърът на устройствата — кой терминал кога е чел карта.
+    recordDeviceScan(INTERNAL_APP_VERSION);
     setTransitId(finalId);
     setTransitPhysicalUid(physicalUid);
     setTransitNfcCounter(nfcCounter);
@@ -142,8 +149,6 @@ function DeepLinkHandler() {
 
 
 function App() {
-  // 🛡️ NUCLEAR VERSIONING: The true bundle version
-  const INTERNAL_APP_VERSION = "2026.09.11.12.31";
 
   useEffect(() => {
     // 🛡️ FORCE UPDATE LOGIC: Reusable check function
@@ -186,6 +191,10 @@ function App() {
     // Check every 5 minutes while the app is open
     const versionInterval = setInterval(checkVersion, 5 * 60 * 1000);
 
+    // Терминалът се вписва в регистъра на устройствата и праща пулс.
+    // В браузър и PWA не прави нищо.
+    const stopHeartbeat = startDeviceHeartbeat(INTERNAL_APP_VERSION);
+
     // 🛡️ CHUNK LOAD ERROR RECOVERY: If a lazy-loaded chunk fails, reload immediately
     const handleError = (e: ErrorEvent | PromiseRejectionEvent) => {
       const error = (e instanceof ErrorEvent) ? e.error : (e instanceof PromiseRejectionEvent ? e.reason : e);
@@ -220,6 +229,7 @@ function App() {
 
     return () => {
         clearInterval(versionInterval);
+        stopHeartbeat();
         window.removeEventListener('error', handleError);
         window.removeEventListener('unhandledrejection', handleError);
     };

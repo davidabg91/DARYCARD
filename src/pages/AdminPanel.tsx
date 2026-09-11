@@ -38,6 +38,7 @@ import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import { MIXED_METHOD, PAYMENT_METHODS } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import CardWriter from '../components/CardWriter';
+import DevicesPanel from '../components/DevicesPanel';
 import { isWebNfcAvailable, type BatchCard } from '../utils/nfcCardWriter';
 import {
     formatCardNumber,
@@ -149,6 +150,10 @@ const CARD_TYPES = [
     "Нормална карта", "Ученическа карта", "Пенсионерска карта",
     "Учителска карта", "Инвалидна карта", "Служебна карта"
 ];
+
+/** Табовете на админ панела. */
+type AdminTabId = 'clients' | 'register' | 'nfc' | 'devices' | 'finances'
+    | 'signals' | 'rentals' | 'notifications' | 'unpaid';
 
 const generateClientId = () => {
     // Collision-resistant: prefer crypto.randomUUID, fall back to crypto.getRandomValues.
@@ -337,12 +342,12 @@ type UnpaidRow = {
 };
 
 interface TabButtonProps {
-    id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications' | 'unpaid';
+    id: AdminTabId;
     icon: React.ElementType;
     badgeColor?: string;
     label: string;
-    activeTab: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications' | 'unpaid';
-    setActiveTab: (id: 'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications' | 'unpaid') => void;
+    activeTab: AdminTabId;
+    setActiveTab: (id: AdminTabId) => void;
     activeColor?: string;
     badge?: number;
     isMobile?: boolean;
@@ -418,7 +423,7 @@ const AdminPanel: React.FC = () => {
     // Moderators share most day-to-day client actions with admins (changing a
     // direction, renewing); only destructive ones stay admin-only.
     const isStaff = isAdmin || currentUser?.role === 'moderator';
-    const [activeTab, setActiveTab] = useState<'clients' | 'register' | 'nfc' | 'finances' | 'signals' | 'rentals' | 'notifications' | 'unpaid'>(
+    const [activeTab, setActiveTab] = useState<AdminTabId>(
         'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
@@ -2290,6 +2295,7 @@ const AdminPanel: React.FC = () => {
                             <TabButton id="notifications" icon={Bell} label="ИЗВЕСТИЯ" activeColor="#ff4081" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                             <TabButton id="unpaid" icon={AlertTriangle} label={isMobile ? "БЕЗ АБОНАМЕНТ" : "БЕЗ АБОНАМЕНТ"} activeColor="#ff5252" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                             <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
+                            <TabButton id="devices" icon={Smartphone} label="УСТРОЙСТВА" activeColor="#00b0ff" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                         </>
                     )}
                 </div>
@@ -4987,6 +4993,21 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                         {showCardWriter && generatedCards.length > 0 && (
                             <CardWriter cards={generatedCards} onClose={() => setShowCardWriter(false)} />
                         )}
+                    </div>
+                )}
+
+                {activeTab === 'devices' && isAdmin && (
+                    <div style={{ animation: 'fadeIn 0.4s ease' }}>
+                        <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
+                            <h2 style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#00b0ff' }}>
+                                <Smartphone size={24} /> Устройства
+                            </h2>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                                Всеки терминал се вписва сам и се обажда на всеки две минути. Дай му името на
+                                шофьора, който работи с него, и ще го познаваш оттук нататък.
+                            </p>
+                            <DevicesPanel isAdmin={isAdmin} />
+                        </Card>
                     </div>
                 )}
 

@@ -123,6 +123,29 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- Устройства (терминалите на шофьорите) ----
+    // Всеки терминал се вписва сам и праща пулс. Шофьорите НЕ се логват, затова
+    // записът е анонимен — същата логика като при броячите на сканиранията. Затова
+    // списъкът от полета е тясен: `name` се пише САМО от служител, за да не може
+    // устройство да си презапише името на шофьора, което админът му е дал.
+    // Четенето е само за служител — устройството не чете собствения си документ
+    // (пробва update, а при липса го създава).
+    match /devices/{deviceId} {
+      allow read: if isStaff();
+      allow create: if request.resource.data.deviceId == deviceId
+        && request.resource.data.keys().hasOnly([
+             'deviceId', 'firstSeen', 'autoName', 'platform', 'userAgent', 'appVersion',
+             'lastSeen', 'batteryLevel', 'batteryCharging', 'batteryAt',
+             'lastScanAt', 'scanDate', 'scansToday'
+           ]);
+      allow update: if isStaff()
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             'lastSeen', 'appVersion', 'batteryLevel', 'batteryCharging', 'batteryAt',
+             'lastScanAt', 'scanDate', 'scansToday'
+           ]);
+      allow delete: if isAdmin();
+    }
+
     // ---- Public intake forms ----
     // Anonymous visitors can submit a complaint/suggestion or a rental inquiry,
     // but only staff may read or manage them.
