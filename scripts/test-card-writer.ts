@@ -12,8 +12,9 @@
 import {
     createWriteSession,
     estimateNdefUrlBytes,
+    MAX_LINK_BYTES,
     NTAG213_USER_BYTES,
-    urlFitsNtag213,
+    urlFitsCard,
     type BatchCard,
     type NdefReaderLike,
     type NdefWriteOptions,
@@ -124,7 +125,8 @@ const run = async () => {
         assert(bytes <= NTAG213_USER_BYTES, `${bytes} ≤ ${NTAG213_USER_BYTES}`);
         // Границата: адрес, който вече не се побира, трябва да бъде отказан.
         const tooLong = `https://example.com/#/client/${'X'.repeat(160)}`;
-        assert(!urlFitsNtag213(tooLong), 'прекалено дълъг адрес се отказва');
+        assert(!urlFitsCard(tooLong), 'прекалено дълъг адрес се отказва');
+        assert(MAX_LINK_BYTES === 128, 'границата е прозорецът на четците, а не целият чип');
         const h = await startSession([{ code: 'X', cardNumber: '0000001001', link: tooLong }]);
         eq(h.last().status, 'fatal', 'сесията не тръгва с адрес, който не се побира');
         eq(h.reader.scanCalls, 0, 'NFC дори не се включва');

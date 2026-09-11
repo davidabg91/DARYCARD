@@ -14,6 +14,18 @@
 /** NTAG213 — потребителска памет в байтове. */
 export const NTAG213_USER_BYTES = 144;
 
+/**
+ * Колко от чипа изчитат четците ни: и myPOS терминалът, и офисният четец
+ * стигат до страница 35, тоест 128 байта. Телефонът чете целия чип, но карта,
+ * която само телефонът може да прочете, е безполезна в автобуса — затова границата
+ * е по-малкото от двете. (До 2026-09-11 терминалът четеше само 48 байта и тихо
+ * режеше по-дългите линкове.)
+ */
+export const READER_WINDOW_BYTES = 128;
+
+/** Действащата граница за един линк. */
+export const MAX_LINK_BYTES = Math.min(NTAG213_USER_BYTES, READER_WINDOW_BYTES);
+
 /** Колко чакаме един запис, преди да го обявим за неуспешен. */
 export const WRITE_TIMEOUT_MS = 10000;
 
@@ -112,8 +124,8 @@ export const estimateNdefUrlBytes = (url: string): number => {
     return 1 + lengthField + record + 1;
 };
 
-export const urlFitsNtag213 = (url: string): boolean =>
-    estimateNdefUrlBytes(url) <= NTAG213_USER_BYTES;
+export const urlFitsCard = (url: string): boolean =>
+    estimateNdefUrlBytes(url) <= MAX_LINK_BYTES;
 
 /** Web NFC го няма в стандартните типове на TypeScript. */
 export type NdefReaderCtor = new () => NdefReaderLike;
@@ -249,9 +261,9 @@ export const createWriteSession = (cards: BatchCard[], deps: WriteSessionDeps): 
     const start = async () => {
         if (!cards.length) { finish(); return; }
 
-        const tooBig = cards.find(c => !urlFitsNtag213(c.link));
+        const tooBig = cards.find(c => !urlFitsCard(c.link));
         if (tooBig) {
-            die(`Линкът е ${estimateNdefUrlBytes(tooBig.link)} байта, а NTAG213 има ${NTAG213_USER_BYTES}. Няма да се побере.`);
+            die(`Линкът е ${estimateNdefUrlBytes(tooBig.link)} байта, а четците изчитат ${MAX_LINK_BYTES}. Терминалът ще чете отрязан код.`);
             return;
         }
 

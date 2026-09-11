@@ -30,6 +30,12 @@ public class DaryNfcPlugin extends Plugin {
     // Stability Wall
     private String lastId = "";
     private long lastTime = 0;
+    // Lift detection: a tap ends when the card leaves the reader, not when a timer expires.
+    private volatile boolean cardTakenAway = true;
+    private static final int EMPTY_LOOKS_TO_LIFT = 12; // ~20ms per look => a quarter of a second
+    // How far into the tag we are willing to read looking for the NDEF url:
+    // pages 4..35 = 128 bytes, the same as the office PC reader.
+    private static final int URL_READ_BYTES = 128;
 
     @Override
     public void load() {
@@ -114,15 +120,22 @@ public class DaryNfcPlugin extends Plugin {
                     UltralightManagement.getInstance().open(1000);
                     
                     // Detection Loop
+                    int emptyLooks = 0;
                     while (isScanningEnabled.get() && isBound.get()) {
                         try {
                             if (UltralightManagement.getInstance().detect(10)) {
+                                emptyLooks = 0;
                                 MainActivity.wakeFromScan();
                                 processCardStable();
                                 
                                 UltralightManagement.getInstance().close(50);
                                 Thread.sleep(50);
                                 UltralightManagement.getInstance().open(300);
+                            } else if (emptyLooks < EMPTY_LOOKS_TO_LIFT) {
+                                emptyLooks++;
+                                if (emptyLooks >= EMPTY_LOOKS_TO_LIFT) {
+                                    cardTakenAway = true;
+                                }
                             }
                             Thread.sleep(10); 
                         } catch (Exception e) {
@@ -164,13 +177,15 @@ public class DaryNfcPlugin extends Plugin {
 
             if (tagId == null) return;
 
-            // STABILITY WALL: Increased to 1500ms (1.5s) as requested for absolute reliability
+            // STABILITY WALL: the same card counts again only after it has been lifted off the
+            // reader; the timer is just a floor for a card that blinks out of range without leaving.
             long now = System.currentTimeMillis();
-            if (tagId.equals(lastId) && (now - lastTime) < 1500) {
+            if (tagId.equals(lastId) && (!cardTakenAway || now - lastTime < 2500)) {
                 return;
             }
             lastId = tagId;
             lastTime = now;
+            cardTakenAway = false;
 
             // Parse NTAG chip type from Capability Container (CC) (page 3, byte 2)
             int chipType = 0; // 0 = unknown, 213, 215, 216
@@ -195,24 +210,30 @@ public class DaryNfcPlugin extends Plugin {
             // Hardware Feedback
             beepGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100);
 
-            // STAGE 2: URL Read
-            byte[] buffer = new byte[48];
-            boolean readError = false;
-            for (int i = 0; i < 3; i++) {
+            // STAGE 2: URL Read.
+            // Read in 16-byte chunks and stop as soon as the address ends INSIDE what we
+            // already have. The printed cards (9-char code) finish on the third chunk —
+            // exactly as many reads as before — while the generated ones (12-char code)
+            // need a fourth. The ceiling is page 35, i.e. 128 bytes, the same window the
+            // office PC reader uses. Reading only the old 48 bytes silently cut the
+            // longer links and produced a chopped-off card id.
+            byte[] buffer = new byte[URL_READ_BYTES];
+            int filled = 0;
+            for (int i = 0; i < URL_READ_BYTES / 16; i++) {
+                byte[] chunk = null;
                 try {
-                    byte[] chunk = UltralightManagement.getInstance().readBlock((byte) (4 + (i * 4)), 150);
-                    if (chunk != null) {
-                        System.arraycopy(chunk, 0, buffer, i * 16, 16);
-                    } else {
-                        readError = true;
-                        break;
-                    }
-                } catch (Exception e) {
-                    readError = true;
-                    break;
-                }
+                    chunk = UltralightManagement.getInstance().readBlock((byte) (4 + (i * 4)), 150);
+                } catch (Exception ignored) {}
+                if (chunk == null || chunk.length == 0) break;
+                int take = Math.min(16, chunk.length);
+                System.arraycopy(chunk, 0, buffer, i * 16, take);
+                filled = (i * 16) + take;
+                if (isUrlComplete(buffer, filled)) break;
             }
-            if (!readError) url = extractUrl(buffer);
+            // Only trust a COMPLETE address. A half-read one would yield a wrong card id;
+            // leaving it empty makes the app fall back to the chip's physical UID, which
+            // resolves through nfc_uids instead.
+            if (isUrlComplete(buffer, filled)) url = extractUrl(buffer, filled);
 
             // STAGE 3: RELIABLE EMISSION
             final String fId = tagId;
@@ -235,9 +256,38 @@ public class DaryNfcPlugin extends Plugin {
         }
     }
 
-    private String extractUrl(byte[] data) {
+    private static final byte[] HOST = "darycommerce.com".getBytes();
+
+    /** Index of the host name inside the first `length` bytes, or -1. */
+    private int indexOfHost(byte[] data, int length) {
+        for (int i = 0; i + HOST.length <= length; i++) {
+            boolean hit = true;
+            for (int j = 0; j < HOST.length; j++) {
+                if (data[i + j] != HOST[j]) { hit = false; break; }
+            }
+            if (hit) return i;
+        }
+        return -1;
+    }
+
+    /**
+     * True when the address ends inside what we have read: after the host name there is a
+     * non-printable byte (the 0xFE terminator or the trailing zeros). If the printable run
+     * reaches the end of the buffer, the address continues into pages we have not read yet.
+     */
+    private boolean isUrlComplete(byte[] data, int length) {
+        int start = indexOfHost(data, length);
+        if (start < 0) return false;
+        for (int i = start; i < length; i++) {
+            int b = data[i] & 0xFF;
+            if (b < 33 || b > 126) return true;
+        }
+        return false;
+    }
+
+    private String extractUrl(byte[] data, int length) {
         try {
-            String raw = new String(data, "UTF-8");
+            String raw = new String(data, 0, length, "UTF-8");
             if (raw.contains("darycommerce.com")) {
                 int start = raw.indexOf("darycommerce.com");
                 int backtrack = start;

@@ -4,7 +4,7 @@ import {
     createWriteSession,
     estimateNdefUrlBytes,
     getNdefReaderCtor,
-    NTAG213_USER_BYTES,
+    MAX_LINK_BYTES,
     type BatchCard,
     type WriteSession,
     type WriterState,
@@ -45,7 +45,7 @@ const CardWriter: React.FC<CardWriterProps> = ({ cards, onClose }) => {
         () => (cards.length ? estimateNdefUrlBytes(cards[0].link) : 0),
         [cards]
     );
-    const fits = linkBytes <= NTAG213_USER_BYTES;
+    const fits = linkBytes <= MAX_LINK_BYTES;
 
     // Спираме слушането при затваряне на екрана — AbortController в сесията.
     useEffect(() => () => { sessionRef.current?.stop(); }, []);
@@ -122,8 +122,8 @@ const CardWriter: React.FC<CardWriterProps> = ({ cards, onClose }) => {
                     fontSize: '0.78rem', marginBottom: '1rem',
                     color: fits ? 'var(--text-secondary)' : '#ff5252', fontWeight: fits ? 400 : 700
                 }}>
-                    Линк в чипа: {linkBytes} от {NTAG213_USER_BYTES} байта (NTAG213)
-                    {!fits && ' — НЕ СЕ ПОБИРА.'}
+                    Линк в чипа: {linkBytes} от {MAX_LINK_BYTES} байта (колкото изчитат четците)
+                    {!fits && ' — ТЕРМИНАЛЪТ ЩЕ ГО ОТРЕЖЕ.'}
                 </div>
 
                 {/* Лента с напредъка. */}
