@@ -170,10 +170,11 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
     priceSingle: "---",
     priceCard: "50.00 €"
   },
+  // Card price not decided yet: no auto-fill, the amount is typed in by hand.
   "Долна Митрополия - Горна Митрополия": {
     stops: ["Д.М", "Г.М"],
     priceSingle: "---",
-    priceCard: "50.00 €"
+    priceCard: "-"
   },
   "Биволаре": {
     stops: ["Плевен", "Опанец", "Д.М", "Биволаре"],

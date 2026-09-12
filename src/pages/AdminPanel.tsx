@@ -141,6 +141,7 @@ const ROUTES = [
     "Горни Дъбник", "Ясен-Дисевица", "Ясен-Долни Дъбник", "Ореховица", "Брегаре", "Крушовене",
     "Гривица", "Згалево", "Пордим", "Одърне", "Каменец", "Вълчитрън", "Катерица", "Борислав",
     "Долни Дъбник - Садовец", "Долна Митрополия - Тръстеник", "Долна Митрополия - Славовица",
+    "Долна Митрополия - Горна Митрополия",
     "Пордим - Каменец", "Пордим - Згалево", "Пордим - Одърне",
     "Славовица - Тръстеник"
 ];
@@ -845,7 +846,8 @@ const AdminPanel: React.FC = () => {
         if (cardType === 'Служебна карта') { setAmountPaid('0'); return; }
         if (selectedRoute && ROUTE_METADATA[selectedRoute]) {
             const price = cardPrice(selectedRoute, cardType);
-            if (price !== null) setAmountPaid(price.toFixed(2));
+            // No price for the route: clear it so the amount is typed in, not carried over.
+            setAmountPaid(price !== null ? price.toFixed(2) : '');
         }
     }, [selectedRoute, cardType]);
 
@@ -3258,7 +3260,7 @@ const AdminPanel: React.FC = () => {
                                     }
                                 }
                                 
-                                const isShortDistance = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
+                                const isShortDistance = ["Ясен", "Опанец", "Ясен-Дисевица", "Долна Митрополия - Горна Митрополия", "Долна Митрополия - Тръстеник"].includes(c.route);
                                 if (reportDistanceFilter === 'under10' && !isShortDistance) match = false;
                                 if (reportDistanceFilter === 'over10' && isShortDistance) match = false;
 
@@ -3276,7 +3278,7 @@ const AdminPanel: React.FC = () => {
                                 + (showMunicipalityCol ? 1 : 0);
 
                             const useRegisterPrint = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportCardType === 'Инвалидна карта';
-                            const SHORT_ROUTES = ["Ясен", "Опанец", "Ясен-Дисевица"];
+                            const SHORT_ROUTES = ["Ясен", "Опанец", "Ясен-Дисевица", "Долна Митрополия - Горна Митрополия", "Долна Митрополия - Тръстеник"];
 
                             const registerCategoryLabel = reportCardType === 'Пенсионерска карта' ? 'ПЕНСИОНЕРИ'
                                 : reportCardType === 'Учителска карта' ? 'УЧИТЕЛИ'
@@ -3308,7 +3310,7 @@ const AdminPanel: React.FC = () => {
                                 const periodStr = reportPeriodType === 'month' ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}` : `Ден: ${reportDate}`;
                                 const header = `Финансов Отчет DARY COMMERCE\n${periodStr} | Начин на плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoutes.includes('all') ? 'Всички' : reportRoutes.join(', ')} | Община: ${reportMunicipality === 'all' ? 'Всички' : reportMunicipality} | Дистанция: ${reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}\n---\n`;
                                 const rows = filteredReportClients.map(c => {
-                                    const isShort = ["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route);
+                                    const isShort = ["Ясен", "Опанец", "Ясен-Дисевица", "Долна Митрополия - Горна Митрополия", "Долна Митрополия - Тръстеник"].includes(c.route);
                                     const distStr = isShort ? "До 10 км" : "Над 10 км";
                                     const distancePart = reportDistanceFilter === 'all' ? '' : ` (${distStr})`;
                                     const addressPart = ((reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') && c.address) ? ` - Адрес: ${c.address}` : '';
@@ -3825,7 +3827,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                 <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
                                                                 {reportDistanceFilter !== 'all' && (
                                                                     <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                                        {["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}
+                                                                        {["Ясен", "Опанец", "Ясен-Дисевица", "Долна Митрополия - Горна Митрополия", "Долна Митрополия - Тръстеник"].includes(c.route) ? "До 10 км" : "Над 10 км"}
                                                                     </td>
                                                                 )}
                                                                 {showAddressCol && <td style={{ fontSize: '0.8rem' }}>{c.address || '---'}</td>}
@@ -3868,7 +3870,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                             </span>
                                                             {reportDistanceFilter !== 'all' && (
                                                                 <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
-                                                                    {["Ясен", "Опанец", "Ясен-Дисевица"].includes(c.route) ? "До 10 км" : "Над 10 км"}
+                                                                    {["Ясен", "Опанец", "Ясен-Дисевица", "Долна Митрополия - Горна Митрополия", "Долна Митрополия - Тръстеник"].includes(c.route) ? "До 10 км" : "Над 10 км"}
                                                                 </span>
                                                             )}
                                                             {showAddressCol && (

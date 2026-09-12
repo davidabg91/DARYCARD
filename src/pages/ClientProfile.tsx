@@ -493,7 +493,8 @@ const ClientProfile: React.FC = () => {
         if (regCardType === 'Служебна карта') { setRegAmount('0'); return; }
         if (regRoute && ROUTE_METADATA[regRoute]) {
             const price = cardPrice(regRoute, regCardType);
-            if (price !== null) setRegAmount(price.toFixed(2));
+            // No price for the route: clear it so the amount is typed in, not carried over.
+            setRegAmount(price !== null ? price.toFixed(2) : '');
         }
     }, [regRoute, regCardType]);
 
