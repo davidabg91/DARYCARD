@@ -3226,6 +3226,16 @@ const AdminPanel: React.FC = () => {
                                 return { bank, cash, card, label: parts.join(' + ') || '---', methods: names.join(' + ') || '---' };
                             };
 
+                            // The municipality a card's distance is measured in. A contract report
+                            // lists its municipalities without filtering by them: with one ticked
+                            // it applies to every card, with several each card uses its own.
+                            const distanceMunicipalityFor = (c: Client) =>
+                                !reportByContract ? reportMunicipality
+                                : contractMunicipalities.length === 1 ? contractMunicipalities[0]
+                                : (c.municipality || '');
+                            const isShortRouteInReport = (c: Client) =>
+                                shortRoutesFor(distanceMunicipalityFor(c)).includes(c.route);
+
                             const filteredReportClients = clients.filter(c => {
                                 let match = true;
                                 if (reportCardType !== 'all') {
@@ -3268,7 +3278,7 @@ const AdminPanel: React.FC = () => {
                                     }
                                 }
                                 
-                                const isShortDistance = shortRoutesFor(reportMunicipality).includes(c.route);
+                                const isShortDistance = isShortRouteInReport(c);
                                 if (reportDistanceFilter === 'under10' && !isShortDistance) match = false;
                                 if (reportDistanceFilter === 'over10' && isShortDistance) match = false;
 
@@ -3286,7 +3296,9 @@ const AdminPanel: React.FC = () => {
                                 + (showMunicipalityCol ? 1 : 0);
 
                             const useRegisterPrint = reportCardType === 'Ученическа карта' || reportCardType === 'Пенсионерска карта' || reportCardType === 'Учителска карта' || reportCardType === 'Инвалидна карта';
-                            const SHORT_ROUTES = shortRoutesFor(reportMunicipality);
+                            const SHORT_ROUTES = !reportByContract ? shortRoutesFor(reportMunicipality)
+                                : contractMunicipalities.length === 1 ? shortRoutesFor(contractMunicipalities[0])
+                                : [...new Set(contractMunicipalities.flatMap(shortRoutesFor))];
 
                             const registerCategoryLabel = reportCardType === 'Пенсионерска карта' ? 'ПЕНСИОНЕРИ'
                                 : reportCardType === 'Учителска карта' ? 'УЧИТЕЛИ'
@@ -3318,7 +3330,7 @@ const AdminPanel: React.FC = () => {
                                 const periodStr = reportPeriodType === 'month' ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}` : `Ден: ${reportDate}`;
                                 const header = `Финансов Отчет DARY COMMERCE\n${periodStr} | Начин на плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoutes.includes('all') ? 'Всички' : reportRoutes.join(', ')} | Община: ${reportMunicipality === 'all' ? 'Всички' : reportMunicipality} | Дистанция: ${reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}\n---\n`;
                                 const rows = filteredReportClients.map(c => {
-                                    const isShort = shortRoutesFor(reportMunicipality).includes(c.route);
+                                    const isShort = isShortRouteInReport(c);
                                     const distStr = isShort ? "До 10 км" : "Над 10 км";
                                     const distancePart = reportDistanceFilter === 'all' ? '' : ` (${distStr})`;
                                     const addressPart = ((reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта') && c.address) ? ` - Адрес: ${c.address}` : '';
@@ -3835,7 +3847,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                 <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
                                                                 {reportDistanceFilter !== 'all' && (
                                                                     <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                                        {shortRoutesFor(reportMunicipality).includes(c.route) ? "До 10 км" : "Над 10 км"}
+                                                                        {isShortRouteInReport(c) ? "До 10 км" : "Над 10 км"}
                                                                     </td>
                                                                 )}
                                                                 {showAddressCol && <td style={{ fontSize: '0.8rem' }}>{c.address || '---'}</td>}
@@ -3878,7 +3890,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                             </span>
                                                             {reportDistanceFilter !== 'all' && (
                                                                 <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
-                                                                    {shortRoutesFor(reportMunicipality).includes(c.route) ? "До 10 км" : "Над 10 км"}
+                                                                    {isShortRouteInReport(c) ? "До 10 км" : "Над 10 км"}
                                                                 </span>
                                                             )}
                                                             {showAddressCol && (
