@@ -31,8 +31,10 @@ const ModeratorInactivityWarningModal: React.FC<ModeratorInactivityWarningModalP
             position: 'fixed',
             inset: 0,
             zIndex: 100000,
-            background: 'rgba(0, 0, 0, 0.88)',
-            backdropFilter: 'blur(16px)',
+            // No backdrop blur: the PC program's embedded Qt browser re-blurs the whole
+            // screen on every animation frame and the modal shakes. The dark overlay
+            // alone looks the same.
+            background: 'rgba(0, 0, 0, 0.9)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -54,9 +56,8 @@ const ModeratorInactivityWarningModal: React.FC<ModeratorInactivityWarningModalP
             }}>
                 <style>{`
                     @keyframes pulseWarning {
-                        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.6); }
-                        70% { transform: scale(1.08); box-shadow: 0 0 0 16px rgba(255, 152, 0, 0); }
-                        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.55; }
                     }
                     @keyframes scaleUp {
                         from { transform: scale(0.92); opacity: 0; }
