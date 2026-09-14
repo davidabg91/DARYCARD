@@ -35,7 +35,7 @@ import { useAuth } from '../context/AuthContext';
 import { ROUTE_METADATA, cardPrice } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
-import { MIXED_METHOD, PAYMENT_METHODS } from '../data/paymentMethods';
+import { MIXED_METHOD, negativeAmountError, PAYMENT_METHODS } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import CardWriter from '../components/CardWriter';
 import DevicesPanel from '../components/DevicesPanel';
@@ -1246,6 +1246,12 @@ const AdminPanel: React.FC = () => {
             setMessage({ text: 'При смесено плащане въведете сумите по банка и/или в брой.', type: 'error' });
             return;
         }
+        const createAmountError = cardType === 'Служебна карта' ? null
+            : negativeAmountError(effectiveAmount, isMixedPay ? [payBank, payCash] : []);
+        if (createAmountError) {
+            setMessage({ text: createAmountError, type: 'error' });
+            return;
+        }
 
         // Service cards are unpaid and valid for the whole selected year: store all
         // 12 monthly entries (amount 0) and set the expiry to December of that year.
@@ -1361,6 +1367,12 @@ const AdminPanel: React.FC = () => {
             const nameSvc = cardNumSvc ? `${selectedClient.name} (Карта № ${cardNumSvc})` : selectedClient.name;
             await logGlobalActivity(isNewDirSvc ? 'Добавяне на направление' : 'Подновяване', nameSvc, `Служебна карта, направление ${newRoute} за цялата ${newServiceYear} г.`, 0);
             setModalMessage({ text: `${isNewDirSvc ? 'Добавено' : 'Подновено'} направление „${newRoute}" (служебна) за цялата ${newServiceYear} г.`, type: 'success' });
+            return;
+        }
+
+        const renewAmountError = negativeAmountError(effectiveNewAmount, isMixedRenew ? [renewBank, renewCash] : []);
+        if (renewAmountError) {
+            alert(renewAmountError);
             return;
         }
 
@@ -4673,7 +4685,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Сума (€)</label>
-                                            <input type="number" step="0.01" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} value={amountPaid} onChange={e => setAmountPaid(e.target.value)} required={cardType !== 'Служебна карта'} />
+                                            <input type="number" step="0.01" min="0" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)' }} value={amountPaid} onChange={e => setAmountPaid(e.target.value)} required={cardType !== 'Служебна карта'} />
                                         </div>
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Месец</label>
@@ -5651,7 +5663,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 </div>
                                                 <div>
                                                     <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Сума (€)</label>
-                                                    <input type="number" placeholder="0.00" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff' }} value={newAmount} onChange={e => setNewAmount(e.target.value)} />
+                                                    <input type="number" min="0" placeholder="0.00" style={{ width: '100%', padding: '0.6rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', color: '#fff' }} value={newAmount} onChange={e => setNewAmount(e.target.value)} />
                                                 </div>
                                                 </>
                                                 )}

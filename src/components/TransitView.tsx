@@ -8,7 +8,7 @@ import AdSlideshow from './AdSlideshow';
 import ClientPhoto from './ClientPhoto';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import ModeratorInactivityWarningModal from './ModeratorInactivityWarningModal';
-import { MIXED_METHOD } from '../data/paymentMethods';
+import { MIXED_METHOD, negativeAmountError } from '../data/paymentMethods';
 import MyPosSmartSdk from '../services/MyPosSmartSdk';
 import { Capacitor } from '@capacitor/core';
 import { CARDS_MAPPING } from '../data/cardsMapping';
@@ -907,6 +907,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                                 <label style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 900 }}>СУМА (ЛВ)</label>
                                                 <input 
                                                     type="number" 
+                                                    min="0"
                                                     value={renewalAmount} 
                                                     onChange={(e) => setRenewalAmount(Number(e.target.value))}
                                                     style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }}
@@ -954,6 +955,13 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                                         : { paymentMethod: renewalPaymentMethod };
                                                     if (isMixedQR && qrAmount <= 0) {
                                                         playErrorSound();
+                                                        setIsUpdating(false);
+                                                        return;
+                                                    }
+                                                    const qrAmountError = negativeAmountError(qrAmount, isMixedQR ? [qrBank, qrCash] : []);
+                                                    if (qrAmountError) {
+                                                        playErrorSound();
+                                                        alert(qrAmountError);
                                                         setIsUpdating(false);
                                                         return;
                                                     }

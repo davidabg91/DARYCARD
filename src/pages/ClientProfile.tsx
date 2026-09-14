@@ -12,7 +12,7 @@ import ClientPhoto from '../components/ClientPhoto';
 import LostCardTransfer from '../components/LostCardTransfer';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import ModeratorInactivityWarningModal from '../components/ModeratorInactivityWarningModal';
-import { MIXED_METHOD } from '../data/paymentMethods';
+import { MIXED_METHOD, negativeAmountError } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { lookupCardNumber, markCardAssigned } from '../utils/cardRegistry';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
@@ -693,6 +693,12 @@ const ClientProfile: React.FC = () => {
 
         if (isMixedReg && regEffectiveAmount <= 0) {
             alert('При смесено плащане въведете сумите по банка и/или в брой.');
+            return;
+        }
+        const regAmountError = isServiceCard ? null
+            : negativeAmountError(regEffectiveAmount, isMixedReg ? [regBank, regCash] : []);
+        if (regAmountError) {
+            alert(regAmountError);
             return;
         }
 
@@ -1386,7 +1392,7 @@ const ClientProfile: React.FC = () => {
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МАРШРУТ (КУРС)</label><select value={regRoute} onChange={e => setRegRoute(e.target.value)} style={{ width: '100%', padding: '1rem', background: '#222', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}><option value="">Избери маршрут...</option>{ROUTES.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
                                 {regCardType !== 'Служебна карта' && (
                                 <>
-                                <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>СУМА (€)</label><input type="number" value={regAmount} onChange={e => setRegAmount(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} /></div>
+                                <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>СУМА (€)</label><input type="number" min="0" value={regAmount} onChange={e => setRegAmount(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }} /></div>
                                 <div><label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>МЕСЕЦ</label><input type="month" value={regMonth} onChange={e => setRegMonth(e.target.value)} style={{ width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none', colorScheme: 'dark' }} /></div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                     <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', display: 'block' }}>НАЧИН НА ПЛАЩАНЕ</label>
@@ -1935,6 +1941,7 @@ const ClientProfile: React.FC = () => {
                                             <label style={{ fontSize: '0.6rem', opacity: 0.5, fontWeight: 900 }}>СУМА (€)</label>
                                             <input
                                                 type="number"
+                                                min="0"
                                                 value={renewalAmount}
                                                 onChange={(e) => setRenewalAmount(Number(e.target.value))}
                                                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, width: '100%', boxSizing: 'border-box' }}
@@ -2037,6 +2044,13 @@ const ClientProfile: React.FC = () => {
                                                 const qrPaymentLabel = isMixedQR ? `Смесено (Банка: ${qrBank.toFixed(2)} / Кеш: ${qrCash.toFixed(2)})` : renewalPaymentMethod;
                                                 if (isMixedQR && qrAmount <= 0) {
                                                     playErrorSound();
+                                                    setIsUpdating(false);
+                                                    return;
+                                                }
+                                                const qrAmountError = negativeAmountError(qrAmount, isMixedQR ? [qrBank, qrCash] : []);
+                                                if (qrAmountError) {
+                                                    playErrorSound();
+                                                    alert(qrAmountError);
                                                     setIsUpdating(false);
                                                     return;
                                                 }
