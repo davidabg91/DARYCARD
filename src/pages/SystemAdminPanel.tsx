@@ -189,12 +189,21 @@ const SystemAdminPanel: React.FC = () => {
         return () => unsub();
     }, [dashboardOpened]);
 
+    // Статистиката брои само пътуванията: прочитане от терминала (APK). Отпадат
+    // отварянията в браузър (`source: 'web'` — телефон или офисният компютър) и
+    // прочитанията от логнат служител (`scannedBy`/`role` — офис, подновяване).
+    // Записите отпреди маркера нямат `source` и остават в сметката.
     const toScanRecords = (snap: { docs: { ref: { parent: { parent: { id: string } | null } }; data: () => Record<string, unknown> }[] }): ScanRecord[] =>
-        snap.docs.map(d => ({
-            clientId: d.ref.parent.parent?.id ?? '',
-            at: (d.data().at as string) ?? '',
-            route: (d.data().route as string) ?? '',
-        }));
+        snap.docs
+            .filter(d => {
+                const data = d.data();
+                return data.source !== 'web' && !data.scannedBy && !data.role;
+            })
+            .map(d => ({
+                clientId: d.ref.parent.parent?.id ?? '',
+                at: (d.data().at as string) ?? '',
+                route: (d.data().route as string) ?? '',
+            }));
 
     // Day of scans behind АНАЛИЗ НА ТРАФИКА — one day is ~0.24 MB, so re-reading it
     // when the date picker moves costs nothing. `dayEnd` bounds the range so the
@@ -321,7 +330,11 @@ const SystemAdminPanel: React.FC = () => {
     const maxScans = Math.max(...hourlyDistribution, 1);
     const peakHour = hourlyDistribution.indexOf(Math.max(...hourlyDistribution));
 
-    const scannedToday = clients.filter(c => c.lastScanAt?.startsWith(todayIso)).length;
+    // Различни карти с пътуване днес. `lastScanAt` не става — пише се и при прочитане
+    // в офиса. Докато 60-дневният прозорец се зарежда, показваме старата сметка.
+    const scannedToday = abuseLoading
+        ? clients.filter(c => c.lastScanAt?.startsWith(todayIso)).length
+        : new Set(abuseScans.filter(s => s.at.startsWith(todayIso)).map(s => s.clientId)).size;
 
     // Renewals & Pending
     const renewedCount = clients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;

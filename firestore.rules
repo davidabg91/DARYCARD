@@ -69,9 +69,13 @@ service cloud.firestore {
       // картата в офиса от качване в автобус. Маркерите за служител могат да се
       // пишат САМО от логнат служител — иначе анонимно устройство би могло да се
       // представи за модератор и така да скрие пътуването си от отчета.
+      // `source: 'web'` = записано от браузър (телефон или офисният компютър), не от
+      // терминал. Статистиката брои само сканиранията без него. Терминалите носят
+      // вграден уеб и не пишат полето, затова и старите APK-та си остават валидни.
       allow create: if request.resource.data.keys()
-            .hasOnly(['at', 'route', 'scannedBy', 'scannedByName', 'role'])
+            .hasOnly(['at', 'route', 'scannedBy', 'scannedByName', 'role', 'source'])
         && request.resource.data.at is string
+        && (!('source' in request.resource.data) || request.resource.data.source == 'web')
         && (!request.resource.data.keys().hasAny(['scannedBy', 'scannedByName', 'role'])
             || isStaff() || isInspector());
       allow update, delete: if isAdmin();

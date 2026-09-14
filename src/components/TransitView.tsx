@@ -428,6 +428,10 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                     if (!passback && canRecord) {
                         const isoNow = new Date().toISOString();
                         const isStaffUser = currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator' || currentUser.role === 'inspector');
+                        // Пътуване е само прочитане от терминала (APK) без логнат служител.
+                        // Браузърът (телефон, офисният компютър) се маркира `source: 'web'` и
+                        // не вдига брояча на пътуванията.
+                        const isTerminal = Capacitor.isNativePlatform();
                         const scanDocData = {
                             at: isoNow,
                             route: data.route ?? '',
@@ -435,19 +439,26 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                 scannedBy: currentUser.role,
                                 scannedByName: currentUser.username || (currentUser.role === 'moderator' ? 'Модератор' : currentUser.role),
                                 role: currentUser.role
-                            } : {})
+                            } : {}),
+                            ...(isTerminal ? {} : { source: 'web' })
                         };
+                        // `lastScanAt` остава и за служител: по него профилът познава, че
+                        // оверлеят вече е записал същото прочитане. Анонимен браузър не го
+                        // пипа — иначе пътник, отворил картата си на телефона, получава
+                        // фалшиво „вече сканирана" на терминала.
                         const updateData = {
-                            scanCount: increment(1),
-                            lastScanAt: isoNow,
-                            ...(nfcCounter !== undefined && nfcCounter !== null ? { lastScanCounter: nfcCounter } : {})
+                            ...(isTerminal && !isStaffUser ? { scanCount: increment(1) } : {}),
+                            ...(isTerminal || isStaffUser ? { lastScanAt: isoNow } : {}),
+                            ...(isTerminal && nfcCounter !== undefined && nfcCounter !== null ? { lastScanCounter: nfcCounter } : {})
                         };
                         addDoc(collection(db, 'clients', snap.id, 'scans'), scanDocData)
                             .catch((err: unknown) => console.error('Transit scan subcollection write failed:', err));
-                        updateDoc(doc(db, 'clients', snap.id), updateData)
-                            .catch((err: unknown) => {
-                                console.error('Transit scan counter update failed:', err);
-                            });
+                        if (Object.keys(updateData).length > 0) {
+                            updateDoc(doc(db, 'clients', snap.id), updateData)
+                                .catch((err: unknown) => {
+                                    console.error('Transit scan counter update failed:', err);
+                                });
+                        }
                     }
 
                     // Preset Renewal Form

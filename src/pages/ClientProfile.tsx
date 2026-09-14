@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -912,17 +913,19 @@ const ClientProfile: React.FC = () => {
                     route: client?.route ?? '',
                     scannedBy: 'moderator',
                     scannedByName: currentUser.username || 'Модератор',
-                    role: 'moderator'
+                    role: 'moderator',
+                    ...(Capacitor.isNativePlatform() ? {} : { source: 'web' })
                 };
                 addDoc(collection(db, 'clients', id, 'scans'), modScanData)
                     .catch(err => console.error('Moderator scan subcollection write failed:', err));
+                // Прочитане в офиса не е пътуване → не вдига `scanCount`. `lastScanAt`
+                // остава: по него се познава близнакът от оверлея ТРАНЗИТ.
                 updateDoc(clientRef, { 
-                    scanCount: increment(1), 
                     lastScanAt: isoNow,
                     scanHistory: arrayUnion(modScanData)
                 }).catch(err => {
                     console.error('Moderator scan updateDoc failed, fallback to counters:', err);
-                    updateDoc(clientRef, { scanCount: increment(1), lastScanAt: isoNow }).catch(() => {});
+                    updateDoc(clientRef, { lastScanAt: isoNow }).catch(() => {});
                 });
                 setScanFeedback({ type: 'recorded' });
             }
@@ -946,19 +949,26 @@ const ClientProfile: React.FC = () => {
             setScanFeedback({ type: 'recorded' });
         }
 
+        // Пътуване е само прочитане от терминала (APK). Отворена в браузър карта
+        // (пътник на телефона си) се записва с `source: 'web'` и не пипа броячите —
+        // иначе влиза в статистиката и блокира качването на терминала за 3 минути.
+        const isTerminal = Capacitor.isNativePlatform();
         const anonScanData = { 
             at: isoNow, 
-            route: client?.route ?? ''
+            route: client?.route ?? '',
+            ...(isTerminal ? {} : { source: 'web' })
         };
 
         addDoc(collection(db, 'clients', id, 'scans'), anonScanData)
             .catch(err => console.error('Anonymous scan subcollection write failed:', err));
-        updateDoc(clientRef, { 
-            scanCount: increment(1), 
-            lastScanAt: isoNow
-        }).catch(err => {
-            console.error('Anonymous scan updateDoc failed:', err);
-        });
+        if (isTerminal) {
+            updateDoc(clientRef, { 
+                scanCount: increment(1), 
+                lastScanAt: isoNow
+            }).catch(err => {
+                console.error('Anonymous scan updateDoc failed:', err);
+            });
+        }
     }, [id, loading, authLoading, hasClient, currentUser, client?.route, client?.lastScanAt, client?.name, client?.cardNumber]);
 
     useEffect(() => {

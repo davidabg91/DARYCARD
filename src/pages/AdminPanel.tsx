@@ -696,8 +696,10 @@ const AdminPanel: React.FC = () => {
                         at: (data.at as string) || '',
                         route: data.route as string | undefined,
                         scannedBy: (data.scannedBy || data.role) as string | undefined,
+                        // Отворена в браузър карта (телефон) не е пътуване.
+                        fromWeb: data.source === 'web',
                     };
-                }).filter(r => r.at && r.clientId && !r.scannedBy));
+                }).filter(r => r.at && r.clientId && !r.scannedBy && !r.fromWeb));
             })
             .catch(err => { console.error('Грешка при пълната проверка:', err); setUnpaidScansRaw([]); })
             .finally(() => setUnpaidDeepLoading(false));

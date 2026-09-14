@@ -357,6 +357,10 @@ export const alertUnpaidScan = functions.firestore
             return;
         }
 
+        // Отворена в браузър карта (пътник на телефона си) не е качване в автобус.
+        // Пътуване е само прочитане от терминала — той не пише `source`.
+        if (scan.source === "web") return;
+
         const scanId = context.params.scanId as string;
         // Един малък документ на нарушение, за да не се налага отчетът да чете
         // всички сканирания (13 849 за 30 дни, от които ~42 са без абонамент).
