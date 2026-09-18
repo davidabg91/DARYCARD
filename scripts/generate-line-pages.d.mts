@@ -15,6 +15,9 @@ export interface GenerateLinePagesOptions {
   SCHEDULES: Record<string, unknown>;
   cardPrice: (route: string, cardType?: string) => number | null;
   routeSlug: (route: string) => string;
+  /** Holiday dates as YYYY-MM-DD, embedded so the page can spot a holiday itself. */
+  holidays?: string[];
+  disabledDiscountPct?: (route: string) => number;
 }
 
 export function generateLinePages(

@@ -5,9 +5,10 @@ import legacy from '@vitejs/plugin-legacy'
 import { VitePWA } from 'vite-plugin-pwa'
 // The generated line pages read the same data the app renders, so a timetable
 // or price edit lands on them with the next build.
-import { ROUTE_METADATA, cardPrice, listedRoutes } from './src/data/routeMetadata'
+import { ROUTE_METADATA, cardPrice, disabledDiscountPct, listedRoutes } from './src/data/routeMetadata'
 import { SCHEDULES } from './src/data/schedules'
 import { routeSlug } from './src/data/routeSlugs'
+import { HOLIDAYS_2026 } from './src/utils/holidays'
 import { generateLinePages } from './scripts/generate-line-pages.mjs'
 
 // https://vite.dev/config/
@@ -50,6 +51,19 @@ export default defineConfig({
           {
             urlPattern: /\/version\.json/i,
             handler: 'NetworkOnly',
+          },
+          {
+            // A line page is now a real navigation away from the app, so without
+            // this a rider with no signal could no longer reach a timetable they
+            // had already opened. Cached on first visit, refreshed in the
+            // background — nothing is downloaded up front.
+            urlPattern: /\/linia\/[^/]+\/?$/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'line-pages',
+              expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
           },
           {
             // Cache client photos from Firebase Storage so each photo, once viewed
@@ -100,6 +114,8 @@ export default defineConfig({
           SCHEDULES,
           cardPrice,
           routeSlug,
+          holidays: HOLIDAYS_2026.map(h => h.date),
+          disabledDiscountPct,
         })
         console.log(`
   ✓ генерирани страници на линии: ${pages}`)

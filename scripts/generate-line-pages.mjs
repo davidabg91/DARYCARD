@@ -7,6 +7,11 @@
 // timetable as plain HTML, so a search engine — and an AI crawler, which does
 // not run JS — reads the hours without executing anything.
 //
+// The page is built to match the line view inside the app: same card, same
+// countdowns, same day groups with today first and the next departure pulsing.
+// The parts that need the clock run from a small inline script, so the hours are
+// in the HTML either way and the page works before (and without) that script.
+//
 // The data comes in from vite.config.ts, which imports the same modules the app
 // uses. Nothing here re-states a timetable or a price: change schedules.ts and
 // the pages change with the next build.
@@ -48,6 +53,14 @@ const STOP_NAMES = {
 
 const stopName = (stop) => STOP_NAMES[stop] ?? stop;
 
+// Lines whose card prices carry no student/pensioner discount, only the one for
+// riders with a disability. Same list the app's price note uses.
+const DISABLED_ONLY_LINES = [
+  'Гривица', 'Згалево', 'Пордим', 'Одърне', 'Каменец',
+  'Вълчитрън', 'Катерица', 'Борислав',
+  'Пордим - Каменец', 'Пордим - Згалево',
+];
+
 const CARD_TYPES = [
   'Ученическа карта',
   'Пенсионерска карта',
@@ -73,7 +86,7 @@ const endpoints = (line) => {
   if (line.includes(' - ')) {
     const [from, to] = line.split(' - ');
     const dest = stopName(to.trim());
-    return { from: stopName(from.trim()), to: dest, returnFrom: dest };
+    return { from: stopName(from.trim()), to: dest, returnFrom: dest, sharedWith: null };
   }
   const shared = ORIGIN_MAPPING[line];
   return {
@@ -84,66 +97,174 @@ const endpoints = (line) => {
   };
 };
 
-// The times a line runs on each kind of day, following the same fallbacks as the
-// app: a day without its own column keeps the weekday one, and a holiday falls
-// back to Sunday before that.
-const dayTimes = (sched) => [
-  { label: 'Делник (понеделник – петък)', times: sched },
-  { label: 'Събота', times: sched.saturday ?? sched },
-  { label: 'Неделя', times: sched.sunday ?? sched },
-  { label: 'Официален празник', times: sched.holiday ?? sched.sunday ?? sched },
-];
-
-const timeChips = (times) =>
+const timeChips = (times, column) =>
   (times ?? [])
     .map((t) => {
       const isNew = t.includes('*');
       const shown = esc(t.replace('*', ''));
-      return isNew
-        ? `<li class="t new"><span class="badge">НОВО</span>${shown}</li>`
-        : `<li class="t">${shown}</li>`;
+      return `<span class="schedule-tag" data-col="${column}" data-min="${shown}">${
+        isNew ? '<span class="new-badge">НОВО</span>' : ''
+      }${shown}</span>`;
     })
     .join('');
 
+// The four day groups the app shows, in the app's own order. Which one is
+// today's is decided in the browser, so the page can be cached without going
+// stale on the next holiday.
+const dayGroups = (sched) => [
+  { id: 'holiday', label: 'ПРАЗНИК', color: '#e040fb', times: sched.holiday },
+  { id: 'sunday', label: 'НЕДЕЛЯ', color: '#ff5252', times: sched.sunday },
+  { id: 'saturday', label: 'СЪБОТА', color: '#ff9800', times: sched.saturday },
+  {
+    id: 'workdays',
+    label: 'ДЕЛНИК',
+    color: '#00ADB5',
+    times: { fromPleven: sched.fromPleven, fromDestination: sched.fromDestination },
+  },
+].filter((g) => !!g.times);
+
 const STYLES = `
-:root{--primary:#00ADB5;--bg:#222831;--text:#fff;--muted:rgba(255,255,255,.55);--line:rgba(255,255,255,.08)}
+:root{--primary-color:#00ADB5;--bg-color:#222831;--text-secondary:rgba(255,255,255,.7)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:'Outfit','Inter',system-ui,-apple-system,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
-.wrap{max-width:900px;margin:0 auto;padding:1.5rem 1rem 4rem}
-a{color:var(--primary)}
-header.top{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding-bottom:1.5rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
-.brand{font-weight:900;letter-spacing:2px;font-size:.8rem;color:var(--muted);text-decoration:none}
-.brand b{color:var(--primary)}
-nav.crumbs{font-size:.78rem;color:var(--muted);margin:1.2rem 0 .4rem}
-nav.crumbs a{text-decoration:none}
-h1{font-size:clamp(1.6rem,5vw,2.4rem);font-weight:900;letter-spacing:-1px;margin:.2rem 0 .6rem;line-height:1.15}
-.lead{color:var(--muted);margin:0 0 1.5rem}
-h2{font-size:1.2rem;font-weight:800;margin:2.5rem 0 1rem;letter-spacing:-.4px}
-section{background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:18px;padding:1.2rem;margin-bottom:1rem}
-.day{font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;color:var(--primary);margin-bottom:.9rem}
-.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.4rem}
-.dir{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:.6rem}
-ul.times{list-style:none;display:flex;flex-wrap:wrap;gap:.4rem;padding:0;margin:0}
-li.t{background:rgba(0,173,181,.1);border:1px solid rgba(0,173,181,.25);border-radius:10px;padding:.35rem .6rem;font-weight:800;font-size:.9rem;font-variant-numeric:tabular-nums;position:relative}
-li.t.new{margin-top:.55rem}
-.badge{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#ff5252;color:#fff;font-size:.5rem;font-weight:900;padding:1px 4px;border-radius:4px;letter-spacing:.5px}
-.none{color:var(--muted);font-size:.85rem;margin:0}
-table{width:100%;border-collapse:collapse;font-size:.92rem}
-th,td{text-align:left;padding:.6rem .2rem;border-bottom:1px solid var(--line)}
+body{margin:0;background:var(--bg-color);color:#fff;font-family:'Outfit','Inter',system-ui,-apple-system,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:4rem}
+a{color:var(--primary-color)}
+.wrap{max-width:1200px;margin:0 auto;padding:1.5rem 1rem}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding-bottom:1.2rem;border-bottom:1px solid rgba(255,255,255,.08);flex-wrap:wrap}
+.brand{font-weight:900;letter-spacing:2px;font-size:.8rem;color:rgba(255,255,255,.55);text-decoration:none}
+.brand b{color:var(--primary-color)}
+.back{display:inline-flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:.8rem 1.5rem;border-radius:14px;color:rgba(255,255,255,.6);font-weight:700;margin:2rem 0;text-decoration:none;transition:.3s;font-size:.9rem}
+.back:hover{background:rgba(255,255,255,.1);color:#fff}
+.crumbs{font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:1rem}
+.crumbs a{text-decoration:none}
+.route-card{width:100%;background:rgba(255,255,255,.02);border-radius:24px;padding:clamp(1.2rem,5vw,2.5rem);display:flex;flex-direction:column;gap:2rem}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:1.5rem;flex-wrap:wrap}
+.kicker{font-size:.75rem;color:var(--primary-color);font-weight:800;text-transform:uppercase;letter-spacing:2px;margin-bottom:.3rem}
+h1{font-size:1.6rem;font-weight:900;margin:0;letter-spacing:-.5px}
+.sub{font-size:.75rem;color:#00FFF5;font-weight:600;max-width:260px;line-height:1.3;margin:.4rem 0 0}
+.next{text-align:right;display:flex;flex-direction:column;gap:.5rem;margin-left:auto}
+.next-label{font-size:.65rem;color:rgba(255,255,255,.4);font-weight:800;text-transform:uppercase}
+.next-val{font-size:1rem;font-weight:900;display:flex;align-items:center;gap:.4rem;justify-content:flex-end;font-variant-numeric:tabular-nums}
+.next-val.soon{color:#00E676}
+.strip{background:rgba(0,173,181,.03);padding:1.6rem 1rem;border-radius:16px;border:1px solid rgba(0,173,181,.1)}
+ol.stops{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;justify-content:center}
+ol.stops li{display:flex;align-items:center;gap:.5rem;font-weight:800;font-size:clamp(.7rem,1.6vw,.9rem)}
+ol.stops li:first-child,ol.stops li:last-child{color:var(--primary-color)}
+ol.stops li:not(:last-child):after{content:'\\2192';color:var(--primary-color);opacity:.5;font-weight:400}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--primary-color);flex-shrink:0}
+.prices{display:flex;gap:1rem;background:rgba(255,255,255,.03);padding:1rem;border-radius:16px}
+.prices>div{flex:1;text-align:center}
+.prices .sep{flex:0 0 1px;background:rgba(255,255,255,.1);padding:0}
+.price-label{font-size:.7rem;color:rgba(255,255,255,.4);font-weight:700}
+.price-val{font-weight:800}
+.hint{padding:.8rem 1rem;background:rgba(0,173,181,.05);border-radius:12px;border:1px solid rgba(0,173,181,.2);font-size:.8rem;color:rgba(255,255,255,.8);margin:0}
+.hint b{color:var(--primary-color);font-weight:700}
+.sched{padding:1.2rem;background:rgba(255,255,255,.02);border-radius:16px;display:flex;flex-direction:column;gap:1.5rem}
+.sched-head{padding-bottom:.8rem;border-bottom:1px solid rgba(255,255,255,.05);text-align:center;font-size:.85rem;font-weight:900;color:var(--primary-color);text-transform:uppercase;letter-spacing:1px}
+.group{margin-top:.5rem;padding:1rem;border-radius:12px;border:1px solid transparent}
+.group.today{background:rgba(255,255,255,.03)}
+.group-label{font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem;display:flex;align-items:center;gap:.6rem}
+.today-badge{font-size:.6rem;color:#000;padding:1px 6px;border-radius:4px;margin-left:5px;display:none}
+.group.today .today-badge{display:inline-block}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem}
+.dir{font-size:.65rem;color:rgba(255,255,255,.4);font-weight:800;margin-bottom:.5rem}
+.tags{display:flex;flex-wrap:wrap;gap:.4rem}
+.schedule-tag{padding:.3rem .6rem;background:rgba(255,255,255,.05);border-radius:8px;font-size:.8rem;font-weight:600;border:1px solid rgba(255,255,255,.1);position:relative;font-variant-numeric:tabular-nums}
+.schedule-tag.next-bus-tag-active{background:rgba(46,204,113,.2);color:#2ecc71;border-color:#2ecc71;box-shadow:0 0 15px rgba(46,204,113,.3);animation:pulse-green 2s infinite ease-in-out}
+@keyframes pulse-green{0%{box-shadow:0 0 5px rgba(46,204,113,.3);transform:scale(1)}50%{box-shadow:0 0 20px rgba(46,204,113,.6);transform:scale(1.05)}100%{box-shadow:0 0 5px rgba(46,204,113,.3);transform:scale(1)}}
+.new-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#ff5252;color:#fff;font-size:.45rem;font-weight:900;padding:1px 4px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.2)}
+h2{font-size:1.1rem;font-weight:800;margin:2.5rem 0 1rem}
+table{width:100%;border-collapse:collapse;font-size:.92rem;background:rgba(255,255,255,.02);border-radius:16px;overflow:hidden}
+th,td{text-align:left;padding:.7rem 1rem;border-bottom:1px solid rgba(255,255,255,.06);font-weight:700}
+th{font-weight:600;color:var(--text-secondary)}
 td.price{text-align:right;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
-tbody tr:last-child th,tbody tr:last-child td{border-bottom:none}
-ol.stops{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
-ol.stops li{font-weight:700;font-size:.9rem}
-ol.stops li:not(:last-child):after{content:'\\2192';color:var(--primary);margin-left:.5rem;opacity:.6}
-.cta{display:inline-block;background:var(--primary);color:#03181a;font-weight:900;text-decoration:none;padding:.85rem 1.5rem;border-radius:14px;margin-top:.4rem}
-.note{font-size:.82rem;color:var(--muted);margin-top:.8rem}
+tr:last-child th,tr:last-child td{border-bottom:none}
+.cta{display:inline-block;background:var(--primary-color);color:#03181a;font-weight:900;text-decoration:none;padding:.85rem 1.5rem;border-radius:14px}
+.note{font-size:.8rem;color:rgba(255,255,255,.45);margin-top:.8rem}
 ul.lines{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem}
-ul.lines a{display:block;padding:.5rem .7rem;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--text);font-size:.85rem;font-weight:700}
-ul.lines a:hover{border-color:var(--primary);color:var(--primary)}
-footer{color:var(--muted);font-size:.8rem;margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--line)}
+ul.lines a{display:block;padding:.5rem .7rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;text-decoration:none;color:#fff;font-size:.85rem;font-weight:700}
+ul.lines a:hover{border-color:var(--primary-color);color:var(--primary-color)}
+footer{color:rgba(255,255,255,.45);font-size:.8rem;margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,.08)}
+@media(max-width:620px){.head{flex-direction:column}.next{text-align:left;margin-left:0}.next-val{justify-content:flex-start}}
 `.trim();
 
-const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf }) => {
+// Runs in the browser: picks today's group, moves it to the top, marks the next
+// departure and counts down to it. Everything it needs is already in the HTML,
+// so the page is complete without it.
+const CLOCK_SCRIPT = `
+(function(){
+  var el=document.getElementById('dary-line-data'); if(!el) return;
+  var D=JSON.parse(el.textContent);
+  var sched={weekday:D.weekday,saturday:D.saturday,sunday:D.sunday,holiday:D.holiday};
+  function pad(n){return (n<10?'0':'')+n}
+  function dayKey(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+  function isHoliday(d){return D.holidays.indexOf(dayKey(d))!==-1}
+  function mins(t){var p=String(t).replace('*','').split(':');return parseInt(p[0],10)*60+parseInt(p[1],10)}
+  function forDay(d){
+    var day=d.getDay(),hol=isHoliday(d);
+    if(hol&&sched.holiday) return sched.holiday;
+    if((hol||day===0)&&sched.sunday) return sched.sunday;
+    if(day===6&&sched.saturday) return sched.saturday;
+    return sched.weekday;
+  }
+  function currentGroupId(d){
+    var day=d.getDay(),hol=isHoliday(d);
+    if(hol&&sched.holiday) return 'holiday';
+    if((hol||day===0)&&sched.sunday) return 'sunday';
+    if(!hol&&day===6&&sched.saturday) return 'saturday';
+    if(!hol&&day>=1&&day<=5) return 'workdays';
+    return null;
+  }
+  function nextToday(times,now){
+    var best=null;
+    for(var i=0;i<(times||[]).length;i++){var m=mins(times[i]); if(m>now&&(best===null||m<best.m)) best={m:m,t:String(times[i]).replace('*','')}}
+    return best;
+  }
+  function countdown(dir,d){
+    var now=d.getHours()*60+d.getMinutes();
+    var today=nextToday(forDay(d)[dir],now);
+    if(today) return today.m-now;
+    var t=new Date(d.getTime()+86400000);
+    var list=forDay(t)[dir]||[]; if(!list.length) return null;
+    var first=null;
+    for(var i=0;i<list.length;i++){var m=mins(list[i]); if(first===null||m<first) first=m}
+    return (1440-now)+first;
+  }
+  function fmt(m){ if(m===null) return '--'; if(m>60) return Math.floor(m/60)+'ч '+(m%60)+'м'; return m+' мин' }
+  var moved=false;
+  function tick(){
+    var d=new Date(), now=d.getHours()*60+d.getMinutes();
+    var id=currentGroupId(d);
+    document.querySelectorAll('.group').forEach(function(g){
+      var on=g.getAttribute('data-group')===id;
+      g.classList.toggle('today',on);
+      if(on) g.style.borderColor=g.getAttribute('data-color')+'44';
+      else g.style.borderColor='transparent';
+      g.querySelectorAll('.schedule-tag').forEach(function(s){s.classList.remove('next-bus-tag-active')});
+      if(on){
+        ['fromPleven','fromDestination'].forEach(function(dir){
+          var times=forDay(d)[dir]||[], nx=nextToday(times,now); if(!nx) return;
+          var tag=g.querySelector('.schedule-tag[data-col="'+dir+'"][data-min="'+nx.t+'"]');
+          if(tag) tag.classList.add('next-bus-tag-active');
+        });
+      }
+    });
+    if(!moved&&id){
+      var cur=document.querySelector('.group[data-group="'+id+'"]');
+      if(cur&&cur.parentNode) cur.parentNode.insertBefore(cur,cur.parentNode.firstElementChild);
+      moved=true;
+    }
+    ['fromPleven','fromDestination'].forEach(function(dir){
+      var out=document.querySelector('.next-val[data-dir="'+dir+'"]'); if(!out) return;
+      var m=countdown(dir,d);
+      out.textContent=fmt(m);
+      out.classList.toggle('soon',m!==null&&m<=15);
+    });
+  }
+  tick(); setInterval(tick,30000);
+})();
+`.trim();
+
+const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf, holidays, disabledPct }) => {
   const { from, to, returnFrom, sharedWith } = endpoints(line);
   const pair = `${from} – ${to}`;
   const title = `Автобус ${pair}: разписание и цени | ${OPERATOR}`;
@@ -157,42 +278,47 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf }) => {
     `. Превозвач ${OPERATOR}.`;
   const url = `${SITE}/linia/${slug}/`;
 
-  const schedule = dayTimes(sched)
-    .map(({ label, times }) => {
-      const out = timeChips(times.fromPleven);
-      const back = timeChips(times.fromDestination);
-      if (!out && !back) return '';
-      return `  <section>
-    <div class="day">${esc(label)}</div>
-    <div class="cols">
-      <div>
-        <div class="dir">От ${esc(from)}</div>
-        ${out ? `<ul class="times">${out}</ul>` : '<p class="none">Няма курсове.</p>'}
-      </div>
-      <div>
-        <div class="dir">От ${esc(returnFrom)}</div>
-        ${back ? `<ul class="times">${back}</ul>` : '<p class="none">Няма курсове.</p>'}
-      </div>
-    </div>
-  </section>`;
-    })
-    .filter(Boolean)
-    .join('\n');
+  const groups = dayGroups(sched).map((g) => `      <div class="group" data-group="${g.id}" data-color="${g.color}">
+        <div class="group-label" style="color:${g.color}">${g.label}<span class="today-badge" style="background:${g.color}">ДНЕС</span></div>
+        <div class="cols">
+          <div>
+            <div class="dir">ОТ ${esc(from.toUpperCase())}</div>
+            <div class="tags">${timeChips(g.times.fromPleven, 'fromPleven')}</div>
+          </div>
+          <div>
+            <div class="dir">ОТ ${esc(returnFrom.toUpperCase())}</div>
+            <div class="tags">${timeChips(g.times.fromDestination, 'fromDestination')}</div>
+          </div>
+        </div>
+      </div>`).join('\n');
 
-  const priceRows = [
-    meta?.priceSingle && meta.priceSingle !== '-'
-      ? `<tr><th scope="row">Билет (еднопосочен)</th><td class="price">${esc(meta.priceSingle)}</td></tr>`
-      : '',
-    ...prices.map(([label, value]) =>
-      `<tr><th scope="row">${esc(label)}</th><td class="price">${esc(value)}</td></tr>`),
-  ].filter(Boolean).join('\n        ');
+  // The same sentence the app prints under the prices.
+  const discountNote = meta?.priceCardStudent
+    ? `Цените за хора с увреждания над 70.99% са с <b>-25%</b>, а за ученици цената е <b>${esc(meta.priceCardStudent)}</b>.`
+    : DISABLED_ONLY_LINES.includes(line)
+      ? 'Цените за хора с увреждания над 70.99% са с <b>-25%</b>.'
+      : `Цените за ученици и пенсионери са <b>-50%</b> от тези цени, а за хора с увреждания над 70.99% са с <b>-${disabledPct}%</b>.`;
 
-  const stops = (meta?.stops ?? []).map((s) => `<li>${esc(stopName(s))}</li>`).join('');
+  const stops = (meta?.stops ?? [])
+    .map((s) => `<li><span class="dot"></span>${esc(stopName(s))}</li>`)
+    .join('');
+
+  const priceRows = prices
+    .map(([label, value]) => `<tr><th scope="row">${esc(label)}</th><td class="price">${esc(value)}</td></tr>`)
+    .join('\n        ');
 
   const others = allLines
     .filter((l) => l !== line)
     .map((l) => `<li><a href="/linia/${slugOf(l)}/">${esc(l)}</a></li>`)
     .join('');
+
+  const data = {
+    weekday: { fromPleven: sched.fromPleven, fromDestination: sched.fromDestination },
+    saturday: sched.saturday ?? null,
+    sunday: sched.sunday ?? null,
+    holiday: sched.holiday ?? null,
+    holidays,
+  };
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -201,7 +327,7 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf }) => {
         '@type': 'BreadcrumbList',
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Начало', item: `${SITE}/` },
-          { '@type': 'ListItem', position: 2, name: `${from} – ${to}`, item: url },
+          { '@type': 'ListItem', position: 2, name: pair, item: url },
         ],
       },
       {
@@ -245,45 +371,70 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf }) => {
     <a class="brand" href="/">Всички линии</a>
   </header>
 
-  <nav class="crumbs" aria-label="Навигация">
-    <a href="/">Начало</a> / ${esc(line)}
-  </nav>
+  <nav class="crumbs" aria-label="Навигация"><a href="/">Начало</a> / ${esc(line)}</nav>
+  <a class="back" href="/">&#8592; Всички Дестинации</a>
 
-  <h1>Автобус ${esc(pair)}</h1>
-  <p class="lead">Разписание, цени и спирки по линия ${esc(line)}. Превозвач ${esc(OPERATOR)}.</p>
+  <article class="route-card">
+    <div class="head">
+      <div>
+        <div class="kicker">ЛИНИЯ</div>
+        <h1>${esc(line)}</h1>
+        ${meta?.description ? `<p class="sub">${esc(meta.description)}</p>` : ''}
+      </div>
+      <div class="next">
+        <div>
+          <div class="next-label">ОТ ${esc(from.toUpperCase())} СЛЕД:</div>
+          <div class="next-val" data-dir="fromPleven">--</div>
+        </div>
+        <div>
+          <div class="next-label">ОТ ${esc(returnFrom.toUpperCase())} СЛЕД:</div>
+          <div class="next-val" data-dir="fromDestination">--</div>
+        </div>
+      </div>
+    </div>
+${stops ? `    <div class="strip"><ol class="stops">${stops}</ol></div>\n` : ''}    <div class="prices">
+      <div>
+        <div class="price-label">БИЛЕТ</div>
+        <div class="price-val">${esc(meta?.priceSingle || '---')}</div>
+      </div>
+      <div class="sep"></div>
+      <div>
+        <div class="price-label">КАРТА (Месец)</div>
+        <div class="price-val">${esc(meta?.priceCard || '---')}</div>
+      </div>
+    </div>
 
-  <h2>Разписание</h2>
-${schedule || '  <section><p class="none">Разписанието се актуализира.</p></section>'}
-${sharedWith ? `  <p class="note">${esc(line)} се обслужва от курсовете на линия ${esc(stopName(sharedWith))}, затова часовете в обратната посока са отбелязани от ${esc(returnFrom)}.</p>\n` : ''}  <p class="note">Часовете може да се променят при ремонт на пътя или празничен ред. Актуалното разписание е винаги на <a href="/">началната страница</a>.</p>
-${priceRows ? `
-  <h2>Цени</h2>
-  <section>
-    <table>
-      <tbody>
+    <p class="hint">${discountNote}</p>
+
+    <div class="sched">
+      <div class="sched-head">Пълно разписание на курса</div>
+${groups}
+    </div>
+  </article>
+${sharedWith ? `
+  <p class="note">${esc(line)} се обслужва от курсовете на линия ${esc(stopName(sharedWith))}, затова часовете в обратната посока са отбелязани от ${esc(returnFrom)}.</p>
+` : ''}${priceRows ? `
+  <h2>Цени по вид карта</h2>
+  <table>
+    <tbody>
         ${priceRows}
-      </tbody>
-    </table>
-    <p class="note">Месечната карта важи за неограничен брой пътувания по линията до края на периода.</p>
-  </section>
-` : ''}${stops ? `
-  <h2>Спирки по маршрута</h2>
-  <section><ol class="stops">${stops}</ol></section>
-` : ''}${meta?.description ? `
-  <section><p class="note" style="margin:0">${esc(meta.description)}</p></section>
+    </tbody>
+  </table>
+  <p class="note">Месечната карта важи за неограничен брой пътувания по линията до края на периода.</p>
 ` : ''}
   <h2>Как да си извадя карта</h2>
-  <section>
-    <p style="margin-top:0">Картата се издава на място и се зарежда за избрания период. Условията и нужните документи са на началната страница.</p>
-    <a class="cta" href="/">Към Дари Комерс</a>
-  </section>
+  <p class="note" style="margin-bottom:1rem">Картата се издава на място и се зарежда за избрания период. Условията и нужните документи са на началната страница.</p>
+  <a class="cta" href="/">Към Дари Комерс</a>
 
   <h2>Други линии</h2>
-  <section><ul class="lines">${others}</ul></section>
+  <ul class="lines">${others}</ul>
 
   <footer>
     <p>${esc(OPERATOR)} — превоз на пътници в област Плевен. <a href="/">darycommerce.com</a></p>
   </footer>
 </div>
+<script type="application/json" id="dary-line-data">${JSON.stringify(data)}</script>
+<script>${CLOCK_SCRIPT}</script>
 </body>
 </html>
 `;
@@ -291,6 +442,7 @@ ${priceRows ? `
 
 export async function generateLinePages({
   outDir, routes, ROUTE_METADATA, SCHEDULES, cardPrice, routeSlug,
+  holidays = [], disabledDiscountPct = () => 25,
 }) {
   // Two lines transliterating to the same address would silently overwrite each
   // other's page, so fail the build instead.
@@ -321,6 +473,7 @@ export async function generateLinePages({
 
     const html = renderPage({
       line, meta, sched, slug, prices, allLines: routes, slugOf: routeSlug,
+      holidays, disabledPct: disabledDiscountPct(line),
     });
     const dir = join(outDir, 'linia', slug);
     await mkdir(dir, { recursive: true });
