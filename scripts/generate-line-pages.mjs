@@ -141,6 +141,9 @@ a{color:var(--primary-color)}
 header.top{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding-bottom:1.2rem;border-bottom:1px solid rgba(255,255,255,.08);flex-wrap:wrap}
 .brand{font-weight:900;letter-spacing:2px;font-size:.8rem;color:rgba(255,255,255,.55);text-decoration:none}
 .brand b{color:var(--primary-color)}
+.logo{display:inline-flex;line-height:0}
+.logo img{width:130px;height:auto;display:block}
+.lead{margin:0 0 1.5rem;color:var(--text-secondary);font-size:.95rem;line-height:1.6;max-width:70ch}
 .back{display:inline-flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:.8rem 1.5rem;border-radius:14px;color:rgba(255,255,255,.6);font-weight:700;margin:2rem 0;text-decoration:none;transition:.3s;font-size:.9rem}
 .back:hover{background:rgba(255,255,255,.1);color:#fff}
 .crumbs{font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:1rem}
@@ -312,6 +315,52 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf, holiday
     .map((s) => `<li><span class="dot"></span>${esc(stopName(s))}</li>`)
     .join('');
 
+  // A short lead written from the line's own numbers — how many weekday runs,
+  // when the first and last leave, which villages it passes, what it costs. It
+  // is the only prose on the page, and it says something a rider actually wants
+  // rather than padding the page to hit a word count.
+  const lead = (() => {
+    const bare = (t) => String(t).replace('*', '');
+    const sorted = (list) => [...(list ?? [])].map(bare).sort();
+    const out = sorted(sched.fromPleven);
+    const back = sorted(sched.fromDestination);
+
+    const via = (meta?.stops ?? [])
+      .slice(1, -1)
+      .map(stopName)
+      .filter((s) => s !== from && s !== to);
+
+    // "Опанец, Долна Митрополия и Победа" — Bulgarian wants the last one joined
+    // with "и", not another comma.
+    const listed = via.length > 1
+      ? `${via.slice(0, -1).join(', ')} и ${via[via.length - 1]}`
+      : via[0];
+
+    const sentences = [];
+    sentences.push(
+      via.length
+        ? `Автобусната линия от ${from} до ${to} минава през ${listed}.`
+        : `Автобусната линия свързва ${from} и ${to}.`,
+    );
+
+    if (out.length && back.length) {
+      sentences.push(
+        `В делник тръгват ${out.length} курса от ${from} и ${back.length} от ${returnFrom}, ` +
+        `като първият е в ${out[0]} ч., а последният в ${out[out.length - 1]} ч.`,
+      );
+    }
+
+    const single = meta?.priceSingle && meta.priceSingle !== '-' ? meta.priceSingle : null;
+    const card = meta?.priceCard && meta.priceCard !== '-' ? meta.priceCard : null;
+    if (single && card) {
+      sentences.push(`Еднопосочен билет струва ${single}, а месечна карта за линията — ${card}.`);
+    } else if (single) {
+      sentences.push(`Еднопосочен билет струва ${single}.`);
+    }
+
+    return esc(sentences.join(' '));
+  })();
+
   const priceRows = prices
     .map(([label, value]) => `<tr><th scope="row">${esc(label)}</th><td class="price">${esc(value)}</td></tr>`)
     .join('\n        ');
@@ -418,18 +467,20 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf, holiday
 <body>
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="/">DARY <b>COMMERCE</b></a>
+    <a class="logo" href="/"><img src="/dary-logo.webp" width="260" height="79" alt="${esc(OPERATOR)}"></a>
     <a class="brand" href="/">Всички линии</a>
   </header>
 
   <nav class="crumbs" aria-label="Навигация"><a href="/">Начало</a> / ${esc(line)}</nav>
   <a class="back" href="/">&#8592; Всички Дестинации</a>
 
+  <p class="lead">${lead}</p>
+
   <article class="route-card">
     <div class="head">
       <div>
         <div class="kicker">ЛИНИЯ</div>
-        <h1>${esc(line)}</h1>
+        <h1>Автобус ${esc(pair)}</h1>
         ${meta?.description ? `<p class="sub">${esc(meta.description)}</p>` : ''}
       </div>
       <div class="next">
