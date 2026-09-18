@@ -3,6 +3,12 @@ import react from '@vitejs/plugin-react'
 import { ViteImageOptimizer } from 'vite-plugin-image-optimizer'
 import legacy from '@vitejs/plugin-legacy'
 import { VitePWA } from 'vite-plugin-pwa'
+// The generated line pages read the same data the app renders, so a timetable
+// or price edit lands on them with the next build.
+import { ROUTE_METADATA, cardPrice, listedRoutes } from './src/data/routeMetadata'
+import { SCHEDULES } from './src/data/schedules'
+import { routeSlug } from './src/data/routeSlugs'
+import { generateLinePages } from './scripts/generate-line-pages.mjs'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -25,8 +31,15 @@ export default defineConfig({
       includeAssets: [], 
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg}'], // Only core files
-        globIgnores: ['**/version.json', '**/bus_rental_hero*.png', '**/favicon.ico'],
+        // The generated line pages are landing pages for search traffic, not part
+        // of the app: precaching all of them would push ~30 documents onto every
+        // visitor for pages most of them never open.
+        globIgnores: ['**/version.json', '**/bus_rental_hero*.png', '**/favicon.ico', 'linia/**'],
         cleanupOutdatedCaches: true,
+        // Those pages are real files, so the SW must not answer a /linia/...
+        // navigation with index.html — a returning visitor (and Googlebot on a
+        // repeat crawl) would get the app shell instead of the page.
+        navigateFallbackDenylist: [/^\/linia\//],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
         // Ensure version.json and sitemap are never cached
         runtimeCaching: [
@@ -73,7 +86,25 @@ export default defineConfig({
           }
         ]
       }
-    })
+    }),
+    {
+      // Writes the pages once the bundle is on disk. VitePWA globs dist after
+      // this, which is why its globIgnores above has to exclude linia/.
+      name: 'dary-line-pages',
+      apply: 'build' as const,
+      async closeBundle() {
+        const { pages } = await generateLinePages({
+          outDir: 'dist',
+          routes: listedRoutes(),
+          ROUTE_METADATA,
+          SCHEDULES,
+          cardPrice,
+          routeSlug,
+        })
+        console.log(`
+  ✓ генерирани страници на линии: ${pages}`)
+      },
+    },
   ],
   define: {
     'import.meta.resolve': '(undefined)',

@@ -1,3 +1,5 @@
+import { SCHEDULES } from './schedules';
+
 export const ROUTES = [
   "Бъркач", "Тръстеник", "Биволаре", "Горна Митрополия", "Долни Дъбник",
   "Рибен", "Садовец", "Славовица", "Байкал", "Гиген",
@@ -349,3 +351,32 @@ export const cardPrice = (route: string, cardType?: string): number | null => {
   if (cardType === 'Инвалидна карта') return Number((base * disabledFactor(route)).toFixed(2));
   return base;
 };
+
+// Lines that stay out of the public list on the home page: they are contract or
+// section routes kept here for pricing, not destinations a traveller picks.
+export const EXCLUDED_ROUTES = [
+  "Ясен-Долни Дъбник",
+  "Долни Дъбник - Садовец",
+  "Долна Митрополия - Славовица",
+  "Долна Митрополия - Тръстеник",
+  "Долна Митрополия - Горна Митрополия",
+  "Славовица - Тръстеник",
+  "Опанец - Долна Митрополия",
+  "Крушовене - Долна Митрополия",
+  "Рибен - Долна Митрополия",
+  "Ореховица - Долна Митрополия",
+  "Ореховица - Крушовене",
+  "Опанец - Горна Митрополия",
+  "Байкал - Долна Митрополия",
+];
+
+// Every line the public site lists, sorted the way the home page shows them.
+// The home page grid, the generated line pages and sitemap.xml all read this
+// one function, so a line can never appear in one place and be missing in
+// another. A line without a timetable is left out: its page would have nothing
+// to show and the detail view errors on it.
+export const listedRoutes = (): string[] =>
+  Object.keys(ROUTE_METADATA)
+    .filter(r => !EXCLUDED_ROUTES.includes(r))
+    .filter(r => !!SCHEDULES[r])
+    .sort((a, b) => a.localeCompare(b, 'bg'));
