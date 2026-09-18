@@ -68,6 +68,15 @@ const CARD_TYPES = [
   'Инвалидна карта',
 ];
 
+// "2.00 €" -> "2.00" for schema.org, which wants the bare number.
+const priceNumber = (value) => {
+  if (!value || value === '-' || value === '---') return null;
+  const n = parseFloat(String(value).replace('€', '').trim());
+  return Number.isNaN(n) ? null : n.toFixed(2);
+};
+
+const BUILD_DATE = new Date().toISOString().slice(0, 10);
+
 const esc = (s) =>
   String(s)
     .replace(/&/g, '&amp;')
@@ -159,10 +168,10 @@ ol.stops li:not(:last-child):after{content:'\\2192';color:var(--primary-color);o
 .hint{padding:.8rem 1rem;background:rgba(0,173,181,.05);border-radius:12px;border:1px solid rgba(0,173,181,.2);font-size:.8rem;color:rgba(255,255,255,.8);margin:0}
 .hint b{color:var(--primary-color);font-weight:700}
 .sched{padding:1.2rem;background:rgba(255,255,255,.02);border-radius:16px;display:flex;flex-direction:column;gap:1.5rem}
-.sched-head{padding-bottom:.8rem;border-bottom:1px solid rgba(255,255,255,.05);text-align:center;font-size:.85rem;font-weight:900;color:var(--primary-color);text-transform:uppercase;letter-spacing:1px}
+.sched-head{margin:0;padding-bottom:.8rem;border-bottom:1px solid rgba(255,255,255,.05);text-align:center;font-size:.85rem;font-weight:900;color:var(--primary-color);text-transform:uppercase;letter-spacing:1px}
 .group{margin-top:.5rem;padding:1rem;border-radius:12px;border:1px solid transparent}
 .group.today{background:rgba(255,255,255,.03)}
-.group-label{font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem;display:flex;align-items:center;gap:.6rem}
+.group-label{font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin:0 0 1rem;display:flex;align-items:center;gap:.6rem}
 .today-badge{font-size:.6rem;color:#000;padding:1px 6px;border-radius:4px;margin-left:5px;display:none}
 .group.today .today-badge{display:inline-block}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem}
@@ -279,7 +288,7 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf, holiday
   const url = `${SITE}/linia/${slug}/`;
 
   const groups = dayGroups(sched).map((g) => `      <div class="group" data-group="${g.id}" data-color="${g.color}">
-        <div class="group-label" style="color:${g.color}">${g.label}<span class="today-badge" style="background:${g.color}">ДНЕС</span></div>
+        <h3 class="group-label" style="color:${g.color}">${g.label} <span class="today-badge" style="background:${g.color}">ДНЕС</span></h3>
         <div class="cols">
           <div>
             <div class="dir">ОТ ${esc(from.toUpperCase())}</div>
@@ -320,9 +329,33 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf, holiday
     holidays,
   };
 
+  const offers = [
+    ['Билет (еднопосочен)', priceNumber(meta?.priceSingle)],
+    ...prices.map(([label, value]) => [label, priceNumber(value)]),
+  ]
+    .filter(([, price]) => price !== null)
+    .map(([label, price]) => ({
+      '@type': 'Offer',
+      name: label,
+      price,
+      priceCurrency: 'EUR',
+      availability: 'https://schema.org/InStock',
+      url,
+    }));
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
+      {
+        '@type': 'WebPage',
+        '@id': url,
+        url,
+        name: title,
+        description,
+        inLanguage: 'bg-BG',
+        dateModified: BUILD_DATE,
+        isPartOf: { '@type': 'WebSite', name: OPERATOR, url: `${SITE}/` },
+      },
       {
         '@type': 'BreadcrumbList',
         itemListElement: [
@@ -335,9 +368,27 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf, holiday
         name: `Автобус ${pair}`,
         description,
         url,
-        provider: { '@type': 'Organization', name: OPERATOR, url: `${SITE}/` },
+        provider: {
+          '@type': 'Organization',
+          name: OPERATOR,
+          url: `${SITE}/`,
+          areaServed: { '@type': 'AdministrativeArea', name: 'Област Плевен' },
+        },
         departureBusStop: { '@type': 'BusStop', name: from },
         arrivalBusStop: { '@type': 'BusStop', name: to },
+        ...((meta?.stops ?? []).length
+          ? {
+            itinerary: {
+              '@type': 'ItemList',
+              itemListElement: meta.stops.map((stop, i) => ({
+                '@type': 'ListItem',
+                position: i + 1,
+                item: { '@type': 'BusStop', name: stopName(stop) },
+              })),
+            },
+          }
+          : {}),
+        ...(offers.length ? { offers } : {}),
       },
     ],
   };
@@ -407,7 +458,7 @@ ${stops ? `    <div class="strip"><ol class="stops">${stops}</ol></div>\n` : ''}
     <p class="hint">${discountNote}</p>
 
     <div class="sched">
-      <div class="sched-head">Пълно разписание на курса</div>
+      <h2 class="sched-head">Пълно разписание на курса</h2>
 ${groups}
     </div>
   </article>
