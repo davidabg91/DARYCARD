@@ -39,13 +39,25 @@
         animation: spin 1s linear infinite;
       }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      .loader-title {
+        margin: 0; letter-spacing: 2px; font-size: 10px; font-weight: 700;
+        text-transform: uppercase; opacity: 0.5;
+      }
+      .loader-sub { margin: 0; font-size: 11px; opacity: 0.3; text-align: center; padding: 0 1rem; }
     </style>
   </head>
   <body>
     <div id="root">
+      <!--
+        React replaces everything in #root on mount, so this is what a crawler
+        that does not run JavaScript sees of the home page — Bingbot reported the
+        page as having no top-level heading. The heading and the line below are the
+        real subject of the page, briefly visible while the app boots.
+      -->
       <div class="initial-loader">
         <div class="spinner"></div>
-        <div style="letter-spacing: 2px; font-size: 10px; opacity: 0.5;">DARY COMMERCE</div>
+        <h1 class="loader-title">Дари Комерс — автобусни линии в област Плевен</h1>
+        <p class="loader-sub">Разписания, цени на билети и месечни карти</p>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
