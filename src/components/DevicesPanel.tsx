@@ -500,8 +500,23 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                         </div>
                                     ) : (
                                         <>
+                                            {/*
+                                                Показваше „N разпознати от M прочетени днес" и изглеждаше
+                                                като пропуск, какъвто няма: `scansToday` е броячът на
+                                                терминала от полунощ, а списъкът се пълни само докато
+                                                свързването работи — при пускането му в 12:07 всички
+                                                сутрешни допирания вече бяха минали и не могат да се
+                                                възстановят. Двете числа просто не покриват едно и също
+                                                време, затова сега пише обхвата, а не съотношение.
+                                             */}
                                             <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.6rem' }}>
-                                                {cards[d.id].length} разпознати от {d.scansToday || cards[d.id].length} прочетени днес
+                                                {cards[d.id].length} карти · от {
+                                                    new Date(cards[d.id][cards[d.id].length - 1].at)
+                                                        .toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })
+                                                } до {
+                                                    new Date(cards[d.id][0].at)
+                                                        .toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })
+                                                }
                                             </div>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                                                 {cards[d.id].map(s => (
