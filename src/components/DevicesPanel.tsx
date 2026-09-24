@@ -78,15 +78,36 @@ const NFC_SILENT_MS = 12 * 60 * 60 * 1000;
 const LOST_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
 
 /**
- * Минала ли е вече грешката на четеца — тоест има ли успешно четене СЛЕД нея.
- * Плъгинът помни само последната грешка и я връща, докато приложението не се
- * рестартира; без тази проверка едно изпуснато допиране стои на екрана с дни и
- * изглежда като текущ проблем.
+ * Четецът докладва „UID read" и когато картата се отдръпва СЛЕД като вече е
+ * прочетена — това е краят на нормалното допиране, не повреда. Мерено на живо:
+ * и трите терминала, които светеха оранжево, имаха грешка на по-малко от
+ * секунда от успешно четене, а помежду си бяха прочели 162 карти за деня.
+ * Затова грешка на една и съща ръка с четене се брои за част от същото допиране.
  */
-const isNfcErrorSuperseded = (d: DeviceDoc): boolean => {
-    const errAt = d.nfcLastErrorAt ? new Date(d.nfcLastErrorAt).getTime() : 0;
+const NFC_SAME_TAP_MS = 5000;
+
+/**
+ * Стара грешка не е текущ проблем. Плъгинът помни последната, докато
+ * приложението не се рестартира, затова без таван на екрана стоеше грешка
+ * отпреди пет дни.
+ */
+const NFC_ERROR_FRESH_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Заслужава ли грешката да се покаже. Само когато четенето наистина е спряло:
+ * след нея няма успешно четене, не е опашка на същото допиране и е отскоро.
+ * Иначе екранът вика при всяко нормално прекарване на карта и се научаваш да
+ * не му вярваш — а тогава не върши работа и когато четецът наистина откаже.
+ */
+const isNfcErrorWorthShowing = (d: DeviceDoc, online: boolean, now: number): boolean => {
+    if (!d.nfcLastError || !d.nfcLastErrorAt) return false;
+    const errAt = new Date(d.nfcLastErrorAt).getTime();
+    if (!isFinite(errAt)) return false;
+    if (!online) return false;
+    if (now - errAt > NFC_ERROR_FRESH_MS) return false;
     const tagAt = d.nfcLastTagAt ? new Date(d.nfcLastTagAt).getTime() : 0;
-    return errAt > 0 && tagAt > errAt;
+    if (tagAt > errAt) return false;
+    return Math.abs(errAt - tagAt) > NFC_SAME_TAP_MS;
 };
 
 /** Съобщенията идват от плъгина на английски и с кратко име на мястото. */
@@ -180,6 +201,18 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
             })
             .sort((a, b) => {
                 if (a.online !== b.online) return a.online ? -1 : 1;
+                // Работещите се нареждат по име, не по `lastSeen`. Всеки терминал
+                // пише пулс на всеки две минути, значи „кой се е обадил последен"
+                // се сменя постоянно — измерено на живо съседните редове бяха на
+                // 1 до 23 секунди един от друг, тоест списъкът се пренареждаше
+                // непрекъснато, без това да значи каквото и да е. Името не мърда,
+                // затова редът си стои и окото намира устройството, където го е
+                // оставило. Изключените остават отдолу, най-скоро видяното първо —
+                // там времето наистина е информация.
+                if (a.online) {
+                    return (a.name || a.autoName || a.id)
+                        .localeCompare(b.name || b.autoName || b.id, 'bg');
+                }
                 return (b.lastSeen || '').localeCompare(a.lastSeen || '');
             });
     }, [devices, now]);
@@ -449,14 +482,10 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                 )}
                             </div>
 
-                            {d.nfcLastError && (
-                                <div style={{
-                                    marginTop: '0.5rem', fontSize: '0.75rem', lineHeight: 1.45,
-                                    color: isNfcErrorSuperseded(d) ? 'var(--text-secondary)' : '#ff9800'
-                                }}>
-                                    {isNfcErrorSuperseded(d) ? 'Последно неуспешно допиране' : 'NFC грешка при последното допиране'}
-                                    {d.nfcLastErrorAt ? ` ${fmtAgo(d.nfcLastErrorAt, now)}` : ''}: {describeNfcError(d.nfcLastError)}
-                                    {isNfcErrorSuperseded(d) && ' — след него картите се четат нормално.'}
+                            {isNfcErrorWorthShowing(d, d.online, now) && d.nfcLastError && (
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', lineHeight: 1.45, color: '#ff9800' }}>
+                                    Четецът не е прочел карта {fmtAgo(d.nfcLastErrorAt ?? undefined, now)} и оттогава няма успешно
+                                    четене: {describeNfcError(d.nfcLastError)}
                                 </div>
                             )}
 
