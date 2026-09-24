@@ -44,6 +44,17 @@ export interface DeviceDoc {
     lastScanAt?: string;
     scansToday?: number;
     scanDate?: string;
+    /**
+     * Линията, която терминалът обслужва в момента. НЕ я пише устройството —
+     * пише я Cloud Function-ът `attributeScanToDevice`, който връзва сканиране
+     * с терминал по време. Стойността е най-честата линия сред прочетените днес
+     * карти: картата носи своята линия, не тази на автобуса, затова единичен
+     * пътник с чужда карта не бива да мести показанието.
+     */
+    currentRoute?: string;
+    currentRouteAt?: string;
+    /** Колко от днешните карти сочат тази линия — мярка за увереност. */
+    currentRouteScans?: number;
     /** Здраве на NFC четеца, както го докладва нативният плъгин. */
     nfcBound?: boolean | null;
     nfcScanning?: boolean | null;

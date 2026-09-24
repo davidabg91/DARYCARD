@@ -578,3 +578,125 @@ export const alertLowBattery = functions.firestore
             }
         });
     });
+
+// ---------------------------------------------------------------------------
+// Кой терминал е чел тази карта — и оттам на коя линия е апаратът.
+//
+// Сканирането не носи номер на устройство: това го знае само терминалът, а
+// неговият код е вграден в APK-то. Затова връзката се прави тук, по време.
+// Терминалът вече вдига `lastScanAt` в регистъра при всяко прочитане, и то
+// ВИНАГИ преди самото сканиране да се запише — измерено върху три дни живи
+// данни отместването е 377–1864 ms, никога отрицателно. Оттам и прозорецът:
+// само напред, до три секунди.
+//
+// Прозорец в двете посоки беше пробван и бърка: чуждо сканиране, случило се
+// малко преди пулса, влиза в него. Със същите данни напред-само дава 12 от 13
+// активни терминала еднозначно, срещу 9 при симетричен прозорец.
+//
+// Има ли повече от един кандидат — не се записва нищо. По-добре празно, отколкото
+// грешна линия: 15% от сканиранията имат съсед в рамките на 3 s.
+// ---------------------------------------------------------------------------
+
+/** Колко назад от сканирането се търси пулс на терминал. */
+const DEVICE_MATCH_MS = 3000;
+/** Таван на дневния документ, за да не опре в лимита от 1 MB. */
+const MAX_DAY_SCANS = 500;
+
+interface SeenScan {
+    at: string;
+    clientId: string;
+    name: string;
+    cardNumber: string;
+    route: string;
+    cardType: string;
+}
+
+/** Най-честата линия за деня. Картата носи СВОЯТА линия, не тази на автобуса,
+ *  затова единичните чужди карти не бива да местят показанието. */
+const dominantRoute = (routes: string[]): string => {
+    const counts = new Map<string, number>();
+    for (const r of routes) if (r) counts.set(r, (counts.get(r) || 0) + 1);
+    let best = "";
+    let bestN = 0;
+    for (const [route, n] of counts) if (n > bestN) { best = route; bestN = n; }
+    return best;
+};
+
+export const attributeScanToDevice = functions.firestore
+    .document("clients/{clientId}/scans/{scanId}")
+    .onCreate(async (snap, context) => {
+        const scan = snap.data() || {};
+        const at = String(scan.at || "");
+        if (!at) return;
+
+        // Карта, отворена в браузър, не идва от терминал.
+        if (scan.source === "web") return;
+
+        const atMs = new Date(at).getTime();
+        if (!isFinite(atMs)) return;
+        const from = new Date(atMs - DEVICE_MATCH_MS).toISOString();
+
+        const db = admin.firestore();
+        // `lastScanAt` е ISO низ в същия формат, затова подредбата по текст е
+        // подредба по време. Единичен индекс — Firestore го прави сам.
+        const lookup = () => db.collection("devices")
+            .where("lastScanAt", ">=", from)
+            .where("lastScanAt", "<=", at)
+            .get();
+
+        // Двата записа се състезават. Терминалът вдига `lastScanAt` в мига на
+        // допирането, а сканирането се записва чак след като профилът се прочете
+        // от базата — но това са две отделни връзки и редът, в който стигат, не е
+        // гарантиран. Тази функция тръгва от сканирането, така че пулсът може още
+        // да е по пътя. Затова, ако първото питане е празно, изчакваме веднъж.
+        let candidates = await lookup();
+        if (candidates.empty) {
+            await new Promise((r) => setTimeout(r, 2000));
+            candidates = await lookup();
+        }
+
+        if (candidates.size !== 1) {
+            console.log(`Сканиране ${at}: ${candidates.size} кандидата в [${from}, ${at}] — пропуснато`);
+            return;
+        }
+
+        const deviceRef = candidates.docs[0].ref;
+        const clientId = context.params.clientId as string;
+        const client = (await db.doc(`clients/${clientId}`).get()).data() || {};
+
+        const entry: SeenScan = {
+            at,
+            clientId,
+            name: String(client.name || "").trim(),
+            cardNumber: String(client.cardNumber || ""),
+            route: String(scan.route || client.route || ""),
+            cardType: String(client.cardType || ""),
+        };
+
+        const day = at.slice(0, 10);
+        const dayRef = deviceRef.collection("seen").doc(day);
+        const daySnap = await dayRef.get();
+        const existing: SeenScan[] = daySnap.exists ? (daySnap.data()?.scans || []) : [];
+
+        // Функцията може да се изпълни повторно при грешка в мрежата; същото
+        // сканиране не бива да излезе два пъти в списъка.
+        const already = existing.some((e) => e.at === at && e.clientId === clientId);
+
+        if (!already && existing.length < MAX_DAY_SCANS) {
+            await dayRef.set({
+                date: day,
+                updatedAt: at,
+                scans: admin.firestore.FieldValue.arrayUnion(entry),
+            }, { merge: true });
+        }
+
+        const routes = already ? existing.map((e) => e.route) : [...existing.map((e) => e.route), entry.route];
+        const route = dominantRoute(routes);
+        if (route) {
+            await deviceRef.update({
+                currentRoute: route,
+                currentRouteAt: at,
+                currentRouteScans: routes.filter((r) => r === route).length,
+            }).catch((err) => console.error("device currentRoute update failed:", err));
+        }
+    });

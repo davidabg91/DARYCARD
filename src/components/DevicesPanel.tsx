@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
     LOW_BATTERY,
@@ -9,7 +9,7 @@ import {
 import {
     Smartphone, Wifi, WifiOff, BatteryFull, BatteryLow, BatteryCharging,
     Check, Pencil, Trash2, X, AlertTriangle, CreditCard, RefreshCw,
-    Radio, RadioTower, Bug, ChevronDown, ChevronRight
+    Radio, RadioTower, Bug, ChevronDown, ChevronRight, MapPin
 } from 'lucide-react';
 import BatteryAlertsButton from './BatteryAlertsButton';
 
@@ -49,6 +49,22 @@ interface DeviceError {
     lastAt?: string;
     count?: number;
 }
+
+/** Един прочетен чип, както го е записал `attributeScanToDevice`. */
+interface SeenScan {
+    at: string;
+    clientId: string;
+    name?: string;
+    cardNumber?: string;
+    route?: string;
+    cardType?: string;
+}
+
+/** „0000000490" се чете трудно; на екрана върши работа само номерът. */
+const fmtCardNumber = (n?: string): string => {
+    const digits = String(n || '').replace(/^0+/, '');
+    return digits ? `№ ${digits}` : '—';
+};
 
 /** След толкова без нито един прочетен чип вече е подозрително. */
 const NFC_SILENT_MS = 12 * 60 * 60 * 1000;
@@ -132,6 +148,10 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
     const [openLog, setOpenLog] = useState<string | null>(null);
     const [logs, setLogs] = useState<Record<string, DeviceError[]>>({});
     const [logLoading, setLogLoading] = useState(false);
+    // Същото като дневника: списъкът с карти се тегли чак при натискане.
+    const [openCards, setOpenCards] = useState<string | null>(null);
+    const [cards, setCards] = useState<Record<string, SeenScan[]>>({});
+    const [cardsLoading, setCardsLoading] = useState(false);
     // Прекроява екрана веднъж в минута, за да не остарява „преди 3 мин.".
     const [now, setNow] = useState(() => Date.now());
 
@@ -198,6 +218,25 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
             setLogs(prev => ({ ...prev, [id]: [] }));
         } finally {
             setLogLoading(false);
+        }
+    };
+
+    // Дневният документ се прекроява само докато терминалът чете карти, затова
+    // повторното отваряне тегли наново — иначе списъкът замръзва до презареждане.
+    const toggleCards = async (id: string) => {
+        if (openCards === id) { setOpenCards(null); return; }
+        setOpenCards(id);
+        setCardsLoading(true);
+        try {
+            const today = new Date().toISOString().slice(0, 10);
+            const snap = await getDoc(doc(db, 'devices', id, 'seen', today));
+            const list = snap.exists() ? ((snap.data().scans as SeenScan[]) || []) : [];
+            setCards(prev => ({ ...prev, [id]: [...list].sort((a, b) => (b.at || '').localeCompare(a.at || '')) }));
+        } catch (err) {
+            console.error('Списъкът с карти не се зареди:', err);
+            setCards(prev => ({ ...prev, [id]: [] }));
+        } finally {
+            setCardsLoading(false);
         }
     };
 
@@ -337,6 +376,36 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                 )}
                             </div>
 
+                            {/*
+                                Линията се познава по картите, четени днес — значи е
+                                заключение, не факт. Показва се като днешна само ако е
+                                от днес; иначе се показва избледняла с датата, за да не
+                                изглежда вчерашният курс като текущ.
+                             */}
+                            {d.currentRoute && (() => {
+                                const today = new Date().toISOString().slice(0, 10);
+                                const fresh = (d.currentRouteAt || '').slice(0, 10) === today;
+                                return (
+                                    <div style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                                        alignSelf: 'flex-start', margin: '0.15rem 0 0.1rem',
+                                        padding: '0.28rem 0.7rem', borderRadius: '10px',
+                                        background: fresh ? 'rgba(0,173,181,0.12)' : 'rgba(255,255,255,0.04)',
+                                        border: `1px solid ${fresh ? 'rgba(0,173,181,0.35)' : 'var(--surface-border)'}`,
+                                        color: fresh ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                        fontWeight: 800, fontSize: '0.82rem'
+                                    }}>
+                                        <MapPin size={14} />
+                                        {d.currentRoute}
+                                        <span style={{ fontWeight: 600, fontSize: '0.7rem', opacity: 0.75 }}>
+                                            {fresh
+                                                ? `· по ${d.currentRouteScans || 0} карти днес`
+                                                : `· от ${fmtWhen(d.currentRouteAt)}`}
+                                        </span>
+                                    </div>
+                                );
+                            })()}
+
                             <div style={{ display: 'flex', gap: '0.4rem 1rem', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                                 <span>{d.online ? 'На линия' : `Последно ${fmtAgo(d.lastSeen, now)}`}</span>
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -356,6 +425,13 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                             : 'NFC не е вързан'}
                                     </span>
                                 )}
+                                <button
+                                    onClick={() => toggleCards(d.id)}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', fontWeight: 700, padding: 0 }}
+                                >
+                                    {openCards === d.id ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                    <CreditCard size={13} /> Карти днес
+                                </button>
                                 <button
                                     onClick={() => toggleLog(d.id)}
                                     style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', fontWeight: 700, padding: 0 }}
@@ -381,6 +457,41 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                     {isNfcErrorSuperseded(d) ? 'Последно неуспешно допиране' : 'NFC грешка при последното допиране'}
                                     {d.nfcLastErrorAt ? ` ${fmtAgo(d.nfcLastErrorAt, now)}` : ''}: {describeNfcError(d.nfcLastError)}
                                     {isNfcErrorSuperseded(d) && ' — след него картите се четат нормално.'}
+                                </div>
+                            )}
+
+                            {openCards === d.id && (
+                                <div style={{ marginTop: '0.7rem', padding: '0.7rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '10px' }}>
+                                    {cardsLoading && !cards[d.id] ? (
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Зареждам…</div>
+                                    ) : !cards[d.id] || cards[d.id].length === 0 ? (
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                            Няма разпознати карти за днес.
+                                            {(d.scansToday || 0) > 0 && ` Терминалът е чел ${d.scansToday} карти — когато две устройства сканират в една и съща секунда, картата не се приписва на никое от тях.`}
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.6rem' }}>
+                                                {cards[d.id].length} разпознати от {d.scansToday || cards[d.id].length} прочетени днес
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                                {cards[d.id].map(s => (
+                                                    <div key={`${s.at}-${s.clientId}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.78rem', lineHeight: 1.45 }}>
+                                                        <span style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: 'var(--primary-color)' }}>
+                                                            {new Date(s.at).toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                        <span style={{ fontWeight: 700 }}>{s.name || '—'}</span>
+                                                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.72rem' }}>{fmtCardNumber(s.cardNumber)}</span>
+                                                        {s.route && (
+                                                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem', background: 'rgba(255,255,255,0.06)', padding: '1px 6px', borderRadius: '5px' }}>
+                                                                {s.route}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             )}
 

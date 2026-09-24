@@ -166,6 +166,16 @@ service cloud.firestore {
               && request.resource.data.message.size() <= 300);
         allow delete: if isAdmin();
       }
+
+      // Кои карти е чел този терминал през деня — един документ на ден.
+      // Пише го САМО Cloud Function-а `attributeScanToDevice` (admin SDK минава
+      // покрай правилата), затова тук няма create/update изобщо: нито терминал,
+      // нито браузър може да дописва в него. Съдържа имена на пътници, значи
+      // четенето е за служител.
+      match /seen/{day} {
+        allow read: if isStaff();
+        allow delete: if isAdmin();
+      }
     }
 
     // ---- Public intake forms ----
