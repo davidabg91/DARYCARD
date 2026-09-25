@@ -53,6 +53,13 @@ const STOP_NAMES = {
 
 const stopName = (stop) => STOP_NAMES[stop] ?? stop;
 
+/**
+ * Има ли изобщо такава цена. В данните „няма цена" се пише ту с „-", ту с
+ * „---", а новите линии дойдоха с известна месечна карта и неизвестен билет —
+ * без тази проверка страницата пишеше „Еднопосочен билет струва ---".
+ */
+const hasPrice = (value) => !!value && value !== '-' && value !== '---';
+
 // Lines whose card prices carry no student/pensioner discount, only the one for
 // riders with a disability. Same list the app's price note uses.
 const DISABLED_ONLY_LINES = [
@@ -105,6 +112,12 @@ const endpoints = (line) => {
     sharedWith: shared ?? null,
   };
 };
+
+/**
+ * Посока без курсове в този ден. Празна колона изглежда като пропуснати данни;
+ * Гостиля в неделя наистина има курс само НАТАМ и това трябва да се каже.
+ */
+const NO_RUNS = '<span class="none">Няма курсове</span>';
 
 const timeChips = (times, column) =>
   (times ?? [])
@@ -262,7 +275,12 @@ const CLOCK_SCRIPT = `
     });
     if(!moved&&id){
       var cur=document.querySelector('.group[data-group="'+id+'"]');
-      if(cur&&cur.parentNode) cur.parentNode.insertBefore(cur,cur.parentNode.firstElementChild);
+      // Пред първата ГРУПА, не пред първото дете: първото дете е заглавието
+      // „Пълно разписание на курса" и днешният ден скачаше над него.
+      if(cur&&cur.parentNode){
+        var first=cur.parentNode.querySelector('.group');
+        if(first&&first!==cur) cur.parentNode.insertBefore(cur,first);
+      }
       moved=true;
     }
     ['fromPleven','fromDestination'].forEach(function(dir){
@@ -281,8 +299,8 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf, holiday
   const pair = `${from} – ${to}`;
   const title = `Автобус ${pair}: разписание и цени | ${OPERATOR}`;
   const priceBits = [
-    meta?.priceSingle && meta.priceSingle !== '-' ? `билет ${meta.priceSingle}` : null,
-    meta?.priceCard && meta.priceCard !== '-' ? `месечна карта ${meta.priceCard}` : null,
+    hasPrice(meta?.priceSingle) ? `билет ${meta.priceSingle}` : null,
+    hasPrice(meta?.priceCard) ? `месечна карта ${meta.priceCard}` : null,
   ].filter(Boolean).join(', ');
   const description =
     `Разписание на автобус ${pair} — часовете за делник, събота, неделя и празник` +
@@ -295,11 +313,11 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf, holiday
         <div class="cols">
           <div>
             <div class="dir">ОТ ${esc(from.toUpperCase())}</div>
-            <div class="tags">${timeChips(g.times.fromPleven, 'fromPleven')}</div>
+            <div class="tags">${timeChips(g.times.fromPleven, 'fromPleven') || NO_RUNS}</div>
           </div>
           <div>
             <div class="dir">ОТ ${esc(returnFrom.toUpperCase())}</div>
-            <div class="tags">${timeChips(g.times.fromDestination, 'fromDestination')}</div>
+            <div class="tags">${timeChips(g.times.fromDestination, 'fromDestination') || NO_RUNS}</div>
           </div>
         </div>
       </div>`).join('\n');
@@ -344,14 +362,18 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf, holiday
     );
 
     if (out.length && back.length) {
+      // „1 курса" е грешно, а при един курс „първият … последният" е един и същ час.
+      const runs = (n, label) => `${n} ${n === 1 ? 'курс' : 'курса'} от ${label}`;
+      const when = out.length === 1
+        ? `и единственият тръгва в ${out[0]} ч.`
+        : `като първият е в ${out[0]} ч., а последният в ${out[out.length - 1]} ч.`;
       sentences.push(
-        `В делник тръгват ${out.length} курса от ${from} и ${back.length} от ${returnFrom}, ` +
-        `като първият е в ${out[0]} ч., а последният в ${out[out.length - 1]} ч.`,
+        `В делник има ${runs(out.length, from)} и ${runs(back.length, returnFrom)}, ${when}`,
       );
     }
 
-    const single = meta?.priceSingle && meta.priceSingle !== '-' ? meta.priceSingle : null;
-    const card = meta?.priceCard && meta.priceCard !== '-' ? meta.priceCard : null;
+    const single = hasPrice(meta?.priceSingle) ? meta.priceSingle : null;
+    const card = hasPrice(meta?.priceCard) ? meta.priceCard : null;
     if (single && card) {
       sentences.push(`Еднопосочен билет струва ${single}, а месечна карта за линията — ${card}.`);
     } else if (single) {
