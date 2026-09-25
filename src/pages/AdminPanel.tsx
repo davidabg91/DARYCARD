@@ -770,8 +770,15 @@ const AdminPanel: React.FC = () => {
         setVisibleClients(20);
     }, [searchTerm, filterRoute, filterMonth, filterCardType, filterSchool, filterPayment, sortBy]);
 
-    const [reportPeriodType, setReportPeriodType] = useState<'month' | 'day'>('day');
+    const [reportPeriodType, setReportPeriodType] = useState<'month' | 'day' | 'range'>('day');
     const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+    // Отчет по период. По подразбиране текущият месец до днес — най-честото
+    // запитване, а и празни полета биха дали отчет за цялото време.
+    const [reportFrom, setReportFrom] = useState<string>(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    });
+    const [reportTo, setReportTo] = useState<string>(() => new Date().toISOString().split('T')[0]);
     const [reportPaymentMethod, setReportPaymentMethod] = useState<string>('В брой');
     const [reportMonth, setReportMonth] = useState<string>('all');
     const [reportCardType, setReportCardType] = useState<string>('all');
@@ -948,11 +955,41 @@ const AdminPanel: React.FC = () => {
         }
     };
 
-    const getDayPayment = (client: Client, dateStr: string) => {
-        const rhList = client.renewalHistory || [];
-        return rhList
-            .filter(rh => rh.date && rh.date.startsWith(dateStr))
-            .reduce((sum, rh) => sum + rh.amount, 0);
+    /**
+     * Попада ли едно плащане в избрания за отчета период. Един-единствен
+     * източник за трите вида отчет — иначе месечният, дневният и този по период
+     * се разминават, защото условието се пише отделно на шест места (сумата,
+     * разбивката по начин на плащане, филтърът на клиентите, датата в регистъра
+     * и два надписа).
+     *
+     * Датите се пазят като ISO низове, затова сравнението по текст съвпада със
+     * сравнението по време — важи, докато всички са в един и същ формат.
+     * Границите влизат в периода: „от 1-ви до 30-ти" включва и двата дни.
+     */
+    const isInReportPeriod = (rh: { date?: string; month?: string }): boolean => {
+        if (reportPeriodType === 'month') {
+            return reportMonth === 'all' ? true : rh.month === reportMonth;
+        }
+        if (reportPeriodType === 'range') {
+            if (!rh.date) return false;
+            const day = rh.date.slice(0, 10);
+            if (reportFrom && day < reportFrom) return false;
+            if (reportTo && day > reportTo) return false;
+            return true;
+        }
+        return !!rh.date && rh.date.startsWith(reportDate);
+    };
+
+    /** Текстът на периода за заглавия и споделяне. */
+    const reportPeriodLabel = (): string => {
+        const bg = (iso: string) => {
+            if (!iso) return '---';
+            const d = new Date(iso);
+            return isNaN(d.getTime()) ? iso : d.toLocaleDateString('bg-BG');
+        };
+        if (reportPeriodType === 'month') return reportMonth === 'all' ? 'Всички месеци' : reportMonth;
+        if (reportPeriodType === 'range') return `${bg(reportFrom)} – ${bg(reportTo)}`;
+        return bg(reportDate);
     };
 
     // Derived data for reports and filters
@@ -3298,37 +3335,24 @@ const AdminPanel: React.FC = () => {
                     <div style={{ marginTop: '1rem' }} id="printable-report">
                         {(() => {
                             const getReportAmount = (c: Client) => {
-                                if (reportPeriodType === 'month') {
-                                    if (reportMonth === 'all') {
-                                        if (reportPaymentMethod !== 'all') {
-                                            return (c.renewalHistory || [])
-                                                .filter(rh => (rh.paymentMethod || 'В брой') === reportPaymentMethod)
-                                                .reduce((sum, rh) => sum + rh.amount, 0);
-                                        }
-                                        return c.amountPaid || 0;
-                                    }
-                                    return (c.renewalHistory || [])
-                                        .filter(rh => rh.month === reportMonth && (reportPaymentMethod === 'all' || (rh.paymentMethod || 'В брой') === reportPaymentMethod))
-                                        .reduce((sum, rh) => sum + rh.amount, 0);
-                                } else {
-                                    return (c.renewalHistory || [])
-                                        .filter(rh => rh.date && rh.date.startsWith(reportDate) && (reportPaymentMethod === 'all' || (rh.paymentMethod || 'В брой') === reportPaymentMethod))
-                                        .reduce((sum, rh) => sum + rh.amount, 0);
+                                // „Всички месеци" без филтър по начин на плащане ползва
+                                // готовия сбор на профила — иначе стари плащания без
+                                // запис в историята биха изпаднали от отчета.
+                                if (reportPeriodType === 'month' && reportMonth === 'all' && reportPaymentMethod === 'all') {
+                                    return c.amountPaid || 0;
                                 }
+                                return (c.renewalHistory || [])
+                                    .filter(rh => isInReportPeriod(rh)
+                                        && (reportPaymentMethod === 'all' || (rh.paymentMethod || 'В брой') === reportPaymentMethod))
+                                    .reduce((sum, rh) => sum + rh.amount, 0);
                             };
 
                             // Breakdown of how the reported amount was paid (splits "Смесено"
                             // into its bank + cash parts), for display in the printed list.
                             const getReportPaymentBreakdown = (c: Client) => {
-                                const inPeriod = (rh: { date?: string; month?: string }) => {
-                                    if (reportPeriodType === 'month') {
-                                        return reportMonth === 'all' ? true : rh.month === reportMonth;
-                                    }
-                                    return !!rh.date && rh.date.startsWith(reportDate);
-                                };
                                 let bank = 0, cash = 0, card = 0;
                                 (c.renewalHistory || []).forEach(rh => {
-                                    if (!inPeriod(rh)) return;
+                                    if (!isInReportPeriod(rh)) return;
                                     const m = rh.paymentMethod || 'В брой';
                                     if (reportPaymentMethod !== 'all' && m !== reportPaymentMethod) return;
                                     if (m === 'Смесено') { bank += rh.bankAmount || 0; cash += rh.cashAmount || 0; }
@@ -3363,37 +3387,20 @@ const AdminPanel: React.FC = () => {
                                 if (!reportRoutes.includes('all') && !getClientRoutes(c).some(r => reportRoutes.includes(r))) match = false;
                                 if (reportMunicipality !== 'all' && (c.municipality || '') !== reportMunicipality) match = false;
                                 
-                                if (reportPeriodType === 'month') {
-                                    if (reportMonth !== 'all') {
-                                        const monthAmount = getMonthPayment(c, reportMonth);
-                                        if (monthAmount <= 0) match = false;
-                                        
-                                        if (reportPaymentMethod !== 'all') {
-                                            const hasMatchingPayment = (c.renewalHistory || []).some(rh => 
-                                                rh.month === reportMonth && 
-                                                (rh.paymentMethod || 'В брой') === reportPaymentMethod
-                                            );
-                                            if (!hasMatchingPayment) match = false;
-                                        }
-                                    } else {
-                                        if (reportPaymentMethod !== 'all') {
-                                            const hasMatchingPayment = (c.renewalHistory || []).some(rh => 
-                                                (rh.paymentMethod || 'В брой') === reportPaymentMethod
-                                            );
-                                            if (!hasMatchingPayment) match = false;
-                                        }
-                                    }
-                                } else {
-                                    const dayAmount = getDayPayment(c, reportDate);
-                                    if (dayAmount <= 0) match = false;
-                                    
-                                    if (reportPaymentMethod !== 'all') {
-                                        const hasMatchingPayment = (c.renewalHistory || []).some(rh => 
-                                            rh.date && rh.date.startsWith(reportDate) && 
-                                            (rh.paymentMethod || 'В брой') === reportPaymentMethod
-                                        );
-                                        if (!hasMatchingPayment) match = false;
-                                    }
+                                // „Всички месеци" показва и клиент без нито едно плащане в
+                                // историята (стар профил само с amountPaid); всеки друг
+                                // период иска поне едно плащане вътре в него.
+                                const wantsAnyPayment = !(reportPeriodType === 'month' && reportMonth === 'all');
+                                const matchingPayments = (c.renewalHistory || []).filter(rh =>
+                                    isInReportPeriod(rh)
+                                    && (reportPaymentMethod === 'all' || (rh.paymentMethod || 'В брой') === reportPaymentMethod));
+                                if (wantsAnyPayment) {
+                                    // Сборът, не първият запис: клиент с две плащания за
+                                    // един месец изпадаше от месечния отчет, ако първото
+                                    // в масива е било нулево.
+                                    if (matchingPayments.reduce((sum, rh) => sum + rh.amount, 0) <= 0) match = false;
+                                } else if (reportPaymentMethod !== 'all' && matchingPayments.length === 0) {
+                                    match = false;
                                 }
                                 
                                 const isShortDistance = isShortRouteInReport(c);
@@ -3430,13 +3437,10 @@ const AdminPanel: React.FC = () => {
 
                             const getRegisterDate = (c: Client) => {
                                 let iso = c.createdAt;
-                                if (reportPeriodType === 'month') {
-                                    if (reportMonth !== 'all') {
-                                        const rh = (c.renewalHistory || []).find(r => r.month === reportMonth);
-                                        if (rh?.date) iso = rh.date;
-                                    }
-                                } else {
-                                    const rh = (c.renewalHistory || []).find(r => r.date && r.date.startsWith(reportDate));
+                                // „Всички месеци" няма една дата, която да значи нещо —
+                                // тогава остава датата на създаване на профила.
+                                if (!(reportPeriodType === 'month' && reportMonth === 'all')) {
+                                    const rh = (c.renewalHistory || []).find(r => isInReportPeriod(r));
                                     if (rh?.date) iso = rh.date;
                                 }
                                 if (!iso) return '---';
@@ -3445,7 +3449,9 @@ const AdminPanel: React.FC = () => {
                             };
                             
                             const handleShareReport = async () => {
-                                const periodStr = reportPeriodType === 'month' ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}` : `Ден: ${reportDate}`;
+                                const periodStr = reportPeriodType === 'month' ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}`
+                                    : reportPeriodType === 'range' ? `Период: ${reportPeriodLabel()}`
+                                    : `Ден: ${reportDate}`;
                                 const header = `Финансов Отчет DARY COMMERCE\n${periodStr} | Начин на плащане: ${reportPaymentMethod === 'all' ? 'Всички' : reportPaymentMethod} | Вид: ${reportCardType === 'all' ? 'Всички' : reportCardType} | Маршрут: ${reportRoutes.includes('all') ? 'Всички' : reportRoutes.join(', ')} | Община: ${reportMunicipality === 'all' ? 'Всички' : reportMunicipality} | Дистанция: ${reportDistanceFilter === 'all' ? 'Всички' : (reportDistanceFilter === 'under10' ? 'До 10 км' : 'Над 10 км')}\n---\n`;
                                 const rows = filteredReportClients.map(c => {
                                     const isShort = isShortRouteInReport(c);
@@ -3485,8 +3491,10 @@ const AdminPanel: React.FC = () => {
                                 const dateStr = new Date().toLocaleDateString('bg-BG');
                                 const periodStr = reportPeriodType === 'month'
                                     ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}`
-                                    : `Ден: ${(() => { const d = new Date(reportDate); return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG'); })()}`;
-                                
+                                    : reportPeriodType === 'range'
+                                        ? `Период: ${reportPeriodLabel()}`
+                                        : `Ден: ${reportPeriodLabel()}`;
+
                                 const formattedPeriodLabel = reportPeriodType === 'month'
                                     ? (() => {
                                         const parts = reportMonth.split('-');
@@ -3496,11 +3504,9 @@ const AdminPanel: React.FC = () => {
                                         }
                                         return `За ${reportMonth}`;
                                     })()
-                                    : `За ${(() => {
-                                        if (!reportDate) return '---';
-                                        const d = new Date(reportDate);
-                                        return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG') + 'г.';
-                                    })()}`;
+                                    : reportPeriodType === 'range'
+                                        ? `За периода ${reportPeriodLabel()}`
+                                        : `За ${reportPeriodLabel()}г.`;
 
                                 const title = reportByContract
                                     ? `РЕГИСТЪР НА ИЗДАДЕНИТЕ КАРТИ (${(reportCardType === 'all' ? 'всички видове' : reportCardType).toUpperCase()}) ПО ДОГОВОР С ОБЩИНИ: ${contractMunicipalities.join(', ').toUpperCase()}`
@@ -3647,21 +3653,15 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                             }
                                                             return `За ${reportMonth}`;
                                                         })();
-                                                        return reportPeriodType === 'month' ? formattedMonth : `За ${(() => {
-                                                            if (!reportDate) return '---';
-                                                            const d = new Date(reportDate);
-                                                            return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG') + 'г.';
-                                                        })()}`;
+                                                        return reportPeriodType === 'month' ? formattedMonth
+                                                            : reportPeriodType === 'range' ? `За периода ${reportPeriodLabel()}`
+                                                            : `За ${reportPeriodLabel()}г.`;
                                                     })()}
                                                 </div>
                                             )}
                                             
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '12px', color: '#111', marginTop: '1rem', background: '#fafafa', padding: '10px 15px', borderRadius: '8px', border: '1px solid #eee' }}>
-                                                <div><strong>Период:</strong> {reportPeriodType === 'month' ? (reportMonth === 'all' ? 'Всички месеци' : reportMonth) : (() => {
-                                                    if (!reportDate) return '---';
-                                                    const d = new Date(reportDate);
-                                                    return isNaN(d.getTime()) ? reportDate : d.toLocaleDateString('bg-BG');
-                                                })()}</div>
+                                                <div><strong>Период:</strong> {reportPeriodLabel()}</div>
                                                 <div><strong>Вид Карта:</strong> {reportCardType === 'all' ? 'Всички видове' : reportCardType}</div>
                                                 <div><strong>Начин на плащане:</strong> {reportPaymentMethod === 'all' ? 'Всички методи' : reportPaymentMethod}</div>
                                                 <div><strong>Маршрут:</strong> {reportRoutes.includes('all') ? 'Всички маршрути' : reportRoutes.join(', ')}</div>
@@ -3697,12 +3697,13 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                     <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '16px', border: '1px solid var(--surface-border)' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Тип отчет</label>
-                                            <select value={reportPeriodType} onChange={e => setReportPeriodType(e.target.value as 'month' | 'day')} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
+                                            <select value={reportPeriodType} onChange={e => setReportPeriodType(e.target.value as 'month' | 'day' | 'range')} style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600 }}>
                                                 <option value="month">Месечен Отчет</option>
                                                 <option value="day">Дневен Отчет</option>
+                                                <option value="range">По Период</option>
                                             </select>
                                         </div>
-                                        
+
                                         {reportPeriodType === 'month' ? (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Месец</label>
@@ -3711,13 +3712,36 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     {allMonths.map(m => <option key={m} value={m}>{m}</option>)}
                                                 </select>
                                             </div>
+                                        ) : reportPeriodType === 'range' ? (
+                                            <>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>От дата</label>
+                                                    <input
+                                                        type="date"
+                                                        value={reportFrom}
+                                                        max={reportTo || undefined}
+                                                        onChange={e => setReportFrom(e.target.value)}
+                                                        style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600, height: '38px', boxSizing: 'border-box' }}
+                                                    />
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>До дата</label>
+                                                    <input
+                                                        type="date"
+                                                        value={reportTo}
+                                                        min={reportFrom || undefined}
+                                                        onChange={e => setReportTo(e.target.value)}
+                                                        style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600, height: '38px', boxSizing: 'border-box' }}
+                                                    />
+                                                </div>
+                                            </>
                                         ) : (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Дата (Ден)</label>
-                                                <input 
-                                                    type="date" 
-                                                    value={reportDate} 
-                                                    onChange={e => setReportDate(e.target.value)} 
+                                                <input
+                                                    type="date"
+                                                    value={reportDate}
+                                                    onChange={e => setReportDate(e.target.value)}
                                                     style={{ padding: '0.6rem', background: '#fff', border: '1px solid var(--surface-border)', color: '#000', borderRadius: '8px', outline: 'none', fontWeight: 600, height: '38px', boxSizing: 'border-box' }}
                                                 />
                                             </div>
