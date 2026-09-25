@@ -7,7 +7,7 @@ import {
     ShieldCheck, Shield, TrendingUp,
     PiggyBank, AlertTriangle, Share2,
     AlertCircle, Bus, Send, Bell, BarChart3,
-    Eye, EyeOff, ArrowLeftRight, GraduationCap, CheckCircle, Undo2, Search, Smartphone, Pencil
+    Eye, EyeOff, ArrowLeftRight, GraduationCap, CheckCircle, Undo2, Search, Smartphone, Pencil, Download
 } from 'lucide-react';
 import Card from '../components/Card';
 import UnpaidAlertsButton from '../components/UnpaidAlertsButton';
@@ -3487,7 +3487,12 @@ const AdminPanel: React.FC = () => {
                             // DOM) clipped everything after the first page, so the printed list
                             // was incomplete. Here every page carries the report title, date and
                             // "Страница X от Y", and rows never split across pages.
-                            const handlePrintReport = () => {
+                            /**
+                             * Отчетът в табличен вид — колони, редове и заглавия. Принтирането
+                             * и свалянето на файл тръгват оттук, за да не се случи листът да
+                             * показва едно, а файлът друго.
+                             */
+                            const buildReportTable = () => {
                                 const dateStr = new Date().toLocaleDateString('bg-BG');
                                 const periodStr = reportPeriodType === 'month'
                                     ? `Месец: ${reportMonth === 'all' ? 'Всички' : reportMonth}`
@@ -3558,6 +3563,61 @@ const AdminPanel: React.FC = () => {
 
                                 const rows = filteredReportClients;
                                 const rowsData = rows.map((c, i) => rowVals(c, i + 1).map(v => String(v)));
+                                return { dateStr, periodStr, formattedPeriodLabel, title, subStr, cols, rowsData, rowCount: rows.length };
+                            };
+
+                            /**
+                             * Сваля отчета като таблица за Excel.
+                             *
+                             * CSV, а не .xlsx: истинският xlsx иска библиотека в приложението,
+                             * а тук стойността е в самите числа. Три неща обаче правят
+                             * разликата между „отваря се" и „отваря се правилно" на Windows:
+                             * `sep=;` на първия ред казва на Excel с какво са разделени
+                             * колоните (иначе кирилицата и запетайките в имената се сливат в
+                             * една колона), BOM-ът в началото го кара да ги прочете като
+                             * UTF-8, а не като Windows-1251, и всяко поле се загражда в
+                             * кавички, за да оцелеят запетайките в имена и адреси.
+                             */
+                            const handleDownloadReport = () => {
+                                const { title, subStr, cols, rowsData, rowCount } = buildReportTable();
+
+                                const cell = (s: string) => `"${String(s ?? '').replace(/"/g, '""')}"`;
+                                const line = (vals: string[]) => vals.map(cell).join(';');
+
+                                const body = [
+                                    line([title]),
+                                    line([subStr]),
+                                    '',
+                                    line(cols),
+                                    ...rowsData.map(line),
+                                    '',
+                                    line(['Общо записи', String(rowCount)]),
+                                    ...(useRegisterPrint ? [] : [line(['Общо приход', `${totalReportRevenue.toFixed(2)} €`])]),
+                                ].join('\r\n');
+
+                                const csv = `sep=;\r\n${body}\r\n`;
+                                // Датата в името, за да не се трупат „отчет (1).csv" в Изтегляния.
+                                const stamp = reportPeriodType === 'month'
+                                    ? (reportMonth === 'all' ? 'всички-месеци' : reportMonth)
+                                    : reportPeriodType === 'range'
+                                        ? `${reportFrom}_${reportTo}`
+                                        : reportDate;
+                                const name = `${useRegisterPrint ? 'регистър' : 'отчет'}-${stamp}.csv`;
+
+                                const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = name;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                // Пуска паметта на файла; без това blob-ът стои до презареждане.
+                                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                            };
+
+                            const handlePrintReport = () => {
+                                const { title, subStr, cols, rowsData, formattedPeriodLabel, rowCount } = buildReportTable();
                                 let logoUrl = '';
                                 try { logoUrl = new URL(logoMain, window.location.href).href; } catch { logoUrl = ''; }
 
@@ -3570,7 +3630,7 @@ const AdminPanel: React.FC = () => {
                                                                 isContract: reportByContract,
                                      periodLabel: formattedPeriodLabel,
                                      footLeft: '<b>СЪСТАВИЛ:</b> К. ВАСИЛЕВА &nbsp;.............................',
-                                    footRight: '<b>Общо записи:</b> ' + rows.length + (!useRegisterPrint ? ' &nbsp;|&nbsp; <b>Общо приход:</b> ' + totalReportRevenue.toFixed(2) + ' €' : ''),
+                                    footRight: '<b>Общо записи:</b> ' + rowCount + (!useRegisterPrint ? ' &nbsp;|&nbsp; <b>Общо приход:</b> ' + totalReportRevenue.toFixed(2) + ' €' : ''),
                                 };
                                 const payloadJson = JSON.stringify(payload).replace(/</g, '\\u003c');
 
@@ -3684,6 +3744,13 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 title="Сподели данните по Имейл / Съобщение"
                                             >
                                                 <Share2 size={16} /> Сподели Данни
+                                            </button>
+                                            <button
+                                                onClick={handleDownloadReport}
+                                                style={{ padding: '0.6rem 1.2rem', background: 'rgba(0, 230, 118, 0.1)', border: '1px solid var(--success-color)', color: 'var(--success-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                                title="Сваля отчета като таблица за Excel (.csv)"
+                                            >
+                                                <Download size={16} /> Свали Таблица
                                             </button>
                                             <button
                                                 onClick={handlePrintReport}
