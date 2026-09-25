@@ -7,7 +7,7 @@ import {
     ShieldCheck, Shield, TrendingUp,
     PiggyBank, AlertTriangle, Share2,
     AlertCircle, Bus, Send, Bell, BarChart3,
-    Eye, EyeOff, ArrowLeftRight, GraduationCap, CheckCircle, Undo2, Search, Smartphone
+    Eye, EyeOff, ArrowLeftRight, GraduationCap, CheckCircle, Undo2, Search, Smartphone, Pencil
 } from 'lucide-react';
 import Card from '../components/Card';
 import UnpaidAlertsButton from '../components/UnpaidAlertsButton';
@@ -505,6 +505,13 @@ const AdminPanel: React.FC = () => {
     const [newPaymentMethod, setNewPaymentMethod] = useState('В брой');
     const [newBankAmount, setNewBankAmount] = useState('');
     const [newCashAmount, setNewCashAmount] = useState('');
+    // Поправка на начина на плащане в историята. Ключът е дата+месец+сума —
+    // същата тройка, по която се намира записът и при изтриване, защото
+    // елементите на масива нямат собствен идентификатор.
+    const [editingPaymentKey, setEditingPaymentKey] = useState<string | null>(null);
+    const [editPayMethod, setEditPayMethod] = useState('В брой');
+    const [editPayBank, setEditPayBank] = useState('');
+    const [editPayCash, setEditPayCash] = useState('');
     const [newRoute, setNewRoute] = useState('');
 
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
@@ -1559,6 +1566,101 @@ const AdminPanel: React.FC = () => {
         setModalMessage({ 
             text: `Изтрито плащане за месец ${entryToDelete.month} (${entryToDelete.amount} €). Общата сума и валидността бяха преизчислени.`, 
             type: 'success' 
+        });
+    };
+
+    /**
+     * Поправя начина на плащане на вече записано плащане — например когато
+     * операторът е отбелязал „В брой", а парите са дошли по банка. Пипа само
+     * начина и разбивката при смесено; сумата, месецът и валидността остават
+     * същите, защото не се променя какво е платено, а как.
+     *
+     * Върви в транзакция по същата причина като изтриването: историята се
+     * пренаписва цялата, затова тръгва от най-пресния документ, а не от копието
+     * в паметта — иначе едновременна работа на двама модератори би върнала
+     * изтрито плащане.
+     */
+    const updateRenewalPaymentMethod = async (
+        client: Client, entry: NonNullable<Client['renewalHistory']>[number],
+        method: string, bank: number, cash: number,
+    ) => {
+        if (!isAdmin) return;
+
+        const before = entry.paymentMethod || 'В брой';
+        if (method === before && method !== MIXED_METHOD) {
+            setEditingPaymentKey(null);
+            return;
+        }
+
+        if (method === MIXED_METHOD) {
+            const err = negativeAmountError(bank + cash, [bank, cash]);
+            if (err) { setModalMessage({ text: err, type: 'error' }); return; }
+            // Разбивката трябва да дава точно платената сума, иначе отчетът ще
+            // показва друго общо от това в картона.
+            if (Math.abs((bank + cash) - entry.amount) > 0.005) {
+                setModalMessage({
+                    text: `Сборът на двете части (${(bank + cash).toFixed(2)} €) трябва да е равен на платената сума ${entry.amount.toFixed(2)} €.`,
+                    type: 'error',
+                });
+                return;
+            }
+        }
+
+        try {
+            await runTransaction(db, async (tx) => {
+                const ref = doc(db, 'clients', client.id);
+                const snap = await tx.get(ref);
+                if (!snap.exists()) throw new Error('Клиентът не съществува.');
+                const data = snap.data() as Client;
+                const rh = data.renewalHistory || [];
+
+                let changed = false;
+                const next = rh.map(e => {
+                    if (changed) return e;
+                    if (e.date !== entry.date || e.month !== entry.month || e.amount !== entry.amount) return e;
+                    changed = true;
+                    const updated = { ...e, paymentMethod: method };
+                    if (method === MIXED_METHOD) {
+                        updated.bankAmount = bank;
+                        updated.cashAmount = cash;
+                    } else {
+                        // Отчетът чете тези две полета само при „Смесено", но остане
+                        // ли стара разбивка, следващият, който погледне записа, ще
+                        // се чуди на какво се дължи.
+                        delete updated.bankAmount;
+                        delete updated.cashAmount;
+                    }
+                    return updated;
+                });
+                if (!changed) throw new Error('Плащането вече не съществува.');
+
+                const suffix = method === MIXED_METHOD ? ` (банка ${bank.toFixed(2)} € + брой ${cash.toFixed(2)} €)` : '';
+                tx.update(ref, {
+                    renewalHistory: next,
+                    history: [...(data.history || []), {
+                        date: new Date().toISOString(),
+                        action: 'Промяна на начин на плащане',
+                        details: `Месец ${entry.month} (${entry.amount.toFixed(2)} €): „${before}" → „${method}"${suffix}`,
+                        performedBy: currentUser?.username || 'Админ',
+                    }],
+                });
+            });
+        } catch (err) {
+            console.error(err);
+            setModalMessage({ text: 'Начинът на плащане не се промени.', type: 'error' });
+            return;
+        }
+
+        setEditingPaymentKey(null);
+        const cardNum = getClientCardNumber(client);
+        const nameWithCard = cardNum ? `${client.name} (Карта № ${cardNum})` : client.name;
+        await logGlobalActivity(
+            'Промяна на начин на плащане', nameWithCard,
+            `Месец ${entry.month} (${entry.amount.toFixed(2)} €): „${before}" → „${method}".`,
+        );
+        setModalMessage({
+            text: `Плащането за ${entry.month} вече е отбелязано като „${method}". Сумата не е променяна.`,
+            type: 'success',
         });
     };
 
@@ -5730,21 +5832,102 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     <DollarSign size={18} /> История на Плащанията
                                                 </h4>
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.75rem' }}>
-                                                    {[...selectedClient.renewalHistory].sort((a, b) => b.month.localeCompare(a.month)).map((rh, idx) => (
-                                                        <div key={idx} style={{ 
+                                                    {[...selectedClient.renewalHistory].sort((a, b) => b.month.localeCompare(a.month)).map((rh, idx) => {
+                                                        const payKey = `${rh.date}|${rh.month}|${rh.amount}`;
+                                                        const isEditing = editingPaymentKey === payKey;
+                                                        // Празно поле значи стар запис отпреди начините на плащане —
+                                                        // отчетът го брои като „В брой", затова и тук пише същото.
+                                                        const method = rh.paymentMethod || 'В брой';
+                                                        // „Служебна" и „Прехвърлен от загубена карта" не са начин на
+                                                        // плащане, избран от оператора — те казват, че пари изобщо не
+                                                        // са постъпвали. Смяната им на „В брой" би представила
+                                                        // безплатна карта като платена, затова тях не ги предлагаме
+                                                        // за поправка. В базата са 1927 от 3455 записа.
+                                                        const canEditMethod = (PAYMENT_METHODS as readonly string[]).includes(method);
+                                                        return (
+                                                        <div key={idx} style={{
                                                             position: 'relative',
-                                                            display: 'flex', 
+                                                            display: 'flex',
                                                             flexDirection: 'column',
-                                                            padding: '0.75rem', 
-                                                            background: 'rgba(0,0,0,0.2)', 
-                                                            borderRadius: '12px', 
-                                                            border: '1px solid var(--surface-border)',
-                                                            transition: 'all 0.2s ease'
+                                                            padding: '0.75rem',
+                                                            background: 'rgba(0,0,0,0.2)',
+                                                            borderRadius: '12px',
+                                                            border: `1px solid ${isEditing ? 'var(--primary-color)' : 'var(--surface-border)'}`,
+                                                            transition: 'all 0.2s ease',
+                                                            // Докато се поправя, карето заема целия ред — иначе
+                                                            // избраният начин не се побира в 140 пиксела.
+                                                            gridColumn: isEditing ? '1 / -1' : 'auto'
                                                         }}>
                                                             <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{rh.month}</div>
                                                             <div style={{ fontSize: '0.8rem', color: 'var(--success-color)', fontWeight: 700 }}>{rh.amount} €</div>
-                                                            
-                                                            {isAdmin && (
+                                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                                                                {method}
+                                                                {method === MIXED_METHOD && (rh.bankAmount !== undefined || rh.cashAmount !== undefined)
+                                                                    ? ` · банка ${(rh.bankAmount || 0).toFixed(2)} + брой ${(rh.cashAmount || 0).toFixed(2)}`
+                                                                    : ''}
+                                                            </div>
+
+                                                            {isAdmin && !isEditing && canEditMethod && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setEditingPaymentKey(payKey);
+                                                                        setEditPayMethod(method);
+                                                                        setEditPayBank(String(rh.bankAmount ?? ''));
+                                                                        setEditPayCash(String(rh.cashAmount ?? ''));
+                                                                    }}
+                                                                    style={{
+                                                                        position: 'absolute', top: '0.5rem', right: '2.1rem',
+                                                                        background: 'rgba(0,173,181,0.12)', border: 'none',
+                                                                        color: 'var(--primary-color)', padding: '4px',
+                                                                        borderRadius: '6px', cursor: 'pointer',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                                    }}
+                                                                    title="Поправи начина на плащане"
+                                                                >
+                                                                    <Pencil size={14} />
+                                                                </button>
+                                                            )}
+
+                                                            {isEditing && (
+                                                                <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                                        Променя се само как са постъпили парите. Сумата ({rh.amount.toFixed(2)} €), месецът и валидността остават същите.
+                                                                    </div>
+                                                                    <PaymentMethodSelector
+                                                                        value={editPayMethod}
+                                                                        onChange={(m) => {
+                                                                            setEditPayMethod(m);
+                                                                            if (m === MIXED_METHOD && !editPayBank && !editPayCash) {
+                                                                                setEditPayBank(String(rh.amount));
+                                                                                setEditPayCash('0');
+                                                                            }
+                                                                        }}
+                                                                        bankAmount={editPayBank}
+                                                                        cashAmount={editPayCash}
+                                                                        onBankAmountChange={setEditPayBank}
+                                                                        onCashAmountChange={setEditPayCash}
+                                                                    />
+                                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                                        <button
+                                                                            onClick={() => updateRenewalPaymentMethod(
+                                                                                selectedClient, rh, editPayMethod,
+                                                                                Number(editPayBank) || 0, Number(editPayCash) || 0,
+                                                                            )}
+                                                                            style={{ flex: 1, background: 'var(--primary-color)', color: '#03181a', padding: '0.6rem', borderRadius: '8px', fontWeight: 800, cursor: 'pointer', border: 'none' }}
+                                                                        >
+                                                                            Запази
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setEditingPaymentKey(null)}
+                                                                            style={{ flex: 1, background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)', padding: '0.6rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: '1px solid var(--surface-border)' }}
+                                                                        >
+                                                                            Откажи
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {isAdmin && !isEditing && (
                                                                 <button 
                                                                     onClick={() => {
                                                                         const originalIndex = selectedClient.renewalHistory!.findIndex(entry => entry === rh);
@@ -5770,7 +5953,8 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                 </button>
                                                             )}
                                                         </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         )}
