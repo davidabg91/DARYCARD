@@ -3347,6 +3347,29 @@ const AdminPanel: React.FC = () => {
                                     .reduce((sum, rh) => sum + rh.amount, 0);
                             };
 
+                            /**
+                             * Кога картата е направена или подновена вътре в периода. При
+                             * отчет по период един ред може да покрива няколко плащания
+                             * (напр. две подновявания в рамките на месец), затова датите са
+                             * всичките, подредени, а не само първата.
+                             *
+                             * Излиза само при „по период": при дневен отчет датата е самият
+                             * избран ден, а при месечен колоната би добавила шум.
+                             */
+                            const showPaymentDateCol = reportPeriodType === 'range';
+                            const getReportPaymentDates = (c: Client): string => {
+                                const bg = (iso: string) => {
+                                    const d = new Date(iso);
+                                    return isNaN(d.getTime()) ? iso.slice(0, 10) : d.toLocaleDateString('bg-BG');
+                                };
+                                const dates = (c.renewalHistory || [])
+                                    .filter(rh => rh.date && isInReportPeriod(rh))
+                                    .map(rh => rh.date as string)
+                                    .sort();
+                                if (!dates.length) return c.createdAt ? bg(c.createdAt) : '---';
+                                return [...new Set(dates.map(bg))].join(', ');
+                            };
+
                             // Breakdown of how the reported amount was paid (splits "Смесено"
                             // into its bank + cash parts), for display in the printed list.
                             const getReportPaymentBreakdown = (c: Client) => {
@@ -3415,6 +3438,7 @@ const AdminPanel: React.FC = () => {
                             const showMunicipalityCol = needsMunicipality(reportCardType) || reportMunicipality !== 'all';
                             const showAddressCol = reportCardType === 'Пенсионерска карта' || reportCardType === 'Инвалидна карта';
                             const reportColSpan = 5 /* name, card no, type, route, amount */
+                                + (showPaymentDateCol ? 1 : 0)
                                 + (reportDistanceFilter !== 'all' ? 1 : 0)
                                 + (showAddressCol ? 1 : 0)
                                 + (reportCardType === 'Ученическа карта' ? 1 : 0)
@@ -3553,12 +3577,19 @@ const AdminPanel: React.FC = () => {
                                     // header already states the method and there is a "Сума" column).
                                     // When shown, it lists only the method name(s), not the amount.
                                     const showMethodCol = reportPaymentMethod === 'all';
-                                    cols = showMethodCol
-                                        ? ['№', 'Име', 'Карта №', 'Вид', 'Курс', 'Плащане', 'Сума']
-                                        : ['№', 'Име', 'Карта №', 'Вид', 'Курс', 'Сума'];
-                                    rowVals = (c, n) => showMethodCol
-                                        ? [n, c.name, getClientCardNumber(c) || '---', c.cardType || 'Нормална карта', c.route, getReportPaymentBreakdown(c).methods, `${getReportAmount(c)} €`]
-                                        : [n, c.name, getClientCardNumber(c) || '---', c.cardType || 'Нормална карта', c.route, `${getReportAmount(c)} €`];
+                                    cols = [
+                                        '№', 'Име', 'Карта №', 'Вид', 'Курс',
+                                        ...(showPaymentDateCol ? ['Дата'] : []),
+                                        ...(showMethodCol ? ['Плащане'] : []),
+                                        'Сума',
+                                    ];
+                                    rowVals = (c, n) => [
+                                        n, c.name, getClientCardNumber(c) || '---',
+                                        c.cardType || 'Нормална карта', c.route,
+                                        ...(showPaymentDateCol ? [getReportPaymentDates(c)] : []),
+                                        ...(showMethodCol ? [getReportPaymentBreakdown(c).methods] : []),
+                                        `${getReportAmount(c)} €`,
+                                    ];
                                 }
 
                                 const rows = filteredReportClients;
@@ -4040,6 +4071,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                             <th>Номер Карта</th>
                                                             <th>Вид Карта</th>
                                                             <th>Курс</th>
+                                                            {showPaymentDateCol && <th>Дата</th>}
                                                             {reportDistanceFilter !== 'all' && <th>Разстояние</th>}
                                                             {showAddressCol && <th>Адрес</th>}
                                                             {reportCardType === 'Ученическа карта' && <th>Училище</th>}
@@ -4054,6 +4086,9 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                 <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{getClientCardNumber(c) || '---'}</td>
                                                                 <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>{c.cardType || 'Нормална карта'}</span></td>
                                                                 <td style={{ fontSize: '0.9rem' }}>{c.route}</td>
+                                                                {showPaymentDateCol && (
+                                                                    <td style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{getReportPaymentDates(c)}</td>
+                                                                )}
                                                                 {reportDistanceFilter !== 'all' && (
                                                                     <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                                                         {isShortRouteInReport(c) ? "До 10 км" : "Над 10 км"}
@@ -4097,6 +4132,11 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                             <span style={{ fontSize: '0.7rem', padding: '0.6rem 1.2rem', background: 'rgba(0, 173, 181, 0.1)', borderRadius: '6px', color: 'var(--primary-color)', fontWeight: 600 }}>
                                                                 {c.route}
                                                             </span>
+                                                            {showPaymentDateCol && (
+                                                                <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
+                                                                    📅 {getReportPaymentDates(c)}
+                                                                </span>
+                                                            )}
                                                             {reportDistanceFilter !== 'all' && (
                                                                 <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
                                                                     {isShortRouteInReport(c) ? "До 10 км" : "Над 10 км"}
