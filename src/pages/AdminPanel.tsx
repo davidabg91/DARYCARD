@@ -36,6 +36,7 @@ import { ROUTE_METADATA, cardPrice } from '../data/routeMetadata';
 import { uploadClientPhoto } from '../utils/photoStorage';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import { MIXED_METHOD, negativeAmountError, PAYMENT_METHODS } from '../data/paymentMethods';
+import { buildXlsx } from '../utils/xlsx';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import CardWriter from '../components/CardWriter';
 import DevicesPanel from '../components/DevicesPanel';
@@ -3612,30 +3613,39 @@ const AdminPanel: React.FC = () => {
                             const handleDownloadReport = () => {
                                 const { title, subStr, cols, rowsData, rowCount } = buildReportTable();
 
-                                const cell = (s: string) => `"${String(s ?? '').replace(/"/g, '""')}"`;
-                                const line = (vals: string[]) => vals.map(cell).join(';');
+                                // Сумите влизат като числа, за да могат да се съберат в Excel.
+                                // „55 €" е текст и се сумира до нула; „55" с евро в заглавката
+                                // върши същата работа на екрана и остава смятаемо.
+                                const amountCol = cols.findIndex(c => c === 'Сума' || c === 'Плащане');
+                                const toCell = (value: string, col: number): string | number => {
+                                    if (col !== amountCol || cols[col] !== 'Сума') return value;
+                                    const n = parseFloat(String(value).replace('€', '').replace(',', '.').trim());
+                                    return Number.isFinite(n) ? n : value;
+                                };
 
-                                const body = [
-                                    line([title]),
-                                    line([subStr]),
-                                    '',
-                                    line(cols),
-                                    ...rowsData.map(line),
-                                    '',
-                                    line(['Общо записи', String(rowCount)]),
-                                    ...(useRegisterPrint ? [] : [line(['Общо приход', `${totalReportRevenue.toFixed(2)} €`])]),
-                                ].join('\r\n');
+                                const rows: (string | number)[][] = [
+                                    [title],
+                                    [subStr],
+                                    [],
+                                    cols,
+                                    ...rowsData.map(r => r.map(toCell)),
+                                    [],
+                                    ['Общо записи', rowCount],
+                                    ...(useRegisterPrint ? [] : [['Общо приход', Number(totalReportRevenue.toFixed(2))]]),
+                                ];
 
-                                const csv = `sep=;\r\n${body}\r\n`;
-                                // Датата в името, за да не се трупат „отчет (1).csv" в Изтегляния.
+                                // Датата в името, за да не се трупат „отчет (1).xlsx" в Изтегляния.
                                 const stamp = reportPeriodType === 'month'
                                     ? (reportMonth === 'all' ? 'всички-месеци' : reportMonth)
                                     : reportPeriodType === 'range'
                                         ? `${reportFrom}_${reportTo}`
                                         : reportDate;
-                                const name = `${useRegisterPrint ? 'регистър' : 'отчет'}-${stamp}.csv`;
+                                const name = `${useRegisterPrint ? 'регистър' : 'отчет'}-${stamp}.xlsx`;
 
-                                const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+                                const blob = buildXlsx({
+                                    sheetName: useRegisterPrint ? 'Регистър' : 'Отчет',
+                                    rows,
+                                });
                                 const url = URL.createObjectURL(blob);
                                 const a = document.createElement('a');
                                 a.href = url;
@@ -3779,7 +3789,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             <button
                                                 onClick={handleDownloadReport}
                                                 style={{ padding: '0.6rem 1.2rem', background: 'rgba(0, 230, 118, 0.1)', border: '1px solid var(--success-color)', color: 'var(--success-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                                                title="Сваля отчета като таблица за Excel (.csv)"
+                                                title="Сваля отчета като таблица за Excel (.xlsx)"
                                             >
                                                 <Download size={16} /> Свали Таблица
                                             </button>
