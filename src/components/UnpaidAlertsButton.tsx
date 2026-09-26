@@ -15,6 +15,9 @@ const UnpaidAlertsButton: React.FC = () => {
     // worker), бутонът пак се натиска, вместо да остане на „Активиране...“.
     const [state, setState] = useState<'idle' | 'loading' | 'enabled' | 'error'>('idle');
     const [error, setError] = useState<string | null>(null);
+    // Коя стъпка тече в момента — за да се вижда, че има движение, а не едно и също
+    // „Активиране...“ без край.
+    const [step, setStep] = useState<string | null>(null);
 
     // Истинското състояние при отваряне на таба. Ако устройството е искало
     // известия, но токенът му е бил подменен, записът се вдига наново тук.
@@ -30,12 +33,14 @@ const UnpaidAlertsButton: React.FC = () => {
         setError(null);
         setState('loading');
         try {
-            await enableAlert('unpaidAlerts', currentUser ?? undefined);
+            await enableAlert('unpaidAlerts', currentUser ?? undefined, setStep);
             setState('enabled');
         } catch (err: unknown) {
             console.error('Failed to enable unpaid alerts:', err);
             setError(err instanceof Error ? err.message : 'Грешка при активиране.');
             setState('error');
+        } finally {
+            setStep(null);
         }
     };
 
@@ -98,7 +103,7 @@ const UnpaidAlertsButton: React.FC = () => {
                     }}
                 >
                     {state === 'loading'
-                        ? <><Loader2 size={18} className="spin" /> Активиране...</>
+                        ? <><Loader2 size={18} className="spin" /> {step ? `${step}...` : 'Активиране...'}</>
                         : <><BellRing size={18} /> Активирай на това устройство</>}
                 </button>
             )}

@@ -15,6 +15,9 @@ const AdminAlertsButton: React.FC = () => {
     // worker), бутонът пак се натиска, вместо да остане на „Активиране...“.
     const [state, setState] = useState<'idle' | 'loading' | 'enabled' | 'error'>('idle');
     const [error, setError] = useState<string | null>(null);
+    // Коя стъпка тече в момента — за да се вижда, че има движение, а не едно и също
+    // „Активиране...“ без край.
+    const [step, setStep] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -28,12 +31,14 @@ const AdminAlertsButton: React.FC = () => {
         setError(null);
         setState('loading');
         try {
-            await enableAlert('adminAlerts', currentUser ?? undefined);
+            await enableAlert('adminAlerts', currentUser ?? undefined, setStep);
             setState('enabled');
         } catch (err: unknown) {
             console.error('Failed to enable admin alerts:', err);
             setError(err instanceof Error ? err.message : 'Грешка при активиране.');
             setState('error');
+        } finally {
+            setStep(null);
         }
     };
 
@@ -71,7 +76,7 @@ const AdminAlertsButton: React.FC = () => {
                     }}
                 >
                     {state === 'loading'
-                        ? <><Loader2 size={18} className="spin" /> Активиране...</>
+                        ? <><Loader2 size={18} className="spin" /> {step ? `${step}...` : 'Активиране...'}</>
                         : <><BellRing size={18} /> Активирай на това устройство</>}
                 </button>
             )}

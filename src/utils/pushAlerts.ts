@@ -1,5 +1,5 @@
 import { getToken } from 'firebase/messaging';
-import { collection, query, where, getDocs, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, addDoc, updateDoc } from 'firebase/firestore';
 import { db, getSafeMessaging } from '../firebase';
 
 /**
@@ -45,6 +45,22 @@ const VAPID_KEY = 'BE7-3cZ9dKhdQXrxP7o-QbCvl2XubkfIEkg7w8xsyJFN6OzfQ4YWg4Ujuimka
 /** Ключът, в който помним, че устройството ИСКА този вид известия. */
 const wantKey = (flag: AlertFlag) => `push_want_${flag}`;
 
+/**
+ * Документът на ТОВА устройство в `admin_push_tokens` (един за всички видове
+ * известия). Помним го, за да може изключването да стане с един запис, без да
+ * минава през `getToken` — то регистрира service worker и говори с FCM, което на
+ * телефон може да се проточи и бутонът да изглежда забит.
+ */
+const DOC_ID_KEY = 'push_doc_id';
+
+const readDocId = (): string | null => {
+    try { return localStorage.getItem(DOC_ID_KEY); } catch { return null; }
+};
+
+const writeDocId = (id: string) => {
+    try { localStorage.setItem(DOC_ID_KEY, id); } catch { /* ignore */ }
+};
+
 const wants = (flag: AlertFlag): boolean => {
     try {
         if (localStorage.getItem(wantKey(flag)) === '1') return true;
@@ -73,11 +89,39 @@ const setWants = (flag: AlertFlag, value: boolean) => {
  */
 const tokenIfAllowed = async (): Promise<string | null> => {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return null;
-    const messaging = await withTimeout(getSafeMessaging(), 8000, 'timeout').catch(() => null);
+    const messaging = await withTimeout(getSafeMessaging(), 6000, 'модулът за известия не отговори')
+        .catch((e: Error) => { lastFailure = e.message; return null; });
     if (!messaging) return null;
     // Това пресъздава push абонамента, ако service worker-ът е бил разрегистриран,
     // затова оттук може да излезе НОВ токен — точно както ни трябва за възстановяване.
-    return withTimeout(getToken(messaging, { vapidKey: VAPID_KEY }), 15000, 'timeout').catch(() => null);
+    const reg = await messagingRegistration().catch((e: Error) => { lastFailure = e.message; return undefined; });
+    return withTimeout(getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg }),
+        12000, 'заявката за токен не завърши')
+        .catch((e: Error) => { lastFailure = e.message; return null; });
+};
+
+/** Последната причина, поради която работата с токена е пропаднала (за интерфейса). */
+let lastFailure: string | null = null;
+export const lastAlertFailure = () => lastFailure;
+
+/**
+ * Service worker-ът за известия, регистриран И ИЗЧАКАН от нас.
+ *
+ * Ако не го подадем на `getToken`, SDK-ът сам регистрира `/firebase-messaging-sw.js`
+ * и чака да се активира без срок: ако това не се случи, обаждането не се връща
+ * никога и бутонът остава забит. Тук имаме срок и ясна причина.
+ */
+const messagingRegistration = async (): Promise<ServiceWorkerRegistration | undefined> => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return undefined;
+    const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/firebase-cloud-messaging-push-scope',
+    });
+    if (reg.active) return reg;
+    await withTimeout(new Promise<void>(resolve => {
+        const tick = () => { if (reg.active) resolve(); else setTimeout(tick, 150); };
+        tick();
+    }), 8000, 'Служебният модул за известия не се активира. Опитай отново.');
+    return reg;
 };
 
 const docsForToken = (token: string) =>
@@ -87,26 +131,39 @@ const docsForToken = (token: string) =>
  * Включва известието за това устройство: иска разрешение, взима токен и вдига
  * флага (или създава документа). Хвърля с разбираемо съобщение при отказ.
  */
-export async function enableAlert(flag: AlertFlag, user?: AlertUser): Promise<void> {
+export async function enableAlert(
+    flag: AlertFlag,
+    user?: AlertUser,
+    onStep?: (step: string) => void,
+): Promise<void> {
+    const step = (s: string) => { if (onStep) onStep(s); };
     if (typeof Notification === 'undefined') throw new Error('Това устройство/браузър не поддържа известия.');
     if (Notification.permission === 'denied') {
         throw new Error('Известията са забранени за сайта. Разреши ги от настройките на телефона (Настройки на сайта → Известия) и опитай отново.');
     }
 
-    const messaging = await withTimeout(getSafeMessaging(), 8000,
+    step('Подготовка');
+    const messaging = await withTimeout(getSafeMessaging(), 6000,
         'Модулът за известия не отговори. Провери връзката и опитай отново.');
     if (!messaging) throw new Error('Това устройство/браузър не поддържа известия.');
 
+    step(Notification.permission === 'granted' ? 'Подготовка' : 'Чака разрешение');
     const permission = await withTimeout(Notification.requestPermission(), 60000,
         'Не получихме отговор на въпроса за разрешение.');
     if (permission !== 'granted') throw new Error('Известията не са разрешени от браузъра.');
 
     // Тук се регистрира `firebase-messaging-sw.js` и се прави push абонаментът.
-    const token = await withTimeout(getToken(messaging, { vapidKey: VAPID_KEY }), 20000,
-        'Заявката за токен не завърши (service worker или мрежа). Опитай отново.');
+    step('Служебен модул');
+    const reg = await messagingRegistration();
+
+    step('Взимане на токен');
+    const token = await withTimeout(
+        getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg }), 12000,
+        'Заявката за токен не завърши (мрежа или FCM). Опитай отново.');
     if (!token) throw new Error('Неуспешно получаване на токен.');
 
-    await withTimeout(upsert(flag, token, user), 15000, 'Записът в базата не завърши.');
+    step('Записване');
+    await withTimeout(upsert(flag, token, user), 8000, 'Записът в базата не завърши.');
     setWants(flag, true);
 }
 
@@ -114,7 +171,7 @@ export async function enableAlert(flag: AlertFlag, user?: AlertUser): Promise<vo
 async function upsert(flag: AlertFlag, token: string, user?: AlertUser): Promise<void> {
     const existing = await docsForToken(token);
     if (existing.empty) {
-        await addDoc(collection(db, 'admin_push_tokens'), {
+        const ref = await addDoc(collection(db, 'admin_push_tokens'), {
             token,
             uid: user?.id || '',
             username: user?.username || '',
@@ -122,8 +179,10 @@ async function upsert(flag: AlertFlag, token: string, user?: AlertUser): Promise
             [flag]: true,
             createdAt: new Date().toISOString(),
         });
+        writeDocId(ref.id);
         return;
     }
+    writeDocId(existing.docs[0].id);
     // Всички съвпадащи документа, не само първият: при дублиран токен изгасяването
     // на един оставяше друг активен.
     await Promise.all(existing.docs.map(d => updateDoc(d.ref, { [flag]: true })));
@@ -132,9 +191,25 @@ async function upsert(flag: AlertFlag, token: string, user?: AlertUser): Promise
 /** Изключва известието за това устройство по всички негови документи. */
 export async function disableAlert(flag: AlertFlag): Promise<void> {
     setWants(flag, false);
+
+    // Бързият път: документът на устройството е запомнен, значи един запис стига
+    // — без `getToken`, което на телефон може да се проточи.
+    const id = readDocId();
+    if (id) {
+        await withTimeout(updateDoc(doc(db, 'admin_push_tokens', id), { [flag]: false }), 8000,
+            'Записът в базата не завърши.').catch((e: Error) => {
+                // Документът може да е изтрит (мъртъв токен) — тогава няма какво да гасим.
+                const m = String(e.message);
+                if (m.includes('NOT_FOUND') || m.includes('No document') || m.includes('not-found')) return;
+                throw e;
+            });
+        return;
+    }
+
+    // Резерва за заварени устройства: търсим по токен, с кратък срок.
     const token = await tokenIfAllowed();
     if (!token) return;
-    const existing = await docsForToken(token);
+    const existing = await withTimeout(docsForToken(token), 8000, 'Четенето от базата не завърши.');
     await Promise.all(existing.docs.map(d => updateDoc(d.ref, { [flag]: false })));
 }
 
@@ -150,7 +225,8 @@ export async function syncAlert(flag: AlertFlag, user?: AlertUser): Promise<Aler
     if (Notification.permission !== 'granted') return 'idle';
     const token = await tokenIfAllowed();
     if (!token) return 'idle';
-    const existing = await docsForToken(token);
+    const existing = await withTimeout(docsForToken(token), 8000, 'Четенето от базата не завърши.');
+    if (!existing.empty) writeDocId(existing.docs[0].id);
     const active = existing.docs.some(d => d.data()[flag] === true);
     if (active) return 'enabled';
     // Искаме известия, но записът липсва или флагът е паднал — вдигаме го наново.
