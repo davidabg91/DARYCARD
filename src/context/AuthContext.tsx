@@ -8,7 +8,6 @@ import {
 } from 'firebase/auth';
 import {
     doc,
-    getDoc,
     collection,
     onSnapshot,
     updateDoc,
@@ -30,6 +29,34 @@ interface AuthContextType {
     deleteUser: (userId: string) => Promise<void>;
 }
 
+/** Последно потвърдената от сървъра роля, за да не чака студеният старт Firestore.
+ *  Пази се само за текущата сесия (по uid) и се чисти при изход. Не е защита —
+ *  правилата на Firestore четат ролята от `users/<uid>` при всяка заявка. */
+const ROLE_CACHE_KEY = 'dary_role_cache';
+
+const readCachedRole = (uid: string): AppUser | null => {
+    try {
+        const raw = localStorage.getItem(ROLE_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as AppUser;
+        return parsed && parsed.id === uid && parsed.role ? parsed : null;
+    } catch {
+        return null;
+    }
+};
+
+const writeCachedRole = (user: AppUser) => {
+    try {
+        localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify(user));
+    } catch { /* частен режим или пълно хранилище — не е критично */ }
+};
+
+const clearCachedRole = () => {
+    try {
+        localStorage.removeItem(ROLE_CACHE_KEY);
+    } catch { /* ignore */ }
+};
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -42,59 +69,104 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [loading]);
 
     useEffect(() => {
-        // Safety timeout: stop loading after 10 seconds even if Firebase hasn't responded
+        // Ролята се чете с `onSnapshot`, а не с `getDoc`. Първото събитие идва от
+        // постоянния кеш (мигновено, работи и офлайн), второто — от сървъра. Преди
+        // това всеки студен старт чакаше цяла обиколка до Firestore, преди да се
+        // разбере кой е логнат: на телефон това са секунди, в които приложението
+        // изглежда нелогнато. Записването на сканиране изчаква точно този момент
+        // (`authLoading` в TransitView и ClientProfile), затова бавният отговор
+        // маркираше офисните прочитания като анонимни.
+        let unsubscribeRole: (() => void) | null = null;
+
+        // Авариен изход: ако Firebase не отговори, спираме въртележката — но само
+        // когато наистина няма сесия. Иначе логнат потребител попадаше на екрана за
+        // вход (ProtectedRoute праща към /login при `!currentUser`).
         const safetyTimeout = setTimeout(() => {
-            if (loadingRef.current) {
+            if (loadingRef.current && !auth.currentUser) {
                 console.warn('Authentication check timed out. Firebase might be blocked by a proxy or network issue.');
                 setLoading(false);
             }
         }, 10000);
 
         // 1. Listen for Auth State
-        const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
-            clearTimeout(safetyTimeout);
-            setLoading(true);
-            try {
-                if (fbUser) {
-                    // Get user role from Firestore
-                    const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
-                    if (userDoc.exists()) {
-                        const data = userDoc.data();
-                        setCurrentUser({
-                            id: fbUser.uid,
-                            username: data.username || fbUser.email || '',
-                            passwordHash: '', // Not needed for Firebase
-                            role: data.role as UserRole,
-                            createdAt: data.createdAt || new Date().toISOString(),
-                            lastSeen: data.lastSeen || ''
-                        });
-                        // Best-effort "last seen" stamp on each app load / login.
-                        updateDoc(doc(db, 'users', fbUser.uid), { lastSeen: new Date().toISOString() })
-                            .catch(() => { /* rules or offline — ignore */ });
-                    } else {
-                        // User exists in Auth but not in Firestore - no default role anymore
-                        // This prevents unauthorized sign-ups from gaining access
-                        console.warn(`User ${fbUser.email} logged in but has no Firestore profile. Access will be restricted.`);
-                        setCurrentUser(null);
-                    }
-                } else {
-                    setCurrentUser(null);
-                }
-            } catch (error) {
-                console.error("Error in onAuthStateChanged:", error);
-            } finally {
+        const unsubscribeAuth = onAuthStateChanged(auth, (fbUser: FirebaseUser | null) => {
+            unsubscribeRole?.();
+            unsubscribeRole = null;
+
+            if (!fbUser) {
+                clearTimeout(safetyTimeout);
+                clearCachedRole();
+                setCurrentUser(null);
+                setLoading(false);
+                return;
+            }
+
+            // Последно потвърдената роля за тази сесия — показва се веднага, докато
+            // Firestore потвърди. Не е защита: достъпът до данни минава през
+            // правилата, които четат `users/<uid>.role` на сървъра.
+            const cached = readCachedRole(fbUser.uid);
+            if (cached) {
+                clearTimeout(safetyTimeout);
+                setCurrentUser(cached);
                 setLoading(false);
             }
+
+            unsubscribeRole = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    const appUser: AppUser = {
+                        id: fbUser.uid,
+                        username: data.username || fbUser.email || '',
+                        passwordHash: '', // Not needed for Firebase
+                        role: data.role as UserRole,
+                        createdAt: data.createdAt || new Date().toISOString(),
+                        lastSeen: data.lastSeen || ''
+                    };
+                    clearTimeout(safetyTimeout);
+                    setCurrentUser(appUser);
+                    setLoading(false);
+                    if (!snap.metadata.fromCache) {
+                        writeCachedRole(appUser);
+                        // Best-effort "last seen" stamp, само при потвърждение от сървъра.
+                        updateDoc(doc(db, 'users', fbUser.uid), { lastSeen: new Date().toISOString() })
+                            .catch(() => { /* rules or offline — ignore */ });
+                    }
+                } else if (!snap.metadata.fromCache) {
+                    // Потвърдено от сървъра: има акаунт в Auth, но няма профил в
+                    // Firestore — без роля, без достъп. Празен кеш не значи нищо,
+                    // затова тогава просто чакаме сървъра.
+                    console.warn(`User ${fbUser.email} logged in but has no Firestore profile. Access will be restricted.`);
+                    clearTimeout(safetyTimeout);
+                    clearCachedRole();
+                    setCurrentUser(null);
+                    setLoading(false);
+                }
+            }, (error) => {
+                console.error("Error reading the user profile:", error);
+                clearTimeout(safetyTimeout);
+                setLoading(false);
+            });
         });
 
-        // 2. Listen for all users
-        const q = query(collection(db, 'users'));
-        const unsubscribeUsers = onSnapshot(q, (snapshot) => {
+        return () => {
+            clearTimeout(safetyTimeout);
+            unsubscribeAuth();
+            unsubscribeRole?.();
+        };
+    }, []);
+
+    // Списъкът със служители е нужен само на вписани потребители (ПОТРЕБИТЕЛИ и
+    // проверките), а правилата го дават само на вписани. Докато беше закачен
+    // безусловно, всяко публично отваряне на карта вдигаше отказана заявка на
+    // същата връзка — точно докато профилът се зарежда на терминала.
+    useEffect(() => {
+        if (!currentUser) return;
+        const unsubscribeUsers = onSnapshot(query(collection(db, 'users')), (snapshot) => {
             const userList: AppUser[] = [];
-            snapshot.forEach((doc) => {
-                const data = doc.data();
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
                 userList.push({
-                    id: doc.id,
+                    id: docSnap.id,
                     username: data.username || '',
                     passwordHash: '',
                     role: data.role as UserRole,
@@ -103,18 +175,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 });
             });
             setUsers(userList);
-
-            // AUTO-MIGRATION of default admin if users collection is empty
-            if (snapshot.empty) {
-                console.log('No users found. You should register your first admin account.');
-            }
-        });
-
-        return () => {
-            unsubscribeAuth();
-            unsubscribeUsers();
-        };
-    }, []);
+        }, (error) => console.error('Users listener error:', error));
+        // Изчистване при изход, за да не остава списъкът на общ компютър.
+        return () => { unsubscribeUsers(); setUsers([]); };
+    }, [currentUser]);
 
     const login = async (email: string, password: string) => {
         const emailToLogin = email.includes('@') ? email : `${email}@dary.com`;
@@ -122,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const logout = async () => {
+        clearCachedRole();
         await signOut(auth);
     };
 

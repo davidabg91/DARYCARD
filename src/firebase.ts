@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -16,7 +16,13 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+// Изрична персистентност вместо подразбирането на getAuth: сесията се пази в
+// IndexedDB (localStorage като резерва). Така, ако IndexedDB е недостъпна, пада
+// към нещо трайно, вместо тихо към памет-само — при което всяко отваряне на
+// приложението щеше да иска вход отново.
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+});
 
 import { persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 // Enabling persistence for INSTANT sub-second loading on myPOS terminals
@@ -24,7 +30,18 @@ import { persistentLocalCache, persistentMultipleTabManager } from 'firebase/fir
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+// Analytics се вдига след първоначалното рисуване: при зареждане на модула то
+// тегли още SDK и прави заявка, точно докато приложението се опитва да покаже
+// профила на картата. Никой не ползва износа освен самото инициализиране.
+if (typeof window !== 'undefined') {
+  const startAnalytics = () => { try { getAnalytics(app); } catch { /* блокиран или неподдържан */ } };
+  if ('requestIdleCallback' in window) {
+    (window as unknown as { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => void })
+      .requestIdleCallback(startAnalytics, { timeout: 5000 });
+  } else {
+    setTimeout(startAnalytics, 3000);
+  }
+}
 export const storage = getStorage(app);
 
 let messagingInstance: Messaging | null = null;
