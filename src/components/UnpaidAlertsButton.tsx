@@ -1,64 +1,36 @@
-import React, { useState } from 'react';
-import { getToken } from 'firebase/messaging';
-import { collection, query, where, getDocs, addDoc, updateDoc } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, BellRing, BellOff, Loader2, CheckCircle2 } from 'lucide-react';
-import { db, getSafeMessaging } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-
-const VAPID_KEY = 'BE7-3cZ9dKhdQXrxP7o-QbCvl2XubkfIEkg7w8xsyJFN6OzfQ4YWg4UjuimkaALUBBjXz4Inqzc0bPhdupYOlYo';
+import { enableAlert, disableAlert, syncAlert } from '../utils/pushAlerts';
 
 /**
- * Lets an admin subscribe THIS device to receive a push alert the moment a card
- * is scanned without a valid subscription (see the alertUnpaidScan Cloud
- * Function). The device's FCM token is stored/updated in `admin_push_tokens`
- * with `unpaidAlerts: true`.
+ * Абонира ТОВА устройство за push известие в момента, в който карта без валиден
+ * абонамент бъде сканирана (виж alertUnpaidScan). Състоянието на бутона идва от
+ * `admin_push_tokens`, а не от localStorage — виж utils/pushAlerts.ts защо.
  */
 const UnpaidAlertsButton: React.FC = () => {
     const { currentUser } = useAuth();
-    const [state, setState] = useState<'idle' | 'loading' | 'enabled' | 'error'>(
-        () => (typeof localStorage !== 'undefined' && localStorage.getItem('unpaid_alerts_token') ? 'enabled' : 'idle')
-    );
+    const [state, setState] = useState<'idle' | 'loading' | 'enabled' | 'error'>('loading');
     const [error, setError] = useState<string | null>(null);
+
+    // Истинското състояние при отваряне на таба. Ако устройството е искало
+    // известия, но токенът му е бил подменен, записът се вдига наново тук.
+    useEffect(() => {
+        let cancelled = false;
+        syncAlert('unpaidAlerts', currentUser ?? undefined)
+            .then(s => { if (!cancelled) setState(s === 'unsupported' ? 'idle' : s); })
+            .catch(err => {
+                console.error('Проверката на абонамента се провали:', err);
+                if (!cancelled) setState('idle');
+            });
+        return () => { cancelled = true; };
+    }, [currentUser]);
 
     const handleEnable = async () => {
         setError(null);
         setState('loading');
         try {
-            const messaging = await getSafeMessaging();
-            if (!messaging) {
-                setError('Това устройство/браузър не поддържа известия.');
-                setState('error');
-                return;
-            }
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') {
-                setError('Известията не са разрешени от браузъра.');
-                setState('error');
-                return;
-            }
-            const token = await getToken(messaging, { vapidKey: VAPID_KEY });
-            if (!token) {
-                setError('Неуспешно получаване на токен.');
-                setState('error');
-                return;
-            }
-
-            // Reuse the device's token doc if it already exists (e.g. from security
-            // alerts); otherwise create it. Either way flag unpaidAlerts.
-            const existing = await getDocs(query(collection(db, 'admin_push_tokens'), where('token', '==', token)));
-            if (existing.empty) {
-                await addDoc(collection(db, 'admin_push_tokens'), {
-                    token,
-                    uid: currentUser?.id || '',
-                    username: currentUser?.username || '',
-                    userAgent: navigator.userAgent,
-                    unpaidAlerts: true,
-                    createdAt: new Date().toISOString(),
-                });
-            } else {
-                await updateDoc(existing.docs[0].ref, { unpaidAlerts: true });
-            }
-            localStorage.setItem('unpaid_alerts_token', token);
+            await enableAlert('unpaidAlerts', currentUser ?? undefined);
             setState('enabled');
         } catch (err: unknown) {
             console.error('Failed to enable unpaid alerts:', err);
@@ -71,14 +43,7 @@ const UnpaidAlertsButton: React.FC = () => {
         setError(null);
         setState('loading');
         try {
-            const token = localStorage.getItem('unpaid_alerts_token');
-            if (token) {
-                const existing = await getDocs(query(collection(db, 'admin_push_tokens'), where('token', '==', token)));
-                if (!existing.empty) {
-                    await updateDoc(existing.docs[0].ref, { unpaidAlerts: false });
-                }
-            }
-            localStorage.removeItem('unpaid_alerts_token');
+            await disableAlert('unpaidAlerts');
             setState('idle');
         } catch (err: unknown) {
             console.error('Failed to disable unpaid alerts:', err);

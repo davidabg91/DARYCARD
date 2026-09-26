@@ -24,7 +24,7 @@ const PageLoader = () => <LoadingScreen />;
 
 // The true bundle version. Живее извън компонента, защото и регистърът
 // на устройствата я докладва, за да се вижда кой терминал е със старо APK.
-const INTERNAL_APP_VERSION = "2026.09.26.21.00";
+const INTERNAL_APP_VERSION = "2026.09.26.22.18";
 
 function ClientProfileWrapper() {
   return <ClientProfile />;
@@ -173,6 +173,16 @@ function App() {
           if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
             for (const registration of registrations) {
+               // Push известията стоят на отделен service worker
+               // (`firebase-messaging-sw.js`, собствен scope). Той не сервира нищо от
+               // приложението, така че не може да задържи стар код — а разрегистрирането
+               // му разваля push абонамента: токенът умира, Cloud Function-ът получава
+               // `registration-token-not-registered` и изтрива устройството от
+               // `admin_push_tokens`. Така всяка нова версия тихо отписваше всички от
+               // известията. Него го оставяме.
+               const url = registration.active?.scriptURL || registration.waiting?.scriptURL
+                 || registration.installing?.scriptURL || '';
+               if (url.includes('firebase-messaging-sw') || registration.scope.includes('firebase-cloud-messaging-push-scope')) continue;
                await registration.unregister();
             }
           }
