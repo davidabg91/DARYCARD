@@ -10,17 +10,17 @@ import { enableAlert, syncAlert } from '../utils/pushAlerts';
  */
 const AdminAlertsButton: React.FC = () => {
     const { currentUser } = useAuth();
-    const [state, setState] = useState<'idle' | 'loading' | 'enabled' | 'error'>('loading');
+    // Стартово състояние: бутонът е готов за натискане. Сверяването с базата тече
+    // отзад и може само да го ВДИГНЕ на „включено“ — ако то заседне (мрежа, service
+    // worker), бутонът пак се натиска, вместо да остане на „Активиране...“.
+    const [state, setState] = useState<'idle' | 'loading' | 'enabled' | 'error'>('idle');
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
         syncAlert('adminAlerts', currentUser ?? undefined)
-            .then(s => { if (!cancelled) setState(s === 'unsupported' ? 'idle' : s); })
-            .catch(err => {
-                console.error('Проверката на абонамента се провали:', err);
-                if (!cancelled) setState('idle');
-            });
+            .then(s => { if (!cancelled && s === 'enabled') setState('enabled'); })
+            .catch(err => console.error('Проверката на абонамента се провали:', err));
         return () => { cancelled = true; };
     }, [currentUser]);
 

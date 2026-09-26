@@ -1,5 +1,8 @@
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
+// Версията ТРЯБВА да е същата като на `firebase` в package.json (сега 12.11.0).
+// Приложението работи с v12, а тук стоеше v9: несъвместими двойки чупят
+// получаването на токен, при което `getToken` увисва и бутонът остава „Активиране...".
+importScripts('https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/12.11.0/firebase-messaging-compat.js');
 
 firebase.initializeApp({
   apiKey: "AIzaSyB0F2U11RI7NcBs0ghhu5J642HcGNP5T18",

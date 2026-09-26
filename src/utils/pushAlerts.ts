@@ -23,6 +23,18 @@ export type AlertFlag = 'unpaidAlerts' | 'adminAlerts' | 'batteryAlerts';
 
 export type AlertState = 'idle' | 'enabled' | 'unsupported';
 
+/**
+ * Никое от обажданията към messaging не бива да виси без край. `getToken`
+ * регистрира service worker-а, абонира push и говори с FCM — всяка от тези стъпки
+ * може да замълчи (блокирана мрежа, service worker, който не се активира), а
+ * тогава бутонът оставаше на „Активиране..." завинаги.
+ */
+const withTimeout = <T,>(p: Promise<T>, ms: number, what: string): Promise<T> =>
+    Promise.race([
+        p,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(what)), ms)),
+    ]);
+
 interface AlertUser {
     id?: string;
     username?: string;
@@ -61,11 +73,11 @@ const setWants = (flag: AlertFlag, value: boolean) => {
  */
 const tokenIfAllowed = async (): Promise<string | null> => {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return null;
-    const messaging = await getSafeMessaging();
+    const messaging = await withTimeout(getSafeMessaging(), 8000, 'timeout').catch(() => null);
     if (!messaging) return null;
     // Това пресъздава push абонамента, ако service worker-ът е бил разрегистриран,
     // затова оттук може да излезе НОВ токен — точно както ни трябва за възстановяване.
-    return getToken(messaging, { vapidKey: VAPID_KEY }).catch(() => null);
+    return withTimeout(getToken(messaging, { vapidKey: VAPID_KEY }), 15000, 'timeout').catch(() => null);
 };
 
 const docsForToken = (token: string) =>
@@ -76,16 +88,25 @@ const docsForToken = (token: string) =>
  * флага (или създава документа). Хвърля с разбираемо съобщение при отказ.
  */
 export async function enableAlert(flag: AlertFlag, user?: AlertUser): Promise<void> {
-    const messaging = await getSafeMessaging();
+    if (typeof Notification === 'undefined') throw new Error('Това устройство/браузър не поддържа известия.');
+    if (Notification.permission === 'denied') {
+        throw new Error('Известията са забранени за сайта. Разреши ги от настройките на телефона (Настройки на сайта → Известия) и опитай отново.');
+    }
+
+    const messaging = await withTimeout(getSafeMessaging(), 8000,
+        'Модулът за известия не отговори. Провери връзката и опитай отново.');
     if (!messaging) throw new Error('Това устройство/браузър не поддържа известия.');
 
-    const permission = await Notification.requestPermission();
+    const permission = await withTimeout(Notification.requestPermission(), 60000,
+        'Не получихме отговор на въпроса за разрешение.');
     if (permission !== 'granted') throw new Error('Известията не са разрешени от браузъра.');
 
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+    // Тук се регистрира `firebase-messaging-sw.js` и се прави push абонаментът.
+    const token = await withTimeout(getToken(messaging, { vapidKey: VAPID_KEY }), 20000,
+        'Заявката за токен не завърши (service worker или мрежа). Опитай отново.');
     if (!token) throw new Error('Неуспешно получаване на токен.');
 
-    await upsert(flag, token, user);
+    await withTimeout(upsert(flag, token, user), 15000, 'Записът в базата не завърши.');
     setWants(flag, true);
 }
 
