@@ -111,6 +111,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setLoading(false);
             }
 
+            // „Последно активен“ се пише ТОЧНО ВЕДНЪЖ за влизане, а НЕ при всяка снимка
+            // на документа. Иначе записът променя същия документ, който слушаме: с два
+            // отворени прозореца на същия акаунт всеки запис будеше другия, той пишеше
+            // в отговор, и така без край.
+            let stamped = false;
+
             unsubscribeRole = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
                 if (snap.exists()) {
                     const data = snap.data();
@@ -123,13 +129,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         lastSeen: data.lastSeen || ''
                     };
                     clearTimeout(safetyTimeout);
-                    setCurrentUser(appUser);
+                    // Сменяме обекта САМО когато има съществена разлика. `currentUser` е
+                    // зависимост на десетки ефекти (слушателят на клиентския документ в
+                    // ClientProfile е един от тях) — нов обект при всяка снимка ги презакача
+                    // всичките, а тогава първият отговор за нова карта няма шанс да се върне.
+                    setCurrentUser(prev => (
+                        prev && prev.id === appUser.id && prev.username === appUser.username
+                            && prev.role === appUser.role && prev.createdAt === appUser.createdAt
+                            ? prev
+                            : appUser
+                    ));
                     setLoading(false);
                     if (!snap.metadata.fromCache) {
                         writeCachedRole(appUser);
-                        // Best-effort "last seen" stamp, само при потвърждение от сървъра.
-                        updateDoc(doc(db, 'users', fbUser.uid), { lastSeen: new Date().toISOString() })
-                            .catch(() => { /* rules or offline — ignore */ });
+                        if (!stamped) {
+                            stamped = true;
+                            updateDoc(doc(db, 'users', fbUser.uid), { lastSeen: new Date().toISOString() })
+                                .catch(() => { /* rules or offline — ignore */ });
+                        }
                     }
                 } else if (!snap.metadata.fromCache) {
                     // Потвърдено от сървъра: има акаунт в Auth, но няма профил в

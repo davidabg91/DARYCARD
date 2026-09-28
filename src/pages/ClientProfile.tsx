@@ -792,6 +792,16 @@ const ClientProfile: React.FC = () => {
         return () => { alive = false; };
     }, [id, isSignedIn]);
 
+    // След този срок допълнителните условия (логването и номерът от регистъра)
+    // престават да държат екрана. Те решават само какви надписи да излязат, а
+    // досега едно забавено четене оставяше целия профил на „зареждане“.
+    const [extrasGraceOver, setExtrasGraceOver] = useState(false);
+    useEffect(() => {
+        setExtrasGraceOver(false);
+        const t = setTimeout(() => setExtrasGraceOver(true), 8000);
+        return () => clearTimeout(t);
+    }, [id]);
+
     useEffect(() => {
         if (!id) return;
         const unsubscribe = onSnapshot(doc(db, 'clients', id), (docSnap) => {
@@ -799,7 +809,7 @@ const ClientProfile: React.FC = () => {
                 const data = docSnap.data() as Record<string, unknown>;
                 const clientData: Client = { ...data, id: docSnap.id } as Client;
                 
-                if (currentUser && urlUid && clientData.nfcUid !== urlUid.toUpperCase()) {
+                if (isSignedIn && urlUid && clientData.nfcUid !== urlUid.toUpperCase()) {
                     updateDoc(doc(db, 'clients', id), { nfcUid: urlUid.toUpperCase() }).catch(console.error);
                     clientData.nfcUid = urlUid.toUpperCase();
                 }
@@ -850,7 +860,11 @@ const ClientProfile: React.FC = () => {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, [id, initAudio, playSuccessSound, playErrorSound, urlUid, currentUser]); // Removed cloudSyncStatus to prevent re-subscription flicker
+        // Зависимостта е `isSignedIn` (булево), а НЕ целият `currentUser`: нов обект на
+        // потребителя презакачаше този слушател отначало, и ако това ставаше по-често от
+        // една обиколка до сървъра, първият отговор за некеширана карта никога не
+        // стигаше и екранът оставаше на „зареждане“.
+    }, [id, initAudio, playSuccessSound, playErrorSound, urlUid, isSignedIn]); // Removed cloudSyncStatus to prevent re-subscription flicker
 
     const scannedRef = useRef<string | null>(null);
     // Always points at the latest client snapshot (used when saving an inspection
@@ -1026,7 +1040,7 @@ const ClientProfile: React.FC = () => {
     // регистърът → още един междинен екран, и чак накрая „АКТИВИРАЙ КАРТАТА".
     // Отпечатаните 1000 са в CARDS_MAPPING и не чакат нищо допълнително.
     const cardNumberPending = !!currentUser && !CARDS_MAPPING[id] && registryCardNumber === null;
-    if ((loading || authLoading || cardNumberPending) && !client) {
+    if ((loading || (!extrasGraceOver && (authLoading || cardNumberPending))) && !client) {
         return <LoadingScreen />;
     }
 
