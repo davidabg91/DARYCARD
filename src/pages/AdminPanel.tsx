@@ -721,6 +721,9 @@ const AdminPanel: React.FC = () => {
     
     // NFC Tools State
     const [nfcQuantity, setNfcQuantity] = useState<number>(100);
+    // Докъде е стигнало генерирането — без това бутонът пише само
+    // „Генерирам…“ и не се разбира дали чака брояча, или записва картите.
+    const [batchStep, setBatchStep] = useState<string | null>(null);
     // Всяка генерирана карта носи и физическия си номер, заделен от брояча в Firestore.
     const [generatedCards, setGeneratedCards] = useState<BatchCard[]>([]);
     const [generatingBatch, setGeneratingBatch] = useState(false);
@@ -1917,7 +1920,13 @@ const AdminPanel: React.FC = () => {
         }
         if (generatingBatch) return;
 
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            setMessage({ text: 'Няма връзка с интернет. Номерата се заделят от сървъра — опитайте пак на мрежа.', type: 'error' });
+            return;
+        }
+
         setGeneratingBatch(true);
+        setBatchStep('Заделям номера');
         try {
             const baseUrl = `${window.location.origin}${window.location.pathname}#/client/`;
             const startNumber = await reserveCardNumbers(quantity);
@@ -1931,7 +1940,12 @@ const AdminPanel: React.FC = () => {
             });
 
             const batchId = new Date().toISOString();
-            await registerGeneratedCards(cards, { batchId, createdBy: currentUser?.username || 'Админ' });
+            setBatchStep(`Записвам 0/${quantity}`);
+            await registerGeneratedCards(
+                cards,
+                { batchId, createdBy: currentUser?.username || 'Админ' },
+                (done, total) => setBatchStep(`Записвам ${done}/${total}`),
+            );
 
             setGeneratedCards(cards);
             const firstNum = cards[0].cardNumber;
@@ -1946,11 +1960,14 @@ const AdminPanel: React.FC = () => {
             console.error('Генерирането на партидата се провали:', err);
             setGeneratedCards([]);
             setMessage({
-                text: 'Партидата НЕ беше генерирана (грешка при записа в базата). Опитайте отново — номера няма да се повторят.',
+                text: err instanceof Error && err.message
+                    ? `Партидата НЕ беше генерирана: ${err.message} Опитайте отново — номера няма да се повторят.`
+                    : 'Партидата НЕ беше генерирана (грешка при записа в базата). Опитайте отново — номера няма да се повторят.',
                 type: 'error'
             });
         } finally {
             setGeneratingBatch(false);
+            setBatchStep(null);
         }
     };
 
@@ -5222,7 +5239,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                     disabled={generatingBatch}
                                     style={{ padding: '0.8rem 2rem', borderRadius: '12px', background: generatingBatch ? 'rgba(255,255,255,0.12)' : 'var(--accent-color)', color: '#fff', border: 'none', fontWeight: 700, cursor: generatingBatch ? 'wait' : 'pointer' }}
                                 >
-                                    {generatingBatch ? 'Генерирам…' : 'Генерирай'}
+                                    {generatingBatch ? `${batchStep || 'Генерирам'}…` : 'Генерирай'}
                                 </button>
                             </div>
 

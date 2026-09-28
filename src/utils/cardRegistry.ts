@@ -38,10 +38,23 @@ export interface RegistryCard {
  * Заделя `count` последователни номера с транзакция и връща първия.
  * Ако документът го няма (първата партида), започва от CARD_NUMBER_START.
  */
+/**
+ * Нито една операция тук не бива да виси без край.
+ *
+ * `runTransaction` задължително ходи до сървъра — кешът не върши работа за брояч,
+ * а `commit()` на партида се връща чак когато сървърът потвърди. На телефон със
+ * слаба връзка и двете могат да замълчат и бутонът остава на „Генерирам…“.
+ */
+const withDeadline = <T,>(work: Promise<T>, ms: number, what: string): Promise<T> =>
+    Promise.race([
+        work,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(what)), ms)),
+    ]);
+
 export const reserveCardNumbers = async (count: number): Promise<number> => {
     if (count <= 0) throw new Error('Количеството трябва да е поне 1.');
     const ref = doc(db, COUNTER_COLLECTION, COUNTER_DOC);
-    return runTransaction(db, async (tx) => {
+    return withDeadline(runTransaction(db, async (tx) => {
         const snap = await tx.get(ref);
         const stored = snap.exists() ? Number(snap.data()?.next) : NaN;
         // Никога не тръгваме под 1001, дори броячът да е повреден или изтрит —
@@ -51,7 +64,7 @@ export const reserveCardNumbers = async (count: number): Promise<number> => {
             : CARD_NUMBER_START;
         tx.set(ref, { next: start + count, updatedAt: new Date().toISOString() }, { merge: true });
         return start;
-    });
+    }), 20000, 'Броячът на номерата не отговори (няма връзка?). Номера не са заделени.');
 };
 
 /**
@@ -60,7 +73,8 @@ export const reserveCardNumbers = async (count: number): Promise<number> => {
  */
 export const registerGeneratedCards = async (
     cards: RegistryCard[],
-    meta: { batchId: string; createdBy: string }
+    meta: { batchId: string; createdBy: string },
+    onProgress?: (done: number, total: number) => void,
 ): Promise<void> => {
     const nowIso = new Date().toISOString();
     for (let i = 0; i < cards.length; i += BATCH_LIMIT) {
@@ -77,7 +91,9 @@ export const registerGeneratedCards = async (
                 assignedTo: '',
             });
         }
-        await batch.commit();
+        await withDeadline(batch.commit(), 30000,
+            'Записът на картите не завърши (няма връзка?).');
+        onProgress?.(Math.min(i + chunk.length, cards.length), cards.length);
     }
 };
 
