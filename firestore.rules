@@ -117,6 +117,25 @@ service cloud.firestore {
         || (isStaff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assignedTo', 'assignedAt']));
     }
 
+    // ---- Билети, издадени от терминал ----
+    // Шофьорът НЕ се логва, затова създаването е публично, но със закован списък
+    // от полета и типове. Издаден билет не се променя — това е счетоводен запис,
+    // не чернова. Четенето е за служител, изтриването — само за админ.
+    match /tickets/{ticketId} {
+      allow read: if isStaff();
+      allow create: if request.resource.data.keys().hasOnly([
+             'number', 'line', 'from', 'to', 'price', 'at', 'deviceId', 'deviceName', 'printed'
+           ])
+        && request.resource.data.number is string
+        && request.resource.data.number.size() <= 40
+        && request.resource.data.at is string
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0
+        && request.resource.data.price <= 1000;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
     // ---- NFC UID -> client mapping ----
     // Lets a terminal that read only the chip's physical UID (fast swipe, printed
     // URL not read) resolve it to the client id. Public `get` (like a single

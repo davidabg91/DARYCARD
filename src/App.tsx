@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
+import TicketButton from './components/TicketButton';
 import LoadingScreen from './components/LoadingScreen';
 import ClientProfile from './pages/ClientProfile';
 import LoginPage from './pages/LoginPage';
@@ -24,7 +25,7 @@ const PageLoader = () => <LoadingScreen />;
 
 // The true bundle version. Живее извън компонента, защото и регистърът
 // на устройствата я докладва, за да се вижда кой терминал е със старо APK.
-const INTERNAL_APP_VERSION = "2026.09.28.09.24";
+const INTERNAL_APP_VERSION = "2026.09.28.10.00";
 
 function ClientProfileWrapper() {
   return <ClientProfile />;
@@ -288,6 +289,9 @@ function App() {
             </Route>
           </Routes>
         </Suspense>
+        {/* Билетите са извън Routes: бутонът трябва да стои над всеки екран на
+            терминала и да не иска логване. В браузър не се показва изобщо. */}
+        <TicketButton />
       </HashRouter>
     </AuthProvider>
     </ErrorBoundary>
