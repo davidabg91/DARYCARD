@@ -2231,12 +2231,26 @@ const AdminPanel: React.FC = () => {
     // Financial Calculations for Accountant
     const todayIso = new Date().toISOString().split('T')[0];
     const registrationsToday = clients.filter(c => c.createdAt?.startsWith(todayIso)).length;
+    /**
+     * Подновени карти — брои се КАРТАТА, не плащанията: служебна карта
+     * се завежда с по един запис за всеки месец наведнъж и би раздула броя.
+     * Новоиздадена днес карта не е подновяване — първото плащане е при издаването,
+     * затова тя се води само в „Регистрирани“.
+     */
+    const renewalsToday = clients.filter(c =>
+        !c.createdAt?.startsWith(todayIso)
+        && (c.renewalHistory || []).some(r => r.date?.startsWith(todayIso))
+    ).length;
     const revenueToday = clients.reduce((acc, c) => {
         const todayPayments = (c.renewalHistory || []).filter(r => r.date?.startsWith(todayIso));
         return acc + todayPayments.reduce((sum, p) => sum + p.amount, 0);
     }, 0);
 
     const registrationsSelectedDay = clients.filter(c => c.createdAt?.startsWith(selectedDate)).length;
+    const renewalsSelectedDay = clients.filter(c =>
+        !c.createdAt?.startsWith(selectedDate)
+        && (c.renewalHistory || []).some(r => r.date?.startsWith(selectedDate))
+    ).length;
     const revenueSelectedDay = clients.reduce((acc, c) => {
         const payments = (c.renewalHistory || []).filter(r => r.date?.startsWith(selectedDate));
         return acc + payments.reduce((sum, p) => sum + p.amount, 0);
@@ -2807,7 +2821,10 @@ const AdminPanel: React.FC = () => {
                                 <div style={{ background: 'rgba(0, 200, 83, 0.1)', color: '#00c853', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>ДНЕС</div>
                             </div>
                             <div style={{ fontSize: isMobile ? '1.75rem' : '2.5rem', fontWeight: 900, color: '#fff' }}>{revenueToday.toFixed(2)} €</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Регистрирани днес: <b>{registrationsToday}</b></div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                <span>Нови карти: <b>{registrationsToday}</b></span>
+                                <span>Подновени: <b>{renewalsToday}</b></span>
+                            </div>
                             <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px solid var(--surface-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Каса днес (в брой)</span>
@@ -3199,14 +3216,18 @@ const AdminPanel: React.FC = () => {
                                             }}
                                         />
                                     </div>
-                                    <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,152,0,0.05)', borderRadius: '12px', border: '1px solid rgba(255,152,0,0.1)' }}>
+                                    <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                                        <div style={{ textAlign: 'center', padding: '1rem 0.5rem', background: 'rgba(255,152,0,0.05)', borderRadius: '12px', border: '1px solid rgba(255,152,0,0.1)' }}>
                                             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Оборот</div>
                                             <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ff9800' }}>{revenueSelectedDay.toFixed(2)} €</div>
                                         </div>
-                                        <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                        <div style={{ textAlign: 'center', padding: '1rem 0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
                                             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Нови Карти</div>
                                             <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{registrationsSelectedDay}</div>
+                                        </div>
+                                        <div style={{ textAlign: 'center', padding: '1rem 0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Подновени</div>
+                                            <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{renewalsSelectedDay}</div>
                                         </div>
                                     </div>
                                     <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--surface-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
