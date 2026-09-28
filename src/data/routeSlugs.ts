@@ -22,3 +22,8 @@ export const routeSlug = (route: string): string =>
 // The address of a line's own page. Kept with a trailing slash because the
 // pages are written as <slug>/index.html on static hosting.
 export const linePagePath = (route: string): string => `/linia/${routeSlug(route)}/`;
+
+// Обратното: от адрес към име на линия. Трябва на екрана за известия, където
+// се идва от страницата на линията с латински адрес.
+export const routeFromSlug = (slug: string, routes: string[]): string | null =>
+  routes.find(r => routeSlug(r) === slug) ?? null;

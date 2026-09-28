@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { NFCService } from './services/NFCService';
+import { refreshLineSubscriptions } from './utils/refreshLineSubscriptions';
 import { recordDeviceScan, startDeviceHeartbeat } from './utils/deviceHeartbeat';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -20,12 +21,13 @@ const Help = lazy(() => import('./pages/Help'));
 const Signal = lazy(() => import('./pages/Signal'));
 const BusRental = lazy(() => import('./pages/BusRental'));
 const Legal = lazy(() => import('./pages/Legal'));
+const LineAlerts = lazy(() => import('./pages/LineAlerts'));
 
 const PageLoader = () => <LoadingScreen />;
 
 // The true bundle version. Живее извън компонента, защото и регистърът
 // на устройствата я докладва, за да се вижда кой терминал е със старо APK.
-const INTERNAL_APP_VERSION = "2026.09.28.17.19";
+const INTERNAL_APP_VERSION = "2026.09.28.17.48";
 
 function ClientProfileWrapper() {
   return <ClientProfile />;
@@ -225,6 +227,11 @@ function App() {
     // В браузър и PWA не прави нищо.
     const stopHeartbeat = startDeviceHeartbeat(INTERNAL_APP_VERSION);
 
+    // Абонаментите за известия по линии се подновяват тихо: токенът умира при
+    // развален push абонамент, а записът остава със стария — известията спират,
+    // без никой да разбере.
+    void refreshLineSubscriptions();
+
     // Счупен бъндъл: лениво зареждан модул не се сваля. Тогава `Suspense`
     // чака завинаги и на екрана остава въртяща се въртележка над празно място.
     //
@@ -345,6 +352,8 @@ function App() {
               } />
 
               <Route path="legal" element={<Legal />} />
+              {/* Известия за една линия — страницата на линията води тук. */}
+              <Route path="izvestia/:slug" element={<LineAlerts />} />
             </Route>
           </Routes>
         </Suspense>
