@@ -146,7 +146,8 @@ const ROUTES = [
     "Пордим - Каменец", "Пордим - Згалево", "Пордим - Одърне",
     "Славовица - Тръстеник",
     // Нови направления (2026-09-25) — още без разписание, само за издаване на карти.
-    "Ставерци", "Гостиля", "Кнежа"
+    "Ставерци", "Гостиля", "Кнежа",
+    "Ясен - Търнене", "Крушовене - Тръстеник"
 ];
 
 // The card types offered on registration, reused for the clients-list filter.
@@ -1940,29 +1941,49 @@ const AdminPanel: React.FC = () => {
             });
 
             const batchId = new Date().toISOString();
-            setBatchStep(`Записвам 0/${quantity}`);
-            await registerGeneratedCards(
-                cards,
-                { batchId, createdBy: currentUser?.username || 'Админ' },
-                (done, total) => setBatchStep(`Записвам ${done}/${total}`),
-            );
-
-            setGeneratedCards(cards);
             const firstNum = cards[0].cardNumber;
             const lastNum = cards[cards.length - 1].cardNumber;
-            setMessage({ text: `Генерирани ${quantity} карти: № ${firstNum} – № ${lastNum}.`, type: 'success' });
-            await logGlobalActivity(
+
+            // Линковете се показват ВЕДНАГА. Номерата вече са заковани на сървъра
+            // (транзакцията мина), а записът в регистъра е траен: Firestore го държи локално
+            // и го довършва сам, дори да загубим връзка.
+            //
+            // Защо не го чакаме: в инсталираното приложение на телефона записите
+            // стигаха до сървъра (проверено в базата), но потвърждението не се връщаше и
+            // бутонът висеше на „Записвам 0/1“. Приложението и Chrome делят една база,
+            // и когато Android замрази единия прозорец, отговорът се губи по пътя.
+            setGeneratedCards(cards);
+            setMessage({
+                text: `Генерирани ${quantity} карти: № ${firstNum} – № ${lastNum}. Записвам в регистъра…`,
+                type: 'success'
+            });
+
+            registerGeneratedCards(cards, { batchId, createdBy: currentUser?.username || 'Админ' })
+                .then(() => setMessage({
+                    text: `Генерирани ${quantity} карти: № ${firstNum} – № ${lastNum}. Записани в регистъра.`,
+                    type: 'success'
+                }))
+                .catch(err => {
+                    console.error('Записът в регистъра не се потвърди:', err);
+                    setMessage({
+                        text: `Линковете са готови (№ ${firstNum} – № ${lastNum}), но записът в регистъра не се потвърди навреме. Той се довършва сам — проверете списъка след малко.`,
+                        type: 'error'
+                    });
+                });
+
+            // Дневникът също не бива да държи бутона.
+            void logGlobalActivity(
                 'Генериране на NFC линкове',
                 'Система',
                 `Генерирани ${quantity} NFC линка с номера № ${firstNum} – № ${lastNum}.`
             );
         } catch (err) {
-            console.error('Генерирането на партидата се провали:', err);
+            console.error('Заделянето на номера се провали:', err);
             setGeneratedCards([]);
             setMessage({
                 text: err instanceof Error && err.message
                     ? `Партидата НЕ беше генерирана: ${err.message} Опитайте отново — номера няма да се повторят.`
-                    : 'Партидата НЕ беше генерирана (грешка при записа в базата). Опитайте отново — номера няма да се повторят.',
+                    : 'Партидата НЕ беше генерирана (номерата не се заделиха). Опитайте отново — номера няма да се повторят.',
                 type: 'error'
             });
         } finally {

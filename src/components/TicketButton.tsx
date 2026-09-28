@@ -13,7 +13,15 @@ import { destinationsFor, formatPrice, ticketLines, type Destination } from '../
  */
 const LINE_KEY = 'ticket_line';
 
-const TicketButton: React.FC = () => {
+interface Props {
+    /**
+     * `floating` — кръгъл бутон долу вдясно, видим на всеки екран.
+     * `inline`   — широк бутон на мястото, където е поставен — под сканираната карта.
+     */
+    variant?: 'floating' | 'inline';
+}
+
+const TicketButton: React.FC<Props> = ({ variant = 'floating' }) => {
     const [open, setOpen] = useState(false);
     const [lineId, setLineId] = useState<string | null>(() => {
         try { return sessionStorage.getItem(LINE_KEY); } catch { return null; }
@@ -69,18 +77,32 @@ const TicketButton: React.FC = () => {
 
     return (
         <>
-            <button
-                onClick={() => setOpen(true)}
-                aria-label="Издай билет"
-                style={{
-                    position: 'fixed', right: '1rem', bottom: '1rem', zIndex: 9000,
-                    width: '64px', height: '64px', borderRadius: '50%', border: 'none',
-                    background: '#00c853', color: '#fff', boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-                }}
-            >
-                <Ticket size={30} />
-            </button>
+            {variant === 'inline' ? (
+                <button
+                    onClick={() => setOpen(true)}
+                    style={{
+                        width: '100%', background: '#00c853', color: '#fff', padding: '2rem',
+                        borderRadius: '30px', border: 'none', fontWeight: 900, fontSize: '1.6rem',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', gap: '15px'
+                    }}
+                >
+                    <Ticket size={30} /> БИЛЕТ
+                </button>
+            ) : (
+                <button
+                    onClick={() => setOpen(true)}
+                    aria-label="Издай билет"
+                    style={{
+                        position: 'fixed', right: '1rem', bottom: '1rem', zIndex: 9000,
+                        width: '64px', height: '64px', borderRadius: '50%', border: 'none',
+                        background: '#00c853', color: '#fff', boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                    }}
+                >
+                    <Ticket size={30} />
+                </button>
+            )}
 
             {open && (
                 <div

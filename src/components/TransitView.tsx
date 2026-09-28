@@ -10,6 +10,7 @@ import PaymentMethodSelector from './PaymentMethodSelector';
 import ModeratorInactivityWarningModal from './ModeratorInactivityWarningModal';
 import { MIXED_METHOD, negativeAmountError } from '../data/paymentMethods';
 import MyPosSmartSdk from '../services/MyPosSmartSdk';
+import TicketButton from './TicketButton';
 import { Capacitor } from '@capacitor/core';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 
@@ -50,7 +51,8 @@ const ROUTES = [
     "Пордим - Каменец", "Пордим - Згалево", "Пордим - Одърне",
     "Славовица - Тръстеник",
     // Нови направления (2026-09-25) — още без разписание, само за издаване на карти.
-    "Ставерци", "Гостиля", "Кнежа"
+    "Ставерци", "Гостиля", "Кнежа",
+    "Ясен - Търнене", "Крушовене - Тръстеник"
 ];
 
 const formatTimeAgo = (totalSecs: number) => {
@@ -1010,22 +1012,31 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                             </div>
                         )}
 
-                        {!showManagement ? (
-                            <button 
-                                onClick={() => setShowManagement(true)}
-                                style={{ width: '100%', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(30px)', color: '#fff', padding: '2rem', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.1)', fontWeight: 900, fontSize: '1.6rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px' }}
-                            >
-                                <Settings size={30} /> УПРАВЛЕНИЕ
-                            </button>
+                        {/* Билетите са САМО за терминалите: там шофьорът ги печата с картата
+                            пред очите си. На всичко останало (офисът, телефони) екранът остава
+                            точно какъвто беше — с УПРАВЛЕНИЕ и ПЛАТИ СЕГА. */}
+                        {Capacitor.isNativePlatform() ? (
+                            <TicketButton variant="inline" />
                         ) : (
-                            <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <>
+                            {!showManagement ? (
                                 <button 
-                                    onClick={() => handleGuardedClose(() => { onClose(); navigate(`/client/${client?.id}`); })}
-                                    style={{ width: '100%', background: '#fff', color: '#000', padding: '1.8rem', borderRadius: '24px', border: 'none', fontWeight: 900, fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}
+                                    onClick={() => setShowManagement(true)}
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(30px)', color: '#fff', padding: '2rem', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.1)', fontWeight: 900, fontSize: '1.6rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px' }}
                                 >
-                                    <RefreshCw size={26} /> ПЛАТИ СЕГА / ОНЛАЙН
+                                    <Settings size={30} /> УПРАВЛЕНИЕ
                                 </button>
-                            </div>
+                            ) : (
+                                <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <button 
+                                        onClick={() => handleGuardedClose(() => { onClose(); navigate(`/client/${client?.id}`); })}
+                                        style={{ width: '100%', background: '#fff', color: '#000', padding: '1.8rem', borderRadius: '24px', border: 'none', fontWeight: 900, fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}
+                                    >
+                                        <RefreshCw size={26} /> ПЛАТИ СЕГА / ОНЛАЙН
+                                    </button>
+                                </div>
+                            )}
+                            </>
                         )}
                     </div>
                 )}
