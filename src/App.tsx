@@ -25,7 +25,7 @@ const PageLoader = () => <LoadingScreen />;
 
 // The true bundle version. Живее извън компонента, защото и регистърът
 // на устройствата я докладва, за да се вижда кой терминал е със старо APK.
-const INTERNAL_APP_VERSION = "2026.09.28.10.00";
+const INTERNAL_APP_VERSION = "2026.09.28.10.15";
 
 function ClientProfileWrapper() {
   return <ClientProfile />;
@@ -165,9 +165,28 @@ function App() {
         console.log(`[Version Check] Internal: ${INTERNAL_APP_VERSION} | Server: ${serverVersion}`);
 
         if (serverVersion && INTERNAL_APP_VERSION !== serverVersion) {
-          // 🛡️ STOP THE LOOP
-          const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get('v') === serverVersion) return;
+          // Спирачка срещу безкраен кръг: презареждаме най-много веднъж за дадена
+          // версия в рамките на една сесия.
+          //
+          // Преди спирачката беше `?v=` в адреса, но той остава там завинаги
+          // (HashRouter мени само диезата). Ако service worker-ът сервира стар index.html,
+          // сравнението съвпада и проверката се изключва завинаги — устройството остава
+          // заковано на старата версия и не получава повече нито една поправка.
+          // Ако sessionStorage е забранен, localStorage върши същата работа — важното
+          // е да има къде да се запише, че вече сме презареждали за тази версия.
+          const marker = (() => {
+            for (const store of [
+              () => sessionStorage,
+              () => localStorage,
+            ]) {
+              try { const s = store(); s.getItem('forced_version'); return s; } catch { /* next */ }
+            }
+            return null;
+          })();
+          if (marker) {
+            if (marker.getItem('forced_version') === serverVersion) return;
+            marker.setItem('forced_version', serverVersion);
+          }
 
           console.log('🚀 OUTDATED BUNDLE DETECTED. NUCLEAR REFRESH STARTING...');
           
@@ -188,9 +207,9 @@ function App() {
             }
           }
           
-          localStorage.removeItem('last_tried_version'); 
-          // Redirect with version param to prevent loop
-          window.location.href = window.location.pathname + '?v=' + serverVersion + window.location.hash;
+          localStorage.removeItem('last_tried_version');
+          // Адресът остава чист; срещу кеша стига разрегистрираният service worker.
+          window.location.reload();
         }
       } catch (err) {
         console.error('⚠️ Version check failed:', err);

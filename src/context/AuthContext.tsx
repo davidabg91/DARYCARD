@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth';
 import {
     doc,
+    getDoc,
     collection,
     onSnapshot,
     updateDoc,
@@ -70,65 +71,102 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         // Ролята се чете с `onSnapshot`, а не с `getDoc`. Първото събитие идва от
-        // постоянния кеш (мигновено, работи и офлайн), второто — от сървъра. Преди
-        // това всеки студен старт чакаше цяла обиколка до Firestore, преди да се
-        // разбере кой е логнат: на телефон това са секунди, в които приложението
-        // изглежда нелогнато. Записването на сканиране изчаква точно този момент
-        // (`authLoading` в TransitView и ClientProfile), затова бавният отговор
-        // маркираше офисните прочитания като анонимни.
+        // постоянния кеш (мигновено, работи и офлайн), второто — от сървъра. Записването
+        // на сканиране изчаква точно този момент (`authLoading` в TransitView и
+        // ClientProfile), затова бавният отговор маркираше офисните прочитания
+        // като анонимни.
         let unsubscribeRole: (() => void) | null = null;
+        let roleTimer: ReturnType<typeof setTimeout> | null = null;
 
-        // Авариен изход: ако Firebase не отговори, спираме въртележката — но само
-        // когато наистина няма сесия. Иначе логнат потребител попадаше на екрана за
-        // вход (ProtectedRoute праща към /login при `!currentUser`).
-        const safetyTimeout = setTimeout(() => {
+        const clearRoleTimer = () => {
+            if (roleTimer) { clearTimeout(roleTimer); roleTimer = null; }
+        };
+
+        const buildUser = (uid: string, email: string | null, data: Record<string, unknown>): AppUser => ({
+            id: uid,
+            username: (data.username as string) || email || '',
+            passwordHash: '', // Not needed for Firebase
+            role: data.role as UserRole,
+            createdAt: (data.createdAt as string) || new Date().toISOString(),
+            lastSeen: (data.lastSeen as string) || '',
+        });
+
+        /**
+         * Сесия без пристигнала роля не бива да виси вечно: без роля входът не
+         * пуска. След срока опитваме едно директно четене и така или иначе пускаме
+         * въртележката. Въоръжава се при ВСЯКО влизане, а не веднъж при зареждане на
+         * приложението — иначе вход, направен по-късно, оставаше без пазач.
+         */
+        const armRoleTimer = (fbUser: FirebaseUser) => {
+            clearRoleTimer();
+            roleTimer = setTimeout(() => {
+                if (!loadingRef.current) return;
+                getDoc(doc(db, 'users', fbUser.uid))
+                    .then(snap => {
+                        const data = snap.data();
+                        if (data) {
+                            const appUser = buildUser(fbUser.uid, fbUser.email, data);
+                            writeCachedRole(appUser);
+                            setCurrentUser(appUser);
+                        } else {
+                            console.warn('Няма профил в users за този акаунт.');
+                        }
+                    })
+                    .catch(err => console.error('Резервното четене на ролята пропадна:', err))
+                    .finally(() => setLoading(false));
+            }, 12000);
+        };
+
+        // Ако Firebase изобщо не се обади (блокиран от прокси, няма мрежа), пак
+        // трябва да се стигне до екран, а не да се върти без край.
+        const bootTimer = setTimeout(() => {
             if (loadingRef.current && !auth.currentUser) {
                 console.warn('Authentication check timed out. Firebase might be blocked by a proxy or network issue.');
                 setLoading(false);
             }
         }, 10000);
 
-        // 1. Listen for Auth State
         const unsubscribeAuth = onAuthStateChanged(auth, (fbUser: FirebaseUser | null) => {
             unsubscribeRole?.();
             unsubscribeRole = null;
+            clearRoleTimer();
 
             if (!fbUser) {
-                clearTimeout(safetyTimeout);
+                clearTimeout(bootTimer);
                 clearCachedRole();
                 setCurrentUser(null);
                 setLoading(false);
                 return;
             }
 
+            clearTimeout(bootTimer);
+
             // Последно потвърдената роля за тази сесия — показва се веднага, докато
             // Firestore потвърди. Не е защита: достъпът до данни минава през
             // правилата, които четат `users/<uid>.role` на сървъра.
             const cached = readCachedRole(fbUser.uid);
             if (cached) {
-                clearTimeout(safetyTimeout);
                 setCurrentUser(cached);
                 setLoading(false);
+            } else {
+                // Има сесия, но ролята още не е пристигнала. Това е ЗАРЕЖДАНЕ, не
+                // „нелогнат“: иначе ProtectedRoute вижда `!currentUser` с паднал флаг и
+                // връща на /login точно след успешен вход. На бърза връзка прозорецът е
+                // незабележим — затова по компютър работеше, а по телефон не.
+                setLoading(true);
+                armRoleTimer(fbUser);
             }
 
-            // „Последно активен“ се пише ТОЧНО ВЕДНЪЖ за влизане, а НЕ при всяка снимка
-            // на документа. Иначе записът променя същия документ, който слушаме: с два
+            // „Последно активен“ се пише ТОЧНО ВЕДНЪЖ за влизане, а НЕ при всяка
+            // снимка. Иначе записът променя същия документ, който слушаме: с два
             // отворени прозореца на същия акаунт всеки запис будеше другия, той пишеше
             // в отговор, и така без край.
             let stamped = false;
 
             unsubscribeRole = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
                 if (snap.exists()) {
-                    const data = snap.data();
-                    const appUser: AppUser = {
-                        id: fbUser.uid,
-                        username: data.username || fbUser.email || '',
-                        passwordHash: '', // Not needed for Firebase
-                        role: data.role as UserRole,
-                        createdAt: data.createdAt || new Date().toISOString(),
-                        lastSeen: data.lastSeen || ''
-                    };
-                    clearTimeout(safetyTimeout);
+                    const appUser = buildUser(fbUser.uid, fbUser.email, snap.data());
+                    clearRoleTimer();
                     // Сменяме обекта САМО когато има съществена разлика. `currentUser` е
                     // зависимост на десетки ефекти (слушателят на клиентския документ в
                     // ClientProfile е един от тях) — нов обект при всяка снимка ги презакача
@@ -153,20 +191,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     // Firestore — без роля, без достъп. Празен кеш не значи нищо,
                     // затова тогава просто чакаме сървъра.
                     console.warn(`User ${fbUser.email} logged in but has no Firestore profile. Access will be restricted.`);
-                    clearTimeout(safetyTimeout);
+                    clearRoleTimer();
                     clearCachedRole();
                     setCurrentUser(null);
                     setLoading(false);
                 }
             }, (error) => {
                 console.error("Error reading the user profile:", error);
-                clearTimeout(safetyTimeout);
+                clearRoleTimer();
                 setLoading(false);
             });
         });
 
         return () => {
-            clearTimeout(safetyTimeout);
+            clearTimeout(bootTimer);
+            clearRoleTimer();
             unsubscribeAuth();
             unsubscribeRole?.();
         };
