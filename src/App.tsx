@@ -25,7 +25,7 @@ const PageLoader = () => <LoadingScreen />;
 
 // The true bundle version. Живее извън компонента, защото и регистърът
 // на устройствата я докладва, за да се вижда кой терминал е със старо APK.
-const INTERNAL_APP_VERSION = "2026.09.28.10.15";
+const INTERNAL_APP_VERSION = "2026.09.28.10.26";
 
 function ClientProfileWrapper() {
   return <ClientProfile />;
@@ -225,15 +225,55 @@ function App() {
     // В браузър и PWA не прави нищо.
     const stopHeartbeat = startDeviceHeartbeat(INTERNAL_APP_VERSION);
 
-    // 🛡️ CHUNK LOAD ERROR RECOVERY: If a lazy-loaded chunk fails, reload immediately
+    // Счупен бъндъл: лениво зареждан модул не се сваля. Тогава `Suspense`
+    // чака завинаги и на екрана остава въртяща се въртележка над празно място.
+    //
+    // Vite не казва „loading chunk“ — съобщението е „Failed to fetch dynamically
+    // imported module“ (Chrome), „error loading dynamically imported module“ (Firefox)
+    // или „Importing a module script failed“ (Safari). Старата проверка ги пропускаше,
+    // затова нищо не се самопоправяше.
+    //
+    // Само презареждане не стига: ако service worker-ът сервира стар index.html с
+    // имена на файлове, които вече ги няма, следващото зареждане се чупи по същия
+    // начин. Затова първо се чистят кешовете и worker-ът на приложението (този за
+    // известията остава), и се презарежда най-много веднъж за сесия.
+    const recoverFromBrokenBundle = async (reason: string) => {
+      try {
+        if (sessionStorage.getItem('bundle_recovery')) {
+          console.error('Бъндълът пак е счупен след възстановяване:', reason);
+          return;
+        }
+        sessionStorage.setItem('bundle_recovery', '1');
+      } catch { /* без sessionStorage — по-добре да опитаме, отколкото да заседнем */ }
+
+      console.warn('Счупен бъндъл — чистя кеша и презареждам:', reason);
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+      } catch (err) { console.error('Кешът не се изчисти:', err); }
+
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const registration of registrations) {
+            const url = registration.active?.scriptURL || registration.waiting?.scriptURL
+              || registration.installing?.scriptURL || '';
+            if (url.includes('firebase-messaging-sw') || registration.scope.includes('firebase-cloud-messaging-push-scope')) continue;
+            await registration.unregister();
+          }
+        }
+      } catch (err) { console.error('Service workerът не се махна:', err); }
+
+      window.location.reload();
+    };
+
     const handleError = (e: ErrorEvent | PromiseRejectionEvent) => {
       const error = (e instanceof ErrorEvent) ? e.error : (e instanceof PromiseRejectionEvent ? e.reason : e);
       const message = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : String(error);
-      
-      if (message.includes("loading chunk") || message.includes("Loading chunk") || message.includes("Script error")) {
-        console.warn("🛡️ CHUNK LOAD ERROR DETECTED. FORCING RELOAD...");
-        window.location.reload();
-      }
+      const broken = /loading chunk|dynamically imported module|Importing a module script failed|Script error/i.test(message);
+      if (broken) void recoverFromBrokenBundle(message);
     };
 
     window.addEventListener('error', handleError);

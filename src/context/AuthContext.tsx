@@ -101,7 +101,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             clearRoleTimer();
             roleTimer = setTimeout(() => {
                 if (!loadingRef.current) return;
-                getDoc(doc(db, 'users', fbUser.uid))
+                // И това четене има срок: `getDoc` не се отказва само, а без крайна
+                // точка въртележката пак би останала завинаги.
+                Promise.race([
+                    getDoc(doc(db, 'users', fbUser.uid)),
+                    new Promise<never>((_, reject) =>
+                        setTimeout(() => reject(new Error('четенето на ролята не завърши')), 8000)),
+                ])
                     .then(snap => {
                         const data = snap.data();
                         if (data) {
