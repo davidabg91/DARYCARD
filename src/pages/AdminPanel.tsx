@@ -726,6 +726,8 @@ const AdminPanel: React.FC = () => {
     // Докъде е стигнало генерирането — без това бутонът пише само
     // „Генерирам…“ и не се разбира дали чака брояча, или записва картите.
     const [batchStep, setBatchStep] = useState<string | null>(null);
+    // Периодът за справката „нови карти по направления“.
+    const [newCardsPeriod, setNewCardsPeriod] = useState<'today' | 'month' | 'all'>('month');
     // Всяка генерирана карта носи и физическия си номер, заделен от брояча в Firestore.
     const [generatedCards, setGeneratedCards] = useState<BatchCard[]>([]);
     const [generatingBatch, setGeneratingBatch] = useState(false);
@@ -2230,6 +2232,7 @@ const AdminPanel: React.FC = () => {
 
     // Financial Calculations for Accountant
     const todayIso = new Date().toISOString().split('T')[0];
+    const currentMonthIso = todayIso.substring(0, 7);
     const registrationsToday = clients.filter(c => c.createdAt?.startsWith(todayIso)).length;
     /**
      * Подновени карти — брои се КАРТАТА, не плащанията: служебна карта
@@ -2246,6 +2249,28 @@ const AdminPanel: React.FC = () => {
         return acc + todayPayments.reduce((sum, p) => sum + p.amount, 0);
     }, 0);
 
+    /**
+     * Къде се издават новите карти — брой по направление.
+     *
+     * Карта с повече от едно направление се брои към ПЪРВОТО — то е основното,
+     * а сборът трябва да е равен на броя карти, а не по-голям от него.
+     */
+    const newCardsByRoute = useMemo(() => {
+        const prefix = newCardsPeriod === 'today' ? todayIso
+            : newCardsPeriod === 'month' ? currentMonthIso
+            : '';
+        const fresh = clients.filter(c => (c.createdAt || '').startsWith(prefix));
+        const counts = new Map<string, number>();
+        for (const c of fresh) {
+            const route = getClientRoutes(c)[0] || 'Без направление';
+            counts.set(route, (counts.get(route) || 0) + 1);
+        }
+        const rows = [...counts.entries()]
+            .map(([route, count]) => ({ route, count }))
+            .sort((a, b) => b.count - a.count || a.route.localeCompare(b.route, 'bg'));
+        return { rows, total: fresh.length };
+    }, [clients, newCardsPeriod, todayIso, currentMonthIso]);
+
     const registrationsSelectedDay = clients.filter(c => c.createdAt?.startsWith(selectedDate)).length;
     const renewalsSelectedDay = clients.filter(c =>
         !c.createdAt?.startsWith(selectedDate)
@@ -2256,7 +2281,6 @@ const AdminPanel: React.FC = () => {
         return acc + payments.reduce((sum, p) => sum + p.amount, 0);
     }, 0) + fines.filter(f => f.date?.startsWith(selectedDate)).reduce((sum, f) => sum + f.amount, 0);
 
-    const currentMonthIso = todayIso.substring(0, 7);
     // Revenue actually RECEIVED during the calendar month — filter by payment date
     // (r.date), not by the subscription month being paid for (r.month). Otherwise a
     // payment made this month for another month's subscription wouldn't count, which
@@ -2869,6 +2893,62 @@ const AdminPanel: React.FC = () => {
                             </div>
                         </Card>
                     </div>
+
+                    {/* Къде се издават новите карти. Оборотът казва КОЛКО, тази — КЪДЕ. */}
+                    <Card style={{ borderLeft: '4px solid #00c853' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, color: '#00c853' }}>
+                                <PlusCircle size={20} /> Нови карти по направления
+                                <span style={{ background: 'rgba(0,200,83,0.15)', color: '#00c853', borderRadius: '999px', padding: '2px 10px', fontSize: '0.8rem', fontWeight: 900 }}>
+                                    {newCardsByRoute.total}
+                                </span>
+                            </h3>
+                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                {([['today', 'Днес'], ['month', 'Този месец'], ['all', 'Всички']] as const).map(([key, label]) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => setNewCardsPeriod(key)}
+                                        style={{
+                                            padding: '0.4rem 0.75rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700,
+                                            cursor: 'pointer',
+                                            background: newCardsPeriod === key ? '#00c853' : 'rgba(255,255,255,0.06)',
+                                            color: newCardsPeriod === key ? '#000' : 'var(--text-secondary)',
+                                            border: '1px solid var(--surface-border)'
+                                        }}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {newCardsByRoute.rows.length === 0 ? (
+                            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                Няма издадени карти за този период.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                {newCardsByRoute.rows.map(({ route, count }) => {
+                                    const share = newCardsByRoute.total ? (count / newCardsByRoute.total) * 100 : 0;
+                                    return (
+                                        <div key={route} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <span style={{ flex: '0 0 40%', fontSize: '0.85rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {route}
+                                            </span>
+                                            {/* Лентата е за бързо сравнение — без нея се четат числа едно по едно. */}
+                                            <span style={{ flex: 1, height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '999px', overflow: 'hidden' }}>
+                                                <span style={{ display: 'block', height: '100%', width: `${Math.max(share, 2)}%`, background: '#00c853', borderRadius: '999px' }} />
+                                            </span>
+                                            <span style={{ flex: '0 0 auto', fontWeight: 900, minWidth: '2.5rem', textAlign: 'right' }}>{count}</span>
+                                            <span style={{ flex: '0 0 auto', fontSize: '0.75rem', color: 'var(--text-secondary)', minWidth: '3rem', textAlign: 'right' }}>
+                                                {share.toFixed(0)}%
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </Card>
 
                     {/* Разминаване в цените — карти с ръчно зададена сума, различна от системната.
                         Видимо само за профил Администратор. */}
