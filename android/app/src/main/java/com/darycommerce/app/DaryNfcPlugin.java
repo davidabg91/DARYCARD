@@ -5,11 +5,14 @@ import android.media.ToneGenerator;
 import android.util.Log;
 import android.view.WindowManager;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+
+import org.json.JSONArray;
 
 import com.mypos.smartsdk.UltralightManagement;
 import com.mypos.smartsdk.OnBindListener;
@@ -91,6 +94,33 @@ public class DaryNfcPlugin extends Plugin {
         // IMMORTAL PROTOCOL: We ignore stop requests to ensure zero-latency
         Log.d(TAG, "NFC Stop request ignored by Hardware Immortal protocol.");
         call.resolve();
+    }
+
+    /**
+     * Печат на свободен текст от вградения принтер на терминала.
+     * Обещанието се връща чак след отговора на принтера, за да може екранът да каже
+     * „няма хартия“ вместо просто „готово“. Има срок — нищо не виси без край.
+     */
+    @PluginMethod
+    public void printLines(PluginCall call) {
+        JSArray lines = call.getArray("lines");
+        if (lines == null) {
+            call.reject("Липсват редове за печат.");
+            return;
+        }
+        try {
+            DaryPrinter.print(getContext(), new JSONArray(lines.toString()), (started, status, message) -> {
+                JSObject ret = new JSObject();
+                ret.put("started", started);
+                ret.put("status", status);
+                ret.put("message", message);
+                ret.put("ok", started && status == 0);
+                call.resolve(ret);
+            });
+        } catch (Exception e) {
+            noteError("printLines", e);
+            call.reject("Печатът не тръгна: " + e.getMessage());
+        }
     }
 
     /** Състоянието на четеца — чете се от регистъра на устройствата. */

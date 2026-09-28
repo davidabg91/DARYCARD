@@ -16,8 +16,26 @@ export interface MyPosNfcStatus {
   lastErrorAt: number;
 }
 
+/** Резултатът от печат — `status` е код на PrinterStatus от SDK-а (0 = успех). */
+export interface MyPosPrintResult {
+  ok: boolean;
+  started: boolean;
+  status: number;
+  message: string;
+}
+
+export interface MyPosPrintLine {
+  type?: 'TEXT' | 'HEADER' | 'FOOTER' | 'LOGO';
+  text?: string;
+  align?: 'ALIGN_LEFT' | 'ALIGN_CENTER' | 'ALIGN_RIGHT';
+  doubleWidth?: boolean;
+  doubleHeight?: boolean;
+}
+
 export interface MyPosSmartSdkPlugin {
   startNfcScan(): Promise<void>;
+  /** Печат от вградения принтер. Няма го в старите APK-та — викайте го в try/catch. */
+  printLines(options: { lines: MyPosPrintLine[] }): Promise<MyPosPrintResult>;
   /** Няма го в старите APK-та — извиквайте го в try/catch. */
   getNfcStatus(): Promise<MyPosNfcStatus>;
   stopNfcScan(): Promise<void>;

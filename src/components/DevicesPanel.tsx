@@ -12,6 +12,7 @@ import {
     Radio, RadioTower, Bug, ChevronDown, ChevronRight, MapPin
 } from 'lucide-react';
 import BatteryAlertsButton from './BatteryAlertsButton';
+import TestPrintCard from './TestPrintCard';
 
 interface Props {
     /** Админ може да трие изчезнали устройства; модератор само гледа и преименува. */
@@ -593,8 +594,10 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                 })}
             </div>
 
-            <div style={{ marginTop: '1.5rem' }}>
+            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <BatteryAlertsButton />
+                {/* Показва се само на самия терминал — от браузър няма какво да печата. */}
+                <TestPrintCard />
             </div>
         </div>
     );
