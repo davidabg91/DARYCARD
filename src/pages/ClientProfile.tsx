@@ -16,7 +16,7 @@ import { MIXED_METHOD, negativeAmountError } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { lookupCardNumber, markCardAssigned } from '../utils/cardRegistry';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
-import { SCHOOLS, SCHOOL_MUNICIPALITY } from '../data/schools';
+import { useSchools, rememberSchool } from '../utils/customSchools';
 
 interface Client {
     id: string;
@@ -209,6 +209,8 @@ const ClientProfile: React.FC = () => {
     const [regCardType, setRegCardType] = useState('Нормална карта');
     const [regSelectedSchool, setRegSelectedSchool] = useState('');
     const [regCustomSchool, setRegCustomSchool] = useState('');
+    // Вградените училища плюс запомнените ръчно въведени.
+    const { schools: SCHOOLS, municipalityOf: SCHOOL_MUNICIPALITY } = useSchools(!!currentUser);
     const [regMunicipality, setRegMunicipality] = useState('');
     const [regCustomMunicipality, setRegCustomMunicipality] = useState('');
     const [regRoute, setRegRoute] = useState('');
@@ -739,6 +741,9 @@ const ClientProfile: React.FC = () => {
         try {
             setLoading(true);
             await setDoc(doc(db, 'clients', id), newClient);
+            if (regCardType === 'Ученическа карта' && regSelectedSchool === 'custom') {
+                void rememberSchool(regCustomSchool, resolvedMunicipality, currentUser?.username);
+            }
             // Отбелязваме в регистъра, че картата вече е дадена (само за новите партиди).
             if (!CARDS_MAPPING[id]) await markCardAssigned(id, id);
             

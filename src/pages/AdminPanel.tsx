@@ -49,7 +49,7 @@ import {
     reserveCardNumbers,
 } from '../utils/cardRegistry';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
-import { SCHOOLS, SCHOOL_MUNICIPALITY } from '../data/schools';
+import { useSchools, rememberSchool } from '../utils/customSchools';
 import { SERVICE_ROSTERS } from '../data/serviceRosters';
 import type { ServiceRoster, ServiceRosterEntry } from '../data/serviceRosters';
 
@@ -148,7 +148,8 @@ const ROUTES = [
     // Нови направления (2026-09-25) — още без разписание, само за издаване на карти.
     "Ставерци", "Гостиля", "Кнежа",
     "Ясен - Търнене", "Крушовене - Тръстеник",
-    "Ставерци - Тръстеник", "Ставерци - Долна Митрополия"
+    "Ставерци - Тръстеник", "Ставерци - Долна Митрополия",
+    "Ставерци - Брегаре"
 ];
 
 // The card types offered on registration, reused for the clients-list filter.
@@ -451,6 +452,8 @@ const AdminPanel: React.FC = () => {
     const [notifBody, setNotifBody] = useState('');
     const [selectedNotifRoutes, setSelectedNotifRoutes] = useState<string[]>(['all']);
     const [searchTerm, setSearchTerm] = useState('');
+    // Вградените училища плюс запомнените ръчно въведени.
+    const { schools: SCHOOLS, municipalityOf: SCHOOL_MUNICIPALITY } = useSchools();
     const [visibleClients, setVisibleClients] = useState(20);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -1346,6 +1349,9 @@ const AdminPanel: React.FC = () => {
         };
 
         await saveClient(newClient);
+        if (cardType === 'Ученическа карта' && selectedSchool === 'custom') {
+            void rememberSchool(customSchool, resolvedMunicipality, currentUser?.username);
+        }
         // Отбелязваме в регистъра, че картата вече е дадена (само за новите партиди).
         if (registryCardNumber) await markCardAssigned(generatedId, generatedId);
         const cardNum = getClientCardNumber(newClient);
@@ -1897,6 +1903,7 @@ const AdminPanel: React.FC = () => {
             return;
         }
         setSchoolEditBusy(false);
+        if (schoolEdit === 'custom') void rememberSchool(targetSchool, targetMunicipality, currentUser?.username);
 
         // Reflect immediately in the open modal (`selectedClient` is a separate copy).
         setSelectedClient({ ...selectedClient, school: targetSchool, municipality: targetMunicipality });
