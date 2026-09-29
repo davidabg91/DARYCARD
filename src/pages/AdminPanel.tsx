@@ -4332,8 +4332,10 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
 
             {activeTab === 'clients' && (
                 <div style={{ animation: 'fadeIn 0.4s ease' }}>
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexDirection: isMobile ? 'column' : 'row' }}>
-                        <div style={{ flex: 1 }}>
+                    {/* Desktop: the filters take the full row and the search sits under them,
+                        otherwise the filters squeeze the search box down to nothing. */}
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexDirection: 'column' }}>
+                        <div style={{ flex: 1, order: isMobile ? 0 : 1 }}>
                             <input
                                 type="text" placeholder="Търсене по име, ID, № карта или курс..."
                                 style={{ width: '100%', padding: '0.8rem 1.5rem', borderRadius: '50px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.9rem' }}
