@@ -18,10 +18,11 @@ interface Client {
     id: string;
     name: string;
     route: string;
+    routes?: string[];
     photo: string;
     isCanceled?: boolean;
     cardType?: string;
-    renewalHistory?: { month: string; amount: number; date: string; paymentMethod?: string; bankAmount?: number; cashAmount?: number }[];
+    renewalHistory?: { month: string; amount: number; date: string; route?: string; paymentMethod?: string; bankAmount?: number; cashAmount?: number }[];
     photoThumb?: string;
     lastScanAt?: string;
     cardNumber?: string;
@@ -971,6 +972,20 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                                         setIsUpdating(false);
                                                         return;
                                                     }
+                                                    // Второ плащане за същото направление и месец не е разрешено —
+                                                    // същата проверка като в админ панела и профила на клиента.
+                                                    const qrDirs = client?.routes?.length
+                                                        ? client.routes
+                                                        : (client?.route || '').split(',').map(r => r.trim()).filter(Boolean);
+                                                    const qrAlreadyPaid = (client?.renewalHistory || []).some(rh =>
+                                                        rh.month === renewalMonth && (rh.route ? rh.route === renewalRoute : renewalRoute === qrDirs[0])
+                                                    );
+                                                    if (qrAlreadyPaid) {
+                                                        playErrorSound();
+                                                        alert(`Вече има платен абонамент за „${renewalRoute}" за месец ${renewalMonth}. Второ плащане за същия месец не е разрешено.`);
+                                                        setIsUpdating(false);
+                                                        return;
+                                                    }
                                                     const clientRef = doc(db, 'clients', client?.id || '');
                                                     await updateDoc(clientRef, {
                                                         expiryDate: renewalMonth,
@@ -981,6 +996,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                                             date: new Date().toISOString(),
                                                             amount: qrAmount,
                                                             month: renewalMonth,
+                                                            route: renewalRoute,
                                                             ...qrPaymentFields
                                                         }),
                                                         history: arrayUnion({
@@ -993,6 +1009,13 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                                             performedBy: currentUser?.username
                                                         })
                                                     });
+                                                    // Отразяваме плащането локално, за да хване проверката второ натискане в същия екран.
+                                                    setClient(prev => prev ? {
+                                                        ...prev,
+                                                        route: renewalRoute,
+                                                        isCanceled: false,
+                                                        renewalHistory: [...(prev.renewalHistory || []), { date: new Date().toISOString(), amount: qrAmount, month: renewalMonth, route: renewalRoute, ...qrPaymentFields }]
+                                                    } : prev);
                                                     playSuccessSound();
                                                     setHasMadeChange(true);
                                                     setShowInactivityModal(false);

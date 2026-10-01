@@ -28,6 +28,7 @@ import {
     deleteField,
     runTransaction,
     getDocs,
+    getDocsFromCache,
     collectionGroup,
     where
 } from 'firebase/firestore';
@@ -442,6 +443,12 @@ const AdminPanel: React.FC = () => {
         'clients'
     );
     const [clients, setClients] = useState<Client[]>([]);
+    // Дошъл ли е списъкът с клиенти (от паметта или от сървъра). Докато не е,
+    // табът КЛИЕНТИ показва „Зареждане…“ вместо „Няма намерени клиенти“.
+    const [clientsLoaded, setClientsLoaded] = useState(false);
+    const [clientsError, setClientsError] = useState(false);
+    // Смяната му абонира слушателя наново (повторен опит след грешка).
+    const [clientsRetryKey, setClientsRetryKey] = useState(0);
     const [fines, setFines] = useState<{ amount: number; date: string }[]>([]);
     const [signals, setSignals] = useState<Signal[]>([]);
     const [rentals, setRentals] = useState<Rental[]>([]);
@@ -592,55 +599,64 @@ const AdminPanel: React.FC = () => {
                     role: s.role
                 }));
 
+        type ProfileScan = { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string };
+        const toList = (docs: { data: () => Record<string, unknown> }[]): ProfileScan[] => docs
+            .map(d => {
+                const data = d.data();
+                return {
+                    at: (data.at as string) || '',
+                    route: data.route as string | undefined,
+                    scannedBy: (data.scannedBy || (data.role === 'moderator' ? 'moderator' : undefined)) as string | undefined,
+                    scannedByName: (data.scannedByName || data.performedBy) as string | undefined,
+                    role: data.role as string | undefined
+                };
+            })
+            .filter(s => s.at);
+
+        // Merge subcollection + scanHistory array with timestamp deduplication
+        const mergeScans = (subList: ProfileScan[]): ProfileScan[] => {
+            const scanMap = new Map<string, ProfileScan>();
+            [...subList, ...legacyScans].forEach(s => {
+                const key = s.at.slice(0, 19); // YYYY-MM-DDTHH:MM:SS
+                if (!scanMap.has(key) || s.scannedBy) {
+                    scanMap.set(key, s);
+                }
+            });
+            if (selectedClient.lastScanAt && !scanMap.has(selectedClient.lastScanAt.slice(0, 19))) {
+                scanMap.set(selectedClient.lastScanAt.slice(0, 19), {
+                    at: selectedClient.lastScanAt,
+                    route: selectedClient.route
+                });
+            }
+            return Array.from(scanMap.values()).sort((a, b) => b.at.localeCompare(a.at));
+        };
+
+        const scansRef = collection(db, 'clients', clientId, 'scans');
+        let shownFromCache = false;
+        let serverDone = false;
         setProfileScansLoading(true);
-        getDocs(collection(db, 'clients', clientId, 'scans'))
+
+        // Първо от локалната памет — показва се веднага, без да чака връзката,
+        // по която в момента тече списъкът с клиенти. Сървърът после допълва.
+        getDocsFromCache(scansRef)
+            .then(snap => {
+                if (cancelled || serverDone || snap.empty) return;
+                shownFromCache = true;
+                setProfileScans(mergeScans(toList(snap.docs)));
+                setProfileScansLoading(false);
+            })
+            .catch(() => { /* няма нищо в паметта — чакаме сървъра */ });
+
+        getDocs(scansRef)
             .then(snap => {
                 if (cancelled) return;
-                const subList = snap.docs
-                    .map(d => {
-                        const data = d.data();
-                        return {
-                            at: (data.at as string) || '',
-                            route: data.route as string | undefined,
-                            scannedBy: (data.scannedBy || (data.role === 'moderator' ? 'moderator' : undefined)) as string | undefined,
-                            scannedByName: (data.scannedByName || data.performedBy) as string | undefined,
-                            role: data.role as string | undefined
-                        };
-                    })
-                    .filter(s => s.at);
-
-                // Merge subcollection + scanHistory array with timestamp deduplication
-                const scanMap = new Map<string, { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string }>();
-                [...subList, ...legacyScans].forEach(s => {
-                    const key = s.at.slice(0, 19); // YYYY-MM-DDTHH:MM:SS
-                    if (!scanMap.has(key) || s.scannedBy) {
-                        scanMap.set(key, s);
-                    }
-                });
-
-                if (selectedClient.lastScanAt && !scanMap.has(selectedClient.lastScanAt.slice(0, 19))) {
-                    scanMap.set(selectedClient.lastScanAt.slice(0, 19), {
-                        at: selectedClient.lastScanAt,
-                        route: selectedClient.route
-                    });
-                }
-
-                const list = Array.from(scanMap.values()).sort((a, b) => b.at.localeCompare(a.at));
-                setProfileScans(list);
+                serverDone = true;
+                setProfileScans(mergeScans(toList(snap.docs)));
             })
             .catch(err => {
                 console.error('Грешка при зареждане на пътуванията от подколекция, ползване на локален архив:', err);
-                if (!cancelled) {
-                    const fallbackMap = new Map<string, { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string }>();
-                    legacyScans.forEach(s => fallbackMap.set(s.at.slice(0, 19), s));
-                    if (selectedClient.lastScanAt && !fallbackMap.has(selectedClient.lastScanAt.slice(0, 19))) {
-                        fallbackMap.set(selectedClient.lastScanAt.slice(0, 19), {
-                            at: selectedClient.lastScanAt,
-                            route: selectedClient.route
-                        });
-                    }
-                    setProfileScans(Array.from(fallbackMap.values()).sort((a, b) => b.at.localeCompare(a.at)));
-                }
+                // Вече показаното от паметта е по-пълно от стария архив — оставяме го.
+                if (!cancelled && !shownFromCache) setProfileScans(mergeScans([]));
             })
             .finally(() => { if (!cancelled) setProfileScansLoading(false); });
         return () => { cancelled = true; };
@@ -1043,7 +1059,10 @@ const AdminPanel: React.FC = () => {
 
 
     useEffect(() => {
-        // 1. Listen for Clients in Real-time
+        // 1. Listen for Clients in Real-time.
+        // Отделен от другите слушатели: при грешка само той се абонира наново —
+        // преди грешката оставаше в конзолата, а списъкът празен до презареждане.
+        let retryTimer: ReturnType<typeof setTimeout> | null = null;
         const q = query(collection(db, 'clients'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const clientList: Client[] = [];
@@ -1051,6 +1070,9 @@ const AdminPanel: React.FC = () => {
                 clientList.push({ id: doc.id, ...doc.data() } as Client);
             });
             setClients(clientList);
+            // Празна снимка от студения кеш не значи „няма клиенти“ — чакаме сървъра.
+            if (clientList.length > 0 || !snapshot.metadata.fromCache) setClientsLoaded(true);
+            setClientsError(false);
 
             // Check for edit param in URL after clients are loaded
             const params = new URLSearchParams(location.search);
@@ -1066,8 +1088,30 @@ const AdminPanel: React.FC = () => {
             }
         }, (err) => {
             console.error("Firestore error:", err);
+            setClientsError(true);
+            // Слушател с грешка е мъртъв — абонираме наново след малко.
+            retryTimer = setTimeout(() => setClientsRetryKey(k => k + 1), 4000);
         });
 
+        return () => {
+            unsubscribe();
+            if (retryTimer) clearTimeout(retryTimer);
+        };
+    }, [location.search, clientsRetryKey]);
+
+    const clientsLoadingNote = clientsError ? (
+        <span>
+            Няма връзка с базата — опитваме отново…{' '}
+            <button
+                onClick={() => setClientsRetryKey(k => k + 1)}
+                style={{ marginLeft: '0.5rem', padding: '0.35rem 0.9rem', borderRadius: '50px', border: '1px solid var(--primary-color)', background: 'transparent', color: 'var(--primary-color)', fontWeight: 700, cursor: 'pointer' }}
+            >
+                Опитай пак
+            </button>
+        </span>
+    ) : 'Зареждане на клиентите…';
+
+    useEffect(() => {
         // 2. Listen for Signals in Real-time
         const signalsQ = query(collection(db, 'signals'));
         const unsubscribeSignals = onSnapshot(signalsQ, (snapshot) => {
@@ -1131,7 +1175,6 @@ const AdminPanel: React.FC = () => {
         }, (err) => console.error('Fines listener error:', err));
 
         return () => {
-            unsubscribe();
             unsubscribeSignals();
             unsubscribeRentals();
             unsubscribeNotifications();
@@ -4589,7 +4632,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                     ) : (
                                         <tr>
                                             <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                                                Няма намерени клиенти по този критерий.
+                                                {clientsLoaded ? 'Няма намерени клиенти по този критерий.' : clientsLoadingNote}
                                             </td>
                                         </tr>
                                     )}
@@ -4699,7 +4742,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                 );
                             })
                         ) : (
-                            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Няма намерени клиенти.</div>
+                            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>{clientsLoaded ? 'Няма намерени клиенти.' : clientsLoadingNote}</div>
                         )}
                     </div>
 
