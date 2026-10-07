@@ -101,8 +101,8 @@ const SystemAdminPanel: React.FC = () => {
     // Global Data
     const [clients, setClients] = useState<Client[]>([]);
     // Two separate scan reads. АНАЛИЗ НА ТРАФИКА only ever looks at the selected
-    // day (~0.24 MB); КОНТРОЛ НА ЗЛОУПОТРЕБИ is the one that needs 60 days (~6.8 MB).
-    // Serving both from one 60-day listener made the chart wait ~6 s for data it
+    // day (~0.8 MB); КОНТРОЛ НА ЗЛОУПОТРЕБИ is the one that needs 14 days (~5 MB).
+    // Serving both from one multi-day listener made the chart wait ~6 s for data it
     // does not use.
     const [dayScans, setDayScans] = useState<ScanRecord[]>([]);
     const [abuseScans, setAbuseScans] = useState<ScanRecord[]>([]);
@@ -219,11 +219,13 @@ const SystemAdminPanel: React.FC = () => {
         return () => unsub();
     }, [dashboardOpened]);
 
-    // The 60-day window behind КОНТРОЛ НА ЗЛОУПОТРЕБИ — 15.8k documents, ~6.8 MB.
+    // The 14-day window behind КОНТРОЛ НА ЗЛОУПОТРЕБИ. It was 60 days, but by
+    // October 2026 that had grown to 46k documents / 20.5 MB on the same connection
+    // as everything else; a card used >3 times a day shows up well within two weeks.
     // Deliberately started only after the clients snapshot has landed, so the rest of
     // ТАБЛО (and any small query on another tab) is not stuck behind it.
     const abuseWindowStart = useMemo(
-        () => new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0],
+        () => new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0],
         []);
     // Armed the first time ТАБЛО is on screen AND the clients snapshot has landed —
     // then left armed. So jumping straight to ОДИТ never starts this 6.8 MB read,
@@ -333,7 +335,7 @@ const SystemAdminPanel: React.FC = () => {
     const peakHour = hourlyDistribution.indexOf(Math.max(...hourlyDistribution));
 
     // Различни карти с пътуване днес. `lastScanAt` не става — пише се и при прочитане
-    // в офиса. Докато 60-дневният прозорец се зарежда, показваме старата сметка.
+    // в офиса. Докато 14-дневният прозорец се зарежда, показваме старата сметка.
     const scannedToday = abuseLoading
         ? clients.filter(c => c.lastScanAt?.startsWith(todayIso)).length
         : new Set(abuseScans.filter(s => s.at.startsWith(todayIso)).map(s => s.clientId)).size;
@@ -714,7 +716,7 @@ const SystemAdminPanel: React.FC = () => {
                                                     )) : abuseLoading ? (
                                                         <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.45, fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
                                                             <div style={{ width: '26px', height: '26px', border: '3px solid rgba(255,82,82,0.2)', borderTopColor: '#ff5252', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                                                            Проверяват се сканиранията за последните 60 дни...
+                                                            Проверяват се сканиранията за последните 14 дни...
                                                         </div>
                                                     ) : <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.3, fontWeight: 700 }}>Няма засечени нарушения към момента.</div>}
                                                 </div>
