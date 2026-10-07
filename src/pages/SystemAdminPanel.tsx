@@ -167,28 +167,6 @@ const SystemAdminPanel: React.FC = () => {
         if (activeTab === 'dashboard') setDashboardOpened(true);
     }, [activeTab]);
 
-    // Clients — loaded in full because the dashboard aggregates (revenue, route
-    // stats, abuse) need every client.
-    useEffect(() => {
-        if (!dashboardOpened) return;
-        const unsub = onSnapshot(query(collection(db, 'clients')), (snap) => {
-            const list: Client[] = [];
-            snap.forEach(d => list.push({ id: d.id, ...d.data() } as Client));
-            setClients(list);
-            setLoadError(null);
-            setLoading(false);
-        }, (err) => {
-            // Previously there was no error callback at all, so a rules/offline error
-            // left `loading` true and the tab pulsed a skeleton forever with no hint
-            // why. Surface it instead — never fall through to rendering zeroes, which
-            // would read as "no revenue" rather than "not loaded".
-            console.error('Clients listener error:', err);
-            setLoadError(err instanceof Error ? err.message : 'Неизвестна грешка');
-            setLoading(false);
-        });
-        return () => unsub();
-    }, [dashboardOpened]);
-
     // Статистиката брои само пътуванията: прочитане от терминала (APK). Отпадат
     // отварянията в браузър (`source: 'web'` — телефон или офисният компютър) и
     // прочитанията от логнат служител (`scannedBy`/`role` — офис, подновяване).
@@ -216,6 +194,30 @@ const SystemAdminPanel: React.FC = () => {
             (err) => console.error('Day scans listener error:', err));
         return () => unsub();
     }, [dashboardOpened, selectedDate]);
+
+    // Clients — loaded in full because the dashboard aggregates (revenue, route
+    // stats, abuse) need every client. Declared AFTER the day-scans effect on
+    // purpose: effects run in declaration order, so the small chart query goes out
+    // first instead of queueing behind this multi-MB download.
+    useEffect(() => {
+        if (!dashboardOpened) return;
+        const unsub = onSnapshot(query(collection(db, 'clients')), (snap) => {
+            const list: Client[] = [];
+            snap.forEach(d => list.push({ id: d.id, ...d.data() } as Client));
+            setClients(list);
+            setLoadError(null);
+            setLoading(false);
+        }, (err) => {
+            // Previously there was no error callback at all, so a rules/offline error
+            // left `loading` true and the tab pulsed a skeleton forever with no hint
+            // why. Surface it instead — never fall through to rendering zeroes, which
+            // would read as "no revenue" rather than "not loaded".
+            console.error('Clients listener error:', err);
+            setLoadError(err instanceof Error ? err.message : 'Неизвестна грешка');
+            setLoading(false);
+        });
+        return () => unsub();
+    }, [dashboardOpened]);
 
     // The 60-day window behind КОНТРОЛ НА ЗЛОУПОТРЕБИ — 15.8k documents, ~6.8 MB.
     // Deliberately started only after the clients snapshot has landed, so the rest of
@@ -477,6 +479,93 @@ const SystemAdminPanel: React.FC = () => {
         log.details.toLowerCase().includes(auditSearch.toLowerCase())
     );
 
+    // АНАЛИЗ НА ТРАФИКА reads its own one-day query (~0.8 MB, under a second), so it
+    // is rendered as soon as ТАБЛО opens instead of waiting behind the whole clients
+    // collection with the rest of the dashboard. Only the two day totals and the
+    // top-riders list need clients; they show a placeholder until it lands.
+    const trafficSection = (
+        <section>
+            <h2 style={{ fontSize: isMobile ? '1.1rem' : '1.4rem', fontWeight: 800, color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
+                <Clock size={20} color="#ff5252" /> АНАЛИЗ НА ТРАФИКА
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(500px, 1fr))', gap: isMobile ? '1rem' : '2rem' }}>
+                {/* Daily Stats & Bar Chart */}
+                <Card style={{ padding: isMobile ? '1.25rem' : '2.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '2rem', flexDirection: isMobile ? 'column' : 'row', gap: '1.25rem' }}>
+                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Разпределение по часове</h3>
+                        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                style={{ flex: isMobile ? 1 : 'none', background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem', borderRadius: '10px', fontSize: '0.8rem' }}
+                            />
+                            <select
+                                value={chartRoute}
+                                onChange={(e) => setChartRoute(e.target.value)}
+                                style={{ flex: isMobile ? 1 : 'none', background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem', borderRadius: '10px', fontSize: '0.8rem' }}
+                            >
+                                <option value="all_routes">Всички Линии</option>
+                                {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+
+                    <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'thin' }}>
+                        <div style={{ height: '240px', display: 'flex', alignItems: 'flex-end', gap: isMobile ? '3px' : '6px', padding: '1rem 0', minWidth: isMobile ? '600px' : 'auto' }}>
+                            {hourlyDistribution.map((count, hr) => (
+                                <div key={hr} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '8px', height: '100%', position: 'relative' }}>
+                                    {count > 0 && <span style={{ position: 'absolute', top: '-20px', width: '100%', textAlign: 'center', fontSize: '0.65rem', fontWeight: 800, color: hr === peakHour ? '#ff5252' : 'var(--primary-color)' }}>{count}</span>}
+                                    <div style={{ width: '100%', height: `${(count / maxScans) * 100}%`, background: hr === peakHour ? 'linear-gradient(to top, #ff5252, #ff8a80)' : 'linear-gradient(to top, var(--primary-color), var(--accent-color))', opacity: count > 0 ? 1 : 0.05, borderRadius: '4px 4px 0 0', minHeight: count > 0 ? '4px' : '2px', transition: 'height 0.5s ease-out' }}></div>
+                                    <span style={{ fontSize: '0.6rem', textAlign: 'center', opacity: hr % 4 === 0 ? 0.8 : 0.2, fontWeight: hr % 4 === 0 ? 800 : 400 }}>{hr}:00</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <div style={{ padding: '1rem', background: 'rgba(255,152,0,0.05)', borderRadius: '16px', border: '1px solid rgba(255,152,0,0.1)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.7rem', color: 'rgba(255,152,0,0.7)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.3rem' }}>Оборот за деня</div>
+                            <div style={{ fontWeight: 900, color: '#ff9800', fontSize: '1.4rem' }}>{loading ? '…' : `${revenueSelectedDay.toFixed(2)} €`}</div>
+                        </div>
+                        <div style={{ padding: '1rem', background: 'rgba(0,173,181,0.05)', borderRadius: '16px', border: '1px solid rgba(0,173,181,0.1)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.7rem', color: 'rgba(0,173,181,0.7)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.3rem' }}>Нови регистрации</div>
+                            <div style={{ fontWeight: 900, color: '#00ADB5', fontSize: '1.4rem' }}>{loading ? '…' : registrationsSelectedDay}</div>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Top Users */}
+                <Card style={{ padding: isMobile ? '1.25rem' : '2.5rem' }}>
+                    <h3 style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        Най-активни пътници
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {topScannedClients.length > 0 ? topScannedClients.map((c, i) => {
+                            const maxClientScans = Math.max(...topScannedClients.map(cl => cl.scanCount || 0));
+                            const currentScans = c.scanCount || 0;
+                            const percent = maxClientScans > 0 ? (currentScans / maxClientScans) * 100 : 0;
+                            return (
+                                <div key={c.id} style={{ position: 'relative', overflow: 'hidden', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${percent}%`, background: 'rgba(255,255,255,0.02)', borderRadius: '0 16px 16px 0', transition: 'width 1s ease-out' }}></div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', position: 'relative', zIndex: 1, minWidth: 0 }}>
+                                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: i < 3 ? ['#FFD700', '#C0C0C0', '#CD7F32'][i] : 'rgba(255,255,255,0.05)', color: i < 3 ? '#000' : 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 900, flexShrink: 0 }}>{i + 1}</div>
+                                        <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: isMobile ? '0.9rem' : '1.05rem' }}>{c.name}</div>
+                                    </div>
+                                    <div style={{ position: 'relative', zIndex: 1, textAlign: 'right', flexShrink: 0 }}>
+                                        <div style={{ fontWeight: 900, color: 'var(--primary-color)', fontSize: '1.2rem' }}>{currentScans}</div>
+                                        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>пътувания</div>
+                                    </div>
+                                </div>
+                            );
+                        }) : <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.3 }}>{loading ? 'Зареждане…' : 'Няма данни.'}</div>}
+                    </div>
+                </Card>
+            </div>
+        </section>
+    );
+
     return (
         <div style={{ width: '100%', padding: isMobile ? '0 1rem 3rem' : '1.5rem', animation: 'fadeIn 0.4s ease' }}>
             <h1 style={{ fontSize: isMobile ? '1.75rem' : '2.5rem', fontWeight: 900, marginBottom: isMobile ? '1.5rem' : '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#ff5252' }}>
@@ -491,7 +580,12 @@ const SystemAdminPanel: React.FC = () => {
             </div>
 
             {/* Dashboard Tab - Support Horizontal Scroll on Mobile only */}
-            {activeTab === 'dashboard' && loading && dashboardSkeleton}
+            {activeTab === 'dashboard' && loading && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+                    {trafficSection}
+                    {dashboardSkeleton}
+                </div>
+            )}
 
             {activeTab === 'dashboard' && !loading && loadError && (
                 <Card style={{ padding: '2rem', border: '1px solid rgba(255,82,82,0.3)', background: 'rgba(255,82,82,0.05)' }}>
@@ -547,87 +641,7 @@ const SystemAdminPanel: React.FC = () => {
                                 </div>
                             </section>
 
-                            {/* Section 2: Анализ на активността */}
-                            <section>
-                                <h2 style={{ fontSize: isMobile ? '1.1rem' : '1.4rem', fontWeight: 800, color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
-                                    <Clock size={20} color="#ff5252" /> АНАЛИЗ НА ТРАФИКА
-                                </h2>
-                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(500px, 1fr))', gap: isMobile ? '1rem' : '2rem' }}>
-                                    {/* Daily Stats & Bar Chart */}
-                                    <Card style={{ padding: isMobile ? '1.25rem' : '2.5rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '2rem', flexDirection: isMobile ? 'column' : 'row', gap: '1.25rem' }}>
-                                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Разпределение по часове</h3>
-                                            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
-                                                <input
-                                                    type="date"
-                                                    value={selectedDate}
-                                                    onChange={(e) => setSelectedDate(e.target.value)}
-                                                    style={{ flex: isMobile ? 1 : 'none', background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem', borderRadius: '10px', fontSize: '0.8rem' }}
-                                                />
-                                                <select
-                                                    value={chartRoute}
-                                                    onChange={(e) => setChartRoute(e.target.value)}
-                                                    style={{ flex: isMobile ? 1 : 'none', background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid var(--surface-border)', padding: '0.5rem', borderRadius: '10px', fontSize: '0.8rem' }}
-                                                >
-                                                    <option value="all_routes">Всички Линии</option>
-                                                    {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
-                                                </select>
-                                            </div>
-                                        </div>
-
-
-                                        <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'thin' }}>
-                                            <div style={{ height: '240px', display: 'flex', alignItems: 'flex-end', gap: isMobile ? '3px' : '6px', padding: '1rem 0', minWidth: isMobile ? '600px' : 'auto' }}>
-                                                {hourlyDistribution.map((count, hr) => (
-                                                    <div key={hr} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '8px', height: '100%', position: 'relative' }}>
-                                                        {count > 0 && <span style={{ position: 'absolute', top: '-20px', width: '100%', textAlign: 'center', fontSize: '0.65rem', fontWeight: 800, color: hr === peakHour ? '#ff5252' : 'var(--primary-color)' }}>{count}</span>}
-                                                        <div style={{ width: '100%', height: `${(count / maxScans) * 100}%`, background: hr === peakHour ? 'linear-gradient(to top, #ff5252, #ff8a80)' : 'linear-gradient(to top, var(--primary-color), var(--accent-color))', opacity: count > 0 ? 1 : 0.05, borderRadius: '4px 4px 0 0', minHeight: count > 0 ? '4px' : '2px', transition: 'height 0.5s ease-out' }}></div>
-                                                        <span style={{ fontSize: '0.6rem', textAlign: 'center', opacity: hr % 4 === 0 ? 0.8 : 0.2, fontWeight: hr % 4 === 0 ? 800 : 400 }}>{hr}:00</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                                            <div style={{ padding: '1rem', background: 'rgba(255,152,0,0.05)', borderRadius: '16px', border: '1px solid rgba(255,152,0,0.1)', textAlign: 'center' }}>
-                                                <div style={{ fontSize: '0.7rem', color: 'rgba(255,152,0,0.7)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.3rem' }}>Оборот за деня</div>
-                                                <div style={{ fontWeight: 900, color: '#ff9800', fontSize: '1.4rem' }}>{revenueSelectedDay.toFixed(2)} €</div>
-                                            </div>
-                                            <div style={{ padding: '1rem', background: 'rgba(0,173,181,0.05)', borderRadius: '16px', border: '1px solid rgba(0,173,181,0.1)', textAlign: 'center' }}>
-                                                <div style={{ fontSize: '0.7rem', color: 'rgba(0,173,181,0.7)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.3rem' }}>Нови регистрации</div>
-                                                <div style={{ fontWeight: 900, color: '#00ADB5', fontSize: '1.4rem' }}>{registrationsSelectedDay}</div>
-                                            </div>
-                                        </div>
-                                    </Card>
-
-                                    {/* Top Users */}
-                                    <Card style={{ padding: isMobile ? '1.25rem' : '2.5rem' }}>
-                                        <h3 style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                                            Най-активни пътници
-                                        </h3>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                            {topScannedClients.length > 0 ? topScannedClients.map((c, i) => {
-                                                const maxClientScans = Math.max(...topScannedClients.map(cl => cl.scanCount || 0));
-                                                const currentScans = c.scanCount || 0;
-                                                const percent = maxClientScans > 0 ? (currentScans / maxClientScans) * 100 : 0;
-                                                return (
-                                                    <div key={c.id} style={{ position: 'relative', overflow: 'hidden', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${percent}%`, background: 'rgba(255,255,255,0.02)', borderRadius: '0 16px 16px 0', transition: 'width 1s ease-out' }}></div>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', position: 'relative', zIndex: 1, minWidth: 0 }}>
-                                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: i < 3 ? ['#FFD700', '#C0C0C0', '#CD7F32'][i] : 'rgba(255,255,255,0.05)', color: i < 3 ? '#000' : 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 900, flexShrink: 0 }}>{i + 1}</div>
-                                                            <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: isMobile ? '0.9rem' : '1.05rem' }}>{c.name}</div>
-                                                        </div>
-                                                        <div style={{ position: 'relative', zIndex: 1, textAlign: 'right', flexShrink: 0 }}>
-                                                            <div style={{ fontWeight: 900, color: 'var(--primary-color)', fontSize: '1.2rem' }}>{currentScans}</div>
-                                                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>пътувания</div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }) : <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.3 }}>Няма данни.</div>}
-                                        </div>
-                                    </Card>
-                                </div>
-                            </section>
+                            {trafficSection}
 
                             {/* Section 3: Резултати по линии и Сигурност */}
                             <section>

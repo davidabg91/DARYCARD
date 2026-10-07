@@ -7,7 +7,7 @@ import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection, deleteField } from 'firebase/firestore';
 import LoadingScreen from '../components/LoadingScreen';
 import { ROUTE_METADATA, ROUTES, cardPrice } from '../data/routeMetadata';
-import { uploadClientPhoto } from '../utils/photoStorage';
+import { uploadClientPhoto, describeUploadError } from '../utils/photoStorage';
 import ClientPhoto from '../components/ClientPhoto';
 import LostCardTransfer from '../components/LostCardTransfer';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
@@ -671,10 +671,12 @@ const ClientProfile: React.FC = () => {
         // Upload the photo to Storage; keep only the URL in the document. Fall back to
         // the inline base64 image if the upload fails so activation never breaks.
         let photoValue = regPhoto;
+        let photoUploadError = '';
         try {
             photoValue = await uploadClientPhoto(regPhoto, id);
         } catch (uploadErr) {
             console.error('Photo upload failed, falling back to inline image:', uploadErr);
+            photoUploadError = describeUploadError(uploadErr);
         }
 
         // Tiny inline thumbnail (~few KB) kept in the document for instant/offline display.
@@ -727,6 +729,7 @@ const ClientProfile: React.FC = () => {
             expiryDate: expiryMonth,
             photo: photoValue,
             photoThumb,
+            ...(photoUploadError ? { photoUploadError } : {}),
             createdAt: now.toISOString(),
             amountPaid: isServiceCard ? 0 : regEffectiveAmount,
             renewalHistory: initialRenewalHistory,

@@ -34,7 +34,7 @@ import {
 } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { ROUTE_METADATA, cardPrice } from '../data/routeMetadata';
-import { uploadClientPhoto } from '../utils/photoStorage';
+import { uploadClientPhoto, describeUploadError } from '../utils/photoStorage';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import { MIXED_METHOD, negativeAmountError, PAYMENT_METHODS } from '../data/paymentMethods';
 import { buildXlsx } from '../utils/xlsx';
@@ -1318,10 +1318,12 @@ const AdminPanel: React.FC = () => {
         // Falls back to the inline base64 if the upload fails, so registration never
         // breaks just because of a transient Storage error.
         let photoValue = photoDataURL || '';
+        let photoUploadError = '';
         try {
             if (photoDataURL) photoValue = await uploadClientPhoto(photoDataURL, generatedId);
         } catch (err) {
             console.error('Photo upload failed, falling back to inline image:', err);
+            photoUploadError = describeUploadError(err);
         }
 
         // Tiny inline thumbnail kept in the document for instant/offline display.
@@ -1375,6 +1377,7 @@ const AdminPanel: React.FC = () => {
             expiryDate: initialExpiry,
             photo: photoValue,
             photoThumb,
+            ...(photoUploadError ? { photoUploadError } : {}),
             address: (cardType === 'Пенсионерска карта' || cardType === 'Инвалидна карта') ? address : '',
             serviceReason: isServiceCard ? serviceReason.trim() : '',
             school: cardType === 'Ученическа карта' ? (selectedSchool === 'custom' ? customSchool : selectedSchool) : '',

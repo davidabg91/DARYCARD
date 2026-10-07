@@ -15,3 +15,16 @@ export async function uploadClientPhoto(dataUrl: string, clientId: string): Prom
     await uploadString(storageRef, dataUrl, 'data_url');
     return getDownloadURL(storageRef);
 }
+
+/**
+ * Short, storable reason for a failed upload (e.g. "storage/unauthorized"). The
+ * registration paths fall back to the inline base64 image when the upload fails,
+ * and that fallback is silent — from 28.09.2026 every new registration took it for
+ * days before anyone noticed the clients collection had doubled. Writing the reason
+ * into the client document makes the next failure diagnosable from the database.
+ */
+export function describeUploadError(err: unknown): string {
+    const e = err as { code?: string; message?: string; status_?: number } | null;
+    const parts = [e?.code, e?.status_ ? `HTTP ${e.status_}` : '', e?.message || String(err)].filter(Boolean);
+    return `${new Date().toISOString()} ${parts.join(' | ')}`.slice(0, 500);
+}
