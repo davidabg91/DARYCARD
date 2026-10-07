@@ -119,14 +119,18 @@ const endpoints = (line) => {
  */
 const NO_RUNS = '<span class="none">Няма курсове</span>';
 
-const timeChips = (times, column) =>
+// `via` маркира курсовете, които продължават към друга крайна спирка
+// (Ореховица и Брегаре са и на коридора за Кнежа).
+const timeChips = (times, column, via = {}) =>
   (times ?? [])
     .map((t) => {
       const isNew = t.includes('*');
-      const shown = esc(t.replace('*', ''));
+      const bare = t.replace('*', '');
+      const shown = esc(bare);
+      const to = via[bare];
       return `<span class="schedule-tag" data-col="${column}" data-min="${shown}">${
         isNew ? '<span class="new-badge">НОВО</span>' : ''
-      }${shown}</span>`;
+      }${shown}${to ? `<span class="via">→ ${esc(to)}</span>` : ''}</span>`;
     })
     .join('');
 
@@ -196,6 +200,7 @@ ol.stops li:not(:last-child):after{content:'\\2192';color:var(--primary-color);o
 .schedule-tag{padding:.3rem .6rem;background:rgba(255,255,255,.05);border-radius:8px;font-size:.8rem;font-weight:600;border:1px solid rgba(255,255,255,.1);position:relative;font-variant-numeric:tabular-nums}
 .schedule-tag.next-bus-tag-active{background:rgba(46,204,113,.2);color:#2ecc71;border-color:#2ecc71;box-shadow:0 0 15px rgba(46,204,113,.3);animation:pulse-green 2s infinite ease-in-out}
 @keyframes pulse-green{0%{box-shadow:0 0 5px rgba(46,204,113,.3);transform:scale(1)}50%{box-shadow:0 0 20px rgba(46,204,113,.6);transform:scale(1.05)}100%{box-shadow:0 0 5px rgba(46,204,113,.3);transform:scale(1)}}
+.via{margin-left:.35rem;font-size:.65rem;font-weight:800;color:#ffb74d}
 .new-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#ff5252;color:#fff;font-size:.45rem;font-weight:900;padding:1px 4px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.2)}
 h2{font-size:1.1rem;font-weight:800;margin:2.5rem 0 1rem}
 table{width:100%;border-collapse:collapse;font-size:.92rem;background:rgba(255,255,255,.02);border-radius:16px;overflow:hidden}
@@ -313,7 +318,7 @@ const renderPage = ({ line, meta, sched, slug, prices, allLines, slugOf, holiday
         <div class="cols">
           <div>
             <div class="dir">ОТ ${esc(from.toUpperCase())}</div>
-            <div class="tags">${timeChips(g.times.fromPleven, 'fromPleven') || NO_RUNS}</div>
+            <div class="tags">${timeChips(g.times.fromPleven, 'fromPleven', sched.via) || NO_RUNS}</div>
           </div>
           <div>
             <div class="dir">ОТ ${esc(returnFrom.toUpperCase())}</div>
@@ -537,6 +542,8 @@ ${groups}
   </article>
 ${sharedWith ? `
   <p class="note">${esc(line)} се обслужва от курсовете на линия ${esc(stopName(sharedWith))}, затова часовете в обратната посока са отбелязани от ${esc(returnFrom)}.</p>
+` : ''}${sched.via ? `
+  <p class="note">През ${esc(line)} минават и курсовете за ${[...new Set(Object.values(sched.via))].sort((a, b) => a.localeCompare(b, 'bg')).map(esc).join(', ').replace(/, ([^,]*)$/, ' и $1')} — в колоната от Плевен са отбелязани със стрелка към крайната спирка. Часовете им в обратната посока виж в разписанието на съответното село.</p>
 ` : ''}${priceRows ? `
   <h2>Цени по вид карта</h2>
   <table>

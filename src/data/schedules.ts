@@ -9,6 +9,8 @@ export interface RouteSchedule {
   saturday?: ScheduleTime;
   sunday?: ScheduleTime;
   holiday?: ScheduleTime;
+  // Курсове „от Плевен", които продължават към друга крайна спирка: час → село.
+  via?: Record<string, string>;
 }
 
 // Каменец–Одърне–Пордим–Згалево–Плевен line: the bus leaves Плевен at the same
@@ -262,9 +264,38 @@ SCHEDULES["Крушовица"] = SCHEDULES["Садовец"];
 SCHEDULES["Божурица"] = SCHEDULES["Рибен"];
 SCHEDULES["Долна Митрополия - Тръстеник"] = SCHEDULES["Тръстеник"];
 SCHEDULES["Долна Митрополия - Славовица"] = SCHEDULES["Славовица"];
-SCHEDULES["Ореховица"] = SCHEDULES["Байкал"];
-SCHEDULES["Брегаре"] = SCHEDULES["Байкал"];
 SCHEDULES["Крушовене"] = SCHEDULES["Байкал"];
+
+// Ореховица и Брегаре се обслужват от ДВЕ линии: Байкал и коридора за
+// Ставерци – Гостиля – Кнежа. „От Плевен" събира курсовете и на двете, а `via`
+// казва докъде отива всеки курс по коридора. Обратната посока остава само
+// байкалската — часовете, в които автобусите от Ставерци/Гостиля/Кнежа минават
+// оттук, не са подадени и не се пресмятат наум.
+const byTime = (a: string, b: string) => a.replace('*', '').localeCompare(b.replace('*', ''));
+const withCorridor = (baikal: ScheduleTime, corridor: ScheduleTime): ScheduleTime => ({
+  fromPleven: [...baikal.fromPleven, ...corridor.fromPleven].sort(byTime),
+  fromDestination: baikal.fromDestination,
+});
+// Ставерци носи всички курсове по коридора, Гостиля — стигащите поне дотам,
+// Кнежа — само крайните; по-далечното село презаписва по-близкото. Един и същ час
+// отива до едно и също село всеки ден, затова една таблица стига за всички дни.
+const corridorVia: Record<string, string> = {};
+for (const village of ["Ставерци", "Гостиля", "Кнежа"]) {
+  const s = SCHEDULES[village];
+  for (const day of [s, s.saturday, s.sunday]) {
+    for (const t of day?.fromPleven ?? []) corridorVia[t.replace('*', '')] = village;
+  }
+}
+const baikal = SCHEDULES["Байкал"];
+const staverci = SCHEDULES["Ставерци"];
+const baikalCorridor: RouteSchedule = {
+  ...withCorridor(baikal, staverci),
+  saturday: withCorridor(baikal.saturday ?? baikal, staverci.saturday ?? staverci),
+  sunday: withCorridor(baikal.sunday ?? baikal, staverci.sunday ?? staverci),
+  via: corridorVia,
+};
+SCHEDULES["Ореховица"] = baikalCorridor;
+SCHEDULES["Брегаре"] = baikalCorridor;
 
 // New routes mappings
 // Гривица is the first village after Плевен on the Каменец line; its
