@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
     Users, PlusCircle, ExternalLink, 
@@ -7,7 +7,7 @@ import {
     ShieldCheck, Shield, TrendingUp,
     PiggyBank, AlertTriangle, Share2,
     AlertCircle, Bus, Send, Bell, BarChart3,
-    Eye, EyeOff, ArrowLeftRight, GraduationCap, CheckCircle, Undo2, Search, Smartphone, Pencil, Download
+    Eye, EyeOff, ArrowLeftRight, GraduationCap, CheckCircle, Undo2, Search, Smartphone, Pencil, Download, CalendarClock
 } from 'lucide-react';
 import Card from '../components/Card';
 import UnpaidAlertsButton from '../components/UnpaidAlertsButton';
@@ -41,6 +41,8 @@ import { buildXlsx } from '../utils/xlsx';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import CardWriter from '../components/CardWriter';
 import DevicesPanel from '../components/DevicesPanel';
+// Разписанията носят картата (Leaflet) — зареждат се чак при отваряне на таба.
+const TimetablesPanel = lazy(() => import('../components/timetables/TimetablesPanel'));
 import { isWebNfcAvailable, type BatchCard } from '../utils/nfcCardWriter';
 import {
     formatCardNumber,
@@ -161,7 +163,7 @@ const CARD_TYPES = [
 
 /** Табовете на админ панела. */
 type AdminTabId = 'clients' | 'register' | 'nfc' | 'devices' | 'finances'
-    | 'signals' | 'rentals' | 'notifications' | 'unpaid';
+    | 'signals' | 'rentals' | 'notifications' | 'unpaid' | 'timetables';
 
 const generateClientId = () => {
     // Collision-resistant: prefer crypto.randomUUID, fall back to crypto.getRandomValues.
@@ -2593,6 +2595,7 @@ const AdminPanel: React.FC = () => {
                             <TabButton id="unpaid" icon={AlertTriangle} label={isMobile ? "БЕЗ АБОНАМЕНТ" : "БЕЗ АБОНАМЕНТ"} activeColor="#ff5252" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                             <TabButton id="nfc" icon={ExternalLink} label="NFC КОДОВЕ" activeColor="var(--accent-color)" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                             <TabButton id="devices" icon={Smartphone} label="УСТРОЙСТВА" activeColor="#00b0ff" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
+                            <TabButton id="timetables" icon={CalendarClock} label="РАЗПИСАНИЯ" activeColor="#00adb5" activeTab={activeTab} setActiveTab={setActiveTab} isMobile={isMobile} />
                         </>
                     )}
                 </div>
@@ -5470,6 +5473,16 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                         {showCardWriter && generatedCards.length > 0 && (
                             <CardWriter cards={generatedCards} onClose={() => setShowCardWriter(false)} />
                         )}
+                    </div>
+                )}
+
+                {activeTab === 'timetables' && isAdmin && (
+                    <div style={{ animation: 'fadeIn 0.4s ease' }}>
+                        <Card style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
+                            <Suspense fallback={<p style={{ color: 'var(--text-secondary)' }}>Зареждане…</p>}>
+                                <TimetablesPanel />
+                            </Suspense>
+                        </Card>
                     </div>
                 )}
 
