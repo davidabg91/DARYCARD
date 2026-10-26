@@ -576,7 +576,7 @@ const AdminPanel: React.FC = () => {
 
     // Пътувания (сканирания) на отворения профил — четат се лениво при отваряне на модала,
     // от подколекцията clients/{id}/scans.
-    const [profileScans, setProfileScans] = useState<{ at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string }[] | null>(null);
+    const [profileScans, setProfileScans] = useState<{ at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string; source?: string }[] | null>(null);
     const [profileScansLoading, setProfileScansLoading] = useState(false);
 
     // Зареждане на пътуванията (сканиранията) на отворения профил — една заявка
@@ -599,7 +599,7 @@ const AdminPanel: React.FC = () => {
                     role: s.role
                 }));
 
-        type ProfileScan = { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string };
+        type ProfileScan = { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string; source?: string };
         const toList = (docs: { data: () => Record<string, unknown> }[]): ProfileScan[] => docs
             .map(d => {
                 const data = d.data();
@@ -608,7 +608,8 @@ const AdminPanel: React.FC = () => {
                     route: data.route as string | undefined,
                     scannedBy: (data.scannedBy || (data.role === 'moderator' ? 'moderator' : undefined)) as string | undefined,
                     scannedByName: (data.scannedByName || data.performedBy) as string | undefined,
-                    role: data.role as string | undefined
+                    role: data.role as string | undefined,
+                    source: data.source as string | undefined
                 };
             })
             .filter(s => s.at);
@@ -6301,7 +6302,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             const fmtDay = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
                                             const fmtTime = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }); };
                                             // Групиране по месец (YYYY-MM). profileScans вече е сортиран низходящо.
-                                            const byMonth: Record<string, { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string }[]> = {};
+                                            const byMonth: Record<string, { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string; source?: string }[]> = {};
                                             (profileScans || []).forEach(s => {
                                                 const m = s.at.slice(0, 7);
                                                 (byMonth[m] = byMonth[m] || []).push(s);
@@ -6309,14 +6310,39 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             const monthsSorted = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
                                             const monthLabel = (m: string) => { const [y, mm] = m.split('-'); const name = BG_MONTHS[mm] || mm; return `${name.charAt(0)}${name.slice(1).toLowerCase()} ${y}`; };
                                             const monthEndDate = (m: string) => { const [y, mm] = m.split('-').map(Number); return new Date(y, mm, 0).toLocaleDateString('bg-BG'); };
+                                            // Качване в автобуса без платен абонамент за месеца. Съди се като
+                                            // таба БЕЗ АБОНАМЕНТ, за да не си противоречат профилът и отчетът:
+                                            // само терминал (не служител, не браузър — `source: 'web'`), без
+                                            // плащане за месеца на сканирането, и не прочитане в офиса до 30 мин.
+                                            // от създаването или от подновяване.
+                                            const STAFF = ['moderator', 'admin', 'inspector'];
+                                            const paidMonths = new Set((selectedClient.renewalHistory || []).map(rh => rh.month));
+                                            const officeMoments = [selectedClient.createdAt, ...(selectedClient.renewalHistory || []).map(rh => rh.date)]
+                                                .map(m => (m ? new Date(m).getTime() : NaN))
+                                                .filter(ms => isFinite(ms));
+                                            const isUnpaid = (sc: { at: string; scannedBy?: string; role?: string; source?: string }) => {
+                                                if (STAFF.includes(sc.scannedBy || '') || STAFF.includes(sc.role || '') || sc.source === 'web') return false;
+                                                if (paidMonths.has(sc.at.slice(0, 7))) return false;
+                                                const atMs = new Date(sc.at).getTime();
+                                                return !officeMoments.some(ms => Math.abs(ms - atMs) <= 30 * 60 * 1000);
+                                            };
+                                            const unpaidTotal = (profileScans || []).filter(isUnpaid).length;
                                             return (
                                                 <div style={{ padding: '1.25rem', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(0,173,181,0.06) 0%, rgba(255,255,255,0.01) 100%)', border: '1px solid var(--surface-border)' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
                                                         <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                                             <Bus size={18} /> Пътувания (сканирания)
                                                         </h4>
-                                                        <span style={{ fontWeight: 900, fontSize: '0.85rem', color: 'var(--primary-color)', background: 'rgba(0,173,181,0.12)', padding: '4px 12px', borderRadius: '50px' }}>
-                                                            Общо: {totalTravels}
+                                                        <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                            {unpaidTotal > 0 && (
+                                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 900, fontSize: '0.85rem', color: '#ff5252', background: 'rgba(255,82,82,0.14)', border: '1px solid rgba(255,82,82,0.35)', padding: '4px 12px', borderRadius: '50px' }}
+                                                                    title="Качвания в автобуса в месеци без платен абонамент">
+                                                                    <AlertTriangle size={13} /> Без абонамент: {unpaidTotal}
+                                                                </span>
+                                                            )}
+                                                            <span style={{ fontWeight: 900, fontSize: '0.85rem', color: 'var(--primary-color)', background: 'rgba(0,173,181,0.12)', padding: '4px 12px', borderRadius: '50px' }}>
+                                                                Общо: {totalTravels}
+                                                            </span>
                                                         </span>
                                                     </div>
 
@@ -6326,12 +6352,18 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                             {monthsSorted.map(m => {
                                                                 const monthScans = byMonth[m];
+                                                                const monthUnpaid = monthScans.filter(isUnpaid).length;
                                                                 return (
                                                                     <div key={m} style={{ border: '1px solid var(--surface-border)', borderRadius: '12px', overflow: 'hidden' }}>
                                                                         {/* Заглавие на месеца + общо за месеца */}
                                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 0.85rem', background: 'rgba(0,173,181,0.10)', borderBottom: '1px solid var(--surface-border)' }}>
                                                                             <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{monthLabel(m)}</span>
-                                                                            <span style={{ fontWeight: 900, fontSize: '0.8rem', color: 'var(--primary-color)', background: 'rgba(0,173,181,0.14)', padding: '3px 10px', borderRadius: '50px' }}>{monthScans.length} {monthScans.length === 1 ? 'пътуване' : 'пътувания'}</span>
+                                                                            <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                                                                {monthUnpaid > 0 && (
+                                                                                    <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#ff5252', background: 'rgba(255,82,82,0.14)', padding: '3px 10px', borderRadius: '50px' }}>{monthUnpaid} без абонамент</span>
+                                                                                )}
+                                                                                <span style={{ fontWeight: 900, fontSize: '0.8rem', color: 'var(--primary-color)', background: 'rgba(0,173,181,0.14)', padding: '3px 10px', borderRadius: '50px' }}>{monthScans.length} {monthScans.length === 1 ? 'пътуване' : 'пътувания'}</span>
+                                                                            </span>
                                                                         </div>
                                                                         {/* Списък на пътуванията за месеца */}
                                                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -6339,8 +6371,14 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                                 const isMod = s.scannedBy === 'moderator' || s.role === 'moderator';
                                                                                 const isAdm = s.scannedBy === 'admin' || s.role === 'admin';
                                                                                 const isInsp = s.scannedBy === 'inspector' || s.role === 'inspector';
+                                                                                const unpaid = isUnpaid(s);
                                                                                 return (
-                                                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.8rem', padding: '0.5rem 0.85rem', borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none', flexWrap: 'wrap' }}>
+                                                                                    <div key={idx} style={{
+                                                                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.8rem',
+                                                                                        padding: '0.5rem 0.85rem', borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none', flexWrap: 'wrap',
+                                                                                        background: unpaid ? 'rgba(255,82,82,0.09)' : undefined,
+                                                                                        boxShadow: unpaid ? 'inset 3px 0 0 #ff5252' : undefined,
+                                                                                    }}>
                                                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                                                             <span style={{ fontSize: '0.83rem', fontWeight: 600 }}>
                                                                                                 {fmtDay(s.at)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>· {fmtTime(s.at)} ч.</span>
@@ -6403,14 +6441,25 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                                                     gap: '0.3rem',
                                                                                                     fontSize: '0.72rem',
                                                                                                     fontWeight: 700,
-                                                                                                    color: '#00e676',
-                                                                                                    background: 'rgba(0, 230, 118, 0.12)',
-                                                                                                    border: '1px solid rgba(0, 230, 118, 0.3)',
+                                                                                                    color: unpaid ? '#ff5252' : '#00e676',
+                                                                                                    background: unpaid ? 'rgba(255, 82, 82, 0.14)' : 'rgba(0, 230, 118, 0.12)',
+                                                                                                    border: `1px solid ${unpaid ? 'rgba(255, 82, 82, 0.4)' : 'rgba(0, 230, 118, 0.3)'}`,
                                                                                                     padding: '2px 7px',
                                                                                                     borderRadius: '6px'
-                                                                                                }} title="Сканирано от валидатор / шофьор">
+                                                                                                }} title={unpaid ? 'Валидирана в автобуса без платен абонамент за месеца' : 'Сканирано от валидатор / шофьор'}>
                                                                                                     <Bus size={12} />
                                                                                                     {s.scannedByName || 'Валидатор / Шофьор'}
+                                                                                                </span>
+                                                                                            )}
+                                                                                            {unpaid && (
+                                                                                                <span style={{
+                                                                                                    display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                                                                                                    fontSize: '0.72rem', fontWeight: 900, color: '#fff',
+                                                                                                    background: '#e53935', padding: '2px 8px', borderRadius: '6px',
+                                                                                                    letterSpacing: '0.02em',
+                                                                                                }} title="Няма платен абонамент за този месец">
+                                                                                                    <AlertTriangle size={12} />
+                                                                                                    НЕПЛАТЕНА КАРТА
                                                                                                 </span>
                                                                                             )}
                                                                                         </div>
