@@ -228,6 +228,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+    // Цените от ROUTE_METADATA, преписани от таба РАЗПИСАНИЯ за функцията gtfs.
+    match /fares/{fareId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
     // Регистрацията в НТД и годишното потвърждение (settings/nap).
     match /settings/{docId} {
       allow read: if isStaff();

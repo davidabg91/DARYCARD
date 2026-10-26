@@ -6,9 +6,10 @@ import { strToU8, zipSync } from "fflate";
  * to publish to the Национална точка за достъп.
  *
  * Built on request from what was entered under Разписания in /admin: the stops,
- * the patterns of days and a timetable per line, which also carries the line's
- * name and single-ticket fare. Nothing is stored; the file is always what the
- * data says now. Ported from TransitFlow, for one company.
+ * the patterns of days and a timetable per line, and the fares (`fares`, kept
+ * in step with ROUTE_METADATA by the Разписания tab). Nothing is stored; the
+ * file is always what the data says now. Ported from TransitFlow, for one
+ * company.
  *
  *   gtfs/darycard.zip    the feed
  *   gtfs/darycard.json   what went into it and what was left out, and why
@@ -38,7 +39,7 @@ export interface GtfsReport {
     generatedAt: string;
     feedStart: string;
     feedEnd: string;
-    counts: { routes: number; stops: number; trips: number; stopTimes: number; services: number };
+    counts: { routes: number; stops: number; trips: number; stopTimes: number; services: number; fareProducts: number };
     problems: Problem[];
     /** Lines whose runs are driven and published under another line. */
     served: Array<{ name: string; by: string[] }>;
@@ -104,10 +105,11 @@ const todayInSofia = () => {
 
 export async function buildGtfs(): Promise<{ files: Record<string, string>; report: GtfsReport }> {
     const db = admin.firestore();
-    const [stopsSnap, servicesSnap, ttSnap] = await Promise.all([
+    const [stopsSnap, servicesSnap, ttSnap, faresSnap] = await Promise.all([
         db.collection("stops").get(),
         db.collection("services").get(),
         db.collection("timetables").get(),
+        db.collection("fares").get(),
     ]);
 
     const problems: Problem[] = [];
@@ -143,8 +145,6 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
     const stopTimeRows: unknown[][] = [];
     const usedStops = new Set<string>();
     const usedServices = new Set<string>();
-    const fareRows: unknown[][] = [];
-    const fareRuleRows: unknown[][] = [];
     const unplacedWarned = new Set<string>();
     let latestUpdate = "";
 
@@ -207,12 +207,6 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
 
         if (!routeTrips) { warn(`${name}: няма разписание — линията не е включена.`); continue; }
         routeRows.push([route.id, AGENCY.id, "", name, 3]);
-        const fare = route.data.fare;
-        if (typeof fare === "number" && fare > 0) {
-            const fareId = `F_${route.id}`;
-            fareRows.push([fareId, fare.toFixed(2), "EUR", 0, 0, AGENCY.id]);
-            fareRuleRows.push([fareId, route.id]);
-        }
     }
 
     // ── Days of operation ────────────────────────────────────────────────────
@@ -233,9 +227,64 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
         }
     }
 
+    // ── Fares ────────────────────────────────────────────────────────────────
+    // In DARY the price is set by where you travel from and to, not by which
+    // bus you board: Плевен → Дисевица costs less than Плевен → Бъркач on the
+    // same bus. So every stop is its own fare zone (v1) and its own area (v2),
+    // and each priced line from ROUTE_METADATA is a fare between its first and
+    // last stop, both ways.
+    //   v1 — fare_attributes / fare_rules: the single ticket, origin → destination.
+    //   v2 — rider_categories, fare_media, fare_products, areas, stop_areas,
+    //        fare_leg_rules: the single ticket and the monthly card for each
+    //        kind of passenger (ученик, пенсионер, …).
+    // Fares whose stops are not in the file yet (no point on the map, no run)
+    // are left out and counted in the report.
+    const RIDERS: Array<[string, string]> = [
+        ["regular", "Редовен пътник"], ["student", "Ученик"], ["pensioner", "Пенсионер"],
+        ["teacher", "Учител"], ["disabled", "Лице с увреждане"],
+    ];
+    const fareAttrRows: unknown[][] = [];
+    const fareRuleRows: unknown[][] = [];
+    const productRows: unknown[][] = [];
+    const legRuleRows: unknown[][] = [];
+    const usedRiders = new Set<string>();
+    const usedMedia = new Set<string>();
+    const fareAreas = new Set<string>();
+    let faresLeftOut = 0;
+    for (const f of faresSnap.docs.map(d => ({ ...(d.data() as Data), id: d.id }) as Data & { id: string })) {
+        const from = String(f.fromStopId || ""), to = String(f.toStopId || "");
+        if (!usedStops.has(from) || !usedStops.has(to) || from === to) { faresLeftOut++; continue; }
+        fareAreas.add(from); fareAreas.add(to);
+        const label = `${f.fromName || stopName(from)} – ${f.toName || stopName(to)}`;
+        const legs = (productId: string) => {
+            legRuleRows.push([`L_${f.id}`, from, to, productId]);
+            legRuleRows.push([`L_${f.id}`, to, from, productId]);
+        };
+        if (typeof f.single === "number" && f.single > 0) {
+            const id = `S_${f.id}`;
+            fareAttrRows.push([id, f.single.toFixed(2), "EUR", 0, 0, AGENCY.id]);
+            fareRuleRows.push([id, from, to], [id, to, from]);
+            // No rider category: the same ticket for everyone, paid to the driver.
+            productRows.push([id, `Единичен билет ${label}`, "", "cash", f.single.toFixed(2), "EUR"]);
+            usedMedia.add("cash");
+            legs(id);
+        }
+        const passes = (f.passes || {}) as Record<string, unknown>;
+        for (const [rider, riderName] of RIDERS) {
+            const amount = passes[rider];
+            if (typeof amount !== "number" || amount <= 0) continue;
+            const id = `P_${f.id}_${rider}`;
+            productRows.push([id, `Месечна карта (календарен месец) ${label} — ${riderName}`, rider, "card", amount.toFixed(2), "EUR"]);
+            usedRiders.add(rider);
+            usedMedia.add("card");
+            legs(id);
+        }
+    }
+    if (faresLeftOut) warn(`${faresLeftOut} тарифи не са включени, защото спирките им още не са в данните (без точка на картата или без курс).`);
+
     const stopRows = [...usedStops].map(id => {
         const s = stops.get(id)!;
-        return [id, String(s.code || ""), String(s.name || ""), (s.lat as number).toFixed(6), (s.lng as number).toFixed(6)];
+        return [id, String(s.code || ""), String(s.name || ""), (s.lat as number).toFixed(6), (s.lng as number).toFixed(6), id];
     });
 
     if (!tripRows.length) err("Няма нито един курс, готов за публикуване.");
@@ -245,7 +294,7 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
             ["agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang", "agency_phone", "agency_email"],
             [[AGENCY.id, AGENCY.name, AGENCY.url, TIMEZONE, "bg", AGENCY.phone, AGENCY.email]]
         ),
-        "stops.txt": csv(["stop_id", "stop_code", "stop_name", "stop_lat", "stop_lon"], stopRows),
+        "stops.txt": csv(["stop_id", "stop_code", "stop_name", "stop_lat", "stop_lon", "zone_id"], stopRows),
         "routes.txt": csv(["route_id", "agency_id", "route_short_name", "route_long_name", "route_type"], routeRows),
         "trips.txt": csv(["route_id", "service_id", "trip_id", "trip_headsign", "direction_id"], tripRows),
         "stop_times.txt": csv(["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"], stopTimeRows),
@@ -256,9 +305,24 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
         ),
     };
     if (calendarDateRows.length) files["calendar_dates.txt"] = csv(["service_id", "date", "exception_type"], calendarDateRows);
-    if (fareRows.length) {
-        files["fare_attributes.txt"] = csv(["fare_id", "price", "currency_type", "payment_method", "transfers", "agency_id"], fareRows);
-        files["fare_rules.txt"] = csv(["fare_id", "route_id"], fareRuleRows);
+    if (fareAttrRows.length) {
+        files["fare_attributes.txt"] = csv(["fare_id", "price", "currency_type", "payment_method", "transfers", "agency_id"], fareAttrRows);
+        files["fare_rules.txt"] = csv(["fare_id", "origin_id", "destination_id"], fareRuleRows);
+    }
+    if (productRows.length) {
+        files["rider_categories.txt"] = csv(
+            ["rider_category_id", "rider_category_name", "is_default_fare_category", "eligibility_url"],
+            RIDERS.filter(([id]) => usedRiders.has(id)).map(([id, name]) => [id, name, id === "regular" ? 1 : 0, AGENCY.url])
+        );
+        files["fare_media.txt"] = csv(["fare_media_id", "fare_media_name", "fare_media_type"], [
+            ["cash", "В брой при шофьора", 0],
+            ["card", "Карта DARY", 2],
+        ].filter(([id]) => usedMedia.has(String(id))));
+        files["fare_products.txt"] = csv(
+            ["fare_product_id", "fare_product_name", "rider_category_id", "fare_media_id", "amount", "currency"], productRows);
+        files["areas.txt"] = csv(["area_id", "area_name"], [...fareAreas].map(id => [id, stopName(id)]));
+        files["stop_areas.txt"] = csv(["area_id", "stop_id"], [...fareAreas].map(id => [id, id]));
+        files["fare_leg_rules.txt"] = csv(["leg_group_id", "from_area_id", "to_area_id", "fare_product_id"], legRuleRows);
     }
 
     return {
@@ -271,6 +335,7 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
             counts: {
                 routes: routeRows.length, stops: stopRows.length, trips: tripRows.length,
                 stopTimes: stopTimeRows.length, services: calendarRows.length,
+                fareProducts: productRows.length,
             },
             problems,
             served,

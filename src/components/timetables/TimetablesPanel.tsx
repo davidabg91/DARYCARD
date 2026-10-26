@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     CalendarClock, MapPin, Route as RouteIcon, Plus, Trash2, Save, X, Check,
-    AlertTriangle, Loader2, Search, Download, CalendarDays, ChevronDown, ChevronUp, ListChecks,
+    AlertTriangle, Loader2, Search, Download, CalendarDays, ChevronDown, ChevronUp, ListChecks, Ticket,
 } from 'lucide-react';
-import { addDoc, collection, deleteDoc, doc, setDoc, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -16,6 +16,7 @@ import { holidaysFor } from '../../utils/holidays';
 import StopMap, { type Point } from './StopMap';
 import TimetableEditor from './TimetableEditor';
 import ComplianceCard from './ComplianceCard';
+import { RIDER_CATEGORIES, buildFareTable, sameFare } from '../../utils/fares';
 
 /**
  * „Разписания“ — където се въвежда това, което Наредба Н-7 иска да се подаде в
@@ -98,6 +99,33 @@ const TimetablesPanel: React.FC = () => {
     const [showHolidays, setShowHolidays] = useState(false);
     const [showServed, setShowServed] = useState(false);
     const [showDupes, setShowDupes] = useState(false);
+    const [showFares, setShowFares] = useState(false);
+
+    // ── Fares ────────────────────────────────────────────────────────────────
+
+    /**
+     * Цените се продават от ROUTE_METADATA; функцията `gtfs` ги чете от колекция
+     * `fares`. Всяко отваряне на таба ги сверява и преписва само разликите —
+     * веднъж, а не при всяка снимка (не се пише в документ, който слушаш).
+     */
+    const fareTable = useMemo(() => buildFareTable(), []);
+    const [storedFares, setStoredFares] = useState<Record<string, Record<string, unknown>> | null>(null);
+    useEffect(() => onSnapshot(collection(db, 'fares'), snap => {
+        const out: Record<string, Record<string, unknown>> = {};
+        snap.docs.forEach(d => { out[d.id] = d.data(); });
+        setStoredFares(out);
+    }, err => console.error('Fares unavailable:', err)), []);
+    const faresSynced = useRef(false);
+    useEffect(() => {
+        if (!storedFares || faresSynced.current) return;
+        faresSynced.current = true;
+        const changed = fareTable.filter(f => !sameFare(f, storedFares[f.id]));
+        if (!changed.length) return;
+        const batch = writeBatch(db);
+        changed.forEach(f => batch.set(doc(db, 'fares', f.id), f));
+        batch.commit().catch(err => console.error('Fares not synced:', err));
+    }, [storedFares, fareTable]);
+    const passCount = fareTable.reduce((n, f) => n + Object.keys(f.passes).length, 0);
 
     const year = new Date().getFullYear();
 
@@ -421,6 +449,43 @@ const TimetablesPanel: React.FC = () => {
                             </>
                         )}
                     </>
+                )}
+            </section>
+
+            {/* ── Fares ────────────────────────────────────────────────── */}
+            <section style={card}>
+                <h3 style={{ ...h2, marginBottom: '0.4rem' }}><Ticket size={19} color="var(--primary-color)" /> Тарифи ({fareTable.length})</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginTop: 0 }}>
+                    Подават се сами от цените на линиите — единичен билет и месечна карта за всеки вид пътник
+                    ({RIDER_CATEGORIES.map(c => c.name.toLowerCase()).join(', ')}), от първата до последната спирка
+                    на всяка ценова линия, включително отсечките. Сменят се там, където се сменят цените на картите.
+                    Служебните карти са безплатни за персонала и не са тарифа. В данните: {fareTable.filter(f => f.single !== null).length} цени на билет
+                    и {passCount} цени на месечни карти.
+                </p>
+                <button onClick={() => setShowFares(v => !v)} style={{ ...plainBtn, background: 'transparent' }}>
+                    {showFares ? <ChevronUp size={14} /> : <ChevronDown size={14} />} Покажи цените
+                </button>
+                {showFares && (
+                    <div style={{ overflowX: 'auto', marginTop: '0.7rem' }}>
+                        <table style={{ borderCollapse: 'collapse', fontSize: '0.82rem', width: '100%' }}>
+                            <thead>
+                                <tr style={{ color: 'var(--text-secondary)', textAlign: 'right' }}>
+                                    <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Откъде – докъде</th>
+                                    <th style={{ padding: '0.35rem 0.5rem' }}>Билет</th>
+                                    {RIDER_CATEGORIES.map(c => <th key={c.id} style={{ padding: '0.35rem 0.5rem' }}>Карта: {c.name}</th>)}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {fareTable.map(f => (
+                                    <tr key={f.id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                        <td style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>{f.fromName} – {f.toName}</td>
+                                        <td style={{ padding: '0.35rem 0.5rem' }}>{f.single !== null ? f.single.toFixed(2) : '—'}</td>
+                                        {RIDER_CATEGORIES.map(c => <td key={c.id} style={{ padding: '0.35rem 0.5rem' }}>{f.passes[c.id]?.toFixed(2) ?? '—'}</td>)}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </section>
 
