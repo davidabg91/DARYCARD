@@ -8,7 +8,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { ROUTE_METADATA, cardPrice, disabledDiscountPct, listedRoutes } from './src/data/routeMetadata'
 import { SCHEDULES } from './src/data/schedules'
 import { routeSlug } from './src/data/routeSlugs'
-import { HOLIDAYS_2026 } from './src/utils/holidays'
+import { holidaysFor } from './src/utils/holidays'
 import { generateLinePages } from './scripts/generate-line-pages.mjs'
 
 // https://vite.dev/config/
@@ -114,7 +114,8 @@ export default defineConfig({
           SCHEDULES,
           cardPrice,
           routeSlug,
-          holidays: HOLIDAYS_2026.map(h => h.date),
+          // Тази и следващата година — страниците се правят наново при всеки деплой.
+          holidays: [new Date().getFullYear(), new Date().getFullYear() + 1].flatMap(y => holidaysFor(y).map(h => h.date)),
           disabledDiscountPct,
         })
         console.log(`
