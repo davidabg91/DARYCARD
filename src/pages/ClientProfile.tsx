@@ -17,6 +17,7 @@ import { CARDS_MAPPING } from '../data/cardsMapping';
 import { lookupCardNumber, markCardAssigned } from '../utils/cardRegistry';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
 import { useSchools, rememberSchool } from '../utils/customSchools';
+import { paidThroughMonth } from '../utils/paidThrough';
 
 interface Client {
     id: string;
@@ -1466,6 +1467,9 @@ const ClientProfile: React.FC = () => {
     const lastPaidMonth = renewalHistory.length > 0 
         ? [...renewalHistory].sort((a, b) => b.month.localeCompare(a.month))[0].month 
         : currentMonthStr;
+    // Подновена преди да изтече: валидна до края на непрекъснатата поредица платени месеци.
+    const paidThrough = paidThroughMonth(renewalHistory, currentMonthStr) || currentMonthStr;
+    const renewedAhead = paidThrough > currentMonthStr;
     const isActive = !isCanceled && hasPaidCurrentMonth;
     const themeColor = isActive ? '#00e676' : '#ff1744';
 
@@ -1675,8 +1679,13 @@ const ClientProfile: React.FC = () => {
                         {isActive ? 'ВАЛИДЕН АБОНАМЕНТ ДО' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
                     </div>
                     <div style={{ fontSize: '2.4rem', fontWeight: 900, color: isActive ? '#fff' : '#ff5252', letterSpacing: '2px', lineHeight: 1 }}>
-                        {getFormattedMonth(isActive ? lastPaidMonth : currentMonthStr)}
+                        {getFormattedMonth(isActive ? paidThrough : currentMonthStr)}
                     </div>
+                    {isActive && renewedAhead && (
+                        <div style={{ marginTop: '10px', fontSize: '0.85rem', fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: '1px' }}>
+                            ПОДНОВЕН ПРЕДИ ИЗТИЧАНЕ — БЕЗ ПРЕКЪСВАНЕ
+                        </div>
+                    )}
                 </div>
 
                 {/* Last-scan info (previous scan, excluding this one) — visible only to

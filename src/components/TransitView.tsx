@@ -13,6 +13,7 @@ import MyPosSmartSdk from '../services/MyPosSmartSdk';
 import TicketButton from './TicketButton';
 import { Capacitor } from '@capacitor/core';
 import { CARDS_MAPPING } from '../data/cardsMapping';
+import { paidThroughMonth } from '../utils/paidThrough';
 
 interface Client {
     id: string;
@@ -540,9 +541,10 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     const currentMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
     const renewalHistory = client?.renewalHistory || [];
     const hasPaidCurrentMonth = renewalHistory.some((rh) => rh.month === currentMonthStr);
-    const lastPaidMonth = renewalHistory.length > 0 
-        ? [...renewalHistory].sort((a, b) => b.month.localeCompare(a.month))[0].month 
-        : currentMonthStr;
+    // Подновена преди да изтече: валидна до края на непрекъснатата поредица
+    // платени месеци, не до най-късния платен месец изобщо (той може да е след дупка).
+    const paidThrough = paidThroughMonth(renewalHistory, currentMonthStr) || currentMonthStr;
+    const renewedAhead = paidThrough > currentMonthStr;
     const isValid = client && !client.isCanceled && hasPaidCurrentMonth && !isCloned;
     const themeColor = offlineNoData ? '#29b6f6' : unregistered ? '#ff9100' : (isCloned ? '#ff1744' : (isValid ? '#00e676' : '#ff1744'));
 
@@ -870,8 +872,13 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                             {isValid ? 'ВАЛИДНОСТ ДО КРАЯ НА' : 'НЯМА ВАЛИДЕН АБОНАМЕНТ ЗА'}
                                         </div>
                                         <div style={{ fontSize: '2.4rem', fontWeight: 900, color: isValid ? '#fff' : '#ff5252', letterSpacing: '1px' }}>
-                                            {formatBGMonth(isValid ? lastPaidMonth : currentMonthStr)}
+                                            {formatBGMonth(isValid ? paidThrough : currentMonthStr)}
                                         </div>
+                                        {isValid && renewedAhead && (
+                                            <div style={{ marginTop: '6px', fontSize: '0.8rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', letterSpacing: '1px' }}>
+                                                ПОДНОВЕН ПРЕДИ ИЗТИЧАНЕ — БЕЗ ПРЕКЪСВАНЕ
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </>
