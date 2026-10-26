@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import TicketButton from './components/TicketButton';
+import DisruptionButton from './components/DisruptionButton';
 import LoadingScreen from './components/LoadingScreen';
 import ClientProfile from './pages/ClientProfile';
 import LoginPage from './pages/LoginPage';
@@ -360,6 +361,8 @@ function App() {
         {/* Билетите са извън Routes: бутонът трябва да стои над всеки екран на
             терминала и да не иска логване. В браузър не се показва изобщо. */}
         <TicketButton />
+        {/* Червената лента най-долу: отменен курс / смущение — само на терминала. */}
+        <DisruptionButton />
       </HashRouter>
     </AuthProvider>
     </ErrorBoundary>

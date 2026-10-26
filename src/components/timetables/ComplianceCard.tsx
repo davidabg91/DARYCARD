@@ -3,7 +3,7 @@ import {
     ShieldCheck, AlertTriangle, CheckCircle2, XCircle, Copy, Download, RefreshCw, Loader2,
     ExternalLink, CalendarCheck,
 } from 'lucide-react';
-import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { GTFS_FEED_URL, GTFS_REPORT_URL, GTFS_RT_JSON_URL, GTFS_RT_URL } from '../../utils/timetable';
@@ -45,6 +45,12 @@ interface LiveVehicle {
     note: string;
 }
 
+/** Същите етикети като functions/src/disruptionKinds.ts. */
+const DISRUPTION_LABELS: Record<string, string> = {
+    breakdown: 'Авария — курсът не продължава', cancelled: 'Курсът е отменен', accident: 'Пътен инцидент',
+    delay: 'Голямо закъснение', detour: 'Отклонение / затворен път',
+};
+
 const EMPTY_NAP: NapState = { registered: false, registeredAt: '', confirmedAt: '', note: '' };
 
 const DEADLINE = new Date(2027, 0, 1);
@@ -71,6 +77,7 @@ const ComplianceCard: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [nap, setNap] = useState<NapState>(EMPTY_NAP);
     const [live, setLive] = useState<LiveVehicle[] | null>(null);
+    const [disruptions, setDisruptions] = useState<Array<{ id: string; kind: string; routeName: string; departure: string; deviceName: string; at: string; matchedBy: string }>>([]);
     const [gpsTrouble, setGpsTrouble] = useState<Array<{ id: string; detail: string }>>([]);
     const [deviceNames, setDeviceNames] = useState<Record<string, string>>({});
     const [copied, setCopied] = useState(false);
@@ -122,6 +129,21 @@ const ComplianceCard: React.FC = () => {
                 .map(d => ({ id: d.id, detail: String(d.data().gpsDetail || d.data().gps) })));
         }, () => { /* nothing reported yet */ });
     }, []);
+
+    // Сигналите от червения бутон на терминалите, които още важат.
+    useEffect(() => {
+        const q = query(collection(db, 'disruptions'), where('activeUntil', '>', new Date().toISOString()));
+        return onSnapshot(q, snap => {
+            setDisruptions(snap.docs.filter(d => !d.data().resolvedAt).map(d => ({
+                id: d.id, kind: String(d.data().kind || ''), routeName: String(d.data().routeName || ''),
+                departure: String(d.data().departure || ''), deviceName: String(d.data().deviceName || ''),
+                at: String(d.data().at || ''), matchedBy: String(d.data().matchedBy || ''),
+            })).sort((a, b) => b.at.localeCompare(a.at)));
+        }, () => { /* none yet */ });
+    }, []);
+    const endDisruption = (id: string) => updateDoc(doc(db, 'disruptions', id), {
+        resolvedAt: new Date().toISOString(), resolvedBy: currentUser?.username || 'админ',
+    }).catch(err => console.error('Disruption not ended:', err));
 
     // Терминалите са с имената, които им е дал админът в УСТРОЙСТВА.
     useEffect(() => {
@@ -251,6 +273,24 @@ const ComplianceCard: React.FC = () => {
                     ) : (
                         <div style={{ marginTop: '0.4rem' }}>В момента няма автобуси, които подават позиция.</div>
                     )}
+                    <div style={{ marginTop: '0.6rem' }}>
+                        <strong style={{ color: '#fff' }}>Отменени курсове и смущения.</strong> Шофьорът ги подава от червената лента
+                        най-долу на терминала; влизат веднага в потока за НТД. Приемат се само от терминал с име в УСТРОЙСТВА.
+                        {disruptions.length === 0 ? (
+                            <div style={{ marginTop: '0.3rem' }}>В момента няма активни сигнали.</div>
+                        ) : (
+                            <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem', color: '#ff8a80' }}>
+                                {disruptions.map(d => (
+                                    <li key={d.id} style={{ marginBottom: '0.3rem' }}>
+                                        <strong>{DISRUPTION_LABELS[d.kind] || d.kind}</strong> — {d.routeName}{d.departure ? `, курс ${d.departure}` : ''}
+                                        {' '}· {d.deviceName}, {new Date(d.at).toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })}
+                                        {d.matchedBy === 'driver' ? ' (курсът е избран от шофьора)' : ''}
+                                        {' '}<button style={{ ...btn, padding: '0.2rem 0.6rem' }} onClick={() => endDisruption(d.id)}>Прекрати</button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
                     {gpsTrouble.length > 0 && (
                         <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem', color: '#ff8a80' }}>
                             {gpsTrouble.map(t => <li key={t.id}>{deviceNames[t.id] || `Терминал ${t.id.slice(0, 6)}…`}: {t.detail}</li>)}

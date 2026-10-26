@@ -94,7 +94,8 @@ const TicketButton: React.FC<Props> = ({ variant = 'floating' }) => {
                     onClick={() => setOpen(true)}
                     aria-label="Издай билет"
                     style={{
-                        position: 'fixed', right: '1rem', bottom: '1rem', zIndex: 9000,
+                        // Над червената лента за смущения (DisruptionButton), която е най-долу.
+                        position: 'fixed', right: '1rem', bottom: '5.5rem', zIndex: 9000,
                         width: '64px', height: '64px', borderRadius: '50%', border: 'none',
                         background: '#00c853', color: '#fff', boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'

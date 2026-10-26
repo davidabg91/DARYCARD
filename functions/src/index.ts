@@ -2,6 +2,7 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { buildGtfs, zipGtfs } from "./gtfs";
 import { buildRealtime, encodeRealtime } from "./gtfsRt";
+import { handleDisruption, type DisruptionRequest } from "./disruptions";
 
 admin.initializeApp();
 
@@ -726,7 +727,7 @@ export const gtfs = functions.https.onRequest(async (req, res) => {
             // Positions are thirty seconds apart; a copy kept longer would hide one.
             res.set("Cache-Control", "public, max-age=10, s-maxage=15");
             if (last.endsWith(".json")) {
-                res.json({ generatedAt: new Date(built.generatedAt).toISOString(), vehicles: built.vehicles });
+                res.json({ generatedAt: new Date(built.generatedAt).toISOString(), vehicles: built.vehicles, disruptions: built.disruptions });
                 return;
             }
             res.set("Content-Type", "application/x-protobuf");
@@ -748,5 +749,19 @@ export const gtfs = functions.https.onRequest(async (req, res) => {
     } catch (e) {
         console.error("gtfs failed", e);
         res.status(500).send("Error");
+    }
+});
+
+/**
+ * Червеният бутон на терминала: отменен курс или смущение, подадено от шофьора.
+ * Без логване (шофьорът не влиза) — доверието е в терминала: приема се само от
+ * устройство, на което админът е дал име в УСТРОЙСТВА. Виж disruptions.ts.
+ */
+export const reportDisruption = functions.https.onCall(async (data: DisruptionRequest) => {
+    try {
+        return await handleDisruption(data || {});
+    } catch (e) {
+        console.error("reportDisruption failed", e);
+        return { ok: false, error: "Сигналът не беше приет. Опитайте отново." };
     }
 });

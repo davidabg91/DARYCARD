@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const GtfsRealtimeBindings = require("gtfs-realtime-bindings");
+import { DISRUPTION_KINDS, type DisruptionKind } from "./disruptionKinds";
 
 /**
  * DARY's buses in real time, as GTFS-Realtime — the second half of what
@@ -60,7 +61,7 @@ interface Match { tripId: string; serviceDay: string; delay: number; score: numb
 // Time in Sofia
 // ─────────────────────────────────────────────────────────────────────────────
 
-const sofiaParts = (ms: number) => {
+export const sofiaParts = (ms: number) => {
     const f = new Intl.DateTimeFormat("en-CA", {
         timeZone: TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit",
         hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
@@ -69,7 +70,7 @@ const sofiaParts = (ms: number) => {
     return { y: get("year"), m: get("month"), d: get("day"), minutes: get("hour") * 60 + get("minute") + get("second") / 60 };
 };
 
-const ymd = (y: number, m: number, d: number) => `${y}${String(m).padStart(2, "0")}${String(d).padStart(2, "0")}`;
+export const ymd = (y: number, m: number, d: number) => `${y}${String(m).padStart(2, "0")}${String(d).padStart(2, "0")}`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Official holidays — the same rules as functions/src/gtfs.ts and the app.
@@ -99,7 +100,7 @@ const holidays = (year: number) => {
     return taken;
 };
 
-const runsOn = (service: Data, y: number, m: number, d: number) => {
+export const runsOn = (service: Data, y: number, m: number, d: number) => {
     const date = utc(y, m, d);
     const rule = String(service.holidays || "normal");
     if (rule !== "normal" && holidays(y).has(key(date))) return rule === "run";
@@ -222,15 +223,38 @@ export interface RtVehicle {
     note: string;
 }
 
+export interface RtDisruption {
+    id: string;
+    kind: DisruptionKind;
+    routeId: string;
+    routeName: string;
+    tripId: string | null;
+    serviceDay: string | null;
+    departure: string;
+    deviceName: string;
+    at: string;
+    activeUntil: string;
+}
+
 export async function buildRealtime() {
     const db = admin.firestore();
     const now = Date.now();
-    const [runs, positions, devices, states] = await Promise.all([
+    const [runs, positions, devices, states, disruptionSnap] = await Promise.all([
         loadRuns(db, now),
         db.collection("positions").get(),
         db.collection("devices").get(),
         db.collection("rt_state").get(),
+        db.collection("disruptions").where("activeUntil", ">", new Date(now).toISOString()).get(),
     ]);
+    // What drivers reported from the red button — cancelled runs and disruptions.
+    const disruptions: RtDisruption[] = disruptionSnap.docs
+        .filter(d => !d.get("resolvedAt") && DISRUPTION_KINDS[d.get("kind") as DisruptionKind])
+        .map(d => ({
+            id: d.id, kind: d.get("kind") as DisruptionKind, routeId: String(d.get("routeId") || ""),
+            routeName: String(d.get("routeName") || ""), tripId: d.get("tripId") || null, serviceDay: d.get("serviceDay") || null,
+            departure: String(d.get("departure") || ""), deviceName: String(d.get("deviceName") || ""),
+            at: String(d.get("at") || ""), activeUntil: String(d.get("activeUntil") || ""),
+        }));
     // The name the admin gave the terminal in УСТРОЙСТВА (usually the driver).
     const labels = new Map(devices.docs.map(d => [d.id, String(d.get("name") || d.get("autoName") || "")]));
     const previous = new Map(states.docs.map(d => [d.id, d.data() as Match]));
@@ -301,7 +325,7 @@ export async function buildRealtime() {
     }
     await Promise.all(writes);
 
-    return { vehicles, runs: byTrip, generatedAt: now };
+    return { vehicles, runs: byTrip, generatedAt: now, disruptions };
 }
 
 const minutesText = (m: number) => {
@@ -315,6 +339,10 @@ export const encodeRealtime = (built: Awaited<ReturnType<typeof buildRealtime>>)
     const ts = Math.floor(built.generatedAt / 1000);
     const nowMinute = sofiaParts(built.generatedAt).minutes;
     const entity: unknown[] = [];
+    // A run the driver called off: CANCELED, and no delay predictions for it.
+    const cancelled = new Set(built.disruptions
+        .filter(d => DISRUPTION_KINDS[d.kind].cancels && d.tripId && d.serviceDay)
+        .map(d => `${d.serviceDay}|${d.tripId}`));
 
     for (const v of built.vehicles) {
         const trip = v.match ? { tripId: v.match.tripId, startDate: v.match.serviceDay, scheduleRelationship: 0 } : undefined;
@@ -332,7 +360,7 @@ export const encodeRealtime = (built: Awaited<ReturnType<typeof buildRealtime>>)
             },
         });
 
-        if (!v.match) continue;
+        if (!v.match || cancelled.has(`${v.match.serviceDay}|${v.match.tripId}`)) continue;
         const run = built.runs.get(`${v.match.serviceDay}|${v.match.tripId}`);
         if (!run) continue;
         // The delay as it stands carries on to the stops still ahead.
@@ -351,6 +379,26 @@ export const encodeRealtime = (built: Awaited<ReturnType<typeof buildRealtime>>)
                 })),
                 timestamp: ts,
                 delay: v.match.delay * 60,
+            },
+        });
+    }
+
+    const text = (t: string) => ({ translation: [{ text: t, language: "bg" }] });
+    for (const d of built.disruptions) {
+        const spec = DISRUPTION_KINDS[d.kind];
+        const trip = d.tripId && d.serviceDay ? { tripId: d.tripId, startDate: d.serviceDay } : undefined;
+        if (spec.cancels && trip) {
+            entity.push({ id: `cx-${d.id}`, tripUpdate: { trip: { ...trip, scheduleRelationship: 3 }, timestamp: ts } });
+        }
+        entity.push({
+            id: `al-${d.id}`,
+            alert: {
+                activePeriod: [{ start: Math.floor(Date.parse(d.at) / 1000), end: Math.floor(Date.parse(d.activeUntil) / 1000) }],
+                informedEntity: [trip ? { routeId: d.routeId, trip } : { routeId: d.routeId }],
+                cause: spec.cause,
+                effect: spec.effect,
+                headerText: text(`${d.routeName}${d.departure ? `, курс ${d.departure}` : ""}: ${spec.label}`),
+                descriptionText: text(`Подадено от автобуса в ${new Date(d.at).toLocaleTimeString("bg-BG", { timeZone: "Europe/Sofia", hour: "2-digit", minute: "2-digit" })}.`),
             },
         });
     }

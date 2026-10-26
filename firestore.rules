@@ -256,6 +256,14 @@ service cloud.firestore {
         && (!('gpsDetail' in request.resource.data) || request.resource.data.gpsDetail.size() <= 300);
       allow delete: if isAdmin();
     }
+    // Отменени курсове и смущения от червения бутон на терминала. Създава ги САМО
+    // функцията `reportDisruption` (проверява, че терминалът има име от админ) —
+    // тук create няма за никого. Админът може само да прекрати сигнал.
+    match /disruptions/{id} {
+      allow read: if isStaff();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['resolvedAt', 'resolvedBy']);
+    }
     // rt_state (кой автобус кой курс кара) — само функцията `gtfs`; правилото по
     // подразбиране отдолу го затваря за всички останали.
 
