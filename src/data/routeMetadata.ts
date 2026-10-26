@@ -294,7 +294,7 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
     priceCard: "35.00 €"
   },
   // Community segments from the Долна Митрополия free-transport employee list.
-  // No card price (issued as Служебна / manual amount); hidden from the public site.
+  // No card price (issued as Служебна / manual amount) unless set; hidden from the public site.
   "Опанец - Долна Митрополия": {
     stops: ["Опанец", "Д.М"],
     priceSingle: "---",
@@ -303,7 +303,7 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
   "Крушовене - Долна Митрополия": {
     stops: ["Крушовене", "Д.М"],
     priceSingle: "---",
-    priceCard: "-"
+    priceCard: "35.00 €"
   },
   "Рибен - Долна Митрополия": {
     stops: ["Рибен", "Д.М"],
