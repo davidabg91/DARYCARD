@@ -21,13 +21,13 @@ import { strToU8, zipSync } from "fflate";
 
 const TIMEZONE = "Europe/Sofia";
 
-/** The operator, as in the company details on darycommerce.com/#/legal. */
+/** The operator: company details from /#/legal, contacts from the footer of the home page. */
 const AGENCY = {
     id: "darycard",
     name: "„ДАРИ КОМЕРС - НА“ ООД",
     url: "https://darycommerce.com",
-    phone: "+359876141826",
-    email: "",
+    phone: "+359898481433",
+    email: "dary.commerce@gmail.com",
 };
 
 type Data = Record<string, unknown>;
