@@ -212,6 +212,48 @@ service cloud.firestore {
       }
     }
 
+    // ---- Наредба Н-7: разписания и позиции ----
+    // Спирки, режими на движение и разписания — това виси на спирката, значи
+    // се чете без логване (и Cloud Function-ът `gtfs` ги чете през admin SDK).
+    // Пише само админ, от таба РАЗПИСАНИЯ.
+    match /stops/{stopId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /timetables/{routeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // Регистрацията в НТД и годишното потвърждение (settings/nap).
+    match /settings/{docId} {
+      allow read: if isStaff();
+      allow write: if isAdmin() && docId == 'nap';
+    }
+    // Къде е автобусът — терминалът пише сам на всеки 30 s. Шофьорите не се
+    // логват, затова записът е анонимен като пулса на устройството: само за
+    // вписано устройство (devices/{id} съществува), само тези полета, следата
+    // най-много 90 числа (30 точки). Публиката получава националния поток,
+    // построен от тях, не самите документи.
+    match /positions/{deviceId} {
+      allow read: if isStaff();
+      allow create, update: if exists(/databases/$(database)/documents/devices/$(deviceId))
+        && request.resource.data.keys().hasOnly(['reportedAt', 'gps', 'gpsDetail', 'lat', 'lng',
+             'accuracy', 'speed', 'heading', 'fixAt', 'track'])
+        && request.resource.data.reportedAt is string
+        && request.resource.data.track is list
+        && request.resource.data.track.size() <= 90
+        && (!('lat' in request.resource.data) || request.resource.data.lat is number)
+        && (!('lng' in request.resource.data) || request.resource.data.lng is number)
+        && (!('gpsDetail' in request.resource.data) || request.resource.data.gpsDetail.size() <= 300);
+      allow delete: if isAdmin();
+    }
+    // rt_state (кой автобус кой курс кара) — само функцията `gtfs`; правилото по
+    // подразбиране отдолу го затваря за всички останали.
+
     // ---- Public intake forms ----
     // Anonymous visitors can submit a complaint/suggestion or a rental inquiry,
     // but only staff may read or manage them.
