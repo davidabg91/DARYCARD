@@ -1,5 +1,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { buildGtfs, zipGtfs } from "./gtfs";
+import { buildRealtime, encodeRealtime } from "./gtfsRt";
 
 admin.initializeApp();
 
@@ -700,3 +702,51 @@ export const attributeScanToDevice = functions.firestore
             }).catch((err) => console.error("device currentRoute update failed:", err));
         }
     });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Наредба Н-7 — данните за Националната точка за достъп
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Публичен адрес, който НТД тегли сама:
+ *   gtfs/darycard.zip        разписанията (GTFS)
+ *   gtfs/darycard.json       какво влезе и какво остана отвън, и защо
+ *   gtfs/darycard-rt.pb      автобусите в реално време (GTFS-Realtime)
+ *   gtfs/darycard-rt.json    същото, четимо, с това как е разпознат всеки курс
+ *
+ * Сайтът е на GitHub Pages и не може да пренасочи път към функция, затова НТД
+ * получава адреса на самата функция (us-central1-darycard-6e8e7.cloudfunctions.net/gtfs/…).
+ */
+export const gtfs = functions.https.onRequest(async (req, res) => {
+    const last = decodeURIComponent(req.path.split("/").filter(Boolean).pop() || "").toLowerCase();
+    res.set("Access-Control-Allow-Origin", "*");
+    if (last === "darycard-rt.pb" || last === "darycard-rt.json") {
+        try {
+            const built = await buildRealtime();
+            // Positions are thirty seconds apart; a copy kept longer would hide one.
+            res.set("Cache-Control", "public, max-age=10, s-maxage=15");
+            if (last.endsWith(".json")) {
+                res.json({ generatedAt: new Date(built.generatedAt).toISOString(), vehicles: built.vehicles });
+                return;
+            }
+            res.set("Content-Type", "application/x-protobuf");
+            res.send(Buffer.from(encodeRealtime(built)));
+        } catch (e) {
+            console.error("gtfs-rt failed", e);
+            res.status(500).send("Error");
+        }
+        return;
+    }
+    if (last !== "darycard.zip" && last !== "darycard.json") { res.status(404).send("Not found"); return; }
+    try {
+        const { files, report } = await buildGtfs();
+        res.set("Cache-Control", "public, max-age=300, s-maxage=600");
+        if (last.endsWith(".json")) { res.json(report); return; }
+        res.set("Content-Type", "application/zip");
+        res.set("Content-Disposition", 'attachment; filename="darycard-gtfs.zip"');
+        res.send(Buffer.from(zipGtfs(files)));
+    } catch (e) {
+        console.error("gtfs failed", e);
+        res.status(500).send("Error");
+    }
+});
