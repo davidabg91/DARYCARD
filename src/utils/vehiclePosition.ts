@@ -1,4 +1,4 @@
-import { doc, setDoc } from 'firebase/firestore';
+import { arrayUnion, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 /**
@@ -27,6 +27,14 @@ import { db } from '../firebase';
  * heartbeat: the rules let it through only for a registered device and only with
  * these fields (firestore.rules → positions). Started and stopped by
  * startDeviceHeartbeat. Ported from TransitFlow, where it is a React hook.
+ *
+ * The whole day's path goes to `positions/{device}/days/{ГГГГ-ММ-ДД}` as well,
+ * so the office can see in УСТРОЙСТВА where a bus has been and where it lost
+ * its signal. The short track above is for the server; it forgets after ten
+ * minutes. The day's path is written in batches, every two minutes, and a
+ * batch that does not get through (no signal on the road) waits for the next
+ * one — each point carries its own time, so arrayUnion lets a retried batch in
+ * without doubling it.
  */
 
 /** The ordinance's minimum. */
@@ -35,6 +43,17 @@ export const POSITION_MS = 30 * 1000;
 const TRACK_POINTS = 20;
 /** A fix older than this is not where the bus is now. */
 const STALE_FIX_MS = 2 * 60 * 1000;
+/** The day's path goes up every this many reports — two minutes. */
+const DAY_FLUSH_EVERY = 4;
+/**
+ * A bus standing at the last stop for half an hour need not fill the day with
+ * the same point: a new one is kept once it has moved this far, or this long
+ * has passed.
+ */
+const DAY_MIN_MOVE_M = 25;
+const DAY_MIN_GAP_MS = 5 * 60 * 1000;
+/** What waits for a signal at most — about four hours of driving. */
+const DAY_PENDING_MAX = 500;
 
 type TrackPoint = [number, number, number]; // lat, lng, epoch ms
 
@@ -49,6 +68,18 @@ interface Fix {
 
 const round = (x: number) => Math.round(x * 1e6) / 1e6;
 
+/** The calendar day in Bulgaria, which is the day the office means. */
+export const sofiaDay = (ms: number): string =>
+    new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'Europe/Sofia' });
+
+/** Metres between two points; plenty accurate over a few hundred metres. */
+const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+    const k = Math.PI / 180;
+    const x = (b.lng - a.lng) * k * Math.cos(((a.lat + b.lat) / 2) * k);
+    const y = (b.lat - a.lat) * k;
+    return Math.sqrt(x * x + y * y) * 6371000;
+};
+
 /** Пуска докладването. Връща функция за спиране. */
 export const startPositionReport = (deviceId: string): (() => void) => {
     let stopped = false;
@@ -56,6 +87,12 @@ export const startPositionReport = (deviceId: string): (() => void) => {
     let last: Fix | null = null;
     let gps: { status: 'ok' | 'denied' | 'unavailable' | 'waiting'; detail: string } = { status: 'waiting', detail: '' };
     const track: TrackPoint[] = [];
+    // The day's path, waiting to go up: "lat,lng,секунди" — a string, because
+    // Firestore keeps no arrays of arrays and arrayUnion needs whole values.
+    let pending: Array<{ day: string; point: string }> = [];
+    let lastKept: Fix | null = null;
+    let reports = 0;
+    let flushing = false;
 
     const start = async () => {
         let Capacitor: typeof import('@capacitor/core').Capacitor;
@@ -103,6 +140,35 @@ export const startPositionReport = (deviceId: string): (() => void) => {
         }
     };
 
+    const keepForDay = (fix: Fix) => {
+        if (lastKept && fix.at === lastKept.at) return;
+        if (lastKept && fix.at - lastKept.at < DAY_MIN_GAP_MS && metres(lastKept, fix) < DAY_MIN_MOVE_M) return;
+        lastKept = fix;
+        pending.push({ day: sofiaDay(fix.at), point: `${fix.lat},${fix.lng},${Math.round(fix.at / 1000)}` });
+        if (pending.length > DAY_PENDING_MAX) pending = pending.slice(-DAY_PENDING_MAX);
+    };
+
+    const flushDay = async () => {
+        if (flushing || !pending.length) return;
+        flushing = true;
+        const batch = pending.slice();
+        const days = [...new Set(batch.map(p => p.day))];
+        try {
+            for (const day of days) {
+                await setDoc(doc(db, 'positions', deviceId, 'days', day), {
+                    points: arrayUnion(...batch.filter(p => p.day === day).map(p => p.point)),
+                    updatedAt: new Date().toISOString(),
+                }, { merge: true });
+            }
+            pending = pending.slice(batch.length);
+        } catch (err) {
+            // No signal, or the day is full: the points wait for the next try.
+            console.warn('Day path not sent:', err);
+        } finally {
+            flushing = false;
+        }
+    };
+
     const report = async () => {
         if (stopped) return;
         const fresh = last && Date.now() - last.at < STALE_FIX_MS ? last : null;
@@ -110,7 +176,9 @@ export const startPositionReport = (deviceId: string): (() => void) => {
             const prev = track[track.length - 1];
             if (!prev || prev[2] !== fresh.at) track.push([fresh.lat, fresh.lng, fresh.at]);
             while (track.length > TRACK_POINTS) track.shift();
+            keepForDay(fresh);
         }
+        if (++reports % DAY_FLUSH_EVERY === 0) void flushDay();
         try {
             // The track goes up as numbers in a flat list: Firestore holds no
             // arrays of arrays, and three numbers a point is all it needs.
@@ -137,8 +205,13 @@ export const startPositionReport = (deviceId: string): (() => void) => {
     // The first report once there has been time for a first fix.
     const first = setTimeout(report, 8_000);
 
+    // Whatever has not gone up yet goes when the app is put away.
+    const onHidden = () => { if (document.visibilityState === 'hidden') void flushDay(); };
+    document.addEventListener('visibilitychange', onHidden);
+
     return () => {
         stopped = true;
+        document.removeEventListener('visibilitychange', onHidden);
         clearInterval(timer);
         clearTimeout(first);
         if (watchId) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
@@ -9,10 +9,16 @@ import {
 import {
     Smartphone, Wifi, WifiOff, BatteryFull, BatteryLow, BatteryCharging,
     Check, Pencil, Trash2, X, AlertTriangle, CreditCard, RefreshCw,
-    Radio, RadioTower, Bug, ChevronDown, ChevronRight, MapPin
+    Radio, RadioTower, Bug, ChevronDown, ChevronRight, MapPin,
+    Satellite, MapPinOff, Route, Map as MapIcon
 } from 'lucide-react';
 import BatteryAlertsButton from './BatteryAlertsButton';
 import TestPrintCard from './TestPrintCard';
+import type { LivePosition } from './devices/DevicesLiveMap';
+
+// Картите теглят Leaflet — зареждат се чак когато някой ги отвори.
+const DeviceTrack = lazy(() => import('./devices/DeviceTrack'));
+const DevicesLiveMap = lazy(() => import('./devices/DevicesLiveMap'));
 
 interface Props {
     /** Админ може да трие изчезнали устройства; модератор само гледа и преименува. */
@@ -41,6 +47,40 @@ const fmtWhen = (iso?: string): string => {
 };
 
 interface Problem { text: string; hard: boolean }
+
+/** `positions/{id}` — какво терминалът докладва на всеки 30 s (vehiclePosition.ts). */
+interface PositionDoc {
+    reportedAt?: string;
+    gps?: 'ok' | 'denied' | 'unavailable' | 'waiting';
+    gpsDetail?: string;
+    lat?: number;
+    lng?: number;
+    accuracy?: number | null;
+    fixAt?: string;
+    track?: number[];
+}
+
+/** Точка, по-стара от това, вече не е „сега". */
+const GPS_FRESH_MS = 3 * 60 * 1000;
+/** Толкова без точка, докато терминалът работи, е проблем. */
+const GPS_LOST_MS = 10 * 60 * 1000;
+
+/**
+ * Какво да пише на реда за GPS-а. Без документ значи терминалът е със старо APK,
+ * което не праща позиция — това не е повреда, затова е сиво, не червено.
+ */
+const describeGps = (p: PositionDoc | undefined, online: boolean, now: number): { text: string; color: string } => {
+    if (!p) return { text: 'GPS: няма данни (старо APK)', color: 'var(--text-secondary)' };
+    const fixAge = p.fixAt ? now - new Date(p.fixAt).getTime() : Infinity;
+    const acc = typeof p.accuracy === 'number' ? ` · ±${p.accuracy} м` : '';
+    if (p.gps === 'denied') return { text: 'GPS: отказан достъп до местоположение', color: '#ff5252' };
+    if (fixAge < GPS_FRESH_MS) return { text: `GPS работи${acc}`, color: '#00c853' };
+    if (!online) return { text: p.fixAt ? `GPS: последна точка ${fmtAgo(p.fixAt, now)}` : 'GPS: още няма точка', color: 'var(--text-secondary)' };
+    return {
+        text: p.fixAt ? `GPS: без сигнал, последна точка ${fmtAgo(p.fixAt, now)}` : 'GPS: чака сигнал',
+        color: '#ff9800',
+    };
+};
 
 interface DeviceError {
     id: string;
@@ -134,8 +174,18 @@ const describeNfcError = (raw: string): string => {
  * не значеше нищо. Така етикетът излиза точно когато един терминал е пропуснал
  * обновяване, което другите са получили.
  */
-const findProblems = (d: DeviceDoc, online: boolean, newestVersion: string, now: number): Problem[] => {
+const findProblems = (d: DeviceDoc, online: boolean, newestVersion: string, now: number, pos?: PositionDoc): Problem[] => {
     const problems: Problem[] = [];
+    // GPS — само за терминали, които изобщо пращат позиция (новото APK).
+    if (online && pos) {
+        const fixAge = pos.fixAt ? now - new Date(pos.fixAt).getTime() : Infinity;
+        const reporting = !!pos.reportedAt && now - new Date(pos.reportedAt).getTime() < GPS_FRESH_MS;
+        if (pos.gps === 'denied') {
+            problems.push({ text: 'GPS: отказан достъп — разреши местоположението на терминала', hard: true });
+        } else if (reporting && fixAge > GPS_LOST_MS) {
+            problems.push({ text: pos.fixAt ? `Няма GPS сигнал от ${fmtAgo(pos.fixAt, now).replace('преди ', '')}` : 'GPS не е хванал сигнал', hard: false });
+        }
+    }
     const silentFor = d.lastSeen ? now - new Date(d.lastSeen).getTime() : Infinity;
     if (!online && silentFor > LOST_AFTER_MS) {
         problems.push({ text: `Не се е обаждало ${fmtAgo(d.lastSeen, now)}`, hard: false });
@@ -174,6 +224,9 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
     const [openCards, setOpenCards] = useState<string | null>(null);
     const [cards, setCards] = useState<Record<string, SeenScan[]>>({});
     const [cardsLoading, setCardsLoading] = useState(false);
+    const [positions, setPositions] = useState<Record<string, PositionDoc>>({});
+    const [openTrack, setOpenTrack] = useState<string | null>(null);
+    const [showLiveMap, setShowLiveMap] = useState(false);
     // Прекроява екрана веднъж в минута, за да не остарява „преди 3 мин.".
     const [now, setNow] = useState(() => Date.now());
 
@@ -186,8 +239,15 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
             },
             err => { console.error('Списъкът с устройства не се зареди:', err); setLoading(false); }
         );
+        // Позициите са малки документи, по един на терминал — слушат се всички,
+        // за да се вижда GPS-ът на всеки ред без натискане.
+        const unsubPos = onSnapshot(
+            collection(db, 'positions'),
+            snap => setPositions(Object.fromEntries(snap.docs.map(d => [d.id, d.data() as PositionDoc]))),
+            err => console.error('Позициите не се заредиха:', err)
+        );
         const timer = setInterval(() => setNow(Date.now()), 60000);
-        return () => { unsub(); clearInterval(timer); };
+        return () => { unsub(); unsubPos(); clearInterval(timer); };
     }, []);
 
     const rows = useMemo(() => {
@@ -198,7 +258,7 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
         return devices
             .map(d => {
                 const online = !!d.lastSeen && (now - new Date(d.lastSeen).getTime()) < OFFLINE_AFTER_MS;
-                return { ...d, online, problems: findProblems(d, online, newestVersion, now) };
+                return { ...d, online, problems: findProblems(d, online, newestVersion, now, positions[d.id]) };
             })
             .sort((a, b) => {
                 if (a.online !== b.online) return a.online ? -1 : 1;
@@ -216,7 +276,19 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                 }
                 return (b.lastSeen || '').localeCompare(a.lastSeen || '');
             });
-    }, [devices, now]);
+    }, [devices, now, positions]);
+
+    const livePositions = useMemo<LivePosition[]>(() => rows
+        .filter(r => typeof positions[r.id]?.lat === 'number' && typeof positions[r.id]?.lng === 'number')
+        .map(r => ({
+            id: r.id,
+            label: r.name || r.autoName || r.id,
+            lat: positions[r.id].lat!,
+            lng: positions[r.id].lng!,
+            fixAt: positions[r.id].fixAt,
+        })), [rows, positions]);
+    const gpsWorking = rows.filter(r => r.online && positions[r.id]?.fixAt
+        && now - new Date(positions[r.id].fixAt!).getTime() < GPS_FRESH_MS).length;
 
     const onlineCount = rows.filter(r => r.online).length;
     const troubled = rows.filter(r => r.problems.some(p => p.hard)).length;
@@ -327,7 +399,34 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>С проблем</div>
                     <div style={{ fontSize: '1.6rem', fontWeight: 900, color: troubled ? '#ff5252' : 'var(--text-secondary)' }}>{troubled}</div>
                 </div>
+                <div style={{ flex: 1, minWidth: '150px', padding: '1rem', background: 'rgba(0,173,181,0.08)', border: '1px solid rgba(0,173,181,0.25)', borderRadius: '12px' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>С GPS сигнал сега</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 900, color: gpsWorking ? 'var(--primary-color)' : 'var(--text-secondary)' }}>{gpsWorking} / {onlineCount}</div>
+                </div>
             </div>
+
+            <button
+                onClick={() => setShowLiveMap(v => !v)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', marginBottom: showLiveMap ? '0.7rem' : '1.25rem', padding: '0.55rem 0.9rem', borderRadius: '10px', background: 'rgba(0,173,181,0.12)', border: '1px solid rgba(0,173,181,0.35)', color: 'var(--primary-color)', fontWeight: 800, cursor: 'pointer' }}
+            >
+                <MapIcon size={16} /> {showLiveMap ? 'Скрий картата' : 'Всички терминали на картата'}
+            </button>
+            {showLiveMap && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                    {livePositions.length === 0 ? (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                            Още няма терминал с GPS точка. Позицията идва само от новото APK (1.4.5 и нагоре) и след като на терминала е разрешено местоположението.
+                        </div>
+                    ) : (
+                        <Suspense fallback={<div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Зареждам картата…</div>}>
+                            <DevicesLiveMap positions={livePositions} now={now} />
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
+                                Зелено — точка от последните 3 минути. Сиво — последната известна точка, с часа ѝ.
+                            </div>
+                        </Suspense>
+                    )}
+                </div>
+            )}
 
             {lowBattery.length > 0 && (
                 <div style={{
@@ -448,6 +547,15 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                                     <RefreshCw size={13} /> {d.appVersion || '—'}
                                 </span>
+                                {(() => {
+                                    const g = describeGps(positions[d.id], d.online, now);
+                                    const Icon = positions[d.id] ? Satellite : MapPinOff;
+                                    return (
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: g.color, fontWeight: 700 }}>
+                                            <Icon size={13} /> {g.text}
+                                        </span>
+                                    );
+                                })()}
                                 {d.nfcBound !== undefined && d.nfcBound !== null && (
                                     <span style={{
                                         display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
@@ -465,6 +573,13 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                 >
                                     {openCards === d.id ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                                     <CreditCard size={13} /> Карти днес
+                                </button>
+                                <button
+                                    onClick={() => setOpenTrack(openTrack === d.id ? null : d.id)}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', fontWeight: 700, padding: 0 }}
+                                >
+                                    {openTrack === d.id ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                    <Route size={13} /> Път на картата
                                 </button>
                                 <button
                                     onClick={() => toggleLog(d.id)}
@@ -487,6 +602,14 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                 <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', lineHeight: 1.45, color: '#ff9800' }}>
                                     Четецът не е прочел карта {fmtAgo(d.nfcLastErrorAt ?? undefined, now)} и оттогава няма успешно
                                     четене: {describeNfcError(d.nfcLastError)}
+                                </div>
+                            )}
+
+                            {openTrack === d.id && (
+                                <div style={{ marginTop: '0.7rem', padding: '0.7rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '10px' }}>
+                                    <Suspense fallback={<div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Зареждам картата…</div>}>
+                                        <DeviceTrack deviceId={d.id} liveTrack={positions[d.id]?.track} />
+                                    </Suspense>
                                 </div>
                             )}
 
