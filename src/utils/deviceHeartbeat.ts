@@ -15,6 +15,7 @@ import { db } from '../firebase';
 import MyPosSmartSdk from '../services/MyPosSmartSdk';
 import { captureDeviceErrors } from './deviceErrors';
 import { startPositionReport } from './vehiclePosition';
+import { startCardListSync } from './offlineCards';
 
 const DEVICE_ID_KEY = 'dary_device_id';
 const SCAN_COUNT_PREFIX = 'dary_device_scans_';
@@ -222,6 +223,8 @@ export const startDeviceHeartbeat = (appVersion: string): (() => void) => {
     const stopCapture = captureDeviceErrors(id, appVersion);
     // Позицията на автобуса за Наредба Н-7 — отделен документ, на всеки 30 s.
     const stopPosition = startPositionReport(id);
+    // Списъкът с картите за проверка без връзка (Наредба Н-7, приложение № 3).
+    const stopCards = startCardListSync(id);
     const timer = setInterval(beat, HEARTBEAT_MS);
     const onVisible = () => { if (document.visibilityState === 'visible') beat(); };
     document.addEventListener('visibilitychange', onVisible);
@@ -231,6 +234,7 @@ export const startDeviceHeartbeat = (appVersion: string): (() => void) => {
         stopped = true;
         stopCapture();
         stopPosition();
+        stopCards();
         clearInterval(timer);
         document.removeEventListener('visibilitychange', onVisible);
         window.removeEventListener('online', beat);

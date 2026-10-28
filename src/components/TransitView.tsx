@@ -15,6 +15,7 @@ import DisruptionButton from './DisruptionButton';
 import { Capacitor } from '@capacitor/core';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { paidThroughMonth } from '../utils/paidThrough';
+import { findOfflineCard, localScanInfo, offlineListAge, offlinePhoto, rememberScan, type OfflineCard } from '../utils/offlineCards';
 
 interface Client {
     id: string;
@@ -59,6 +60,13 @@ const ROUTES = [
     "Ставерци - Тръстеник", "Ставерци - Долна Митрополия",
     "Ставерци - Брегаре"
 ];
+
+/**
+ * Толкова се чака сървърът, преди картата да се покаже от списъка в терминала
+ * (offlineCards.ts). На добра връзка отговорът идва за под секунда; на слаба —
+ * за секунди, а пътникът стои на вратата.
+ */
+const OFFLINE_WAIT_MS = 1500;
 
 const formatTimeAgo = (totalSecs: number) => {
     if (totalSecs < 60) {
@@ -108,6 +116,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     // Ads Slideshow States
     const [showAds, setShowAds] = useState(false);
     const [isActuallyOnline, setIsActuallyOnline] = useState(window.navigator.onLine);
+    // Картата е проверена от списъка в терминала, без сървъра.
+    const [checkedOffline, setCheckedOffline] = useState(false);
 
     // Prop state synchronization to avoid cascading renders in useEffect
     const [prevId, setPrevId] = useState(id);
@@ -301,13 +311,135 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     // повторно, когато Firebase Auth се възстанови — рефът пази броячите и скан
     // документа да не се запишат два пъти.
     const recordedRef = useRef(false);
+    // Кой е показал картата: сървърът (или кешът му) или списъкът в терминала.
+    // Ефектът се пуска повторно при възстановяване на Auth — показва се веднъж.
+    const shownRef = useRef<'none' | 'server' | 'local'>('none');
 
     useEffect(() => {
         let isMounted = true;
         if (!id) return;
 
+        const isStaffUser = !!currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator' || currentUser.role === 'inspector');
+        const isTerminal = Capacitor.isNativePlatform();
+
+        /** Записва едно пътуване — и при проверка от сървъра, и от списъка в терминала. */
+        const writeScan = (clientId: string, route: string) => {
+            const isoNow = new Date().toISOString();
+            // Пътуване е само прочитане от терминала (APK) без логнат служител.
+            // Браузърът (телефон, офисният компютър) се маркира `source: 'web'` и
+            // не вдига брояча на пътуванията.
+            const scanDocData = {
+                at: isoNow,
+                route,
+                ...(isStaffUser ? {
+                    scannedBy: currentUser!.role,
+                    scannedByName: currentUser!.username || (currentUser!.role === 'moderator' ? 'Модератор' : currentUser!.role),
+                    role: currentUser!.role
+                } : {}),
+                ...(isTerminal ? {} : { source: 'web' })
+            };
+            // `lastScanAt` остава и за служител: по него профилът познава, че
+            // оверлеят вече е записал същото прочитане. Анонимен браузър не го
+            // пипа — иначе пътник, отворил картата си на телефона, получава
+            // фалшиво „вече сканирана" на терминала.
+            const updateData = {
+                ...(isTerminal && !isStaffUser ? { scanCount: increment(1) } : {}),
+                ...(isTerminal || isStaffUser ? { lastScanAt: isoNow } : {}),
+                ...(isTerminal && nfcCounter !== undefined && nfcCounter !== null ? { lastScanCounter: nfcCounter } : {})
+            };
+            // Без връзка Firestore пази и двата записа и ги праща, щом има интернет.
+            addDoc(collection(db, 'clients', clientId, 'scans'), scanDocData)
+                .catch((err: unknown) => console.error('Transit scan subcollection write failed:', err));
+            if (Object.keys(updateData).length > 0) {
+                updateDoc(doc(db, 'clients', clientId), updateData)
+                    .catch((err: unknown) => {
+                        console.error('Transit scan counter update failed:', err);
+                    });
+            }
+            if (isTerminal) rememberScan(clientId);
+        };
+
+        /**
+         * Картата от списъка в терминала: когато сървърът не отговаря навреме или
+         * няма връзка. Същите проверки като по-долу, но „вече сканирана" и броят
+         * за деня са по паметта на ТОЗИ терминал — без сървъра друга няма.
+         */
+        const showLocal = async (card: OfflineCard) => {
+            if (!isMounted || shownRef.current !== 'none') return;
+            shownRef.current = 'local';
+            const thumb = await offlinePhoto(card);
+            const data: Client = {
+                id: card.i, name: card.n, route: card.r, routes: card.rs, photo: '', photoThumb: thumb,
+                isCanceled: card.k, cardType: card.t, cardNumber: card.c, nfcUid: card.u,
+                renewalHistory: card.m.map(([month, route]) => ({ month, route, amount: 0, date: '' })),
+            };
+            if (!isMounted) return;
+            setClient(data);
+            setCheckedOffline(true);
+            setIsActuallyOnline(false);
+
+            const registeredNfcUid = card.u.toUpperCase();
+            const scannedNfcUid = (physicalUid || '').toUpperCase();
+            let clonedVal = false;
+            if (scannedNfcUid && !registeredNfcUid) {
+                updateDoc(doc(db, 'clients', card.i), { nfcUid: scannedNfcUid })
+                    .catch(err => console.error('Failed to register nfcUid:', err));
+            } else if (registeredNfcUid && scannedNfcUid && registeredNfcUid !== scannedNfcUid) {
+                clonedVal = true;
+                setIsCloned(true);
+                setDoc(doc(collection(db, 'clone_alerts')), {
+                    timestamp: new Date().toISOString(), clientId: card.i, clientName: card.n,
+                    route: card.r, registeredUid: registeredNfcUid, scannedUid: scannedNfcUid, resolved: false,
+                }).catch(err => console.error('Failed to log clone alert:', err));
+            }
+
+            const seen = localScanInfo(card.i);
+            const secsSinceLast = seen.last ? Math.round((Date.now() - seen.last) / 1000) : Infinity;
+            const passback = clonedVal || (secsSinceLast >= 0 && secsSinceLast < 180);
+            const showWarning = !clonedVal && secsSinceLast >= 0 && secsSinceLast < 300;
+            setPassbackSecs(showWarning ? secsSinceLast : null);
+            if (seen.today >= 4) setShowDailyWarning(true);
+
+            const canRecord = !authLoading && !recordedRef.current;
+            if (canRecord) recordedRef.current = true;
+            if (!passback && canRecord) writeScan(card.i, card.r);
+
+            const nextDate = new Date();
+            nextDate.setMonth(nextDate.getMonth() + 1);
+            setRenewalMonth(nextDate.toISOString().slice(0, 7));
+            setRenewalRoute(card.r);
+            setRenewalPaymentMethod('В брой');
+
+            const nowLocal = new Date();
+            const thisMonth = `${nowLocal.getFullYear()}-${(nowLocal.getMonth() + 1).toString().padStart(2, '0')}`;
+            const active = !card.k && card.m.some(([month]) => month === thisMonth);
+            if (passback || !active) playErrorRef.current();
+            else playSuccessRef.current();
+            setLoading(false);
+        };
+
+        const local = isTerminal ? findOfflineCard(id, physicalUid) : undefined;
+        const localTimer = local && shownRef.current === 'none'
+            ? setTimeout(() => { void showLocal(local); }, OFFLINE_WAIT_MS)
+            : undefined;
+
         getDoc(doc(db, 'clients', id)).then(async (firstSnap) => {
             if (isMounted) {
+                clearTimeout(localTimer);
+                // Вече е показана от списъка в терминала и пътуването е записано.
+                // Ако сървърът все пак отговори, само се опресняват данните на екрана.
+                if (shownRef.current === 'local') {
+                    if (firstSnap.exists() && !firstSnap.metadata.fromCache) {
+                        setClient({ ...(firstSnap.data() as Client), id: firstSnap.id });
+                    }
+                    return;
+                }
+                // Без връзка кешът на Firestore може да е отпреди седмици (стари
+                // плащания) — списъкът в терминала се опреснява на 15 минути.
+                if (firstSnap.metadata.fromCache && local) {
+                    void showLocal(local);
+                    return;
+                }
                 // INSTANT CONNECTIVITY SENSE: Check metadata + trigger ping
                 if (firstSnap.metadata.fromCache) {
                     setIsActuallyOnline(false);
@@ -334,6 +466,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                 }
 
                  if (snap.exists()) {
+                    shownRef.current = 'server';
                     const data = snap.data() as Client;
                     setClient({ ...data, id: snap.id });
 
@@ -434,41 +567,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                         }
                     }
 
-                    if (!passback && canRecord) {
-                        const isoNow = new Date().toISOString();
-                        const isStaffUser = currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator' || currentUser.role === 'inspector');
-                        // Пътуване е само прочитане от терминала (APK) без логнат служител.
-                        // Браузърът (телефон, офисният компютър) се маркира `source: 'web'` и
-                        // не вдига брояча на пътуванията.
-                        const isTerminal = Capacitor.isNativePlatform();
-                        const scanDocData = {
-                            at: isoNow,
-                            route: data.route ?? '',
-                            ...(isStaffUser ? {
-                                scannedBy: currentUser.role,
-                                scannedByName: currentUser.username || (currentUser.role === 'moderator' ? 'Модератор' : currentUser.role),
-                                role: currentUser.role
-                            } : {}),
-                            ...(isTerminal ? {} : { source: 'web' })
-                        };
-                        // `lastScanAt` остава и за служител: по него профилът познава, че
-                        // оверлеят вече е записал същото прочитане. Анонимен браузър не го
-                        // пипа — иначе пътник, отворил картата си на телефона, получава
-                        // фалшиво „вече сканирана" на терминала.
-                        const updateData = {
-                            ...(isTerminal && !isStaffUser ? { scanCount: increment(1) } : {}),
-                            ...(isTerminal || isStaffUser ? { lastScanAt: isoNow } : {}),
-                            ...(isTerminal && nfcCounter !== undefined && nfcCounter !== null ? { lastScanCounter: nfcCounter } : {})
-                        };
-                        addDoc(collection(db, 'clients', snap.id, 'scans'), scanDocData)
-                            .catch((err: unknown) => console.error('Transit scan subcollection write failed:', err));
-                        if (Object.keys(updateData).length > 0) {
-                            updateDoc(doc(db, 'clients', snap.id), updateData)
-                                .catch((err: unknown) => {
-                                    console.error('Transit scan counter update failed:', err);
-                                });
-                        }
-                    }
+                    if (!passback && canRecord) writeScan(snap.id, data.route ?? '');
 
                     // Preset Renewal Form
                     const nextDate = new Date();
@@ -487,10 +586,15 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                     if (passback || !active) playErrorRef.current();
                     else playSuccessRef.current();
                 } else {
+                    // Without a connection the list on the terminal may still know it.
+                    const offline = (typeof navigator !== 'undefined' && !navigator.onLine) || snap.metadata.fromCache;
+                    if (offline && local) {
+                        void showLocal(local);
+                        return;
+                    }
                     playErrorRef.current();
                     // Distinguish "offline & no cached data for this card" from a card
                     // that is genuinely not registered (only the latter is "invalid").
-                    const offline = (typeof navigator !== 'undefined' && !navigator.onLine) || snap.metadata.fromCache;
                     if (offline) {
                         setOfflineNoData(true);
                     } else {
@@ -501,7 +605,12 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
             }
         }).catch(err => {
             console.error("Transit fetch error:", err);
-            if (isMounted) {
+            clearTimeout(localTimer);
+            if (isMounted && local && shownRef.current === 'none') {
+                void showLocal(local);
+                return;
+            }
+            if (isMounted && shownRef.current === 'none') {
                 // The read failed entirely (typically offline / Firestore unavailable).
                 playErrorRef.current();
                 setOfflineNoData(true);
@@ -511,6 +620,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
 
         return () => {
             isMounted = false;
+            clearTimeout(localTimer);
         };
     }, [id, nfcCounter, checkActualStatus, physicalUid, currentUser, authLoading]);
 
@@ -850,7 +960,9 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                     {/* Connectivity Status Label */}
                                     <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.4, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '-0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isActuallyOnline ? '#00e676' : '#ff5252' }} />
-                                        {isActuallyOnline ? 'СВЪРЗАН СЪС СЪРВЪРА' : 'БЕЗ ИНТЕРНЕТ (ЛОКАЛНА ПАМЕТ)'}
+                                        {checkedOffline
+                                            ? `ПРОВЕРЕНА БЕЗ ВРЪЗКА (СПИСЪК ОТПРЕДИ ${Math.max(1, Math.round((offlineListAge() || 0) / 60000))} МИН.)`
+                                            : isActuallyOnline ? 'СВЪРЗАН СЪС СЪРВЪРА' : 'БЕЗ ИНТЕРНЕТ (ЛОКАЛНА ПАМЕТ)'}
                                     </div>
 
                                     <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowPhotoModal(true)}>

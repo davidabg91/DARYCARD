@@ -4,6 +4,7 @@ import { buildGtfs, zipGtfs } from "./gtfs";
 import { buildRealtime, encodeRealtime } from "./gtfsRt";
 import { handleDisruption, type DisruptionRequest } from "./disruptions";
 import { locateStops } from "./stopLocator";
+import { buildCardList, cardPhotos, trustedDevice } from "./cardList";
 
 admin.initializeApp();
 
@@ -782,4 +783,42 @@ export const locateStopsNow = functions
             throw new functions.https.HttpsError("permission-denied", "Само администратор.");
         }
         return await locateStops();
+    });
+
+/**
+ * Списъкът с картите за проверка без връзка (Наредба Н-7, приложение № 3) —
+ * само за терминал с име от УСТРОЙСТВА. Виж cardList.ts.
+ */
+export const cardList = functions
+    .runWith({ memory: "512MB" })
+    .https.onRequest(async (req, res) => {
+        res.set("Access-Control-Allow-Origin", "*");
+        res.set("Access-Control-Allow-Headers", "If-None-Match");
+        res.set("Access-Control-Expose-Headers", "ETag");
+        if (req.method === "OPTIONS") { res.status(204).send(""); return; }
+        try {
+            const device = String(req.query.device || "");
+            if (!(await trustedDevice(device))) { res.status(403).json({ error: "Терминалът няма име в УСТРОЙСТВА." }); return; }
+            if (req.path.replace(/\/+$/, "").endsWith("/photos")) {
+                const ids = String(req.query.ids || "").split(",").map(x => x.trim()).filter(x => /^[A-Za-z0-9_-]{1,40}$/.test(x));
+                res.set("Cache-Control", "private, max-age=0");
+                res.json(await cardPhotos(ids));
+                return;
+            }
+            const { version, body, gzipped } = await buildCardList();
+            res.set("ETag", `"${version}"`);
+            res.set("Cache-Control", "private, max-age=0");
+            if (req.get("If-None-Match") === `"${version}"`) { res.status(304).send(""); return; }
+            res.set("Content-Type", "application/json; charset=utf-8");
+            res.set("Vary", "Accept-Encoding");
+            if (/gzip/.test(req.get("Accept-Encoding") || "")) {
+                res.set("Content-Encoding", "gzip");
+                res.send(gzipped);
+                return;
+            }
+            res.send(body);
+        } catch (e) {
+            console.error("cardList failed", e);
+            res.status(500).send("Error");
+        }
     });
