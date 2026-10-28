@@ -80,6 +80,10 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
  * тогава устройството се появява като ново и старият ред трябва да се махне
  * на ръка.
  */
+/** Версията, с която върви приложението — за записа на сканирането. */
+let runningVersion = '';
+export const appVersionInUse = (): string => runningVersion;
+
 export const getDeviceId = (): string => {
     try {
         const existing = localStorage.getItem(DEVICE_ID_KEY);
@@ -188,6 +192,7 @@ const writeDevice = async (id: string, patch: Record<string, unknown>, appVersio
  */
 export const startDeviceHeartbeat = (appVersion: string): (() => void) => {
     if (!Capacitor.isNativePlatform()) return () => { };
+    runningVersion = appVersion;
     const id = getDeviceId();
     if (!id) return () => { };
 

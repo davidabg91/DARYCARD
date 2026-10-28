@@ -16,6 +16,15 @@ import { Capacitor } from '@capacitor/core';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { paidThroughMonth } from '../utils/paidThrough';
 import { findOfflineCard, localScanInfo, offlineListAge, offlinePhoto, rememberScan, type OfflineCard } from '../utils/offlineCards';
+import { scanContext } from '../utils/scanContext';
+
+/** Какво е показал екранът на шофьора — пази се в записа на сканирането. */
+type Shown = 'valid' | 'unpaid' | 'canceled';
+const shownFor = (canceled: boolean | undefined, paidMonths: string[]): Shown => {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+    return canceled ? 'canceled' : paidMonths.includes(month) ? 'valid' : 'unpaid';
+};
 
 interface Client {
     id: string;
@@ -322,12 +331,17 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
         const isStaffUser = !!currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator' || currentUser.role === 'inspector');
         const isTerminal = Capacitor.isNativePlatform();
 
-        /** Записва едно пътуване — и при проверка от сървъра, и от списъка в терминала. */
-        const writeScan = (clientId: string, route: string) => {
+        /**
+         * Записва едно пътуване — и при проверка от сървъра, и от списъка в
+         * терминала. `shown` е какво е видял шофьорът; `offline` — че картата е
+         * проверена от списъка в терминала, без връзка.
+         */
+        const writeScan = (clientId: string, route: string, shown: Shown, offline = false) => {
             const isoNow = new Date().toISOString();
             // Пътуване е само прочитане от терминала (APK) без логнат служител.
             // Браузърът (телефон, офисният компютър) се маркира `source: 'web'` и
-            // не вдига брояча на пътуванията.
+            // не вдига брояча на пътуванията. Терминалът добавя кой е и къде е
+            // автобусът — виж scanContext.
             const scanDocData = {
                 at: isoNow,
                 route,
@@ -336,7 +350,9 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                     scannedByName: currentUser!.username || (currentUser!.role === 'moderator' ? 'Модератор' : currentUser!.role),
                     role: currentUser!.role
                 } : {}),
-                ...(isTerminal ? {} : { source: 'web' })
+                ...scanContext(),
+                shown,
+                ...(offline ? { check: 'local' } : {}),
             };
             // `lastScanAt` остава и за служител: по него профилът познава, че
             // оверлеят вече е записал същото прочитане. Анонимен браузър не го
@@ -390,6 +406,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                 setDoc(doc(collection(db, 'clone_alerts')), {
                     timestamp: new Date().toISOString(), clientId: card.i, clientName: card.n,
                     route: card.r, registeredUid: registeredNfcUid, scannedUid: scannedNfcUid, resolved: false,
+                    ...scanContext(),
                 }).catch(err => console.error('Failed to log clone alert:', err));
             }
 
@@ -402,7 +419,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
 
             const canRecord = !authLoading && !recordedRef.current;
             if (canRecord) recordedRef.current = true;
-            if (!passback && canRecord) writeScan(card.i, card.r);
+            if (!passback && canRecord) writeScan(card.i, card.r, shownFor(card.k, card.m.map(([month]) => month)), true);
 
             const nextDate = new Date();
             nextDate.setMonth(nextDate.getMonth() + 1);
@@ -495,7 +512,9 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                             route: data.route || '',
                             registeredUid: registeredNfcUid,
                             scannedUid: scannedNfcUid,
-                            resolved: false
+                            resolved: false,
+                            // Кой терминал и къде — виж scanContext.
+                            ...scanContext(),
                         }).then(() => {
                             console.log('🚨 Clone alert logged:', alertRef.id);
                         }).catch(err => console.error('Failed to log clone alert:', err));
@@ -567,7 +586,9 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                         }
                     }
 
-                    if (!passback && canRecord) writeScan(snap.id, data.route ?? '');
+                    if (!passback && canRecord) {
+                        writeScan(snap.id, data.route ?? '', shownFor(data.isCanceled, (data.renewalHistory || []).map(rh => rh.month)));
+                    }
 
                     // Preset Renewal Form
                     const nextDate = new Date();

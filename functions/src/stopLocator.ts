@@ -54,7 +54,7 @@ const CONFLICT_M = 150;
 /** A rejected place stays rejected while the boardings point to the same spot. */
 const SAME_REJECTED_M = 40;
 
-const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+export const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
     const k = Math.PI / 180;
     const x = (b.lng - a.lng) * k * Math.cos(((a.lat + b.lat) / 2) * k);
     const y = (b.lat - a.lat) * k;
@@ -86,7 +86,7 @@ const parseBoarding = (raw: string, device: string): Boarding | null => {
 };
 
 /** The village a point is in, from OpenStreetMap, remembered by ~100 m cell. */
-const settlementAt = async (db: admin.firestore.Firestore, lat: number, lng: number, budget: { left: number }) => {
+export const settlementAt = async (db: admin.firestore.Firestore, lat: number, lng: number, budget: { left: number }) => {
     const key = `${lat.toFixed(3)}_${lng.toFixed(3)}`;
     const ref = db.collection("geo_cache").doc(key);
     const cached = await ref.get();

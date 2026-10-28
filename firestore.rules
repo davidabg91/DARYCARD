@@ -72,12 +72,34 @@ service cloud.firestore {
       // `source: 'web'` = записано от браузър (телефон или офисният компютър), не от
       // терминал. Статистиката брои само сканиранията без него. Терминалите носят
       // вграден уеб и не пишат полето, затова и старите APK-та си остават валидни.
+      //
+      // Откъде е сканирането (src/utils/scanContext.ts): терминалът казва номера
+      // си в УСТРОЙСТВА, версията, последната си GPS точка, дали е проверил
+      // картата без връзка и какво е показал на шофьора; браузърът — само какъв е.
+      // `serverAt` е часът на сървъра. Името на апарата, селото и спирката ги
+      // дописва attributeScanToDevice (Admin SDK). И това не е защита — записът
+      // е анонимен; полетата са само описание, затова са с проверен тип и размер.
       allow create: if request.resource.data.keys()
-            .hasOnly(['at', 'route', 'scannedBy', 'scannedByName', 'role', 'source'])
+            .hasOnly(['at', 'route', 'scannedBy', 'scannedByName', 'role', 'source',
+                      'deviceId', 'app', 'lat', 'lng', 'acc', 'gpsAgeS', 'check', 'shown',
+                      'serverAt', 'browser'])
         && request.resource.data.at is string
         && (!('source' in request.resource.data) || request.resource.data.source == 'web')
         && (!request.resource.data.keys().hasAny(['scannedBy', 'scannedByName', 'role'])
-            || isStaff() || isInspector());
+            || isStaff() || isInspector())
+        && (!('deviceId' in request.resource.data)
+            || (request.resource.data.deviceId is string && request.resource.data.deviceId.size() <= 40))
+        && (!('app' in request.resource.data)
+            || (request.resource.data.app is string && request.resource.data.app.size() <= 40))
+        && (!('browser' in request.resource.data)
+            || (request.resource.data.browser is string && request.resource.data.browser.size() <= 40))
+        && (!('lat' in request.resource.data) || request.resource.data.lat is number)
+        && (!('lng' in request.resource.data) || request.resource.data.lng is number)
+        && (!('acc' in request.resource.data) || request.resource.data.acc is number)
+        && (!('gpsAgeS' in request.resource.data) || request.resource.data.gpsAgeS is number)
+        && (!('check' in request.resource.data) || request.resource.data.check in ['server', 'local'])
+        && (!('shown' in request.resource.data) || request.resource.data.shown in ['valid', 'unpaid', 'canceled'])
+        && (!('serverAt' in request.resource.data) || request.resource.data.serverAt == request.time);
       allow update, delete: if isAdmin();
     }
 

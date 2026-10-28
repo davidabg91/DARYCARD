@@ -114,6 +114,14 @@ export const recordBoarding = (kind: BoardingKind, hint: { line?: string; from?:
     else waitingBoardings.push(b);
 };
 
+/** The bus's last fix, if it is no older than `maxAgeMs` — for the scan record. */
+export const currentFix = (maxAgeMs: number): { lat: number; lng: number; accuracy: number | null; ageMs: number } | null => {
+    if (!reporting || !latestFix) return null;
+    const ageMs = Math.max(0, Date.now() - latestFix.at);
+    if (ageMs > maxAgeMs) return null;
+    return { lat: latestFix.lat, lng: latestFix.lng, accuracy: latestFix.accuracy, ageMs };
+};
+
 /** A new fix settles the boardings that were waiting for one. */
 const settleBoardings = (fix: Fix) => {
     waitingBoardings = waitingBoardings.filter(b => {

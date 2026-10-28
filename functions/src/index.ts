@@ -5,6 +5,7 @@ import { buildRealtime, encodeRealtime } from "./gtfsRt";
 import { handleDisruption, type DisruptionRequest } from "./disruptions";
 import { locateStops } from "./stopLocator";
 import { buildCardList, cardPhotos, trustedDevice } from "./cardList";
+import { findDevice, pickOrigin, placeOf } from "./scanOrigin";
 
 admin.initializeApp();
 
@@ -371,11 +372,25 @@ export const alertUnpaidScan = functions.firestore
         // всички сканирания (13 849 за 30 дни, от които ~42 са без абонамент).
         // Идентификаторът е производен от пътя на сканирането → повторно изпълнение
         // на функцията презаписва същия ред, не създава дубликат.
-        const recordUnpaid = (data: Record<string, unknown>) =>
-            db.collection("unpaid_scans").doc(`${clientId}__${scanId}`)
-                .set({ clientId, scanId, at, month: at.slice(0, 7), route: String(scan.route || ""), ...data },
+        // Откъде е сканирането — терминалът, GPS-ът, какво е видял шофьорът — за да
+        // се вижда в отчета на кой апарат и къде е била картата.
+        const unpaidRef = db.collection("unpaid_scans").doc(`${clientId}__${scanId}`);
+        const recordUnpaid = async (data: Record<string, unknown>) => {
+            const device = await findDevice(db, scan).catch((): null => null);
+            const origin = {
+                ...pickOrigin(scan),
+                ...(device ? { deviceId: device.id, deviceName: device.name, deviceMatch: device.match } : {}),
+            };
+            await unpaidRef
+                .set({ clientId, scanId, at, month: at.slice(0, 7), route: String(scan.route || ""), ...origin, ...data },
                     { merge: true })
                 .catch((err) => console.error("unpaid_scans write failed:", err));
+            // attributeScanToDevice пише селото и линията на автобуса в сканирането и
+            // допълва този ред — но ако е свършил преди реда да го има, ги взимаме оттам.
+            const fresh = pickOrigin((await snap.ref.get()).data() || {});
+            if (Object.keys(fresh).length) await unpaidRef.update(fresh).catch(() => { /* ignore */ });
+            return { ...origin, ...fresh } as Record<string, unknown>;
+        };
 
         // Другата посока на близнака: анонимният запис може да дойде ПРЕДИ служебния
         // (разликата е под секунда), затова изтриването по-горе не го хваща. Преди да
@@ -425,7 +440,7 @@ export const alertUnpaidScan = functions.firestore
             return isFinite(ms) && Math.abs(ms - atMs) <= OFFICE_READ_WINDOW_MS;
         })) return;
 
-        await recordUnpaid({
+        const origin = await recordUnpaid({
             reason: !hasPaid ? "no_payment" : "canceled",
             name: String(client.name || ""),
             cardNumber: String(client.cardNumber || ""),
@@ -461,16 +476,19 @@ export const alertUnpaidScan = functions.firestore
         const reason = !hasPaid ? "без платен абонамент" : "анулирана карта";
         const cardPart = cardNum ? ` (Карта № ${cardNum})` : "";
         const routePart = route ? ` по ${route}` : "";
+        const where = String(origin.stop || origin.place || "");
+        const devicePart = origin.deviceName ? `, терминал ${String(origin.deviceName)}` : "";
+        const wherePart = where ? `, ${where}` : "";
 
         const message = {
             notification: {
                 title: "🚨 Пътуване без абонамент",
-                body: `${name}${cardPart} се качи${routePart} в ${timeStr} ч. — ${reason}.`,
+                body: `${name}${cardPart} се качи${routePart} в ${timeStr} ч.${devicePart}${wherePart} — ${reason}.`,
             },
             webpush: {
                 notification: {
                     title: "🚨 Пътуване без абонамент",
-                    body: `${name}${cardPart} се качи${routePart} в ${timeStr} ч. — ${reason}.`,
+                    body: `${name}${cardPart} се качи${routePart} в ${timeStr} ч.${devicePart}${wherePart} — ${reason}.`,
                     icon: "https://darycommerce.com/pwa-icon.png",
                     badge: "https://darycommerce.com/favicon.png",
                     tag: `unpaid-${clientId}`,
@@ -585,25 +603,13 @@ export const alertLowBattery = functions.firestore
     });
 
 // ---------------------------------------------------------------------------
-// Кой терминал е чел тази карта — и оттам на коя линия е апаратът.
+// Кой терминал е чел тази карта и къде — и оттам на коя линия е апаратът.
 //
-// Сканирането не носи номер на устройство: това го знае само терминалът, а
-// неговият код е вграден в APK-то. Затова връзката се прави тук, по време.
-// Терминалът вече вдига `lastScanAt` в регистъра при всяко прочитане, и то
-// ВИНАГИ преди самото сканиране да се запише — измерено върху три дни живи
-// данни отместването е 377–1864 ms, никога отрицателно. Оттам и прозорецът:
-// само напред, до три секунди.
-//
-// Прозорец в двете посоки беше пробван и бърка: чуждо сканиране, случило се
-// малко преди пулса, влиза в него. Със същите данни напред-само дава 12 от 13
-// активни терминала еднозначно, срещу 9 при симетричен прозорец.
-//
-// Има ли повече от един кандидат — не се записва нищо. По-добре празно, отколкото
-// грешна линия: 15% от сканиранията имат съсед в рамките на 3 s.
+// Как се познава апаратът — виж scanOrigin.ts. Тук резултатът отива на три
+// места: в самото сканиране (историята на картата в сайта), в дневния списък
+// на терминала (УСТРОЙСТВА) и в реда на отчета „без абонамент“, ако има такъв.
 // ---------------------------------------------------------------------------
 
-/** Колко назад от сканирането се търси пулс на терминал. */
-const DEVICE_MATCH_MS = 3000;
 /** Таван на дневния документ, за да не опре в лимита от 1 MB. */
 const MAX_DAY_SCANS = 500;
 
@@ -614,6 +620,13 @@ interface SeenScan {
     cardNumber: string;
     route: string;
     cardType: string;
+    /** Няма платен месец или е анулирана — в УСТРОЙСТВА излиза в червено. */
+    unpaid?: boolean;
+    /** Проверена от списъка в терминала, без връзка. */
+    offline?: boolean;
+    lat?: number;
+    lng?: number;
+    place?: string;
 }
 
 /** Най-честата линия за деня. Картата носи СВОЯТА линия, не тази на автобуса,
@@ -636,74 +649,77 @@ export const attributeScanToDevice = functions.firestore
 
         // Карта, отворена в браузър, не идва от терминал.
         if (scan.source === "web") return;
-
-        const atMs = new Date(at).getTime();
-        if (!isFinite(atMs)) return;
-        const from = new Date(atMs - DEVICE_MATCH_MS).toISOString();
+        if (!isFinite(new Date(at).getTime())) return;
 
         const db = admin.firestore();
-        // `lastScanAt` е ISO низ в същия формат, затова подредбата по текст е
-        // подредба по време. Единичен индекс — Firestore го прави сам.
-        const lookup = () => db.collection("devices")
-            .where("lastScanAt", ">=", from)
-            .where("lastScanAt", "<=", at)
-            .get();
-
-        // Двата записа се състезават. Терминалът вдига `lastScanAt` в мига на
-        // допирането, а сканирането се записва чак след като профилът се прочете
-        // от базата — но това са две отделни връзки и редът, в който стигат, не е
-        // гарантиран. Тази функция тръгва от сканирането, така че пулсът може още
-        // да е по пътя. Затова, ако първото питане е празно, изчакваме веднъж.
-        let candidates = await lookup();
-        if (candidates.empty) {
-            await new Promise((r) => setTimeout(r, 2000));
-            candidates = await lookup();
-        }
-
-        if (candidates.size !== 1) {
-            console.log(`Сканиране ${at}: ${candidates.size} кандидата в [${from}, ${at}] — пропуснато`);
-            return;
-        }
-
-        const deviceRef = candidates.docs[0].ref;
         const clientId = context.params.clientId as string;
-        const client = (await db.doc(`clients/${clientId}`).get()).data() || {};
+        const scanId = context.params.scanId as string;
+        const hasFix = typeof scan.lat === "number" && typeof scan.lng === "number";
+        const [device, place] = await Promise.all([
+            findDevice(db, scan),
+            hasFix ? placeOf(db, scan.lat, scan.lng) : Promise.resolve({} as Awaited<ReturnType<typeof placeOf>>),
+        ]);
 
-        const entry: SeenScan = {
-            at,
-            clientId,
-            name: String(client.name || "").trim(),
-            cardNumber: String(client.cardNumber || ""),
-            route: String(scan.route || client.route || ""),
-            cardType: String(client.cardType || ""),
-        };
+        const origin: Record<string, unknown> = { ...place };
+        if (device) {
+            const client = (await db.doc(`clients/${clientId}`).get()).data() || {};
+            const history = Array.isArray(client.renewalHistory) ? client.renewalHistory as Array<{ month?: string }> : [];
+            const paid = history.some((h) => h && h.month === at.slice(0, 7)) && client.isCanceled !== true;
 
-        const day = at.slice(0, 10);
-        const dayRef = deviceRef.collection("seen").doc(day);
-        const daySnap = await dayRef.get();
-        const existing: SeenScan[] = daySnap.exists ? (daySnap.data()?.scans || []) : [];
+            const entry: SeenScan = {
+                at,
+                clientId,
+                name: String(client.name || "").trim(),
+                cardNumber: String(client.cardNumber || ""),
+                route: String(scan.route || client.route || ""),
+                cardType: String(client.cardType || ""),
+                ...(paid ? {} : { unpaid: true }),
+                ...(scan.check === "local" ? { offline: true } : {}),
+                ...(hasFix ? { lat: scan.lat, lng: scan.lng } : {}),
+                ...(place.place ? { place: place.place } : {}),
+            };
 
-        // Функцията може да се изпълни повторно при грешка в мрежата; същото
-        // сканиране не бива да излезе два пъти в списъка.
-        const already = existing.some((e) => e.at === at && e.clientId === clientId);
+            const day = at.slice(0, 10);
+            const dayRef = device.ref.collection("seen").doc(day);
+            const daySnap = await dayRef.get();
+            const existing: SeenScan[] = daySnap.exists ? (daySnap.data()?.scans || []) : [];
 
-        if (!already && existing.length < MAX_DAY_SCANS) {
-            await dayRef.set({
-                date: day,
-                updatedAt: at,
-                scans: admin.firestore.FieldValue.arrayUnion(entry),
-            }, { merge: true });
+            // Функцията може да се изпълни повторно при грешка в мрежата; същото
+            // сканиране не бива да излезе два пъти в списъка.
+            const already = existing.some((e) => e.at === at && e.clientId === clientId);
+
+            if (!already && existing.length < MAX_DAY_SCANS) {
+                await dayRef.set({
+                    date: day,
+                    updatedAt: at,
+                    scans: admin.firestore.FieldValue.arrayUnion(entry),
+                }, { merge: true });
+            }
+
+            const routes = already ? existing.map((e) => e.route) : [...existing.map((e) => e.route), entry.route];
+            const route = dominantRoute(routes);
+            if (route) {
+                await device.ref.update({
+                    currentRoute: route,
+                    currentRouteAt: at,
+                    currentRouteScans: routes.filter((r) => r === route).length,
+                }).catch((err) => console.error("device currentRoute update failed:", err));
+            }
+
+            Object.assign(origin, {
+                deviceId: device.id,
+                deviceName: device.name,
+                deviceMatch: device.match,
+                ...(route ? { busRoute: route } : {}),
+            });
         }
+        if (Object.keys(origin).length === 0) return;
 
-        const routes = already ? existing.map((e) => e.route) : [...existing.map((e) => e.route), entry.route];
-        const route = dominantRoute(routes);
-        if (route) {
-            await deviceRef.update({
-                currentRoute: route,
-                currentRouteAt: at,
-                currentRouteScans: routes.filter((r) => r === route).length,
-            }).catch((err) => console.error("device currentRoute update failed:", err));
-        }
+        // Историята на картата в сайта чете самото сканиране.
+        await snap.ref.update(origin).catch((err) => console.error("scan origin not written:", err));
+        // Ако сканирането вече е в отчета „без абонамент“, допълва и него. Ако
+        // още го няма, alertUnpaidScan сам препрочита сканирането след записа си.
+        await db.doc(`unpaid_scans/${clientId}__${scanId}`).update(origin).catch(() => { /* не е без абонамент */ });
     });
 
 // ─────────────────────────────────────────────────────────────────────────────

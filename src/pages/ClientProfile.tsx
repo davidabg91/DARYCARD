@@ -4,7 +4,7 @@ import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Ban, Clock, Settings, Camera, CreditCard, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection, deleteField } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, addDoc, collection, deleteField, serverTimestamp } from 'firebase/firestore';
 import LoadingScreen from '../components/LoadingScreen';
 import { ROUTE_METADATA, ROUTES, cardPrice } from '../data/routeMetadata';
 import { uploadClientPhoto, describeUploadError } from '../utils/photoStorage';
@@ -18,6 +18,7 @@ import { lookupCardNumber, markCardAssigned } from '../utils/cardRegistry';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
 import { useSchools, rememberSchool } from '../utils/customSchools';
 import { paidThroughMonth } from '../utils/paidThrough';
+import { scanContext } from '../utils/scanContext';
 
 interface Client {
     id: string;
@@ -943,9 +944,11 @@ const ClientProfile: React.FC = () => {
                     scannedBy: 'moderator',
                     scannedByName: currentUser.username || 'Модератор',
                     role: 'moderator',
-                    ...(Capacitor.isNativePlatform() ? {} : { source: 'web' })
+                    // Браузър или терминал, и какъв — виж scanContext. Часът на
+                    // сървъра не може да влезе в масива по-долу, затова е отделно.
+                    ...scanContext(false)
                 };
-                addDoc(collection(db, 'clients', id, 'scans'), modScanData)
+                addDoc(collection(db, 'clients', id, 'scans'), { ...modScanData, serverAt: serverTimestamp() })
                     .catch(err => console.error('Moderator scan subcollection write failed:', err));
                 // Прочитане в офиса не е пътуване → не вдига `scanCount`. `lastScanAt`
                 // остава: по него се познава близнакът от оверлея ТРАНЗИТ.
@@ -981,11 +984,13 @@ const ClientProfile: React.FC = () => {
         // Пътуване е само прочитане от терминала (APK). Отворена в браузър карта
         // (пътник на телефона си) се записва с `source: 'web'` и не пипа броячите —
         // иначе влиза в статистиката и блокира качването на терминала за 3 минути.
+        // В историята на картата излиза като „Отворена в браузър“, с какъв —
+        // телефон или компютър (scanContext).
         const isTerminal = Capacitor.isNativePlatform();
         const anonScanData = { 
             at: isoNow, 
             route: client?.route ?? '',
-            ...(isTerminal ? {} : { source: 'web' })
+            ...scanContext()
         };
 
         addDoc(collection(db, 'clients', id, 'scans'), anonScanData)
