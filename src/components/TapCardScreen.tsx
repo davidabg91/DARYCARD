@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowBigUp, Nfc, Ticket } from 'lucide-react';
+// Вградено в бъндъла, за да го има и без интернет (терминалът носи сайта в APK-то).
+import cardLogo from '../assets/dary-card-logo.webp';
 
 /**
  * Екранът на терминала, докато никой не сканира: къде се допира картата.
@@ -18,10 +20,10 @@ const HOLD_TO_HIDE_MS = 3000;
 
 const STYLE_ID = 'dary-tap-card-style';
 const CSS = `
-@keyframes daryTapCard { 0% { transform: translateY(0) rotate(-8deg); opacity: 0.95; }
+@keyframes daryTapCard { 0% { transform: translateY(0) rotate(-5deg); opacity: 0.95; }
   55% { transform: translateY(var(--dary-tap-move)) rotate(0deg); opacity: 1; }
   75% { transform: translateY(var(--dary-tap-move)) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(0) rotate(-8deg); opacity: 0.95; } }
+  100% { transform: translateY(0) rotate(-5deg); opacity: 0.95; } }
 @keyframes daryTapArrow { 0%, 100% { transform: translateY(0); opacity: 0.55; } 50% { transform: translateY(var(--dary-arrow-move)); opacity: 1; } }
 @keyframes daryTapWave { 0% { transform: scale(0.6); opacity: 0.8; } 100% { transform: scale(1.9); opacity: 0; } }
 @keyframes daryTapGlow { 0%, 100% { box-shadow: 0 0 30px rgba(0,230,118,0.25); } 50% { box-shadow: 0 0 60px rgba(0,230,118,0.55); } }
@@ -30,8 +32,8 @@ const CSS = `
 const pad = (n: number) => String(n).padStart(2, '0');
 
 const STEPS: Array<[string, string]> = [
-    ['1', 'Допрете картата горе, над екрана'],
-    ['2', 'Задръжте я неподвижно до сигнала'],
+    ['1', 'Допрете картата над екрана'],
+    ['2', 'Задръжте я до сигнала'],
     ['3', 'Зелено — приятно пътуване!'],
 ];
 
@@ -91,23 +93,25 @@ const TapCardScreen: React.FC<{ onHide: () => void }> = ({ onHide }) => {
                 </div>
             </div>
             <div style={{ ['--dary-arrow-move' as string]: '-12px', animation: 'daryTapArrow 1.2s ease-in-out infinite', flexShrink: 0 } as React.CSSProperties}>
-                <ArrowBigUp size={66} color="#00e676" fill="rgba(0,230,118,0.25)" strokeWidth={1.6} />
+                <ArrowBigUp size={56} color="#00e676" fill="rgba(0,230,118,0.25)" strokeWidth={1.6} />
             </div>
             <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#00e676', letterSpacing: '1px', flexShrink: 0 }}>ЧЕТЕЦЪТ Е НАД ЕКРАНА</div>
 
             <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly', textAlign: 'center', width: '100%' }}>
-                {/* Картата, която „отива“ към четеца. */}
+                {/* Картата, която „отива“ към четеца — като истинската: бяла, 85,60 × 53,98 мм,
+                    логото и „АБОНАМЕНТНА КАРТА“ в червено. */}
                 <div style={{
-                    ['--dary-tap-move' as string]: '-22px',
-                    width: '168px', height: '106px', borderRadius: '14px', position: 'relative', flexShrink: 0, marginTop: '1.4rem',
-                    background: 'linear-gradient(135deg, #00adb5 0%, #0a6e8a 55%, #123a5a 100%)',
-                    boxShadow: '0 16px 36px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.25)',
+                    ['--dary-tap-move' as string]: '-16px',
+                    width: '176px', height: '111px', borderRadius: '10px', flexShrink: 0, marginTop: '2rem',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '9px',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #f4f5f7 60%, #e6e8eb 100%)',
+                    boxShadow: '0 16px 36px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.4)',
                     animation: 'daryTapCard 2.6s ease-in-out infinite',
                 } as React.CSSProperties}>
-                    <div style={{ position: 'absolute', top: '13px', left: '15px', width: '28px', height: '21px', borderRadius: '5px', background: 'linear-gradient(135deg, #ffe082, #ffb300)' }} />
-                    <Nfc size={22} color="rgba(255,255,255,0.85)" style={{ position: 'absolute', top: '13px', right: '13px' }} />
-                    <div style={{ position: 'absolute', bottom: '11px', left: '15px', fontWeight: 900, fontSize: '1.1rem', letterSpacing: '3px' }}>DARY</div>
-                    <div style={{ position: 'absolute', bottom: '14px', right: '13px', fontSize: '0.62rem', fontWeight: 700, opacity: 0.8 }}>КАРТА</div>
+                    <img src={cardLogo} alt="DARY commerce" draggable={false} style={{ width: '66%', height: 'auto', marginTop: '6px' }} />
+                    <div style={{ color: '#e30613', fontFamily: 'Arial, "Helvetica Neue", sans-serif', fontWeight: 900, fontSize: '11px', letterSpacing: '0.2px', whiteSpace: 'nowrap' }}>
+                        АБОНАМЕНТНА КАРТА
+                    </div>
                 </div>
 
                 <div>
