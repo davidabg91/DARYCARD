@@ -12,6 +12,7 @@ import Card from '../components/Card';
 import AdminAlertsButton from '../components/AdminAlertsButton';
 import SecurityLog from '../components/SecurityLog';
 import CloneAlertsLog from '../components/CloneAlertsLog';
+import TerminalSignalsLog from '../components/TerminalSignalsLog';
 import type { UserRole } from '../types/auth';
 
 // Custom icons since they weren't in common lists or were problematic in older versions
@@ -734,6 +735,12 @@ const SystemAdminPanel: React.FC = () => {
                                         <div>
                                             <Card style={{ padding: isMobile ? '1rem' : '2.5rem', background: 'rgba(255,23,68,0.02)', border: '1px solid rgba(255,23,68,0.15)' }}>
                                                 <CloneAlertsLog />
+                                            </Card>
+                                        </div>
+
+                                        <div>
+                                            <Card style={{ padding: isMobile ? '1rem' : '2.5rem', background: 'rgba(255,179,0,0.02)', border: '1px solid rgba(255,179,0,0.18)' }}>
+                                                <TerminalSignalsLog />
                                             </Card>
                                         </div>
                                     </div>

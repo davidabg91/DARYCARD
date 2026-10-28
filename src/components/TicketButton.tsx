@@ -106,7 +106,9 @@ const TicketButton: React.FC<Props> = ({ variant = 'floating' }) => {
             )}
 
             {open && (
+                // `data-keep-open`: профилът на пътника не се затваря сам, докато билетът се издава.
                 <div
+                    data-keep-open
                     style={{
                         // Плътен фон: екранът се гледа в движещ се автобус, понякога на слънце.
                         position: 'fixed', inset: 0, zIndex: 9001, background: '#0a0a0a',

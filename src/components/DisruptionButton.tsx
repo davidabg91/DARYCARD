@@ -283,7 +283,7 @@ const DisruptionButton: React.FC<Props> = ({ variant = 'bar' }) => {
 
             {open && (
                 // Под картата прозорецът е вътре в нейния екран, а докосване там я затваря.
-                <div onClick={e => e.stopPropagation()} style={{
+                <div data-keep-open onClick={e => e.stopPropagation()} style={{
                     position: 'fixed', inset: 0, zIndex: 60000, background: '#0a0a0a', color: '#fff',
                     overflowY: 'auto', padding: '1.25rem 1rem 2rem', fontFamily: '"Outfit", "Inter", sans-serif',
                 }}>

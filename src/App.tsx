@@ -5,7 +5,9 @@ import { recordDeviceScan, startDeviceHeartbeat } from './utils/deviceHeartbeat'
 import { recordBoarding } from './utils/vehiclePosition';
 import { logTerminalEvent } from './utils/terminalEvents';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Capacitor } from '@capacitor/core';
+import TapCardScreen from './components/TapCardScreen';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -37,6 +39,11 @@ function ClientProfileWrapper() {
 }
 
 import TransitView from './components/TransitView';
+
+/** Колко стои профилът на пътника на терминала, преди да отстъпи на „Допрете картата“. */
+const PROFILE_SHOWN_MS = 10_000;
+/** Колко остава скрит екранът „Допрете картата“, след като служител задържи часа. */
+const TAP_SCREEN_SNOOZE_MS = 5 * 60 * 1000;
 
 function DeepLinkHandler() {
   const navigate = useNavigate();
@@ -132,6 +139,39 @@ function DeepLinkHandler() {
     return () => clearTimeout(t);
   }, [missShown]);
 
+  // На терминала профилът на пътника стои 10 s и отстъпва на екрана „Допрете
+  // картата“ — следващите пътници не бива да гледат чужда карта. Докосване по
+  // екрана го удължава, а отворен прозорец (билет, смущение — `data-keep-open`)
+  // го задържа. Логнат служител (подновяване в офиса) затваря сам.
+  const { currentUser } = useAuth();
+  const terminal = Capacitor.isNativePlatform()
+    || (typeof location !== 'undefined' && location.href.includes('tapscreen=1'));
+  const driverMode = terminal && !currentUser;
+  useEffect(() => {
+    if (!transitId || !driverMode) return;
+    let timer = 0;
+    function close() {
+      if (document.querySelector('[data-keep-open]')) { arm(3000); return; }
+      setTransitId(null);
+    }
+    function arm(ms = PROFILE_SHOWN_MS) {
+      clearTimeout(timer);
+      timer = window.setTimeout(close, ms);
+    }
+    const touched = () => arm();
+    arm();
+    window.addEventListener('pointerdown', touched);
+    return () => { clearTimeout(timer); window.removeEventListener('pointerdown', touched); };
+  }, [transitId, scanNonce, driverMode]);
+
+  // Служител, който трябва да стигне до сайта под екрана, задържа часа 3 s.
+  const [tapScreenSnoozedAt, setTapScreenSnoozedAt] = useState(0);
+  useEffect(() => {
+    if (!tapScreenSnoozedAt) return;
+    const t = setTimeout(() => setTapScreenSnoozedAt(0), TAP_SCREEN_SNOOZE_MS);
+    return () => clearTimeout(t);
+  }, [tapScreenSnoozedAt]);
+
   const handleTransitClose = useCallback(() => setTransitId(null), []);
   const handleTransitUnregistered = useCallback((id: string) => {
     setTransitId(null);
@@ -140,6 +180,9 @@ function DeepLinkHandler() {
 
   return (
     <div id="transit-id-setter">
+      {driverMode && !transitId && !tapScreenSnoozedAt && (
+        <TapCardScreen onHide={() => setTapScreenSnoozedAt(Date.now())} />
+      )}
       {missShown > 0 && (
         <div role="alert" onClick={() => setMissShown(0)} style={{
           position: 'fixed', top: '12%', left: '50%', transform: 'translateX(-50%)', zIndex: 10000,
