@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { AlertOctagon, X, Loader2, CheckCircle2, ArrowLeft, Bus, Wrench, Ban, Car, Clock, Signpost } from 'lucide-react';
+import { AlertOctagon, X, Loader2, CheckCircle2, ArrowLeft, Bus, Wrench, Ban, Car, Clock, Signpost, WifiOff } from 'lucide-react';
 import app from '../firebase';
 import { getDeviceId } from '../utils/deviceHeartbeat';
+import { ticketLines } from '../data/ticketing';
+import { routeSlug } from '../data/routeSlugs';
 
 /**
  * Червеният бутон на терминала: отменен курс или смущение (Наредба Н-7 —
@@ -24,6 +26,11 @@ import { getDeviceId } from '../utils/deviceHeartbeat';
  * На екрана на сканираната карта лентата отдолу би закрила долния край на
  * картата, а шофьорът трябва да я вижда цялата. Затова там картата слага бутона
  * под себе си (`variant="inline"`), а лентата се скрива, докато той е на екрана.
+ *
+ * Без връзка сигналът не се губи: пази се в терминала и се праща сам, щом има
+ * интернет (на 30 s и при връщане на връзката), с това преди колко време е
+ * натиснат. Сървърът тогава не може да подскаже курса, затова терминалът пита
+ * шофьора само за линията — от собствения си списък, без сървър.
  */
 
 /** Същите видове и етикети като functions/src/disruptionKinds.ts. */
@@ -53,6 +60,47 @@ const setInlineShown = (delta: number) => {
     inlineShown += delta;
     inlineListeners.forEach(f => f(inlineShown));
 };
+// ── Опашката без връзка ──────────────────────────────────────────────────────
+const QUEUE_KEY = 'dary_disruption_queue';
+const FLUSH_EVERY_MS = 30 * 1000;
+interface Queued { id: string; action: 'report' | 'resolve'; kind?: string; routeId?: string; pressedAt: number }
+
+const readQueue = (): Queued[] => {
+    try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]') as Queued[]; } catch { return []; }
+};
+const queueListeners = new Set<(n: number) => void>();
+const writeQueue = (q: Queued[]) => {
+    try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch { /* пълна памет — няма какво да се направи */ }
+    queueListeners.forEach(f => f(q.length));
+};
+const enqueue = (item: Omit<Queued, 'id' | 'pressedAt'>) =>
+    writeQueue([...readQueue(), { ...item, id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, pressedAt: Date.now() }]);
+
+let flushing = false;
+/** Праща чакащите по ред. Спира при първата липса на връзка — ще опита пак. */
+const flushQueue = async (): Promise<boolean> => {
+    if (flushing) return false;
+    flushing = true;
+    let sent = false;
+    try {
+        for (const item of readQueue()) {
+            try {
+                // ageMs е мерено с часовника на терминала и в двата края, затова
+                // сгрешен часовник не мести часа на сигнала.
+                const r = await call({ action: item.action, kind: item.kind, routeId: item.routeId, ageMs: Math.max(1, Date.now() - item.pressedAt) });
+                if (!r.ok) console.warn('Чакащ сигнал не е приет:', r.error);
+            } catch {
+                break;   // още няма връзка
+            }
+            writeQueue(readQueue().filter(q => q.id !== item.id));
+            sent = true;
+        }
+    } finally {
+        flushing = false;
+    }
+    return sent;
+};
+
 interface Reply {
     ok: boolean;
     error?: string;
@@ -71,10 +119,12 @@ type Step =
     | { at: 'confirm'; kind: string }
     | { at: 'line'; kind: string; options: TripOption[]; lines: Array<{ routeId: string; routeName: string }> }
     | { at: 'trip'; kind: string; routeName: string; options: TripOption[] }
+    | { at: 'offline'; kind: string }
     | { at: 'done'; text: string };
 
 const call = async (payload: Record<string, unknown>): Promise<Reply> => {
-    const fn = httpsCallable<Record<string, unknown>, Reply>(getFunctions(app), 'reportDisruption');
+    // Без отговор до 15 s се води „няма връзка“ — шофьорът не бива да чака минута.
+    const fn = httpsCallable<Record<string, unknown>, Reply>(getFunctions(app), 'reportDisruption', { timeout: 15_000 });
     const res = await fn({ deviceId: getDeviceId(), ...payload });
     return res.data;
 };
@@ -101,6 +151,7 @@ const DisruptionButton: React.FC<Props> = ({ variant = 'bar' }) => {
     const [error, setError] = useState('');
     const [active, setActive] = useState<Active[]>(lastActive);
     const [cardOnScreen, setCardOnScreen] = useState(inlineShown > 0);
+    const [waiting, setWaiting] = useState(() => readQueue().length);
 
     const refresh = useCallback(async () => {
         try {
@@ -124,12 +175,25 @@ const DisruptionButton: React.FC<Props> = ({ variant = 'bar' }) => {
         const t = setInterval(refresh, STATUS_EVERY_MS);
         const onInline = (n: number) => setCardOnScreen(n > 0);
         inlineListeners.add(onInline);
+        // Чакащите сигнали — само лентата ги праща, тя е винаги на екрана.
+        const flush = () => { void flushQueue().then(sent => { if (sent) void refresh(); }); };
+        flush();
+        const f = setInterval(flush, FLUSH_EVERY_MS);
+        window.addEventListener('online', flush);
         // Място най-долу на всяка страница, за да не закрива лентата съдържание.
         const style = document.createElement('style');
         style.textContent = `body { padding-bottom: ${DISRUPTION_BAR_PX + 8}px !important; }`;
         document.head.appendChild(style);
-        return () => { clearInterval(t); inlineListeners.delete(onInline); style.remove(); };
+        return () => {
+            clearInterval(t); clearInterval(f); window.removeEventListener('online', flush);
+            inlineListeners.delete(onInline); style.remove();
+        };
     }, [enabled, inline, refresh]);
+
+    useEffect(() => {
+        queueListeners.add(setWaiting);
+        return () => { queueListeners.delete(setWaiting); };
+    }, []);
 
     if (!enabled) return null;
 
@@ -138,6 +202,11 @@ const DisruptionButton: React.FC<Props> = ({ variant = 'bar' }) => {
     const run = async (payload: Record<string, unknown>, kind: string) => {
         setBusy(true);
         setError('');
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            setBusy(false);
+            setStep({ at: 'offline', kind });
+            return;
+        }
         try {
             const r = await call({ action: 'report', kind, ...payload });
             if (!r.ok) { setError(r.error || 'Сигналът не беше приет.'); return; }
@@ -151,10 +220,17 @@ const DisruptionButton: React.FC<Props> = ({ variant = 'bar' }) => {
             });
             void refresh();
         } catch {
-            setError('Няма връзка със сървъра. Опитайте отново след малко.');
+            // Без връзка — сигналът се пази и тръгва сам, щом се появи интернет.
+            setStep({ at: 'offline', kind });
         } finally {
             setBusy(false);
         }
+    };
+
+    /** Запазва сигнала за по-късно; `routeId` — линията, която шофьорът посочи. */
+    const keepForLater = (kind: string, routeId?: string) => {
+        enqueue({ action: 'report', kind, routeId });
+        setStep({ at: 'done', text: 'Няма връзка — сигналът е запазен и ще се изпрати сам, щом терминалът хване интернет.' });
     };
 
     const resolve = async () => {
@@ -166,7 +242,10 @@ const DisruptionButton: React.FC<Props> = ({ variant = 'bar' }) => {
             setStep({ at: 'done', text: 'Сигналът е прекратен — движението е нормално.' });
             void refresh();
         } catch {
-            setError('Няма връзка със сървъра. Опитайте отново след малко.');
+            enqueue({ action: 'resolve' });
+            lastActive = [];
+            setActive([]);
+            setStep({ at: 'done', text: 'Няма връзка — прекратяването е запазено и ще се изпрати сам, щом има интернет.' });
         } finally {
             setBusy(false);
         }
@@ -195,6 +274,11 @@ const DisruptionButton: React.FC<Props> = ({ variant = 'bar' }) => {
                 {current
                     ? <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>АКТИВЕН СИГНАЛ: {current.routeName}{current.departure ? ` ${current.departure}` : ''}</span>
                     : 'ОТМЕНЕН КУРС / СМУЩЕНИЕ'}
+                {waiting > 0 && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', fontWeight: 800, background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.55rem', borderRadius: '8px' }}>
+                        <WifiOff size={15} /> чака връзка
+                    </span>
+                )}
             </button>}
 
             {open && (
@@ -311,6 +395,31 @@ const DisruptionButton: React.FC<Props> = ({ variant = 'bar' }) => {
                             </button>
                         </div>
                     )}
+
+                    {step.at === 'offline' && (() => {
+                        // Списъкът е от самото приложение — без връзка сървърът не може да го даде.
+                        let ticketLine = '';
+                        try { ticketLine = sessionStorage.getItem('ticket_line') || ''; } catch { /* няма */ }
+                        const lines = ticketLines().map(l => l.id);
+                        const ordered = ticketLine && lines.includes(ticketLine) ? [ticketLine, ...lines.filter(l => l !== ticketLine)] : lines;
+                        return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.15rem', fontWeight: 800, color: '#ffb74d' }}>
+                                    <WifiOff size={24} /> Няма връзка. Сигналът ще се изпрати сам, щом има интернет.
+                                </div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>Коя линия караш?</div>
+                                {ordered.map((name, i) => (
+                                    <button key={name} style={{ ...big, ...(i === 0 && name === ticketLine ? { border: '2px solid #29b6f6' } : {}) }}
+                                        onClick={() => keepForLater(step.kind, routeSlug(name))}>
+                                        <Bus size={24} color="#29b6f6" /> {name}
+                                    </button>
+                                ))}
+                                <button style={{ ...big, justifyContent: 'center', color: '#ccc' }} onClick={() => keepForLater(step.kind)}>
+                                    Не знам — системата да познае
+                                </button>
+                            </div>
+                        );
+                    })()}
 
                     {step.at === 'done' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', textAlign: 'center', marginTop: '2rem' }}>

@@ -15,6 +15,14 @@ import { DISRUPTION_KINDS, type DisruptionKind } from "./disruptionKinds";
  * курс кара апаратът — първи курс за деня, още няма въведени точки и т.н. —
  * функцията връща днешните курсове около този час и шофьорът избира.
  *
+ * Без връзка терминалът пази сигнала и го праща сам, щом хване интернет
+ * (`ageMs` — колко отдавна е натиснат, мерено с часовника на терминала, затова
+ * сгрешен часовник не пречи). Тогава сигналът се води от момента на
+ * натискането, а не на пристигането, и шофьорът вече не може да бъде питан:
+ * ако курсът не се знае, се взима линията, която шофьорът е посочил офлайн, или
+ * линията, която терминалът обслужва днес според картите; иначе сигналът е за
+ * целия превозвач.
+ *
  *   disruptions/{id}  { deviceId, deviceName, kind, routeId, routeName,
  *                       tripId|null, serviceDay|null, departure, matchedBy,
  *                       at, activeUntil, resolvedAt|null, resolvedBy }
@@ -108,7 +116,16 @@ export interface DisruptionRequest {
     tripKey?: string;
     /** Само линия — когато за линията няма курс около този час. */
     routeId?: string;
+    /** Пратено със закъснение от опашката на терминала: преди колко ms е натиснат бутонът. */
+    ageMs?: number;
 }
+
+/** Сигнал по-стар от това не се приема — смущението отдавна е минало. */
+const MAX_QUEUED_MS = 6 * 3600 * 1000;
+/** Толкова закъснял сигнал вече не се сверява с GPS — автобусът е другаде. */
+const GPS_STILL_VALID_MS = 3 * 60 * 1000;
+
+const normName = (x: string) => x.toLowerCase().replace(/[^a-zа-я0-9]+/gi, "");
 
 export async function handleDisruption(data: DisruptionRequest) {
     const db = admin.firestore();
@@ -129,9 +146,13 @@ export async function handleDisruption(data: DisruptionRequest) {
         return { ok: true, active: (await activeFor(db, deviceId)).map(describe) };
     }
 
+    const age = Math.min(Math.max(Number(data.ageMs) || 0, 0), MAX_QUEUED_MS + 1);
+    if (age > MAX_QUEUED_MS) return { ok: false, error: "Сигналът е по-стар от 6 часа и не е изпратен." };
+    const queued = age > 0;
+
     if (data.action === "resolve") {
         const active = await activeFor(db, deviceId);
-        const at = nowIso();
+        const at = new Date(Date.now() - age).toISOString();
         await Promise.all(active.map(d => d.ref.update({ resolvedAt: at, resolvedBy: `Терминал: ${deviceName}` })));
         if (active.length) {
             await notifyAdmins(db, "Смущението приключи", `${deviceName}: ${active.map(d => d.get("routeName")).join(", ")} — движението е нормално.`, `disruption-${deviceId}`)
@@ -144,7 +165,7 @@ export async function handleDisruption(data: DisruptionRequest) {
     const kind = String(data.kind || "") as DisruptionKind;
     const spec = DISRUPTION_KINDS[kind];
     if (!spec) return { ok: false, error: "Изберете какво се е случило." };
-    const now = Date.now();
+    const now = Date.now() - age;
 
     let trip: { routeId: string; routeName: string; tripId: string | null; serviceDay: string | null; departure: string; matchedBy: "gps" | "driver" } | null = null;
 
@@ -156,9 +177,32 @@ export async function handleDisruption(data: DisruptionRequest) {
         trip = { routeId: o.routeId, routeName: o.routeName, tripId, serviceDay, departure: o.departure, matchedBy: "driver" };
     } else if (data.routeId) {
         const tt = await db.collection("timetables").doc(String(data.routeId)).get();
-        if (!tt.exists) return { ok: false, error: "Непозната линия." };
-        trip = { routeId: tt.id, routeName: String(tt.get("name") || tt.id), tripId: null, serviceDay: null, departure: "", matchedBy: "driver" };
-    } else {
+        if (!tt.exists && !queued) return { ok: false, error: "Непозната линия." };
+        if (tt.exists) trip = { routeId: tt.id, routeName: String(tt.get("name") || tt.id), tripId: null, serviceDay: null, departure: "", matchedBy: "driver" };
+    }
+    if (!trip && queued) {
+        // Закъснял сигнал: GPS-ът важи само ако е съвсем пресен, а шофьорът вече
+        // не може да бъде попитан.
+        if (age <= GPS_STILL_VALID_MS) {
+            try {
+                const built = await buildRealtime();
+                const v = built.vehicles.find(x => x.deviceId === deviceId);
+                const run = v?.match ? built.runs.get(`${v.match.serviceDay}|${v.match.tripId}`) : undefined;
+                if (run) trip = { routeId: run.routeId, routeName: run.routeName, tripId: run.tripId, serviceDay: run.serviceDay, departure: "", matchedBy: "gps" };
+            } catch (err) {
+                console.error("disruption: matching failed", err);
+            }
+        }
+        if (!trip) {
+            // Линията, която терминалът обслужва днес според прочетените карти.
+            const current = String(device.get("currentRoute") || "");
+            const tts = await db.collection("timetables").get();
+            const hit = current ? tts.docs.find(d => normName(String(d.get("name") || "")) === normName(current)) : undefined;
+            trip = hit
+                ? { routeId: hit.id, routeName: String(hit.get("name") || hit.id), tripId: null, serviceDay: null, departure: "", matchedBy: "driver" }
+                : { routeId: "", routeName: "линията не е известна", tripId: null, serviceDay: null, departure: "", matchedBy: "driver" };
+        }
+    } else if (!trip) {
         // Кой курс кара апаратът според GPS — същото разпознаване като в потока за НТД.
         try {
             const built = await buildRealtime();
@@ -188,15 +232,21 @@ export async function handleDisruption(data: DisruptionRequest) {
 
     // Нов сигнал от същия терминал заменя стария.
     const at = new Date(now).toISOString();
-    const previous = await activeFor(db, deviceId);
+    const active = await activeFor(db, deviceId);
+    const previous = active.filter(d => String(d.get("at") || "") < at);
+    // Закъснял сигнал, след който шофьорът вече е подал по-нов: пази се за
+    // историята, но не е активен.
+    const overtaken = active.some(d => String(d.get("at") || "") > at);
     await Promise.all(previous.map(d => d.ref.update({ resolvedAt: at, resolvedBy: "Заменено с нов сигнал" })));
     const ref = await db.collection("disruptions").add({
         deviceId, deviceName, kind, ...trip,
         at, activeUntil: new Date(now + spec.hours * 3600000).toISOString(),
-        resolvedAt: null, resolvedBy: "",
+        resolvedAt: overtaken ? nowIso() : null, resolvedBy: overtaken ? "По-нов сигнал вече е подаден" : "",
+        ...(queued ? { receivedAt: nowIso(), queued: true } : {}),
     });
+    const late = queued ? ` (натиснат в ${new Date(now).toLocaleTimeString("bg-BG", { timeZone: "Europe/Sofia", hour: "2-digit", minute: "2-digit" })}, пратен със закъснение — нямаше връзка)` : "";
     await notifyAdmins(db, `🚨 ${spec.label}`,
-        `${deviceName}: ${trip.routeName}${trip.departure ? `, курс ${trip.departure}` : ""}.`, `disruption-${deviceId}`)
+        `${deviceName}: ${trip.routeName}${trip.departure ? `, курс ${trip.departure}` : ""}.${late}`, `disruption-${deviceId}`)
         .catch(err => console.error("disruption push failed", err));
     return { ok: true, id: ref.id, routeName: trip.routeName, departure: trip.departure, matchedBy: trip.matchedBy };
 }
