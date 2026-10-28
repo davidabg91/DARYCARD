@@ -3,6 +3,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { sofiaDay } from '../../utils/vehiclePosition';
 import DeviceMap, { type MapMark, type PathPoint } from './DeviceMap';
+import { matchToRoads, type RoadLine } from '../../utils/roadMatch';
 
 /**
  * Откъде е минал един терминал за деня и къде е чел карти.
@@ -62,6 +63,10 @@ const DeviceTrack: React.FC<Props> = ({ deviceId, liveTrack }) => {
     const [stored, setStored] = useState<PathPoint[]>([]);
     const [scansRaw, setScansRaw] = useState<SeenScan[]>([]);
     const [loading, setLoading] = useState(true);
+    // По пътищата, освен ако някой не иска да види точките такива, каквито са.
+    const [onRoads, setOnRoads] = useState(true);
+    const [roads, setRoads] = useState<RoadLine[] | undefined>(undefined);
+    const [matching, setMatching] = useState(false);
 
     useEffect(() => {
         let gone = false;
@@ -93,6 +98,19 @@ const DeviceTrack: React.FC<Props> = ({ deviceId, liveTrack }) => {
         all.filter(p => sofiaDay(p.t) === day).forEach(p => byTime.set(Math.round(p.t / 1000), p));
         return [...byTime.values()].sort((a, b) => a.t - b.t);
     }, [stored, liveTrack, day, today]);
+
+    useEffect(() => {
+        if (!onRoads || path.length < 2) { setRoads(undefined); return; }
+        let gone = false;
+        let lines: RoadLine[] = [];
+        setMatching(true);
+        void matchToRoads(path, GAP_MS, (i, line) => {
+            lines = [...lines];
+            lines[i] = line;
+            if (!gone) setRoads(lines);
+        }, () => gone).finally(() => { if (!gone) setMatching(false); });
+        return () => { gone = true; };
+    }, [path, onRoads]);
 
     const { gaps, distance } = useMemo(() => {
         const gaps: Array<[number, number]> = [];
@@ -149,7 +167,12 @@ const DeviceTrack: React.FC<Props> = ({ deviceId, liveTrack }) => {
                 </div>
             ) : (
                 <>
-                    <DeviceMap key={`${deviceId}-${day}`} path={path} gapMs={GAP_MS} scans={marks} />
+                    <DeviceMap key={`${deviceId}-${day}`} path={path} roads={onRoads ? roads : undefined} gapMs={GAP_MS} scans={marks} />
+                    <label style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.45rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={onRoads} onChange={e => setOnRoads(e.target.checked)} />
+                        По пътищата
+                        {onRoads && matching && ' · подреждам по пътищата…'}
+                    </label>
                     <div style={{ ...muted, marginTop: '0.5rem' }}>
                         <span style={{ color: '#00ADB5', fontWeight: 800 }}>━</span> път ·{' '}
                         <span style={{ color: '#ff9800', fontWeight: 800 }}>┅</span> без GPS точки ·{' '}

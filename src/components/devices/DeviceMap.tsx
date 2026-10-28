@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import type { RoadLine } from '../../utils/roadMatch';
 
 /**
  * Карта за терминалите: пътят на един терминал за деня с местата, където е
@@ -9,6 +10,9 @@ import 'leaflet/dist/leaflet.css';
  * Пътят се чертае на парчета. Където между две точки има дупка (няма GPS или
  * приложението е било спряно), линията е пунктир — иначе права черта през полето
  * изглежда като маршрут, а не е. OpenStreetMap, както картата на спирките.
+ *
+ * С `roads` пътят се чертае по пътищата (roadMatch.ts) вместо на права линия
+ * от точка до точка.
  */
 
 export interface PathPoint { lat: number; lng: number; t: number }
@@ -17,6 +21,8 @@ export interface MapMark { lat: number; lng: number; label: string; color?: stri
 interface Props {
     /** Пътят за деня, подреден по време. */
     path?: PathPoint[];
+    /** Същият път, положен по пътищата. Когато го има, се чертае той. */
+    roads?: RoadLine[];
     /** Над толкова между две точки се чертае пунктир. */
     gapMs?: number;
     /** Сканирани карти — малки жълти точки. */
@@ -29,7 +35,7 @@ interface Props {
 const BULGARIA: [number, number] = [43.35, 24.6];
 const hhmm = (t: number) => new Date(t).toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' });
 
-const DeviceMap: React.FC<Props> = ({ path = [], gapMs = 6.5 * 60 * 1000, scans = [], live = [], height = 380 }) => {
+const DeviceMap: React.FC<Props> = ({ path = [], roads, gapMs = 6.5 * 60 * 1000, scans = [], live = [], height = 380 }) => {
     const host = useRef<HTMLDivElement>(null);
     const map = useRef<L.Map | null>(null);
     const layer = useRef<L.LayerGroup | null>(null);
@@ -62,17 +68,29 @@ const DeviceMap: React.FC<Props> = ({ path = [], gapMs = 6.5 * 60 * 1000, scans 
             if (run.length > 1) L.polyline(run, { color: '#00ADB5', weight: 4, opacity: 0.9 }).addTo(group);
             run = [];
         };
-        path.forEach((p, i) => {
-            const prev = path[i - 1];
-            if (prev && p.t - prev.t > gapMs) {
-                flush();
-                L.polyline([[prev.lat, prev.lng], [p.lat, p.lng]], { color: '#ff9800', weight: 3, opacity: 0.8, dashArray: '6 8' })
-                    .bindTooltip(`Без GPS точки ${hhmm(prev.t)} – ${hhmm(p.t)}`).addTo(group);
-            }
-            run.push([p.lat, p.lng]);
-            bounds.push([p.lat, p.lng]);
-        });
-        flush();
+        if (roads) {
+            roads.forEach(r => {
+                if (r.kind === 'gap') {
+                    L.polyline(r.coords, { color: '#ff9800', weight: 3, opacity: 0.8, dashArray: '6 8' })
+                        .bindTooltip(`Без GPS точки ${hhmm(r.from)} – ${hhmm(r.to)}${r.matched ? ' · най-краткият път между двете места' : ''}`).addTo(group);
+                } else {
+                    L.polyline(r.coords, { color: '#00ADB5', weight: 4, opacity: r.matched ? 0.95 : 0.45 }).addTo(group);
+                }
+            });
+            path.forEach(p => bounds.push([p.lat, p.lng]));
+        } else {
+            path.forEach((p, i) => {
+                const prev = path[i - 1];
+                if (prev && p.t - prev.t > gapMs) {
+                    flush();
+                    L.polyline([[prev.lat, prev.lng], [p.lat, p.lng]], { color: '#ff9800', weight: 3, opacity: 0.8, dashArray: '6 8' })
+                        .bindTooltip(`Без GPS точки ${hhmm(prev.t)} – ${hhmm(p.t)}`).addTo(group);
+                }
+                run.push([p.lat, p.lng]);
+                bounds.push([p.lat, p.lng]);
+            });
+            flush();
+        }
         if (path.length) {
             const first = path[0], last = path[path.length - 1];
             L.circleMarker([first.lat, first.lng], { radius: 7, color: '#fff', weight: 2, fillColor: '#00c853', fillOpacity: 1 })
@@ -97,7 +115,7 @@ const DeviceMap: React.FC<Props> = ({ path = [], gapMs = 6.5 * 60 * 1000, scans 
             m.fitBounds(L.latLngBounds(bounds), { padding: [30, 30], maxZoom: 15 });
             fitted.current = true;
         }
-    }, [path, scans, live, gapMs]);
+    }, [path, roads, scans, live, gapMs]);
 
     return (
         <div
