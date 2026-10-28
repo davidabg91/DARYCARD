@@ -133,6 +133,13 @@ interface SeenScan {
     cardNumber?: string;
     route?: string;
     cardType?: string;
+    /** Без платен месец или анулирана. */
+    unpaid?: boolean;
+    /** Проверена от списъка в терминала, без връзка. */
+    offline?: boolean;
+    lat?: number;
+    lng?: number;
+    place?: string;
 }
 
 /** „0000000490" се чете трудно; на екрана върши работа само номерът. */
@@ -701,6 +708,19 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                                             <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem', background: 'rgba(255,255,255,0.06)', padding: '1px 6px', borderRadius: '5px' }}>
                                                                 {s.route}
                                                             </span>
+                                                        )}
+                                                        {s.unpaid && (
+                                                            <span style={{ color: '#fff', fontSize: '0.68rem', fontWeight: 900, background: '#e53935', padding: '1px 6px', borderRadius: '5px' }}>
+                                                                БЕЗ АБОНАМЕНТ
+                                                            </span>
+                                                        )}
+                                                        {s.offline && (
+                                                            <span style={{ color: '#29b6f6', fontSize: '0.68rem', fontWeight: 700 }} title="Проверена от списъка в терминала, без връзка">без връзка</span>
+                                                        )}
+                                                        {(s.place || (typeof s.lat === 'number' && typeof s.lng === 'number')) && (
+                                                            typeof s.lat === 'number' && typeof s.lng === 'number'
+                                                                ? <a href={`https://www.google.com/maps?q=${s.lat},${s.lng}`} target="_blank" rel="noopener noreferrer" style={{ color: '#4fc3f7', fontSize: '0.7rem' }}>📍 {s.place || 'на картата'}</a>
+                                                                : <span style={{ color: '#4fc3f7', fontSize: '0.7rem' }}>📍 {s.place}</span>
                                                         )}
                                                     </div>
                                                 ))}

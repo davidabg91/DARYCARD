@@ -23,7 +23,8 @@ interface Props {
     skewMs?: number;
 }
 
-interface SeenScan { at: string; name?: string; cardNumber?: string; route?: string }
+/** Новите терминали пращат точката на самото сканиране; `unpaid` го пише сървърът. */
+interface SeenScan { at: string; name?: string; cardNumber?: string; route?: string; lat?: number; lng?: number; unpaid?: boolean }
 
 /** Над толкова без точка има дупка: терминалът пише поне на пет минути. */
 const GAP_MS = 6.5 * 60 * 1000;
@@ -134,10 +135,14 @@ const DeviceTrack: React.FC<Props> = ({ deviceId, liveTrack, skewMs = 0 }) => {
         let unplaced = 0;
         list.forEach(s => {
             const t = new Date(s.at).getTime();
-            const at = placeAt(path, t);
+            const at = typeof s.lat === 'number' && typeof s.lng === 'number' ? { lat: s.lat, lng: s.lng } : placeAt(path, t);
             if (!at) { unplaced++; return; }
             const card = String(s.cardNumber || '').replace(/^0+/, '');
-            marks.push({ ...at, label: `${hhmm(t)} · ${s.name || '—'}${card ? ` № ${card}` : ''}${s.route ? ` · ${s.route}` : ''}` });
+            marks.push({
+                ...at,
+                label: `${hhmm(t)} · ${s.name || '—'}${card ? ` № ${card}` : ''}${s.route ? ` · ${s.route}` : ''}${s.unpaid ? ' · БЕЗ АБОНАМЕНТ' : ''}`,
+                ...(s.unpaid ? { color: '#ff1744' } : {}),
+            });
         });
         return { marks, unplaced, scanCount: list.length };
     }, [scansRaw, path, day]);

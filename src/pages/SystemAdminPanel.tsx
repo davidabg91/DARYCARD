@@ -45,6 +45,8 @@ interface ScanRecord {
     clientId: string;
     at: string;
     route: string;
+    /** Името на терминала от УСТРОЙСТВА, ако се знае (attributeScanToDevice). */
+    deviceName?: string;
 }
 
 interface GlobalLog {
@@ -181,6 +183,7 @@ const SystemAdminPanel: React.FC = () => {
                 clientId: d.ref.parent.parent?.id ?? '',
                 at: (d.data().at as string) ?? '',
                 route: (d.data().route as string) ?? '',
+                deviceName: (d.data().deviceName as string) || undefined,
             }));
 
     // Day of scans behind АНАЛИЗ НА ТРАФИКА — one day is ~0.24 MB, so re-reading it
@@ -362,12 +365,16 @@ const SystemAdminPanel: React.FC = () => {
 
     // Suspicious Activity (Abuse detection) — group the recent-window scans by
     // client, then flag days with more than 3 scans on the same card.
+    // На кой терминал е всяко от тях — карта, минала през няколко автобуса за
+    // един ден, личи веднага.
+    const deviceOfScan = new Map<string, string>();
     const scansByClient = (() => {
         const map: Record<string, string[]> = {};
         abuseScans.forEach(s => {
             if (!s.clientId) return;
             if (!map[s.clientId]) map[s.clientId] = [];
             map[s.clientId].push(s.at);
+            if (s.deviceName) deviceOfScan.set(`${s.clientId}|${s.at}`, s.deviceName);
         });
         return map;
     })();
@@ -706,6 +713,7 @@ const SystemAdminPanel: React.FC = () => {
                                                                             {scans.map((ts, sIdx) => (
                                                                                 <span key={sIdx} style={{ fontSize: '0.65rem', padding: '3px 8px', background: 'rgba(255,82,82,0.15)', borderRadius: '6px', color: '#ff8a80', border: '1px solid rgba(255,82,82,0.1)' }}>
                                                                                     {new Date(ts).toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })}
+                                                                                    {deviceOfScan.has(`${c.id}|${ts}`) && <span style={{ opacity: 0.75 }}> · {deviceOfScan.get(`${c.id}|${ts}`)}</span>}
                                                                                 </span>
                                                                             ))}
                                                                         </div>

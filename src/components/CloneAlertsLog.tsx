@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, orderBy, limit, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, doc, deleteDoc, getDocs } from 'firebase/firestore';
 import { Clock, AlertTriangle, CreditCard, MapPin, Trash2 } from 'lucide-react';
 import { db } from '../firebase';
 import { CARDS_MAPPING } from '../data/cardsMapping';
+import { OriginDetails, OriginDevice } from './ScanOrigin';
+import { readOrigin } from '../utils/scanOrigin';
 
 interface CloneAlert {
     id: string;
@@ -13,6 +15,8 @@ interface CloneAlert {
     registeredUid: string;
     scannedUid: string;
     resolved?: boolean;
+    /** Терминалът и мястото (utils/scanContext) — само в сигналите от новите APK. */
+    deviceId?: string;
 }
 
 /**
@@ -20,6 +24,19 @@ interface CloneAlert {
  */
 const CloneAlertsLog: React.FC = () => {
     const [alerts, setAlerts] = useState<CloneAlert[]>([]);
+    // Сигналът носи само номера на терминала; името е в УСТРОЙСТВА.
+    const [deviceNames, setDeviceNames] = useState<Map<string, string>>(new Map());
+    const needNames = alerts.some(a => a.deviceId);
+    useEffect(() => {
+        if (!needNames) return;
+        let live = true;
+        getDocs(collection(db, 'devices'))
+            .then(snap => {
+                if (live) setDeviceNames(new Map(snap.docs.map(d => [d.id, String(d.get('name') || d.get('autoName') || '').trim()])));
+            })
+            .catch(err => console.error('Device names not loaded:', err));
+        return () => { live = false; };
+    }, [needNames]);
 
     useEffect(() => {
         const q = query(collection(db, 'clone_alerts'), orderBy('timestamp', 'desc'), limit(30));
@@ -97,6 +114,15 @@ const CloneAlertsLog: React.FC = () => {
                                         <AlertTriangle size={13} color="#ff1744" /> Сканиран UID: <code style={{ background: 'rgba(255,23,68,0.15)', color: '#ff8a80', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>{a.scannedUid}</code>
                                     </span>
                                 </div>
+                                {a.deviceId && (() => {
+                                    const origin = { ...readOrigin(a as unknown as Record<string, unknown>), deviceName: deviceNames.get(a.deviceId) || undefined };
+                                    return (
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                                            <OriginDevice origin={origin} unpaid />
+                                            <OriginDetails origin={origin} />
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         );
                     })}

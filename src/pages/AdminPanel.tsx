@@ -41,6 +41,8 @@ import { buildXlsx } from '../utils/xlsx';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import CardWriter from '../components/CardWriter';
 import DevicesPanel from '../components/DevicesPanel';
+import { OriginDetails, OriginDevice } from '../components/ScanOrigin';
+import { originDeviceLabel, readOrigin, type ScanOrigin } from '../utils/scanOrigin';
 // Разписанията носят картата (Leaflet) — зареждат се чак при отваряне на таба.
 const TimetablesPanel = lazy(() => import('../components/timetables/TimetablesPanel'));
 import { isWebNfcAvailable, type BatchCard } from '../utils/nfcCardWriter';
@@ -350,7 +352,7 @@ const RevenueSplit: React.FC<{ b: { cash: number; card: number; bank: number }; 
 /** Ред в отчета „Пътувания без платен абонамент". `name`/`cardNumber` са
  *  снимка от момента на сканирането — ползват се само ако профилът вече е изтрит;
  *  иначе се взимат от живия клиентски документ. */
-type UnpaidRow = {
+type UnpaidRow = ScanOrigin & {
     clientId: string;
     at: string;
     route?: string;
@@ -358,6 +360,9 @@ type UnpaidRow = {
     cardNumber?: string;
     scannedBy?: string;
 };
+
+/** Едно сканиране в историята на картата, с произхода му (виж ScanOrigin). */
+type ProfileScan = ScanOrigin & { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string };
 
 interface TabButtonProps {
     id: AdminTabId;
@@ -578,7 +583,7 @@ const AdminPanel: React.FC = () => {
 
     // Пътувания (сканирания) на отворения профил — четат се лениво при отваряне на модала,
     // от подколекцията clients/{id}/scans.
-    const [profileScans, setProfileScans] = useState<{ at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string; source?: string }[] | null>(null);
+    const [profileScans, setProfileScans] = useState<ProfileScan[] | null>(null);
     const [profileScansLoading, setProfileScansLoading] = useState(false);
 
     // Зареждане на пътуванията (сканиранията) на отворения профил — една заявка
@@ -601,17 +606,17 @@ const AdminPanel: React.FC = () => {
                     role: s.role
                 }));
 
-        type ProfileScan = { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string; source?: string };
         const toList = (docs: { data: () => Record<string, unknown> }[]): ProfileScan[] => docs
             .map(d => {
                 const data = d.data();
                 return {
+                    // Терминал или браузър, кой апарат, къде — виж ScanOrigin.
+                    ...readOrigin(data),
                     at: (data.at as string) || '',
                     route: data.route as string | undefined,
                     scannedBy: (data.scannedBy || (data.role === 'moderator' ? 'moderator' : undefined)) as string | undefined,
                     scannedByName: (data.scannedByName || data.performedBy) as string | undefined,
                     role: data.role as string | undefined,
-                    source: data.source as string | undefined
                 };
             })
             .filter(s => s.at);
@@ -703,6 +708,8 @@ const AdminPanel: React.FC = () => {
                 setUnpaidRows(snap.docs.map(d => {
                     const data = d.data();
                     return {
+                        // На кой апарат и къде — виж ScanOrigin.
+                        ...readOrigin(data),
                         clientId: (data.clientId as string) || '',
                         at: (data.at as string) || '',
                         route: data.route as string | undefined,
@@ -726,6 +733,7 @@ const AdminPanel: React.FC = () => {
                 setUnpaidScansRaw(snap.docs.map(d => {
                     const data = d.data();
                     return {
+                        ...readOrigin(data),
                         clientId: d.ref.parent.parent?.id ?? '',
                         at: (data.at as string) || '',
                         route: data.route as string | undefined,
@@ -5302,10 +5310,17 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         cardNumber: getClientCardNumber(client) || '',
                                         reason: !hasPayment ? 'Без плащане за месеца' : 'Анулирана карта',
                                     };
-                                }).filter((x): x is { clientId: string; at: string; route?: string; name: string; cardNumber: string; reason: string } => x !== null)
+                                }).filter((x): x is UnpaidRow & { name: string; cardNumber: string; reason: string } => x !== null)
                                   .sort((a, b) => b.at.localeCompare(a.at));
 
                                 const distinctCards = new Set(unpaid.map(u => u.clientId)).size;
+                                // На кои апарати — за да се види кой шофьор пуска без абонамент.
+                                const byDevice = new Map<string, number>();
+                                unpaid.forEach(u => {
+                                    const label = originDeviceLabel(u) || 'Неизвестен апарат';
+                                    byDevice.set(label, (byDevice.get(label) || 0) + 1);
+                                });
+                                const deviceCounts = [...byDevice.entries()].sort((a, b) => b[1] - a[1]);
                                 const CAP = 400;
 
                                 return (
@@ -5342,7 +5357,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                         </div>
 
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                                            Показва всяко сканиране на карта, която за съответния месец няма платен абонамент (или е анулирана). Целта е да се види кой пътува без абонамент и дали шофьорите реагират. Сканиранията, направени от логнат служител (модератор, админ или инспектор), не се броят — те са прочитане на картата в офиса, а не пътуване.
+                                            Показва всяко сканиране на карта, която за съответния месец няма платен абонамент (или е анулирана). Целта е да се види кой пътува без абонамент и дали шофьорите реагират. Сканиранията, направени от логнат служител (модератор, админ или инспектор), не се броят — те са прочитане на картата в офиса, а не пътуване. При всеки ред се вижда на кой терминал (шофьор) е сканирана картата, къде е бил автобусът и какво е показал екранът.
                                             {deepRan
                                                 ? ' Показан е резултатът от пълна проверка на всички сканирания в периода.'
                                                 : ' Списъкът се води в момента на сканирането, затова се отваря веднага. „Пълна проверка" пресмята наново по всички сканирания — бавно е, ползвай го само за контрола.'}
@@ -5369,12 +5384,30 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                     </div>
                                                 </div>
 
+                                                <div style={{ marginBottom: '1.25rem' }}>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                                                        По терминали <span title="„≈“ — апаратът е познат по часа на сканирането (старо APK). „Неизвестен апарат“ — две устройства са чели карта в една и съща секунда или сканирането е отпреди терминалите да се записват.">ⓘ</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                        {deviceCounts.map(([label, n]) => (
+                                                            <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', fontWeight: 700, padding: '4px 10px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)' }}>
+                                                                <Bus size={13} /> {label} <b style={{ color: '#ff5252' }}>{n}</b>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                     {unpaid.slice(0, CAP).map((u, idx) => (
                                                         <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', padding: '0.7rem 0.9rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderLeft: '3px solid #ff5252', borderRadius: '10px' }}>
                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: '180px' }}>
                                                                 <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{u.name}{u.cardNumber ? <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}> · Карта № {u.cardNumber}</span> : null}</span>
                                                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{fmtDay(u.at)} · {fmtTime(u.at)} ч.</span>
+                                                                {/* На кой апарат и къде — виж ScanOrigin. */}
+                                                                <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                                                                    <OriginDevice origin={u} unpaid />
+                                                                    <OriginDetails origin={u} cardRoute={u.route} />
+                                                                </span>
                                                             </div>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                                 {u.route && <span style={{ fontSize: '0.72rem', fontWeight: 700, color: getRouteColor(u.route), background: `${getRouteColor(u.route)}18`, padding: '3px 9px', borderRadius: '6px' }}>{u.route}</span>}
@@ -6315,7 +6348,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             const fmtDay = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
                                             const fmtTime = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }); };
                                             // Групиране по месец (YYYY-MM). profileScans вече е сортиран низходящо.
-                                            const byMonth: Record<string, { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string; source?: string }[]> = {};
+                                            const byMonth: Record<string, ProfileScan[]> = {};
                                             (profileScans || []).forEach(s => {
                                                 const m = s.at.slice(0, 7);
                                                 (byMonth[m] = byMonth[m] || []).push(s);
@@ -6339,6 +6372,10 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 const atMs = new Date(sc.at).getTime();
                                                 return !officeMoments.some(ms => Math.abs(ms - atMs) <= 30 * 60 * 1000);
                                             };
+                                            // Пътуване е само сканиране от терминал без логнат служител; отварянето
+                                            // в браузър и прочитането в офиса са записи, но не пътувания.
+                                            const isTrip = (sc: { scannedBy?: string; role?: string; source?: string }) =>
+                                                !(STAFF.includes(sc.scannedBy || '') || STAFF.includes(sc.role || '') || sc.source === 'web');
                                             const unpaidTotal = (profileScans || []).filter(isUnpaid).length;
                                             return (
                                                 <div style={{ padding: '1.25rem', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(0,173,181,0.06) 0%, rgba(255,255,255,0.01) 100%)', border: '1px solid var(--surface-border)' }}>
@@ -6366,6 +6403,8 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                             {monthsSorted.map(m => {
                                                                 const monthScans = byMonth[m];
                                                                 const monthUnpaid = monthScans.filter(isUnpaid).length;
+                                                                const monthTrips = monthScans.filter(isTrip).length;
+                                                                const monthOther = monthScans.length - monthTrips;
                                                                 return (
                                                                     <div key={m} style={{ border: '1px solid var(--surface-border)', borderRadius: '12px', overflow: 'hidden' }}>
                                                                         {/* Заглавие на месеца + общо за месеца */}
@@ -6375,7 +6414,10 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                                 {monthUnpaid > 0 && (
                                                                                     <span style={{ fontWeight: 900, fontSize: '0.8rem', color: '#ff5252', background: 'rgba(255,82,82,0.14)', padding: '3px 10px', borderRadius: '50px' }}>{monthUnpaid} без абонамент</span>
                                                                                 )}
-                                                                                <span style={{ fontWeight: 900, fontSize: '0.8rem', color: 'var(--primary-color)', background: 'rgba(0,173,181,0.14)', padding: '3px 10px', borderRadius: '50px' }}>{monthScans.length} {monthScans.length === 1 ? 'пътуване' : 'пътувания'}</span>
+                                                                                <span style={{ fontWeight: 900, fontSize: '0.8rem', color: 'var(--primary-color)', background: 'rgba(0,173,181,0.14)', padding: '3px 10px', borderRadius: '50px' }}>{monthTrips} {monthTrips === 1 ? 'пътуване' : 'пътувания'}</span>
+                                                                                {monthOther > 0 && (
+                                                                                    <span title="Прочитания в офиса и отваряния в браузър — записани са, но не са пътувания." style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.06)', padding: '3px 10px', borderRadius: '50px' }}>+ {monthOther} {monthOther === 1 ? 'прочитане' : 'прочитания'}</span>
+                                                                                )}
                                                                             </span>
                                                                         </div>
                                                                         {/* Списък на пътуванията за месеца */}
@@ -6447,23 +6489,8 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                                                     Инспектор{s.scannedByName ? ` (${s.scannedByName.split('@')[0]})` : ''}
                                                                                                 </span>
                                                                                             )}
-                                                                                            {!isMod && !isAdm && !isInsp && (
-                                                                                                <span style={{
-                                                                                                    display: 'inline-flex',
-                                                                                                    alignItems: 'center',
-                                                                                                    gap: '0.3rem',
-                                                                                                    fontSize: '0.72rem',
-                                                                                                    fontWeight: 700,
-                                                                                                    color: unpaid ? '#ff5252' : '#00e676',
-                                                                                                    background: unpaid ? 'rgba(255, 82, 82, 0.14)' : 'rgba(0, 230, 118, 0.12)',
-                                                                                                    border: `1px solid ${unpaid ? 'rgba(255, 82, 82, 0.4)' : 'rgba(0, 230, 118, 0.3)'}`,
-                                                                                                    padding: '2px 7px',
-                                                                                                    borderRadius: '6px'
-                                                                                                }} title={unpaid ? 'Валидирана в автобуса без платен абонамент за месеца' : 'Сканирано от валидатор / шофьор'}>
-                                                                                                    <Bus size={12} />
-                                                                                                    {s.scannedByName || 'Валидатор / Шофьор'}
-                                                                                                </span>
-                                                                                            )}
+                                                                                            {/* Терминал с името му от УСТРОЙСТВА или „Отворена в браузър“ — виж ScanOrigin. */}
+                                                                                            {!isMod && !isAdm && !isInsp && <OriginDevice origin={s} unpaid={unpaid} />}
                                                                                             {unpaid && (
                                                                                                 <span style={{
                                                                                                     display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
@@ -6475,6 +6502,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                                                     НЕПЛАТЕНА КАРТА
                                                                                                 </span>
                                                                                             )}
+                                                                                            {!isMod && !isAdm && !isInsp && <OriginDetails origin={s} cardRoute={s.route} />}
                                                                                         </div>
                                                                                         {s.route && (
                                                                                             <span style={{ fontSize: '0.72rem', fontWeight: 700, color: getRouteColor(s.route), background: `${getRouteColor(s.route)}18`, padding: '2px 8px', borderRadius: '6px' }}>
