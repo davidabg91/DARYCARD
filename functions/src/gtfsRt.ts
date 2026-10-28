@@ -266,14 +266,22 @@ export async function buildRealtime() {
 
     for (const p of positions.docs) {
         const d = p.data();
-        const fixAt = Date.parse(String(d.fixAt || ""));
+        // The terminal stamps its fixes with its own clock, and a terminal set by
+        // hand can be an hour out. The server knows when the report arrived
+        // (the document's update time) and the terminal said when it sent it:
+        // the difference is how wrong the terminal's clock is. Under a minute it
+        // is the network, not the clock, and is left alone.
+        const sentAt = Date.parse(String(d.reportedAt || ""));
+        const rawSkew = isFinite(sentAt) ? p.updateTime.toMillis() - sentAt : 0;
+        const skew = Math.abs(rawSkew) > 60 * 1000 ? rawSkew : 0;
+        const fixAt = Date.parse(String(d.fixAt || "")) + skew;
         if (typeof d.lat !== "number" || typeof d.lng !== "number" || !isFinite(fixAt) || now - fixAt > FRESH_MS) continue;
 
         // The track, in minutes of today — the newest ten minutes of it.
         const flat = Array.isArray(d.track) ? (d.track as number[]) : [];
         const track: Array<{ lat: number; lng: number; minute: number }> = [];
         for (let i = 0; i + 2 < flat.length; i += 3) {
-            const at = flat[i + 2];
+            const at = flat[i + 2] + skew;
             if (now - at > 10 * 60 * 1000) continue;
             track.push({ lat: flat[i], lng: flat[i + 1], minute: nowMinute - (now - at) / 60000 });
         }
@@ -394,7 +402,8 @@ export const encodeRealtime = (built: Awaited<ReturnType<typeof buildRealtime>>)
             id: `al-${d.id}`,
             alert: {
                 activePeriod: [{ start: Math.floor(Date.parse(d.at) / 1000), end: Math.floor(Date.parse(d.activeUntil) / 1000) }],
-                informedEntity: [trip ? { routeId: d.routeId, trip } : { routeId: d.routeId }],
+                // Без линия (сигнал, пратен със закъснение от непознат курс) — за целия превозвач.
+                informedEntity: [trip ? { routeId: d.routeId, trip } : d.routeId ? { routeId: d.routeId } : { agencyId: "darycard" }],
                 cause: spec.cause,
                 effect: spec.effect,
                 headerText: text(`${d.routeName}${d.departure ? `, курс ${d.departure}` : ""}: ${spec.label}`),

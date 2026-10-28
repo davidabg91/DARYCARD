@@ -17,8 +17,10 @@ import { matchToRoads, type RoadLine } from '../../utils/roadMatch';
 
 interface Props {
     deviceId: string;
-    /** Живата следа от `positions/{id}.track`: lat, lng, ms, lat, lng, ms… */
+    /** Живата следа от `positions/{id}.track`: lat, lng, ms, lat, lng, ms… (вече с верния час) */
     liveTrack?: number[];
+    /** С колко да се поправи часът на терминала (сървър − терминал), виж DevicesPanel. */
+    skewMs?: number;
 }
 
 interface SeenScan { at: string; name?: string; cardNumber?: string; route?: string }
@@ -57,7 +59,7 @@ const placeAt = (path: PathPoint[], t: number): { lat: number; lng: number } | n
     return near && Math.abs(near.t - t) <= SCAN_NEAR_MS ? { lat: near.lat, lng: near.lng } : null;
 };
 
-const DeviceTrack: React.FC<Props> = ({ deviceId, liveTrack }) => {
+const DeviceTrack: React.FC<Props> = ({ deviceId, liveTrack, skewMs = 0 }) => {
     const today = sofiaDay(Date.now());
     const [day, setDay] = useState(today);
     const [stored, setStored] = useState<PathPoint[]>([]);
@@ -78,14 +80,16 @@ const DeviceTrack: React.FC<Props> = ({ deviceId, liveTrack }) => {
             getDoc(doc(db, 'devices', deviceId, 'seen', day)),
         ]).then(([p, s]) => {
             if (gone) return;
-            setStored(parsePoints(p.exists() ? p.data().points : []));
-            setScansRaw(s.exists() ? ((s.data().scans as SeenScan[]) || []) : []);
+            // И пътят, и картите са с часовника на терминала.
+            setStored(parsePoints(p.exists() ? p.data().points : []).map(x => ({ ...x, t: x.t + skewMs })));
+            setScansRaw((s.exists() ? ((s.data().scans as SeenScan[]) || []) : [])
+                .map(x => ({ ...x, at: skewMs && x.at ? new Date(Date.parse(x.at) + skewMs).toISOString() : x.at })));
         }).catch(err => {
             console.error('Пътят на терминала не се зареди:', err);
             if (!gone) { setStored([]); setScansRaw([]); }
         }).finally(() => { if (!gone) setLoading(false); });
         return () => { gone = true; };
-    }, [deviceId, day]);
+    }, [deviceId, day, skewMs]);
 
     const path = useMemo(() => {
         const all = [...stored];

@@ -1,4 +1,4 @@
-import { arrayUnion, doc, setDoc } from 'firebase/firestore';
+import { arrayUnion, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 /**
@@ -246,6 +246,9 @@ export const startPositionReport = (deviceId: string): (() => void) => {
             // arrays of arrays, and three numbers a point is all it needs.
             await setDoc(doc(db, 'positions', deviceId), {
                 reportedAt: new Date().toISOString(),
+                // The server's own clock next to the terminal's: a terminal set an
+                // hour wrong by hand otherwise puts its bus in the feed an hour off.
+                serverAt: serverTimestamp(),
                 gps: gps.status,
                 gpsDetail: gps.detail,
                 ...(fresh ? {

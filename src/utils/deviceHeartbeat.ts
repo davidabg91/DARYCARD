@@ -10,7 +10,7 @@
 // запълва с телефоните на всеки, който е отварял сайта.
 
 import { Capacitor } from '@capacitor/core';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, setDoc, updateDoc, type Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import MyPosSmartSdk from '../services/MyPosSmartSdk';
 import { captureDeviceErrors } from './deviceErrors';
@@ -36,6 +36,12 @@ export interface DeviceDoc {
     autoName?: string;
     firstSeen?: string;
     lastSeen?: string;
+    /**
+     * Часът на сървъра при същия запис като `lastSeen`. Разликата между двата е
+     * колко бърза или изостава часовникът на терминала — на ръка сверен
+     * терминал не минава на зимно време и бърза с час.
+     */
+    serverSeen?: Timestamp | null;
     appVersion?: string;
     platform?: string;
     userAgent?: string;
@@ -193,6 +199,7 @@ export const startDeviceHeartbeat = (appVersion: string): (() => void) => {
             if (stopped) return;
             void writeDevice(id, {
                 lastSeen: nowIso(),
+                serverSeen: serverTimestamp(),
                 appVersion,
                 batteryLevel: battery ? Math.round(battery.level * 100) : null,
                 batteryCharging: battery ? battery.charging : null,
@@ -239,6 +246,7 @@ export const recordDeviceScan = (appVersion: string): void => {
     if (!id) return;
     void writeDevice(id, {
         lastSeen: nowIso(),
+        serverSeen: serverTimestamp(),
         lastScanAt: nowIso(),
         scanDate: todayStr(),
         scansToday: bumpScanCount(),

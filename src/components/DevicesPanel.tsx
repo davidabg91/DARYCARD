@@ -60,6 +60,40 @@ interface PositionDoc {
     track?: number[];
 }
 
+/**
+ * Колко бърза или изостава часовникът на терминала: часът на сървъра минус
+ * часа на терминала при един и същ запис. Под минута е мрежата, не часовникът.
+ * Отрицателно — терминалът бърза (ръчно сверен и не минал на зимно време).
+ */
+const clockSkew = (d: DeviceDoc): number => {
+    const server = d.serverSeen?.toMillis?.();
+    const own = d.lastSeen ? Date.parse(d.lastSeen) : NaN;
+    if (!server || !isFinite(own)) return 0;
+    const skew = server - own;
+    return Math.abs(skew) > 60 * 1000 ? skew : 0;
+};
+
+/** Часовете, писани с часовника на терминала, преместени на верния час. */
+const shiftIso = (iso: string | null | undefined, skew: number) =>
+    iso && skew ? new Date(Date.parse(iso) + skew).toISOString() : iso;
+
+const shiftDevice = (d: DeviceDoc & { id: string }, skew: number): DeviceDoc & { id: string } => skew ? {
+    ...d,
+    lastSeen: shiftIso(d.lastSeen, skew) || undefined,
+    lastScanAt: shiftIso(d.lastScanAt, skew) || undefined,
+    batteryAt: shiftIso(d.batteryAt, skew) ?? null,
+    nfcLastTagAt: shiftIso(d.nfcLastTagAt, skew) ?? null,
+    nfcLastErrorAt: shiftIso(d.nfcLastErrorAt, skew) ?? null,
+    currentRouteAt: shiftIso(d.currentRouteAt, skew) || undefined,
+} : d;
+
+const shiftPosition = (p: PositionDoc, skew: number): PositionDoc => skew ? {
+    ...p,
+    reportedAt: shiftIso(p.reportedAt, skew) || undefined,
+    fixAt: shiftIso(p.fixAt, skew) || undefined,
+    track: (p.track || []).map((x, i) => (i % 3 === 2 ? x + skew : x)),
+} : p;
+
 /** Точка, по-стара от това, вече не е „сега". */
 const GPS_FRESH_MS = 3 * 60 * 1000;
 /** Толкова без точка, докато терминалът работи, е проблем. */
@@ -174,8 +208,15 @@ const describeNfcError = (raw: string): string => {
  * не значеше нищо. Така етикетът излиза точно когато един терминал е пропуснал
  * обновяване, което другите са получили.
  */
-const findProblems = (d: DeviceDoc, online: boolean, newestVersion: string, now: number, pos?: PositionDoc): Problem[] => {
+const findProblems = (d: DeviceDoc, online: boolean, newestVersion: string, now: number, pos?: PositionDoc, skew = 0): Problem[] => {
     const problems: Problem[] = [];
+    if (Math.abs(skew) >= 2 * 60 * 1000) {
+        const mins = Math.round(Math.abs(skew) / 60000);
+        problems.push({
+            text: `Часовникът на терминала ${skew < 0 ? 'бърза' : 'изостава'} с ${mins} мин — включи „Автоматични дата и час“`,
+            hard: mins >= 10,
+        });
+    }
     // GPS — само за терминали, които изобщо пращат позиция (новото APK).
     if (online && pos) {
         const fixAge = pos.fixAt ? now - new Date(pos.fixAt).getTime() : Infinity;
@@ -250,15 +291,21 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
         return () => { unsub(); unsubPos(); clearInterval(timer); };
     }, []);
 
+    // Всички часове от терминала се показват поправени с отклонението на часовника му.
+    const skews = useMemo(() => Object.fromEntries(devices.map(d => [d.id, clockSkew(d)])), [devices]);
+    const fixedDevices = useMemo(() => devices.map(d => shiftDevice(d, skews[d.id] || 0)), [devices, skews]);
+    const fixedPositions = useMemo(() => Object.fromEntries(Object.entries(positions)
+        .map(([id, p]) => [id, shiftPosition(p, skews[id] || 0)])), [positions, skews]);
+
     const rows = useMemo(() => {
         // Версиите са с водещи нули (ГГГГ.ММ.ДД.ЧЧ.ММ), значи азбучният ред съвпада
         // с хронологичния и най-новата се намира с обикновено сравнение.
-        const newestVersion = devices.reduce(
+        const newestVersion = fixedDevices.reduce(
             (max, d) => (d.appVersion && d.appVersion > max ? d.appVersion : max), '');
-        return devices
+        return fixedDevices
             .map(d => {
                 const online = !!d.lastSeen && (now - new Date(d.lastSeen).getTime()) < OFFLINE_AFTER_MS;
-                return { ...d, online, problems: findProblems(d, online, newestVersion, now, positions[d.id]) };
+                return { ...d, online, problems: findProblems(d, online, newestVersion, now, fixedPositions[d.id], skews[d.id] || 0) };
             })
             .sort((a, b) => {
                 if (a.online !== b.online) return a.online ? -1 : 1;
@@ -276,19 +323,19 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                 }
                 return (b.lastSeen || '').localeCompare(a.lastSeen || '');
             });
-    }, [devices, now, positions]);
+    }, [fixedDevices, now, fixedPositions, skews]);
 
     const livePositions = useMemo<LivePosition[]>(() => rows
-        .filter(r => typeof positions[r.id]?.lat === 'number' && typeof positions[r.id]?.lng === 'number')
+        .filter(r => typeof fixedPositions[r.id]?.lat === 'number' && typeof fixedPositions[r.id]?.lng === 'number')
         .map(r => ({
             id: r.id,
             label: r.name || r.autoName || r.id,
-            lat: positions[r.id].lat!,
-            lng: positions[r.id].lng!,
-            fixAt: positions[r.id].fixAt,
-        })), [rows, positions]);
-    const gpsWorking = rows.filter(r => r.online && positions[r.id]?.fixAt
-        && now - new Date(positions[r.id].fixAt!).getTime() < GPS_FRESH_MS).length;
+            lat: fixedPositions[r.id].lat!,
+            lng: fixedPositions[r.id].lng!,
+            fixAt: fixedPositions[r.id].fixAt,
+        })), [rows, fixedPositions]);
+    const gpsWorking = rows.filter(r => r.online && fixedPositions[r.id]?.fixAt
+        && now - new Date(fixedPositions[r.id].fixAt!).getTime() < GPS_FRESH_MS).length;
 
     const onlineCount = rows.filter(r => r.online).length;
     const troubled = rows.filter(r => r.problems.some(p => p.hard)).length;
@@ -548,8 +595,8 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                     <RefreshCw size={13} /> {d.appVersion || '—'}
                                 </span>
                                 {(() => {
-                                    const g = describeGps(positions[d.id], d.online, now);
-                                    const Icon = positions[d.id] ? Satellite : MapPinOff;
+                                    const g = describeGps(fixedPositions[d.id], d.online, now);
+                                    const Icon = fixedPositions[d.id] ? Satellite : MapPinOff;
                                     return (
                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: g.color, fontWeight: 700 }}>
                                             <Icon size={13} /> {g.text}
@@ -608,7 +655,7 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                             {openTrack === d.id && (
                                 <div style={{ marginTop: '0.7rem', padding: '0.7rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '10px' }}>
                                     <Suspense fallback={<div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Зареждам картата…</div>}>
-                                        <DeviceTrack deviceId={d.id} liveTrack={positions[d.id]?.track} />
+                                        <DeviceTrack deviceId={d.id} liveTrack={fixedPositions[d.id]?.track} skewMs={skews[d.id] || 0} />
                                     </Suspense>
                                 </div>
                             )}

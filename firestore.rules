@@ -173,16 +173,21 @@ service cloud.firestore {
       allow create: if request.resource.data.deviceId == deviceId
         && request.resource.data.keys().hasOnly([
              'deviceId', 'firstSeen', 'autoName', 'platform', 'userAgent', 'appVersion',
-             'lastSeen', 'batteryLevel', 'batteryCharging', 'batteryAt',
+             'lastSeen', 'serverSeen', 'batteryLevel', 'batteryCharging', 'batteryAt',
              'lastScanAt', 'scanDate', 'scansToday',
              'nfcBound', 'nfcScanning', 'nfcLastTagAt', 'nfcLastError', 'nfcLastErrorAt'
-           ]);
+           ])
+        && (!('serverSeen' in request.resource.data) || request.resource.data.serverSeen == request.time);
+      // `serverSeen` е само часът на сървъра (serverTimestamp) — по него се
+      // вижда колко е сбъркан часовникът на терминала.
       allow update: if isStaff()
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-             'lastSeen', 'appVersion', 'batteryLevel', 'batteryCharging', 'batteryAt',
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             'lastSeen', 'serverSeen', 'appVersion', 'batteryLevel', 'batteryCharging', 'batteryAt',
              'lastScanAt', 'scanDate', 'scansToday',
              'nfcBound', 'nfcScanning', 'nfcLastTagAt', 'nfcLastError', 'nfcLastErrorAt'
-           ]);
+           ])
+           && (!('serverSeen' in request.resource.data.diff(resource.data).affectedKeys())
+               || request.resource.data.serverSeen == request.time));
       allow delete: if isAdmin();
 
       // Дневник на грешките: един документ на РАЗЛИЧНА грешка, повторенията
@@ -246,8 +251,9 @@ service cloud.firestore {
     match /positions/{deviceId} {
       allow read: if isStaff();
       allow create, update: if exists(/databases/$(database)/documents/devices/$(deviceId))
-        && request.resource.data.keys().hasOnly(['reportedAt', 'gps', 'gpsDetail', 'lat', 'lng',
+        && request.resource.data.keys().hasOnly(['reportedAt', 'serverAt', 'gps', 'gpsDetail', 'lat', 'lng',
              'accuracy', 'speed', 'heading', 'fixAt', 'track'])
+        && (!('serverAt' in request.resource.data) || request.resource.data.serverAt == request.time)
         && request.resource.data.reportedAt is string
         && request.resource.data.track is list
         && request.resource.data.track.size() <= 90
