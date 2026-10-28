@@ -20,6 +20,10 @@ import { getDeviceId } from '../utils/deviceHeartbeat';
  * терминалът няма право да пише в `disruptions` сам.
  *
  * Преглед от браузър: `?disruption=1` (сървърът ще откаже — браузърът не е терминал).
+ *
+ * На екрана на сканираната карта лентата отдолу би закрила долния край на
+ * картата, а шофьорът трябва да я вижда цялата. Затова там картата слага бутона
+ * под себе си (`variant="inline"`), а лентата се скрива, докато той е на екрана.
  */
 
 /** Същите видове и етикети като functions/src/disruptionKinds.ts. */
@@ -36,6 +40,19 @@ export const DISRUPTION_BAR_PX = 64;
 
 interface TripOption { key: string; routeId: string; routeName: string; departure: string; from: string; to: string }
 interface Active { id: string; kind: string; label: string; routeName: string; departure: string; at: string }
+
+// Общо за лентата и бутона под картата: бутонът се качва при всяко сканиране и
+// не бива всеки път да пита сървъра — пита го само ако последното е по-старо.
+const STATUS_EVERY_MS = 5 * 60 * 1000;
+let lastActive: Active[] = [];
+let lastStatusAt = 0;
+// Колко бутона под карта има на екрана — докато има поне един, лентата се крие.
+let inlineShown = 0;
+const inlineListeners = new Set<(n: number) => void>();
+const setInlineShown = (delta: number) => {
+    inlineShown += delta;
+    inlineListeners.forEach(f => f(inlineShown));
+};
 interface Reply {
     ok: boolean;
     error?: string;
@@ -68,33 +85,51 @@ const big: React.CSSProperties = {
     textAlign: 'left', color: '#fff', background: '#1f1f1f',
 };
 
-const DisruptionButton: React.FC = () => {
+interface Props {
+    /** bar — лентата най-долу на всеки екран; inline — бутон под сканираната карта. */
+    variant?: 'bar' | 'inline';
+}
+
+const DisruptionButton: React.FC<Props> = ({ variant = 'bar' }) => {
     const preview = typeof location !== 'undefined' && location.href.includes('disruption=1');
     const enabled = Capacitor.isNativePlatform() || preview;
+    const inline = variant === 'inline';
 
     const [open, setOpen] = useState(false);
     const [step, setStep] = useState<Step>({ at: 'kind' });
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
-    const [active, setActive] = useState<Active[]>([]);
+    const [active, setActive] = useState<Active[]>(lastActive);
+    const [cardOnScreen, setCardOnScreen] = useState(inlineShown > 0);
 
     const refresh = useCallback(async () => {
         try {
             const r = await call({ action: 'status' });
-            if (r.ok) setActive(r.active || []);
+            if (r.ok) {
+                lastActive = r.active || [];
+                lastStatusAt = Date.now();
+                setActive(lastActive);
+            }
         } catch { /* без връзка — показваме последното известно */ }
     }, []);
 
     useEffect(() => {
         if (!enabled) return;
+        if (inline) {
+            setInlineShown(1);
+            if (Date.now() - lastStatusAt > STATUS_EVERY_MS) void refresh();
+            return () => setInlineShown(-1);
+        }
         void refresh();
-        const t = setInterval(refresh, 5 * 60 * 1000);
+        const t = setInterval(refresh, STATUS_EVERY_MS);
+        const onInline = (n: number) => setCardOnScreen(n > 0);
+        inlineListeners.add(onInline);
         // Място най-долу на всяка страница, за да не закрива лентата съдържание.
         const style = document.createElement('style');
         style.textContent = `body { padding-bottom: ${DISRUPTION_BAR_PX + 8}px !important; }`;
         document.head.appendChild(style);
-        return () => { clearInterval(t); style.remove(); };
-    }, [enabled, refresh]);
+        return () => { clearInterval(t); inlineListeners.delete(onInline); style.remove(); };
+    }, [enabled, inline, refresh]);
 
     if (!enabled) return null;
 
@@ -142,11 +177,13 @@ const DisruptionButton: React.FC = () => {
 
     return (
         <>
-            <button
-                onClick={() => { setOpen(true); void refresh(); }}
+            {!(cardOnScreen && !inline) && <button
+                onClick={e => { e.stopPropagation(); setOpen(true); void refresh(); }}
                 aria-label="Отменен курс или смущение"
                 style={{
-                    position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 50000,
+                    ...(inline
+                        ? { position: 'relative', width: '100%', marginTop: '1rem', borderRadius: '22px' }
+                        : { position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 50000 }),
                     height: `${DISRUPTION_BAR_PX}px`, border: 'none', cursor: 'pointer',
                     background: current ? '#b71c1c' : '#e53935', color: '#fff',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.7rem',
@@ -158,10 +195,11 @@ const DisruptionButton: React.FC = () => {
                 {current
                     ? <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>АКТИВЕН СИГНАЛ: {current.routeName}{current.departure ? ` ${current.departure}` : ''}</span>
                     : 'ОТМЕНЕН КУРС / СМУЩЕНИЕ'}
-            </button>
+            </button>}
 
             {open && (
-                <div style={{
+                // Под картата прозорецът е вътре в нейния екран, а докосване там я затваря.
+                <div onClick={e => e.stopPropagation()} style={{
                     position: 'fixed', inset: 0, zIndex: 60000, background: '#0a0a0a', color: '#fff',
                     overflowY: 'auto', padding: '1.25rem 1rem 2rem', fontFamily: '"Outfit", "Inter", sans-serif',
                 }}>

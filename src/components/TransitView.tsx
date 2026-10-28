@@ -11,6 +11,7 @@ import ModeratorInactivityWarningModal from './ModeratorInactivityWarningModal';
 import { MIXED_METHOD, negativeAmountError } from '../data/paymentMethods';
 import MyPosSmartSdk from '../services/MyPosSmartSdk';
 import TicketButton from './TicketButton';
+import DisruptionButton from './DisruptionButton';
 import { Capacitor } from '@capacitor/core';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { paidThroughMonth } from '../utils/paidThrough';
@@ -1048,7 +1049,11 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                             пред очите си. На всичко останало (офисът, телефони) екранът остава
                             точно какъвто беше — с УПРАВЛЕНИЕ и ПЛАТИ СЕГА. */}
                         {Capacitor.isNativePlatform() ? (
-                            <TicketButton variant="inline" />
+                            <>
+                                <TicketButton variant="inline" />
+                                {/* Под картата, не върху нея — лентата отдолу се скрива, докато е тук. */}
+                                <DisruptionButton variant="inline" />
+                            </>
                         ) : (
                             <>
                             {!showManagement ? (
