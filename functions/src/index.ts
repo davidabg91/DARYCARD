@@ -3,6 +3,7 @@ import * as admin from "firebase-admin";
 import { buildGtfs, zipGtfs } from "./gtfs";
 import { buildRealtime, encodeRealtime } from "./gtfsRt";
 import { handleDisruption, type DisruptionRequest } from "./disruptions";
+import { locateStops } from "./stopLocator";
 
 admin.initializeApp();
 
@@ -765,3 +766,20 @@ export const reportDisruption = functions.https.onCall(async (data: DisruptionRe
         return { ok: false, error: "Сигналът не беше приет. Опитайте отново." };
     }
 });
+
+/**
+ * Спирките от качванията: къде терминалите четат карти и продават билети.
+ * Пуска го админът от Разписания (и самото табло, ако от последното пускане
+ * са минали 12 часа). Виж stopLocator.ts.
+ */
+export const locateStopsNow = functions
+    .runWith({ timeoutSeconds: 300, memory: "512MB" })
+    .https.onCall(async (_data, context) => {
+        const uid = context.auth?.uid;
+        if (!uid) throw new functions.https.HttpsError("unauthenticated", "Трябва да сте влезли в системата.");
+        const caller = await admin.firestore().doc(`users/${uid}`).get();
+        if (caller.data()?.role !== "admin") {
+            throw new functions.https.HttpsError("permission-denied", "Само администратор.");
+        }
+        return await locateStops();
+    });

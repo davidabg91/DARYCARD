@@ -2,6 +2,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import { CARRIER, formatPrice, type Destination, type TicketLine } from '../data/ticketing';
 import { getDeviceId } from './deviceHeartbeat';
+import { recordBoarding } from './vehiclePosition';
 import { LINE_WIDTH, printLines, row, rule, type PrintResult } from './terminalPrinter';
 
 /**
@@ -140,6 +141,8 @@ export async function issueTicket(
         // Само отпечатаните билети се водят продадени.
         addDoc(collection(db, 'tickets'), { ...ticket, printed: true })
             .catch(err => console.error('Билетът не се записа в базата:', err));
+        // Билетът се продава при качване, значи на спирка — мястото отива за спирките.
+        recordBoarding('ticket', { line: line.id, from: dest.fromName, to: dest.toName });
         return { ...result, ticket };
     }
     // Непечатаният билет не се брои, но номерът вече е изразходван — така никога

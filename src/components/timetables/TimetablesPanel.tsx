@@ -16,6 +16,7 @@ import { holidaysFor } from '../../utils/holidays';
 import StopMap, { type Point } from './StopMap';
 import TimetableEditor from './TimetableEditor';
 import ComplianceCard from './ComplianceCard';
+import StopSuggestions from './StopSuggestions';
 import { RIDER_CATEGORIES, buildFareTable, sameFare } from '../../utils/fares';
 
 /**
@@ -503,6 +504,8 @@ const TimetablesPanel: React.FC = () => {
                     добавете ги отделно и ги сложете в разписанията.
                 </p>
 
+                <StopSuggestions stops={stops} who={currentUser?.username || ''} />
+
                 {stops.length > 8 && (
                     <div style={{ position: 'relative', margin: '1rem 0 0.4rem' }}>
                         <Search size={15} color="var(--text-secondary)" style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)' }} />
@@ -533,6 +536,7 @@ const TimetablesPanel: React.FC = () => {
                                         </div>
                                         <div style={{ fontSize: '0.76rem', color: ok ? 'var(--text-secondary)' : '#ffab00' }}>
                                             {ok ? `${s.lat!.toFixed(5)}, ${s.lng!.toFixed(5)}` : 'не е посочена на картата'}
+                                            {ok && s.locatedBy === 'boardings' && <span style={{ color: 'var(--primary-color)' }}> · от качванията</span>}
                                             {on.length > 0 && <span style={{ color: 'var(--text-secondary)' }}> · {on.length > 4 ? `${on.length} линии` : on.join(', ')}</span>}
                                         </div>
                                     </div>

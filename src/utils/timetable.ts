@@ -36,6 +36,8 @@ export interface Stop {
     lng: number | null;
     /** The number painted on the stop sign, where there is one. */
     code?: string;
+    /** 'boardings' when the place came from where passengers got on (stopLocator). */
+    locatedBy?: string;
 }
 
 export const hasPoint = (s: Stop | undefined) =>

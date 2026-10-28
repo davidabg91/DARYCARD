@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState, useCallback, useRef } from 'react'
 import { NFCService } from './services/NFCService';
 import { refreshLineSubscriptions } from './utils/refreshLineSubscriptions';
 import { recordDeviceScan, startDeviceHeartbeat } from './utils/deviceHeartbeat';
+import { recordBoarding } from './utils/vehiclePosition';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
@@ -28,7 +29,7 @@ const PageLoader = () => <LoadingScreen />;
 
 // The true bundle version. Живее извън компонента, защото и регистърът
 // на устройствата я докладва, за да се вижда кой терминал е със старо APK.
-const INTERNAL_APP_VERSION = "2026.10.27.16.21";
+const INTERNAL_APP_VERSION = "2026.10.28.10.19";
 
 function ClientProfileWrapper() {
   return <ClientProfile />;
@@ -55,6 +56,8 @@ function DeepLinkHandler() {
     lastTriggerRef.current = { id: finalId, t: now };
     // Регистърът на устройствата — кой терминал кога е чел карта.
     recordDeviceScan(INTERNAL_APP_VERSION);
+    // Картата се чете при качване, значи на спирка — мястото отива за спирките.
+    recordBoarding('card');
     setTransitId(finalId);
     setTransitPhysicalUid(physicalUid);
     setTransitNfcCounter(nfcCounter);

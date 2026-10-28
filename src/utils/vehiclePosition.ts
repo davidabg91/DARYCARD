@@ -35,6 +35,12 @@ import { db } from '../firebase';
  * batch that does not get through (no signal on the road) waits for the next
  * one — each point carries its own time, so arrayUnion lets a retried batch in
  * without doubling it.
+ *
+ * Boardings ride in the same document. A card is read and a ticket is sold as
+ * the passenger gets on, and passengers get on at stops — so where the
+ * terminal was at that moment is where a stop is. Each one is kept with the
+ * GPS fix of that moment (`boardings`), and the server's stop locator puts the
+ * company's stops on the map from them (functions/src/stopLocator.ts).
  */
 
 /** The ordinance's minimum. */
@@ -54,6 +60,13 @@ const DAY_MIN_MOVE_M = 25;
 const DAY_MIN_GAP_MS = 5 * 60 * 1000;
 /** What waits for a signal at most — about four hours of driving. */
 const DAY_PENDING_MAX = 500;
+/**
+ * A boarding takes the fix of its moment: one from up to this long before the
+ * tap, or else the next one, if it comes this soon after. Later than that the
+ * bus may already have left the stop, and the boarding is not kept.
+ */
+const BOARDING_FIX_BEFORE_MS = 15 * 1000;
+const BOARDING_FIX_AFTER_MS = 20 * 1000;
 
 type TrackPoint = [number, number, number]; // lat, lng, epoch ms
 
@@ -67,6 +80,47 @@ interface Fix {
 }
 
 const round = (x: number) => Math.round(x * 1e6) / 1e6;
+
+export type BoardingKind = 'card' | 'ticket';
+interface Boarding { at: number; kind: BoardingKind; line: string; from: string; to: string }
+
+// Shared with the scan and the ticket, which know nothing of the reporter.
+/** Only the terminal app reports; elsewhere boardings are not kept at all. */
+let reporting = false;
+let latestFix: Fix | null = null;
+let waitingBoardings: Boarding[] = [];
+/** Ready to go up: "lat|lng|ms|accuracy|card|line|from|to". */
+let readyBoardings: Array<{ day: string; entry: string }> = [];
+
+const keepBoarding = (b: Boarding, fix: Fix) => {
+    const clean = (x: string) => x.replace(/\|/g, ' ').slice(0, 60);
+    readyBoardings.push({
+        day: sofiaDay(b.at),
+        entry: [fix.lat, fix.lng, b.at, fix.accuracy ?? '', b.kind, clean(b.line), clean(b.from), clean(b.to)].join('|'),
+    });
+    if (readyBoardings.length > DAY_PENDING_MAX) readyBoardings = readyBoardings.slice(-DAY_PENDING_MAX);
+};
+
+/**
+ * A passenger got on: a card was read, or a ticket sold. For a ticket the line
+ * and both ends of the ticket come along — the driver picked them. Both ends,
+ * because a ticket "Плевен → Бъркач" is sold in Бъркач too, to someone going
+ * to Плевен.
+ */
+export const recordBoarding = (kind: BoardingKind, hint: { line?: string; from?: string; to?: string } = {}): void => {
+    if (!reporting) return;
+    const b: Boarding = { at: Date.now(), kind, line: hint.line || '', from: hint.from || '', to: hint.to || '' };
+    if (latestFix && b.at - latestFix.at <= BOARDING_FIX_BEFORE_MS && b.at >= latestFix.at) keepBoarding(b, latestFix);
+    else waitingBoardings.push(b);
+};
+
+/** A new fix settles the boardings that were waiting for one. */
+const settleBoardings = (fix: Fix) => {
+    waitingBoardings = waitingBoardings.filter(b => {
+        if (fix.at >= b.at && fix.at - b.at <= BOARDING_FIX_AFTER_MS) { keepBoarding(b, fix); return false; }
+        return Date.now() - b.at <= BOARDING_FIX_AFTER_MS;
+    });
+};
 
 /** The calendar day in Bulgaria, which is the day the office means. */
 export const sofiaDay = (ms: number): string =>
@@ -101,6 +155,7 @@ export const startPositionReport = (deviceId: string): (() => void) => {
             ({ Capacitor } = await import('@capacitor/core'));
             if (!Capacitor.isNativePlatform()) return;
             ({ Geolocation } = await import('@capacitor/geolocation'));
+            reporting = true;
         } catch (err) {
             console.warn('Location unavailable:', err);
             return;
@@ -132,6 +187,8 @@ export const startPositionReport = (deviceId: string): (() => void) => {
                         heading: typeof pos.coords.heading === 'number' ? Math.round(pos.coords.heading) : null,
                         at: pos.timestamp || Date.now(),
                     };
+                    latestFix = last;
+                    settleBoardings(last);
                     gps = { status: 'ok', detail: '' };
                 }
             );
@@ -149,18 +206,23 @@ export const startPositionReport = (deviceId: string): (() => void) => {
     };
 
     const flushDay = async () => {
-        if (flushing || !pending.length) return;
+        if (flushing || (!pending.length && !readyBoardings.length)) return;
         flushing = true;
         const batch = pending.slice();
-        const days = [...new Set(batch.map(p => p.day))];
+        const boardings = readyBoardings.slice();
+        const days = [...new Set([...batch, ...boardings].map(p => p.day))];
         try {
             for (const day of days) {
+                const points = batch.filter(p => p.day === day).map(p => p.point);
+                const entries = boardings.filter(b => b.day === day).map(b => b.entry);
                 await setDoc(doc(db, 'positions', deviceId, 'days', day), {
-                    points: arrayUnion(...batch.filter(p => p.day === day).map(p => p.point)),
+                    ...(points.length ? { points: arrayUnion(...points) } : {}),
+                    ...(entries.length ? { boardings: arrayUnion(...entries) } : {}),
                     updatedAt: new Date().toISOString(),
                 }, { merge: true });
             }
             pending = pending.slice(batch.length);
+            readyBoardings = readyBoardings.slice(boardings.length);
         } catch (err) {
             // No signal, or the day is full: the points wait for the next try.
             console.warn('Day path not sent:', err);
