@@ -1,7 +1,13 @@
 package com.darycommerce.app;
 
+import android.database.Cursor;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.WindowManager;
 
@@ -14,6 +20,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 import org.json.JSONArray;
 
+import com.mypos.smartsdk.MyPOSAPI;
 import com.mypos.smartsdk.UltralightManagement;
 import com.mypos.smartsdk.OnBindListener;
 
@@ -45,6 +52,12 @@ public class DaryNfcPlugin extends Plugin {
     private volatile long lastTagAtMs = 0;
     private volatile long lastErrorAtMs = 0;
     private volatile String lastError = "";
+
+    // Карта, която четецът усеща, но чипът ѝ не се чете (огъната карта, бърз жест,
+    // банкова карта). Досега екранът мълчеше; сега, щом картата се махне без нито
+    // едно успешно четене, сайтът казва „допрете отново“ и го записва.
+    private volatile long missSinceMs = 0;
+    private volatile int missAttempts = 0;
 
     private void noteError(String where, Exception e) {
         String msg = (e == null || e.getMessage() == null) ? where : where + ": " + e.getMessage();
@@ -190,6 +203,7 @@ public class DaryNfcPlugin extends Plugin {
                                 emptyLooks++;
                                 if (emptyLooks >= EMPTY_LOOKS_TO_LIFT) {
                                     cardTakenAway = true;
+                                    if (missSinceMs != 0) emitMiss();
                                 }
                             }
                             Thread.sleep(10); 
@@ -234,9 +248,13 @@ public class DaryNfcPlugin extends Plugin {
 
             if (tagId == null) {
                 noteError("UID read", null);
+                if (missSinceMs == 0) missSinceMs = System.currentTimeMillis();
+                missAttempts++;
                 return;
             }
             lastTagAtMs = System.currentTimeMillis();
+            missSinceMs = 0;
+            missAttempts = 0;
 
             // STABILITY WALL: the same card counts again only after it has been lifted off the
             // reader; the timer is just a floor for a card that blinks out of range without leaving.
@@ -315,6 +333,79 @@ public class DaryNfcPlugin extends Plugin {
         } catch (Exception e) {
             android.util.Log.e(TAG, "Process Error: " + e.getMessage());
             noteError("Process", e);
+        }
+    }
+
+    /** Картата е махната, без чипът ѝ да се прочете нито веднъж. */
+    private void emitMiss() {
+        final long at = missSinceMs;
+        final int attempts = missAttempts;
+        missSinceMs = 0;
+        missAttempts = 0;
+        try {
+            getBridge().getActivity().runOnUiThread(() -> {
+                JSObject ret = new JSObject();
+                ret.put("at", at);
+                ret.put("attempts", attempts);
+                notifyListeners("nfcMiss", ret);
+            });
+        } catch (Exception e) {
+            noteError("nfcMiss", e);
+        }
+    }
+
+    /**
+     * Кой е този терминал: TID от myPOS (номерът, отпечатан на апарата и видим в
+     * профила в myPOS) и ANDROID_ID — не се сменя при преинсталиране на
+     * приложението, само при фабрично нулиране. Сайтът ги пише в УСТРОЙСТВА и по
+     * тях дава на ново инсталиране същото име. TID-ът идва от доставчика на
+     * myPOS; ако го няма веднага, питаме по реда на SDK-то и чакаме до 4 s.
+     */
+    @PluginMethod
+    public void getDeviceIdentity(PluginCall call) {
+        final JSObject ret = new JSObject();
+        try {
+            String androidId = Settings.Secure.getString(getContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+            ret.put("androidId", androidId == null ? "" : androidId);
+        } catch (Exception e) {
+            ret.put("androidId", "");
+        }
+        ret.put("model", Build.MODEL == null ? "" : Build.MODEL);
+        ret.put("manufacturer", Build.MANUFACTURER == null ? "" : Build.MANUFACTURER);
+
+        String tid = "";
+        try (Cursor c = getContext().getContentResolver().query(
+                Uri.parse("content://com.mypos.providers.POSInfoProvider/pos_info"),
+                new String[]{"tid"}, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                String v = c.getString(0);
+                if (v != null) tid = v.trim();
+            }
+        } catch (Exception e) {
+            noteError("POS info", e);
+        }
+        if (!tid.isEmpty()) {
+            ret.put("tid", tid);
+            call.resolve(ret);
+            return;
+        }
+
+        final AtomicBoolean answered = new AtomicBoolean(false);
+        final Handler main = new Handler(Looper.getMainLooper());
+        main.postDelayed(() -> {
+            if (answered.compareAndSet(false, true)) { ret.put("tid", ""); call.resolve(ret); }
+        }, 4000);
+        try {
+            MyPOSAPI.registerPOSInfo(getContext(), info -> {
+                if (answered.compareAndSet(false, true)) {
+                    String v = info == null ? null : info.getTID();
+                    ret.put("tid", v == null ? "" : v.trim());
+                    call.resolve(ret);
+                }
+            });
+        } catch (Exception e) {
+            noteError("POS info broadcast", e);
+            if (answered.compareAndSet(false, true)) { ret.put("tid", ""); call.resolve(ret); }
         }
     }
 

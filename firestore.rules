@@ -103,6 +103,39 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ---- Екраните на терминала, които не са пътуване (src/utils/terminalEvents.ts) ----
+    // Не се прочете, непозната, няма връзка, вече сканирана, дублирана — за да
+    // остане следа какво е видял шофьорът. Пише ги анонимен терминал, който е
+    // вписан в УСТРОЙСТВА, със закован списък от полета; името на картата и на
+    // апарата ги дописва describeTerminalEvent (Admin SDK). Четене — служител.
+    match /terminal_events/{eventId} {
+      allow read: if isStaff();
+      allow create: if request.resource.data.keys().hasOnly([
+             'at', 'kind', 'deviceId', 'deviceDay', 'app', 'readId', 'uid', 'urlRead', 'clientId',
+             'secs', 'attempts', 'lat', 'lng', 'acc', 'gpsAgeS', 'serverAt'
+           ])
+        && request.resource.data.at is string && request.resource.data.at.size() <= 40
+        && request.resource.data.kind in ['miss', 'not_read', 'unknown', 'offline', 'passback', 'cloned']
+        && request.resource.data.deviceId is string
+        && request.resource.data.deviceId.matches('^[A-Za-z0-9_-]{6,40}$')
+        && exists(/databases/$(database)/documents/devices/$(request.resource.data.deviceId))
+        && request.resource.data.deviceDay is string && request.resource.data.deviceDay.size() <= 60
+        && (!('app' in request.resource.data) || (request.resource.data.app is string && request.resource.data.app.size() <= 40))
+        && (!('readId' in request.resource.data) || (request.resource.data.readId is string && request.resource.data.readId.size() <= 64))
+        && (!('uid' in request.resource.data) || (request.resource.data.uid is string && request.resource.data.uid.size() <= 32))
+        && (!('urlRead' in request.resource.data) || request.resource.data.urlRead is bool)
+        && (!('clientId' in request.resource.data) || (request.resource.data.clientId is string && request.resource.data.clientId.size() <= 40))
+        && (!('secs' in request.resource.data) || request.resource.data.secs is number)
+        && (!('attempts' in request.resource.data) || request.resource.data.attempts is number)
+        && (!('lat' in request.resource.data) || request.resource.data.lat is number)
+        && (!('lng' in request.resource.data) || request.resource.data.lng is number)
+        && (!('acc' in request.resource.data) || request.resource.data.acc is number)
+        && (!('gpsAgeS' in request.resource.data) || request.resource.data.gpsAgeS is number)
+        && (!('serverAt' in request.resource.data) || request.resource.data.serverAt == request.time);
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
     // ---- Пътувания без платен абонамент (материализиран отчет) ----
     // Пише се САМО от Cloud Function-а alertUnpaidScan (Admin SDK, който
     // заобикаля правилата) — по един малък документ на сканиране без валиден
@@ -190,6 +223,13 @@ service cloud.firestore {
     // устройство да си презапише името на шофьора, което админът му е дал.
     // Четенето е само за служител — устройството не чете собствения си документ
     // (пробва update, а при липса го създава).
+    // TID от myPOS и ANDROID_ID — по тях ново инсталиране на същия апарат взима
+    // старото име (linkReinstalledTerminal). Само кратки низове.
+    function validIdentity(d) {
+      return (!('tid' in d) || (d.tid is string && d.tid.size() <= 40))
+        && (!('hwId' in d) || (d.hwId is string && d.hwId.size() <= 40));
+    }
+
     match /devices/{deviceId} {
       allow read: if isStaff();
       allow create: if request.resource.data.deviceId == deviceId
@@ -197,19 +237,23 @@ service cloud.firestore {
              'deviceId', 'firstSeen', 'autoName', 'platform', 'userAgent', 'appVersion',
              'lastSeen', 'serverSeen', 'batteryLevel', 'batteryCharging', 'batteryAt',
              'lastScanAt', 'scanDate', 'scansToday',
-             'nfcBound', 'nfcScanning', 'nfcLastTagAt', 'nfcLastError', 'nfcLastErrorAt'
+             'nfcBound', 'nfcScanning', 'nfcLastTagAt', 'nfcLastError', 'nfcLastErrorAt',
+             'tid', 'hwId'
            ])
-        && (!('serverSeen' in request.resource.data) || request.resource.data.serverSeen == request.time);
+        && (!('serverSeen' in request.resource.data) || request.resource.data.serverSeen == request.time)
+        && validIdentity(request.resource.data);
       // `serverSeen` е само часът на сървъра (serverTimestamp) — по него се
       // вижда колко е сбъркан часовникът на терминала.
       allow update: if isStaff()
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly([
              'lastSeen', 'serverSeen', 'appVersion', 'batteryLevel', 'batteryCharging', 'batteryAt',
              'lastScanAt', 'scanDate', 'scansToday',
-             'nfcBound', 'nfcScanning', 'nfcLastTagAt', 'nfcLastError', 'nfcLastErrorAt'
+             'nfcBound', 'nfcScanning', 'nfcLastTagAt', 'nfcLastError', 'nfcLastErrorAt',
+             'tid', 'hwId'
            ])
            && (!('serverSeen' in request.resource.data.diff(resource.data).affectedKeys())
-               || request.resource.data.serverSeen == request.time));
+               || request.resource.data.serverSeen == request.time)
+           && validIdentity(request.resource.data));
       allow delete: if isAdmin();
 
       // Дневник на грешките: един документ на РАЗЛИЧНА грешка, повторенията

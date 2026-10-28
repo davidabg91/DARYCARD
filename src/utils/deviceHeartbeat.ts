@@ -69,32 +69,70 @@ export interface DeviceDoc {
     nfcLastTagAt?: string | null;
     nfcLastError?: string | null;
     nfcLastErrorAt?: string | null;
+    /** Номерът на терминала в myPOS — отпечатан на апарата (от APK 1.4.5 нататък). */
+    tid?: string;
+    /** ANDROID_ID — същият при преинсталиране; по него ново инсталиране взима старото име. */
+    hwId?: string;
+    /** Новото инсталиране на същия апарат, което е поело името (пише го функцията). */
+    replacedBy?: string;
 }
 
 const nowIso = () => new Date().toISOString();
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-/**
- * Устойчив номер на устройството. Живее в localStorage, значи преживява
- * рестарт и нова версия на приложението, но НЕ и изтриване на данните —
- * тогава устройството се появява като ново и старият ред трябва да се махне
- * на ръка.
- */
 /** Версията, с която върви приложението — за записа на сканирането. */
 let runningVersion = '';
 export const appVersionInUse = (): string => runningVersion;
 
+/** Кой е апаратът по хардуер (DaryNfcPlugin.getDeviceIdentity); няма го в старите APK-та. */
+interface DeviceIdentity { tid: string; hwId: string }
+
+const readIdentity = async (): Promise<DeviceIdentity | null> => {
+    try {
+        const r = await MyPosSmartSdk.getDeviceIdentity();
+        const clean = (x: unknown) => String(x || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+        return { tid: clean(r.tid), hwId: clean(r.androidId) };
+    } catch {
+        return null;   // старо APK — методът го няма
+    }
+};
+
+/**
+ * Номерът на устройството в УСТРОЙСТВА. Пази се в localStorage, значи преживява
+ * рестарт и нова версия на приложението; всяко сканиране го носи (scanContext),
+ * затова апаратът на сканирането е сигурен.
+ *
+ * Връща празно, докато номерът още не е избран — първите мигове на първото
+ * пускане. Иначе случаен номер би изпреварил хардуерния.
+ */
 export const getDeviceId = (): string => {
+    try {
+        return localStorage.getItem(DEVICE_ID_KEY) || '';
+    } catch {
+        return '';   // забранен localStorage — тогава просто не се вписваме
+    }
+};
+
+/**
+ * Избира номера при първо пускане. Ново инсталиране (или изтрити данни) взима
+ * ANDROID_ID — той не се сменя при преинсталиране, значи същият апарат остава
+ * същият ред с името, което админът му е дал. TID-ът от myPOS НЕ става номер:
+ * отпечатан е на апарата и по бележките, а номерът е и ключът, с който
+ * терминалът тегли списъка с картите (cardList). Случаен номер — само ако
+ * апаратът не казва ANDROID_ID (старо APK).
+ */
+const chooseDeviceId = (hw: DeviceIdentity | null): string => {
     try {
         const existing = localStorage.getItem(DEVICE_ID_KEY);
         if (existing) return existing;
-        const raw = crypto?.randomUUID?.()
-            ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+        const raw = hw && hw.hwId.length >= 8
+            ? `A${hw.hwId}`
+            : crypto?.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
         const id = raw.replace(/-/g, '').slice(0, 20).toUpperCase();
         localStorage.setItem(DEVICE_ID_KEY, id);
         return id;
     } catch {
-        return '';   // забранен localStorage — тогава просто не се вписваме
+        return '';
     }
 };
 
@@ -193,11 +231,26 @@ const writeDevice = async (id: string, patch: Record<string, unknown>, appVersio
 export const startDeviceHeartbeat = (appVersion: string): (() => void) => {
     if (!Capacitor.isNativePlatform()) return () => { };
     runningVersion = appVersion;
-    const id = getDeviceId();
-    if (!id) return () => { };
 
+    // Първо кой е апаратът (номерът при ново инсталиране зависи от това), после всичко.
+    let stopped = false;
+    let stopRunning: () => void = () => { };
+    void readIdentity().then(hw => {
+        const id = chooseDeviceId(hw);
+        if (stopped || !id) return;
+        stopRunning = runDevice(id, appVersion, hw);
+    });
+    return () => { stopped = true; stopRunning(); };
+};
+
+const runDevice = (id: string, appVersion: string, hw: DeviceIdentity | null): (() => void) => {
     let stopped = false;
     let battery: BatteryLike | null = null;
+    // TID и ANDROID_ID — в УСТРОЙСТВА, и по тях ново инсталиране взима старото име.
+    const identityFields = {
+        ...(hw?.tid ? { tid: hw.tid } : {}),
+        ...(hw?.hwId ? { hwId: hw.hwId } : {}),
+    };
 
     const beat = () => {
         if (stopped) return;
@@ -210,6 +263,7 @@ export const startDeviceHeartbeat = (appVersion: string): (() => void) => {
                 batteryLevel: battery ? Math.round(battery.level * 100) : null,
                 batteryCharging: battery ? battery.charging : null,
                 batteryAt: battery ? nowIso() : null,
+                ...identityFields,
                 ...nfc,
             }, appVersion);
         });

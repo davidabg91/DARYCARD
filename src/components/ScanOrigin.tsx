@@ -1,6 +1,6 @@
 import React from 'react';
 import { Bus, Smartphone, MapPin, WifiOff, Monitor } from 'lucide-react';
-import { originDeviceLabel, type ScanOrigin } from '../utils/scanOrigin';
+import { originDeviceLabel, TERMINAL_EVENT_INFO, type ScanOrigin } from '../utils/scanOrigin';
 
 /**
  * На кой апарат и къде е сканирана картата — в историята на картата, в отчета
@@ -20,7 +20,7 @@ const same = (a?: string, b?: string) => (a || '').trim().toLowerCase() === (b |
  * Кой е прочел картата: отворена в браузър (не е пътуване) или терминал с
  * името му от УСТРОЙСТВА. `unpaid` оцветява терминала в червено.
  */
-export const OriginDevice: React.FC<{ origin: ScanOrigin; unpaid?: boolean }> = ({ origin, unpaid }) => {
+export const OriginDevice: React.FC<{ origin: ScanOrigin; unpaid?: boolean; neutral?: boolean }> = ({ origin, unpaid, neutral }) => {
     if (origin.source === 'web') {
         return (
             <span style={chip('var(--text-secondary)', 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.15)')}
@@ -40,11 +40,28 @@ export const OriginDevice: React.FC<{ origin: ScanOrigin; unpaid?: boolean }> = 
         origin.app ? `Версия: ${origin.app}.` : '',
     ].filter(Boolean).join(' ');
     return (
-        <span style={unpaid
+        <span style={neutral
+            ? chip('var(--text-secondary)', 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.15)')
+            : unpaid
             ? chip('#ff5252', 'rgba(255, 82, 82, 0.14)', 'rgba(255, 82, 82, 0.4)')
             : chip('#00e676', 'rgba(0, 230, 118, 0.12)', 'rgba(0, 230, 118, 0.3)')} title={title}>
             <Bus size={12} />
             {name ? `Терминал: ${name}${origin.deviceMatch === 'time' ? ' ≈' : ''}` : 'Валидатор / Шофьор'}
+        </span>
+    );
+};
+
+/** Какъв екран е видял шофьорът при допиране, което не е пътуване. */
+export const TerminalEventChip: React.FC<{ kind: string; secs?: number; attempts?: number }> = ({ kind, secs, attempts }) => {
+    const info = TERMINAL_EVENT_INFO[kind] || { text: kind, detail: '', bad: false };
+    const extra = kind === 'passback' && secs !== undefined ? ` (преди ${secs} s)`
+        : kind === 'miss' && attempts ? ` (${attempts} опита)` : '';
+    return (
+        <span style={info.bad
+            ? chip('#ff5252', 'rgba(255, 82, 82, 0.14)', 'rgba(255, 82, 82, 0.4)')
+            : chip('#ffb300', 'rgba(255, 179, 0, 0.12)', 'rgba(255, 179, 0, 0.35)')}
+            title={`Екран на терминала, не е пътуване. ${info.detail}`}>
+            {info.text}{extra}
         </span>
     );
 };

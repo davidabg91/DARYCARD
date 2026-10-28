@@ -32,16 +32,36 @@ export interface MyPosPrintLine {
   doubleHeight?: boolean;
 }
 
+/** Кой е терминалът — виж DaryNfcPlugin.getDeviceIdentity. Празно, ако не се знае. */
+export interface MyPosDeviceIdentity {
+  /** Номерът на терминала в myPOS — отпечатан на апарата. */
+  tid: string;
+  /** Не се сменя при преинсталиране на приложението, само при фабрично нулиране. */
+  androidId: string;
+  model: string;
+  manufacturer: string;
+}
+
+/** Картата е усетена, но чипът ѝ не се прочете нито веднъж, преди да я махнат. */
+export interface MyPosNfcMiss {
+  at: number;
+  attempts: number;
+}
+
 export interface MyPosSmartSdkPlugin {
   startNfcScan(): Promise<void>;
   /** Печат от вградения принтер. Няма го в старите APK-та — викайте го в try/catch. */
   printLines(options: { lines: MyPosPrintLine[] }): Promise<MyPosPrintResult>;
   /** Няма го в старите APK-та — извиквайте го в try/catch. */
   getNfcStatus(): Promise<MyPosNfcStatus>;
+  /** Няма го в старите APK-та — извиквайте го в try/catch. */
+  getDeviceIdentity(): Promise<MyPosDeviceIdentity>;
   stopNfcScan(): Promise<void>;
   triggerWarningBeep(): Promise<void>;
   addListener(eventName: 'nfcEvent', listenerFunc: (event: MyPosNfcEvent) => void): Promise<import('@capacitor/core').PluginListenerHandle>;
   addListener(eventName: 'nfcError', listenerFunc: (event: { error: string }) => void): Promise<import('@capacitor/core').PluginListenerHandle>;
+  /** Само от новите APK-та; старите просто не го пращат. */
+  addListener(eventName: 'nfcMiss', listenerFunc: (event: MyPosNfcMiss) => void): Promise<import('@capacitor/core').PluginListenerHandle>;
   removeAllListeners(): Promise<void>;
 }
 

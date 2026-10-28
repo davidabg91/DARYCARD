@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
     LOW_BATTERY,
@@ -15,6 +15,8 @@ import {
 import BatteryAlertsButton from './BatteryAlertsButton';
 import TestPrintCard from './TestPrintCard';
 import type { LivePosition } from './devices/DevicesLiveMap';
+import { TerminalEventChip } from './ScanOrigin';
+import { sofiaDay } from '../utils/vehiclePosition';
 
 // Картите теглят Leaflet — зареждат се чак когато някой ги отвори.
 const DeviceTrack = lazy(() => import('./devices/DeviceTrack'));
@@ -137,6 +139,19 @@ interface SeenScan {
     unpaid?: boolean;
     /** Проверена от списъка в терминала, без връзка. */
     offline?: boolean;
+    lat?: number;
+    lng?: number;
+    place?: string;
+}
+
+/** Екран на терминала без пътуване (terminal_events) — какво е видял шофьорът. */
+interface ScreenEvent {
+    at: string;
+    kind: string;
+    clientName?: string;
+    cardNumber?: string;
+    secs?: number;
+    attempts?: number;
     lat?: number;
     lng?: number;
     place?: string;
@@ -271,6 +286,7 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
     // Същото като дневника: списъкът с карти се тегли чак при натискане.
     const [openCards, setOpenCards] = useState<string | null>(null);
     const [cards, setCards] = useState<Record<string, SeenScan[]>>({});
+    const [screens, setScreens] = useState<Record<string, ScreenEvent[]>>({});
     const [cardsLoading, setCardsLoading] = useState(false);
     const [positions, setPositions] = useState<Record<string, PositionDoc>>({});
     const [openTrack, setOpenTrack] = useState<string | null>(null);
@@ -389,9 +405,19 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
         setCardsLoading(true);
         try {
             const today = new Date().toISOString().slice(0, 10);
-            const snap = await getDoc(doc(db, 'devices', id, 'seen', today));
+            // Заедно с картите — екраните без пътуване: не се прочете, вече сканирана…
+            const [snap, events] = await Promise.all([
+                getDoc(doc(db, 'devices', id, 'seen', today)),
+                getDocs(query(collection(db, 'terminal_events'), where('deviceDay', '==', `${id}_${sofiaDay(Date.now())}`)))
+                    .catch(err => { console.error('Екраните на терминала не се заредиха:', err); return null; }),
+            ]);
             const list = snap.exists() ? ((snap.data().scans as SeenScan[]) || []) : [];
             setCards(prev => ({ ...prev, [id]: [...list].sort((a, b) => (b.at || '').localeCompare(a.at || '')) }));
+            setScreens(prev => ({
+                ...prev,
+                [id]: (events?.docs || []).map(e => e.data() as ScreenEvent).filter(e => e.at)
+                    .sort((a, b) => b.at.localeCompare(a.at)),
+            }));
         } catch (err) {
             console.error('Списъкът с карти не се зареди:', err);
             setCards(prev => ({ ...prev, [id]: [] }));
@@ -601,6 +627,16 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                                     <RefreshCw size={13} /> {d.appVersion || '—'}
                                 </span>
+                                {d.tid && (
+                                    <span title="Номерът на терминала в myPOS — отпечатан на апарата" style={{ fontWeight: 700, color: '#fff' }}>
+                                        TID {d.tid}
+                                    </span>
+                                )}
+                                {d.replacedBy && (
+                                    <span title="Същият апарат е инсталиран наново и пише под нов ред; името е пренесено там. Този ред може да се махне." style={{ fontWeight: 700, color: '#ffb300' }}>
+                                        Инсталиран наново — вижте новия ред
+                                    </span>
+                                )}
                                 {(() => {
                                     const g = describeGps(fixedPositions[d.id], d.online, now);
                                     const Icon = fixedPositions[d.id] ? Satellite : MapPinOff;
@@ -669,6 +705,28 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
 
                             {openCards === d.id && (
                                 <div style={{ marginTop: '0.7rem', padding: '0.7rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '10px' }}>
+                                    {(screens[d.id] || []).length > 0 && (
+                                        <div style={{ marginBottom: '0.8rem' }}>
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                                                Екрани без пътуване днес: {screens[d.id].length} — какво е видял шофьорът при допиране, което не е записано като пътуване
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                                {screens[d.id].map((e, i) => (
+                                                    <div key={`${e.at}-${i}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem' }}>
+                                                        <span style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: 'var(--primary-color)' }}>
+                                                            {new Date(e.at).toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                        <TerminalEventChip kind={e.kind} secs={e.secs} attempts={e.attempts} />
+                                                        {e.clientName && <span style={{ fontWeight: 700 }}>{e.clientName}</span>}
+                                                        {e.cardNumber && <span style={{ color: 'var(--text-secondary)', fontSize: '0.72rem' }}>{fmtCardNumber(e.cardNumber)}</span>}
+                                                        {typeof e.lat === 'number' && typeof e.lng === 'number' && (
+                                                            <a href={`https://www.google.com/maps?q=${e.lat},${e.lng}`} target="_blank" rel="noopener noreferrer" style={{ color: '#4fc3f7', fontSize: '0.7rem' }}>📍 {e.place || 'на картата'}</a>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                     {cardsLoading && !cards[d.id] ? (
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Зареждам…</div>
                                     ) : !cards[d.id] || cards[d.id].length === 0 ? (

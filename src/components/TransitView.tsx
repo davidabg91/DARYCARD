@@ -17,6 +17,7 @@ import { CARDS_MAPPING } from '../data/cardsMapping';
 import { paidThroughMonth } from '../utils/paidThrough';
 import { findOfflineCard, localScanInfo, offlineListAge, offlinePhoto, rememberScan, type OfflineCard } from '../utils/offlineCards';
 import { scanContext } from '../utils/scanContext';
+import { logTerminalEvent, type TerminalEventDetails, type TerminalEventKind } from '../utils/terminalEvents';
 
 /** Какво е показал екранът на шофьора — пази се в записа на сканирането. */
 type Shown = 'valid' | 'unpaid' | 'canceled';
@@ -95,6 +96,9 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     const [loading, setLoading] = useState(true);
     const [showManagement, setShowManagement] = useState(false);
     const [unregistered, setUnregistered] = useState(false);
+    // Непозната е само картата с прочетен докрай адрес. Без адреса не се знае
+    // коя е — тогава екранът казва „не се прочете, допрете отново“.
+    const [notRead, setNotRead] = useState(false);
     // Offline AND no cached data for this card (different from "not registered").
     const [offlineNoData, setOfflineNoData] = useState(false);
     const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -323,10 +327,21 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     // Кой е показал картата: сървърът (или кешът му) или списъкът в терминала.
     // Ефектът се пуска повторно при възстановяване на Auth — показва се веднъж.
     const shownRef = useRef<'none' | 'server' | 'local'>('none');
+    // Екран без пътуване (непрочетена, вече сканирана…) се записва веднъж на допиране.
+    const eventLoggedRef = useRef(false);
 
     useEffect(() => {
         let isMounted = true;
         if (!id) return;
+
+        // App.tsx подава чипа като код само когато адресът не се е прочел докрай.
+        const urlRead = !physicalUid || id.toUpperCase() !== physicalUid.toUpperCase();
+        /** Екран, който не е пътуване — за да остане следа какво е видял шофьорът. */
+        const logScreen = (kind: TerminalEventKind, details: TerminalEventDetails = {}) => {
+            if (eventLoggedRef.current) return;
+            eventLoggedRef.current = true;
+            logTerminalEvent(kind, { readId: id, uid: physicalUid, urlRead, ...details });
+        };
 
         const isStaffUser = !!currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator' || currentUser.role === 'inspector');
         const isTerminal = Capacitor.isNativePlatform();
@@ -420,6 +435,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
             const canRecord = !authLoading && !recordedRef.current;
             if (canRecord) recordedRef.current = true;
             if (!passback && canRecord) writeScan(card.i, card.r, shownFor(card.k, card.m.map(([month]) => month)), true);
+            else if (passback && canRecord) logScreen(clonedVal ? 'cloned' : 'passback', { clientId: card.i, ...(clonedVal ? {} : { secs: secsSinceLast }) });
 
             const nextDate = new Date();
             nextDate.setMonth(nextDate.getMonth() + 1);
@@ -588,6 +604,8 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
 
                     if (!passback && canRecord) {
                         writeScan(snap.id, data.route ?? '', shownFor(data.isCanceled, (data.renewalHistory || []).map(rh => rh.month)));
+                    } else if (passback && canRecord) {
+                        logScreen(clonedVal ? 'cloned' : 'passback', { clientId: snap.id, ...(clonedVal || !isFinite(secsSinceLast) ? {} : { secs: secsSinceLast }) });
                     }
 
                     // Preset Renewal Form
@@ -618,8 +636,14 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                     // that is genuinely not registered (only the latter is "invalid").
                     if (offline) {
                         setOfflineNoData(true);
+                        logScreen('offline');
                     } else {
+                        // Без адреса (или с отрязан код) не се знае дали картата е
+                        // регистрирана — „не се прочете“, не „непозната карта“.
+                        const partial = !urlRead || id.length < 8;
+                        setNotRead(partial);
                         setUnregistered(true);
+                        logScreen(partial ? 'not_read' : 'unknown');
                     }
                 }
                 setLoading(false);
@@ -635,6 +659,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                 // The read failed entirely (typically offline / Firestore unavailable).
                 playErrorRef.current();
                 setOfflineNoData(true);
+                logScreen('offline');
                 setLoading(false);
             }
         });
@@ -678,7 +703,7 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     const paidThrough = paidThroughMonth(renewalHistory, currentMonthStr) || currentMonthStr;
     const renewedAhead = paidThrough > currentMonthStr;
     const isValid = client && !client.isCanceled && hasPaidCurrentMonth && !isCloned;
-    const themeColor = offlineNoData ? '#29b6f6' : unregistered ? '#ff9100' : (isCloned ? '#ff1744' : (isValid ? '#00e676' : '#ff1744'));
+    const themeColor = offlineNoData ? '#29b6f6' : unregistered ? (notRead ? '#ffab00' : '#ff9100') : (isCloned ? '#ff1744' : (isValid ? '#00e676' : '#ff1744'));
 
     const getCardTypeColor = (type?: string) => {
         if (!type) return 'rgba(255,255,255,0.4)';
@@ -886,6 +911,16 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
                                    Няма интернет и няма запазени данни за тази карта.<br/>
                                    Свържете се с мрежата и сканирайте отново.
                                </p>
+                               <p style={{ opacity: 0.6, fontSize: '0.95rem', fontWeight: 700 }}>Това не значи, че картата е невалидна.</p>
+                            </div>
+                        ) : unregistered && notRead ? (
+                            <div style={{ padding: '3rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', textAlign: 'center' }}>
+                               <div style={{ background: 'rgba(255,171,0,0.12)', padding: '20px', borderRadius: '50%' }}>
+                                   <RefreshCw size={80} color="#ffab00" />
+                               </div>
+                               <h2 style={{ fontSize: '2.3rem', fontWeight: 900, color: '#ffab00' }}>КАРТАТА НЕ СЕ ПРОЧЕТЕ</h2>
+                               <p style={{ fontSize: '1.3rem', fontWeight: 800 }}>Допрете я отново — бавно и плътно до четеца.</p>
+                               <p style={{ opacity: 0.6, fontSize: '0.95rem', fontWeight: 700 }}>Това не значи, че картата е невалидна.</p>
                             </div>
                         ) : unregistered ? (
                             <div style={{ padding: '3rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', textAlign: 'center' }}>

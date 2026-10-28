@@ -1,10 +1,12 @@
-import MyPosSmartSdk from './MyPosSmartSdk';
+import MyPosSmartSdk, { type MyPosNfcMiss } from './MyPosSmartSdk';
 import { Capacitor } from '@capacitor/core';
 
 export class NFCService {
     static async init(
         onScan: (tagId: string, url?: string, nfcCounter?: number) => void,
-        onStatusUpdate: (status: string) => void
+        onStatusUpdate: (status: string) => void,
+        /** Картата е усетена, но не се прочете — екранът казва „допрете отново“. */
+        onMiss?: (miss: MyPosNfcMiss) => void
     ) {
         // ULTIMATE PERSISTENCE: localStorage survives even page reloads
         const nfcState = localStorage.getItem('__DARY_NFC_STATE__');
@@ -30,6 +32,8 @@ export class NFCService {
                             onScan(event.tagId, event.url, event.nfcCounter);
                         }
                     });
+
+                    if (onMiss) await MyPosSmartSdk.addListener('nfcMiss', onMiss);
 
                     await MyPosSmartSdk.startNfcScan();
                     onStatusUpdate('📡 СКЕНЕР ГОТОВ 📡');

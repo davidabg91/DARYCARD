@@ -722,6 +722,95 @@ export const attributeScanToDevice = functions.firestore
         await db.doc(`unpaid_scans/${clientId}__${scanId}`).update(origin).catch(() => { /* не е без абонамент */ });
     });
 
+// ---------------------------------------------------------------------------
+// Екраните на терминала, които не са пътуване (src/utils/terminalEvents.ts):
+// картата не се прочете, непозната, няма връзка, вече сканирана, дублирана.
+// Терминалът пише какво е прочел; тук се намира коя е картата — по кода, а ако
+// той липсва или е сгрешен, по чипа — и се добавя името на апарата и мястото.
+// Така в историята на картата личи и екранът, след който детето казва
+// „излезе невалидна“.
+// ---------------------------------------------------------------------------
+
+export const describeTerminalEvent = functions.firestore
+    .document("terminal_events/{eventId}")
+    .onCreate(async (snap) => {
+        const ev = snap.data() || {};
+        const db = admin.firestore();
+        const out: Record<string, unknown> = {};
+
+        const deviceId = String(ev.deviceId || "");
+        if (deviceId) {
+            const d = await db.collection("devices").doc(deviceId).get();
+            if (d.exists) out.deviceName = String(d.get("name") || d.get("autoName") || "").trim();
+        }
+
+        const safeGet = async (col: string, id: string) => {
+            try {
+                return id ? await db.collection(col).doc(id).get() : null;
+            } catch {
+                return null;   // запазен или невалиден идентификатор
+            }
+        };
+        let clientId = String(ev.clientId || "");
+        if (!clientId && ev.readId) {
+            const c = await safeGet("clients", String(ev.readId));
+            if (c?.exists) clientId = c.id;
+        }
+        if (!clientId && ev.uid) {
+            // Сгрешен или отрязан код, но чипът е познат — картата е регистрирана.
+            const m = await safeGet("nfc_uids", String(ev.uid).toUpperCase());
+            if (m?.exists) clientId = String(m.get("clientId") || "");
+        }
+        if (clientId) {
+            const c = await safeGet("clients", clientId);
+            if (c?.exists) {
+                Object.assign(out, {
+                    clientId,
+                    clientName: String(c.get("name") || "").trim(),
+                    cardNumber: String(c.get("cardNumber") || ""),
+                });
+            }
+        }
+        if (typeof ev.lat === "number" && typeof ev.lng === "number") Object.assign(out, await placeOf(db, ev.lat, ev.lng));
+        if (Object.keys(out).length) await snap.ref.update(out);
+    });
+
+/**
+ * Ново инсталиране на същия терминал (изтрити данни, преинсталиране) — по
+ * ANDROID_ID или TID-а от myPOS. Новият ред взима името, което админът е дал
+ * на стария, а старият се отбелязва като заменен. Пуска се само когато
+ * идентичността на апарата се появи или смени — пулсът на всеки две минути
+ * минава веднага.
+ */
+export const linkReinstalledTerminal = functions.firestore
+    .document("devices/{deviceId}")
+    .onWrite(async (change, context) => {
+        if (!change.after.exists) return;
+        const after = change.after.data() || {};
+        const before = change.before.exists ? (change.before.data() || {}) : {};
+        if (before.hwId === after.hwId && before.tid === after.tid) return;
+
+        const db = admin.firestore();
+        const deviceId = context.params.deviceId as string;
+        const others = new Map<string, admin.firestore.QueryDocumentSnapshot>();
+        for (const field of ["hwId", "tid"]) {
+            const value = String(after[field] || "");
+            if (!value) continue;
+            const same = await db.collection("devices").where(field, "==", value).get();
+            same.docs.forEach((d) => { if (d.id !== deviceId && !d.get("replacedBy")) others.set(d.id, d); });
+        }
+        if (!others.size) return;
+
+        const previous = [...others.values()]
+            .sort((a, b) => String(b.get("lastSeen") || "").localeCompare(String(a.get("lastSeen") || "")));
+        const named = previous.find((d) => String(d.get("name") || "").trim());
+        if (named && !String(after.name || "").trim()) {
+            await change.after.ref.update({ name: named.get("name") });
+        }
+        await Promise.all(previous.map((d) => d.ref.update({ replacedBy: deviceId }).catch(() => { /* ignore */ })));
+        console.log(`Терминал ${deviceId} е ново инсталиране на ${previous.map((d) => d.id).join(", ")}`);
+    });
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Наредба Н-7 — данните за Националната точка за достъп
 // ─────────────────────────────────────────────────────────────────────────────

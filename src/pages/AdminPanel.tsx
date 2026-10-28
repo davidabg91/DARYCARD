@@ -41,7 +41,7 @@ import { buildXlsx } from '../utils/xlsx';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import CardWriter from '../components/CardWriter';
 import DevicesPanel from '../components/DevicesPanel';
-import { OriginDetails, OriginDevice } from '../components/ScanOrigin';
+import { OriginDetails, OriginDevice, TerminalEventChip } from '../components/ScanOrigin';
 import { originDeviceLabel, readOrigin, type ScanOrigin } from '../utils/scanOrigin';
 // Разписанията носят картата (Leaflet) — зареждат се чак при отваряне на таба.
 const TimetablesPanel = lazy(() => import('../components/timetables/TimetablesPanel'));
@@ -362,7 +362,11 @@ type UnpaidRow = ScanOrigin & {
 };
 
 /** Едно сканиране в историята на картата, с произхода му (виж ScanOrigin). */
-type ProfileScan = ScanOrigin & { at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string };
+type ProfileScan = ScanOrigin & {
+    at: string; route?: string; scannedBy?: string; scannedByName?: string; role?: string;
+    /** Екран на терминала, който не е пътуване (terminal_events): вече сканирана, не се прочете… */
+    event?: string; secs?: number; attempts?: number;
+};
 
 interface TabButtonProps {
     id: AdminTabId;
@@ -669,6 +673,32 @@ const AdminPanel: React.FC = () => {
             .finally(() => { if (!cancelled) setProfileScansLoading(false); });
         return () => { cancelled = true; };
     }, [showActionModal, selectedClient]);
+
+    // Екраните на терминала с тази карта, които не са пътуване — не се прочете,
+    // вече сканирана, дублирана… (terminal_events, виж utils/terminalEvents).
+    // Показват се в историята, за да се види какво е видял шофьорът.
+    const [profileEvents, setProfileEvents] = useState<ProfileScan[]>([]);
+    const profileClientId = showActionModal ? selectedClient?.id : undefined;
+    useEffect(() => {
+        if (!profileClientId) { setProfileEvents([]); return; }
+        let cancelled = false;
+        getDocs(query(collection(db, 'terminal_events'), where('clientId', '==', profileClientId)))
+            .then(snap => {
+                if (cancelled) return;
+                setProfileEvents(snap.docs.map(d => {
+                    const data = d.data();
+                    return {
+                        ...readOrigin(data),
+                        at: String(data.at || ''),
+                        event: String(data.kind || ''),
+                        secs: typeof data.secs === 'number' ? data.secs : undefined,
+                        attempts: typeof data.attempts === 'number' ? data.attempts : undefined,
+                    };
+                }).filter(e => e.at && e.event));
+            })
+            .catch(err => console.error('Екраните на терминала не се заредиха:', err));
+        return () => { cancelled = true; };
+    }, [profileClientId]);
 
     // Пътувания без платен абонамент.
     //
@@ -5317,7 +5347,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                 // На кои апарати — за да се види кой шофьор пуска без абонамент.
                                 const byDevice = new Map<string, number>();
                                 unpaid.forEach(u => {
-                                    const label = originDeviceLabel(u) || 'Неизвестен апарат';
+                                    const label = originDeviceLabel(u) || 'Неизвестен апарат (старо APK)';
                                     byDevice.set(label, (byDevice.get(label) || 0) + 1);
                                 });
                                 const deviceCounts = [...byDevice.entries()].sort((a, b) => b[1] - a[1]);
@@ -6349,10 +6379,11 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             const fmtTime = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }); };
                                             // Групиране по месец (YYYY-MM). profileScans вече е сортиран низходящо.
                                             const byMonth: Record<string, ProfileScan[]> = {};
-                                            (profileScans || []).forEach(s => {
+                                            [...(profileScans || []), ...profileEvents].forEach(s => {
                                                 const m = s.at.slice(0, 7);
                                                 (byMonth[m] = byMonth[m] || []).push(s);
                                             });
+                                            Object.values(byMonth).forEach(list => list.sort((a, b) => b.at.localeCompare(a.at)));
                                             const monthsSorted = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
                                             const monthLabel = (m: string) => { const [y, mm] = m.split('-'); const name = BG_MONTHS[mm] || mm; return `${name.charAt(0)}${name.slice(1).toLowerCase()} ${y}`; };
                                             const monthEndDate = (m: string) => { const [y, mm] = m.split('-').map(Number); return new Date(y, mm, 0).toLocaleDateString('bg-BG'); };
@@ -6366,7 +6397,8 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             const officeMoments = [selectedClient.createdAt, ...(selectedClient.renewalHistory || []).map(rh => rh.date)]
                                                 .map(m => (m ? new Date(m).getTime() : NaN))
                                                 .filter(ms => isFinite(ms));
-                                            const isUnpaid = (sc: { at: string; scannedBy?: string; role?: string; source?: string }) => {
+                                            const isUnpaid = (sc: { at: string; scannedBy?: string; role?: string; source?: string; event?: string }) => {
+                                                if (sc.event) return false;
                                                 if (STAFF.includes(sc.scannedBy || '') || STAFF.includes(sc.role || '') || sc.source === 'web') return false;
                                                 if (paidMonths.has(sc.at.slice(0, 7))) return false;
                                                 const atMs = new Date(sc.at).getTime();
@@ -6374,8 +6406,8 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             };
                                             // Пътуване е само сканиране от терминал без логнат служител; отварянето
                                             // в браузър и прочитането в офиса са записи, но не пътувания.
-                                            const isTrip = (sc: { scannedBy?: string; role?: string; source?: string }) =>
-                                                !(STAFF.includes(sc.scannedBy || '') || STAFF.includes(sc.role || '') || sc.source === 'web');
+                                            const isTrip = (sc: { scannedBy?: string; role?: string; source?: string; event?: string }) =>
+                                                !sc.event && !(STAFF.includes(sc.scannedBy || '') || STAFF.includes(sc.role || '') || sc.source === 'web');
                                             const unpaidTotal = (profileScans || []).filter(isUnpaid).length;
                                             return (
                                                 <div style={{ padding: '1.25rem', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(0,173,181,0.06) 0%, rgba(255,255,255,0.01) 100%)', border: '1px solid var(--surface-border)' }}>
@@ -6416,7 +6448,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                                 )}
                                                                                 <span style={{ fontWeight: 900, fontSize: '0.8rem', color: 'var(--primary-color)', background: 'rgba(0,173,181,0.14)', padding: '3px 10px', borderRadius: '50px' }}>{monthTrips} {monthTrips === 1 ? 'пътуване' : 'пътувания'}</span>
                                                                                 {monthOther > 0 && (
-                                                                                    <span title="Прочитания в офиса и отваряния в браузър — записани са, но не са пътувания." style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.06)', padding: '3px 10px', borderRadius: '50px' }}>+ {monthOther} {monthOther === 1 ? 'прочитане' : 'прочитания'}</span>
+                                                                                    <span title="Прочитания в офиса, отваряния в браузър и екрани на терминала без пътуване (не се прочете, вече сканирана…) — записани са, но не са пътувания." style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.06)', padding: '3px 10px', borderRadius: '50px' }}>+ {monthOther} {monthOther === 1 ? 'прочитане' : 'прочитания'}</span>
                                                                                 )}
                                                                             </span>
                                                                         </div>
@@ -6490,7 +6522,12 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                                                                 </span>
                                                                                             )}
                                                                                             {/* Терминал с името му от УСТРОЙСТВА или „Отворена в браузър“ — виж ScanOrigin. */}
-                                                                                            {!isMod && !isAdm && !isInsp && <OriginDevice origin={s} unpaid={unpaid} />}
+                                                                                            {!isMod && !isAdm && !isInsp && (s.event ? (
+                                                                                                <>
+                                                                                                    <TerminalEventChip kind={s.event} secs={s.secs} attempts={s.attempts} />
+                                                                                                    <OriginDevice origin={s} neutral />
+                                                                                                </>
+                                                                                            ) : <OriginDevice origin={s} unpaid={unpaid} />)}
                                                                                             {unpaid && (
                                                                                                 <span style={{
                                                                                                     display: 'inline-flex', alignItems: 'center', gap: '0.3rem',

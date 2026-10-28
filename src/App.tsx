@@ -3,6 +3,7 @@ import { NFCService } from './services/NFCService';
 import { refreshLineSubscriptions } from './utils/refreshLineSubscriptions';
 import { recordDeviceScan, startDeviceHeartbeat } from './utils/deviceHeartbeat';
 import { recordBoarding } from './utils/vehiclePosition';
+import { logTerminalEvent } from './utils/terminalEvents';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
@@ -113,6 +114,24 @@ function DeepLinkHandler() {
     return () => window.removeEventListener('dary-nfc-scan', handleInjectedScan as EventListener);
   }, [triggerScan]);
 
+  // Картата е усетена, но чипът ѝ не се прочете, преди да я махнат. Досега
+  // екранът мълчеше и пътникът не знаеше дали е минал; сега за малко излиза
+  // „допрете отново“, а случаят се записва (виж terminalEvents).
+  const [missShown, setMissShown] = useState(0);
+  useEffect(() => {
+    const onMiss = (e: CustomEvent<{ attempts?: number }>) => {
+      logTerminalEvent('miss', { attempts: e.detail?.attempts });
+      setMissShown(Date.now());
+    };
+    window.addEventListener('dary-nfc-miss', onMiss as EventListener);
+    return () => window.removeEventListener('dary-nfc-miss', onMiss as EventListener);
+  }, []);
+  useEffect(() => {
+    if (!missShown) return;
+    const t = setTimeout(() => setMissShown(0), 3500);
+    return () => clearTimeout(t);
+  }, [missShown]);
+
   const handleTransitClose = useCallback(() => setTransitId(null), []);
   const handleTransitUnregistered = useCallback((id: string) => {
     setTransitId(null);
@@ -121,6 +140,17 @@ function DeepLinkHandler() {
 
   return (
     <div id="transit-id-setter">
+      {missShown > 0 && (
+        <div role="alert" onClick={() => setMissShown(0)} style={{
+          position: 'fixed', top: '12%', left: '50%', transform: 'translateX(-50%)', zIndex: 10000,
+          width: 'min(92vw, 520px)', padding: '1.4rem 1.5rem', borderRadius: '20px',
+          background: 'linear-gradient(135deg, #ffd600 0%, #ffab00 100%)', color: '#1a1500',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.5)', textAlign: 'center', fontFamily: 'Inter, sans-serif',
+        }}>
+          <div style={{ fontSize: '1.7rem', fontWeight: 900, letterSpacing: '0.5px' }}>КАРТАТА НЕ СЕ ПРОЧЕТЕ</div>
+          <div style={{ fontSize: '1.15rem', fontWeight: 800, marginTop: '0.35rem' }}>Допрете я отново — бавно и плътно до четеца</div>
+        </div>
+      )}
       {transitId && (
         <TransitView
             key={scanNonce}
@@ -302,7 +332,8 @@ function App() {
            window.dispatchEvent(event);
         }
       },
-      () => {}
+      () => {},
+      (miss) => window.dispatchEvent(new CustomEvent('dary-nfc-miss', { detail: miss }))
     );
 
     const flag = document.getElementById('app-mounted');
