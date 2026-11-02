@@ -248,8 +248,13 @@ public class DaryNfcPlugin extends Plugin {
 
             if (tagId == null) {
                 noteError("UID read", null);
-                if (missSinceMs == 0) missSinceMs = System.currentTimeMillis();
-                missAttempts++;
+                // Only while no read has succeeded since the card came: once it has
+                // been read, a failed look as it is lifted away is not a miss
+                // (that was every second "miss" from APK 1.4.6).
+                if (cardTakenAway) {
+                    if (missSinceMs == 0) missSinceMs = System.currentTimeMillis();
+                    missAttempts++;
+                }
                 return;
             }
             lastTagAtMs = System.currentTimeMillis();

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, limit, onSnapshot, orderBy, query, type Timestamp } from 'firebase/firestore';
-import { Clock, CreditCard, MapPin, Radio, Smartphone } from 'lucide-react';
+import { collection, doc, limit, onSnapshot, orderBy, query, setDoc, type Timestamp } from 'firebase/firestore';
+import { Clock, CreditCard, Eraser, MapPin, Radio, Smartphone } from 'lucide-react';
 import { db } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 import { TerminalEventChip } from './ScanOrigin';
 
 /**
@@ -11,6 +12,13 @@ import { TerminalEventChip } from './ScanOrigin';
  * чип, дали адресът е цял), чия е картата, ако чипът е познат, и къде е бил
  * автобусът. Непознатата карта с познат чип значи, че кодът е прочетен грешно,
  * а не че картата е чужда.
+ *
+ * Скрити са:
+ *  - „не се прочете“ веднага след прочетена карта (`afterRead`, describeTerminalEvent):
+ *    APK 1.4.6 броеше за такова изпускането на чипа, докато пътникът маха картата;
+ *  - всичко отпреди „Изчисти списъка“ (`settings/terminal_signals.clearedAt`).
+ * Нищо не се трие — сигналите са следата от проверките (Наредба Н-7, прил. 3,
+ * т. 15) и остават в историята на картата; „Покажи и скритите“ ги връща.
  */
 
 interface TerminalSignal {
@@ -33,6 +41,8 @@ interface TerminalSignal {
     place?: string;
     app?: string;
     serverAt?: Timestamp;
+    /** „Не се прочете“ веднага след прочетена карта на същия терминал — не е проблем. */
+    afterRead?: boolean;
 }
 
 type Filter = 'problems' | 'cloned' | 'all';
@@ -50,20 +60,49 @@ const cardNo = (n?: string) => String(n || '').replace(/^0+/, '') || n || '';
 const code: React.CSSProperties = { background: 'rgba(255,255,255,0.06)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.75rem', fontFamily: 'monospace' };
 
 const TerminalSignalsLog: React.FC = () => {
+    const { currentUser } = useAuth();
     const [signals, setSignals] = useState<TerminalSignal[] | null>(null);
     const [filter, setFilter] = useState<Filter>('problems');
+    const [clearedAt, setClearedAt] = useState('');
+    const [showHidden, setShowHidden] = useState(false);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         const q = query(collection(db, 'terminal_events'), orderBy('at', 'desc'), limit(300));
-        return onSnapshot(q,
+        const a = onSnapshot(q,
             snap => setSignals(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<TerminalSignal, 'id'>) }))),
             err => { console.error('Сигналите от терминалите не се заредиха:', err); setSignals([]); });
+        const b = onSnapshot(doc(db, 'settings', 'terminal_signals'),
+            snap => setClearedAt(snap.exists() ? String(snap.get('clearedAt') || '') : ''),
+            err => console.error('Изчистването не се зареди:', err));
+        return () => { a(); b(); };
     }, []);
 
-    const shown = useMemo(() => {
+    const hiddenReason = (s: TerminalSignal) =>
+        s.afterRead ? 'след прочетена карта — не е проблем'
+            : clearedAt && s.at <= clearedAt ? 'изчистен' : '';
+
+    const { shown, hidden } = useMemo(() => {
         const kinds = FILTERS.find(f => f.id === filter)?.kinds;
-        return (signals || []).filter(s => !kinds || kinds.includes(s.kind));
-    }, [signals, filter]);
+        const ofKind = (signals || []).filter(s => !kinds || kinds.includes(s.kind));
+        const visible = ofKind.filter(s => !hiddenReason(s));
+        return { shown: showHidden ? ofKind : visible, hidden: ofKind.length - visible.length };
+        // hiddenReason reads clearedAt
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [signals, filter, showHidden, clearedAt]);
+
+    const clearList = async () => {
+        if (!window.confirm('Да се изчисти ли списъкът? Сигналите дотук се скриват (не се трият) — новите ще се показват.')) return;
+        setError('');
+        try {
+            await setDoc(doc(db, 'settings', 'terminal_signals'), {
+                clearedAt: new Date().toISOString(),
+                clearedBy: currentUser?.username || '',
+            });
+        } catch (e) {
+            setError((e as { message?: string }).message || 'Не се изчисти.');
+        }
+    };
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -84,6 +123,23 @@ const TerminalSignalsLog: React.FC = () => {
             <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                 Всяко допиране на терминала, което не е пътуване: какво е видял шофьорът, на кой апарат, какво е прочетено и къде.
                 Записват се от терминалите с новото APK.
+                {clearedAt && <> Изчистено на {fmt(clearedAt)}.</>}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
+                <button onClick={clearList} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', borderRadius: '8px',
+                    fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer',
+                    background: 'rgba(255,255,255,0.05)', border: '1px solid var(--surface-border)', color: '#fff',
+                }} title="Скрива всички сигнали дотук. Не ги трие — остават в историята на картите и с „Покажи и скритите“.">
+                    <Eraser size={14} /> Изчисти списъка
+                </button>
+                {hidden > 0 && (
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={showHidden} onChange={e => setShowHidden(e.target.checked)} />
+                        Покажи и скритите ({hidden})
+                    </label>
+                )}
+                {error && <span style={{ fontSize: '0.78rem', color: '#ff5252' }}>{error}</span>}
             </div>
 
             {signals === null ? (
@@ -94,10 +150,12 @@ const TerminalSignalsLog: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                     {shown.map(s => {
                         const lateS = s.serverAt ? Math.round((s.serverAt.toDate().getTime() - Date.parse(s.at)) / 1000) : null;
+                        const why = hiddenReason(s);
                         const misread = s.kind === 'unknown' && !!s.clientId;
                         return (
                             <div key={s.id} style={{
                                 padding: '0.8rem 0.9rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '0.45rem',
+                                opacity: why ? 0.5 : 1,
                                 background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)',
                                 borderLeft: `3px solid ${s.kind === 'unknown' || s.kind === 'cloned' ? '#ff5252' : '#ffb300'}`,
                             }}>
@@ -109,6 +167,7 @@ const TerminalSignalsLog: React.FC = () => {
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', fontWeight: 800 }}>
                                         <Smartphone size={13} /> {s.deviceName || (s.deviceId ? `апарат ${s.deviceId.slice(0, 6)}` : '—')}
                                     </span>
+                                    {why && <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 700 }}>скрит: {why}</span>}
                                     {lateS !== null && lateS > 60 && (
                                         <span style={{ fontSize: '0.72rem', color: '#29b6f6', fontWeight: 700 }}>стигна {Math.round(lateS / 60)} мин. по-късно (без връзка)</span>
                                     )}

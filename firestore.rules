@@ -304,10 +304,15 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
-    // Регистрацията в НТД и годишното потвърждение (settings/nap).
+    // Регистрацията в НТД и годишното потвърждение (settings/nap). „Изчисти
+    // списъка“ на сигналите от терминалите (settings/terminal_signals) — само
+    // кога и кой; сигналите не се трият.
     match /settings/{docId} {
       allow read: if isStaff();
-      allow write: if isAdmin() && docId == 'nap';
+      allow write: if isAdmin() && (docId == 'nap'
+        || (docId == 'terminal_signals'
+            && request.resource.data.keys().hasOnly(['clearedAt', 'clearedBy'])
+            && request.resource.data.clearedAt is string));
     }
     // Къде е автобусът — терминалът пише сам на всеки 30 s. Шофьорите не се
     // логват, затова записът е анонимен като пулса на устройството: само за

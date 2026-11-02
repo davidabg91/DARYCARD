@@ -731,6 +731,37 @@ export const attributeScanToDevice = functions.firestore
 // „излезе невалидна“.
 // ---------------------------------------------------------------------------
 
+/**
+ * APK 1.4.6 took a failed look at a card that had just been read — as the
+ * passenger lifted it away — for „не се прочете“: 163 of its first 179 such
+ * signals came 2–3 s after a card was read on the same terminal, each after a
+ * single look. A miss like that is marked `afterRead` and not shown. Both
+ * times are from the terminal's own clock, so they compare. From the app
+ * version below the reader no longer does it (DaryNfcPlugin), and a miss
+ * right after another passenger's card is a real one.
+ */
+const MISS_FIXED_FROM = "2026.11.02.11.41";
+const AFTER_READ_MS = 15 * 1000;
+
+const readJustBefore = async (db: admin.firestore.Firestore, deviceId: string, at: string, lastScanAt: unknown) => {
+    const t = Date.parse(at);
+    if (!isFinite(t)) return false;
+    const near = (iso: unknown) => {
+        const s = Date.parse(String(iso || ""));
+        return isFinite(s) && s <= t + 2000 && t - s <= AFTER_READ_MS;
+    };
+    if (near(lastScanAt)) return true;
+    // The day's list of cards read is filled by attributeScanToDevice, which may
+    // still be on its way — look once more a little later.
+    for (let attempt = 0; attempt < 2; attempt++) {
+        const seen = await db.doc(`devices/${deviceId}/seen/${at.slice(0, 10)}`).get();
+        const scans = (seen.get("scans") as Array<{ at?: string }>) || [];
+        if (scans.some((x) => near(x.at))) return true;
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 4000));
+    }
+    return false;
+};
+
 export const describeTerminalEvent = functions.firestore
     .document("terminal_events/{eventId}")
     .onCreate(async (snap) => {
@@ -742,6 +773,10 @@ export const describeTerminalEvent = functions.firestore
         if (deviceId) {
             const d = await db.collection("devices").doc(deviceId).get();
             if (d.exists) out.deviceName = String(d.get("name") || d.get("autoName") || "").trim();
+            if (ev.kind === "miss" && String(ev.app || "") < MISS_FIXED_FROM
+                && await readJustBefore(db, deviceId, String(ev.at || ""), d.get("lastScanAt"))) {
+                out.afterRead = true;
+            }
         }
 
         const safeGet = async (col: string, id: string) => {

@@ -415,7 +415,8 @@ const DevicesPanel: React.FC<Props> = ({ isAdmin }) => {
             setCards(prev => ({ ...prev, [id]: [...list].sort((a, b) => (b.at || '').localeCompare(a.at || '')) }));
             setScreens(prev => ({
                 ...prev,
-                [id]: (events?.docs || []).map(e => e.data() as ScreenEvent).filter(e => e.at)
+                // „Не се прочете“ веднага след прочетена карта не е проблем (describeTerminalEvent).
+                [id]: (events?.docs || []).map(e => e.data() as ScreenEvent & { afterRead?: boolean }).filter(e => e.at && !e.afterRead)
                     .sort((a, b) => b.at.localeCompare(a.at)),
             }));
         } catch (err) {
