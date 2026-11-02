@@ -32,7 +32,7 @@ const PageLoader = () => <LoadingScreen />;
 
 // The true bundle version. Живее извън компонента, защото и регистърът
 // на устройствата я докладва, за да се вижда кой терминал е със старо APK.
-const INTERNAL_APP_VERSION = "2026.11.02.10.43";
+const INTERNAL_APP_VERSION = "2026.11.02.11.41";
 
 function ClientProfileWrapper() {
   return <ClientProfile />;
