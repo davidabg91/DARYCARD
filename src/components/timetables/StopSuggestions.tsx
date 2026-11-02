@@ -3,8 +3,9 @@ import { collection, doc, onSnapshot, updateDoc, writeBatch } from 'firebase/fir
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Check, ChevronDown, ChevronUp, Crosshair, RefreshCw, X } from 'lucide-react';
 import app, { db } from '../../firebase';
-import { hasPoint, type Stop } from '../../utils/timetable';
+import { hasPoint, stopsInPlace, type Stop } from '../../utils/timetable';
 import StopMap from './StopMap';
+import { addStopInPlace, moveMainStop } from './placeStops';
 
 /**
  * Спирките от качванията.
@@ -17,9 +18,19 @@ import StopMap from './StopMap';
  *
  * Пресмятането се пуска само, когато таблото се отвори и от последното са
  * минали 12 часа, и с бутона.
+ *
+ * В повечето села автобусът спира на две и повече места: място с качвания
+ * далеч от спирките на селото е още една спирка в него (`kind: 'extra'`) —
+ * сигурната се добавя сама, другата се приема тук с име.
  */
 
 interface Suggestion {
+    /** id на предложението — за селото е самото село, за още спирка в него — отделен. */
+    id: string;
+    /** 'main' — точката на селото; 'extra' — още една спирка в него. Старите нямат. */
+    kind?: 'main' | 'extra';
+    placeId?: string;
+    placeName?: string;
     stopId: string;
     stopName: string;
     lat: number;
@@ -34,6 +45,8 @@ interface Suggestion {
     others: Array<{ lat: number; lng: number; count: number }>;
     status: 'applied' | 'review' | 'conflict' | 'ok' | 'accepted' | 'rejected';
 }
+
+const placeOf = (s: Suggestion) => s.placeId || s.stopId;
 
 interface Summary {
     runAt?: string;
@@ -72,11 +85,13 @@ const StopSuggestions: React.FC<{ stops: Stop[]; who: string }> = ({ stops, who 
     const [error, setError] = useState('');
     const [open, setOpen] = useState<string | null>(null);
     const [showUnmatched, setShowUnmatched] = useState(false);
+    // Името на нова спирка в селото, докато се приема.
+    const [names, setNames] = useState<Record<string, string>>({});
     const autoRan = useRef(false);
 
     useEffect(() => {
         const a = onSnapshot(collection(db, 'stop_suggestions'),
-            snap => setItems(snap.docs.map(d => d.data() as Suggestion)),
+            snap => setItems(snap.docs.map(d => ({ ...(d.data() as Omit<Suggestion, 'id'>), id: d.id }))),
             err => console.error('Предложенията за спирки не се заредиха:', err));
         const b = onSnapshot(doc(db, 'settings', 'stop_locator'),
             snap => { setSummary(snap.exists() ? snap.data() as Summary : null); setLoaded(true); },
@@ -113,11 +128,31 @@ const StopSuggestions: React.FC<{ stops: Stop[]; who: string }> = ({ stops, who 
     const accept = async (s: Suggestion) => {
         setError('');
         try {
+            const place = byId.get(placeOf(s));
+            if (s.kind === 'extra') {
+                // Още една спирка в селото, с името, което е написано.
+                if (!place) throw new Error('Селото го няма в спирките.');
+                const name = (names[s.id] ?? s.stopName).trim();
+                if (!name) throw new Error('Спирката трябва да има име.');
+                await addStopInPlace(stops, place, { name, lat: s.lat, lng: s.lng, locatedBy: 'boardings' });
+                await updateDoc(doc(db, 'stop_suggestions', s.id), {
+                    status: 'accepted', decidedAt: new Date().toISOString(), decidedBy: who,
+                });
+                return;
+            }
+            if (place && stopsInPlace(stops, place.id).length) {
+                // Село със спирки: мести се основната му спирка, а с нея и точката на селото.
+                await moveMainStop(stops, place, s.lat, s.lng, 'boardings');
+                await updateDoc(doc(db, 'stop_suggestions', s.id), {
+                    status: 'accepted', decidedAt: new Date().toISOString(), decidedBy: who,
+                });
+                return;
+            }
             const batch = writeBatch(db);
             batch.update(doc(db, 'stops', s.stopId), {
                 lat: s.lat, lng: s.lng, locatedBy: 'boardings', locatedAt: new Date().toISOString(),
             });
-            batch.update(doc(db, 'stop_suggestions', s.stopId), {
+            batch.update(doc(db, 'stop_suggestions', s.id), {
                 status: 'accepted', decidedAt: new Date().toISOString(), decidedBy: who,
             });
             await batch.commit();
@@ -129,7 +164,7 @@ const StopSuggestions: React.FC<{ stops: Stop[]; who: string }> = ({ stops, who 
     const reject = async (s: Suggestion) => {
         setError('');
         try {
-            await updateDoc(doc(db, 'stop_suggestions', s.stopId), {
+            await updateDoc(doc(db, 'stop_suggestions', s.id), {
                 status: 'rejected', decidedAt: new Date().toISOString(), decidedBy: who,
             });
         } catch (e) {
@@ -152,8 +187,9 @@ const StopSuggestions: React.FC<{ stops: Stop[]; who: string }> = ({ stops, who 
                 </button>
             </div>
             <div style={{ ...muted, marginTop: '0.4rem' }}>
-                Където терминалите четат карти и продават билети, там е спирката. Сигурните спирки
-                без точка се поставят сами; тук остават тези, които искат поглед.
+                Където терминалите четат карти и продават билети, там е спирката. Място с качвания
+                далеч от спирките на селото е още една спирка в него. Сигурните се поставят сами;
+                тук остават тези, които искат поглед.
                 {summary?.runAt && <> Последно: {fmtWhen(summary.runAt)} · {summary.boardings || 0} качвания с GPS · {summary.groups || 0} места.</>}
                 {summary && !summary.boardings && <> Качванията идват само от терминали с новото APK (1.4.5).</>}
             </div>
@@ -169,47 +205,63 @@ const StopSuggestions: React.FC<{ stops: Stop[]; who: string }> = ({ stops, who 
             {pending.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.8rem' }}>
                     {pending.map(s => {
-                        const stop = byId.get(s.stopId);
+                        const stop = byId.get(placeOf(s));
                         const conflict = s.status === 'conflict';
+                        const extra = s.kind === 'extra';
                         return (
-                            <div key={s.stopId} style={{
+                            <div key={s.id} style={{
                                 padding: '0.65rem 0.85rem', borderRadius: '11px', background: 'rgba(0,0,0,0.22)',
                                 border: `1px solid ${conflict ? 'rgba(255,82,82,0.35)' : 'rgba(255,171,0,0.3)'}`,
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                                     <div style={{ flex: 1, minWidth: '200px' }}>
                                         <div style={{ fontWeight: 800 }}>
-                                            {s.stopName}
+                                            {extra ? `Още една спирка в ${s.placeName || stop?.name || ''}` : s.stopName}
                                             <span style={{ fontWeight: 600, fontSize: '0.75rem', color: conflict ? '#ff5252' : '#ffab00' }}>
                                                 {conflict ? ' · далеч от качванията' : ' · за преглед'}
                                             </span>
                                         </div>
+                                        {extra && (
+                                            <input
+                                                value={names[s.id] ?? s.stopName}
+                                                onChange={e => setNames(n => ({ ...n, [s.id]: e.target.value }))}
+                                                placeholder="Име на спирката"
+                                                style={{
+                                                    margin: '0.35rem 0', width: '100%', maxWidth: '420px', padding: '0.45rem 0.7rem', borderRadius: '8px',
+                                                    background: 'rgba(255,255,255,0.06)', border: '1px solid var(--surface-border)', color: '#fff', fontWeight: 700,
+                                                }}
+                                            />
+                                        )}
                                         <div style={muted}>
                                             {s.count} качвания ({s.cards} карти, {s.tickets} билета) · {s.days} {s.days === 1 ? 'ден' : 'дни'} · ±{s.spread} м
                                             {s.reasons.length > 0 && <> · {s.reasons.join(' · ')}</>}
                                         </div>
                                     </div>
-                                    <button onClick={() => setOpen(open === s.stopId ? null : s.stopId)} style={plainBtn}>
-                                        {open === s.stopId ? <ChevronUp size={14} /> : <ChevronDown size={14} />} Карта
+                                    <button onClick={() => setOpen(open === s.id ? null : s.id)} style={plainBtn}>
+                                        {open === s.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />} Карта
                                     </button>
                                     <button onClick={() => accept(s)} style={okBtn}>
-                                        <Check size={14} /> {conflict ? 'Премести тук' : 'Приеми'}
+                                        <Check size={14} /> {conflict ? 'Премести тук' : extra ? 'Добави спирката' : 'Приеми'}
                                     </button>
                                     <button onClick={() => reject(s)} style={noBtn}><X size={14} /> Отхвърли</button>
                                 </div>
-                                {open === s.stopId && (
+                                {open === s.id && (
                                     <div style={{ marginTop: '0.6rem' }}>
                                         <StopMap
                                             value={{ lat: s.lat, lng: s.lng }}
                                             onChange={() => { /* само за гледане — за точно място „Промени“ на спирката */ }}
-                                            others={[
-                                                ...(stop && hasPoint(stop) ? [{ lat: stop.lat!, lng: stop.lng!, name: `${stop.name} — сегашното място` }] : []),
-                                                ...s.others.map(o => ({ lat: o.lat, lng: o.lng, name: `Друго място в селото — ${o.count} качвания` })),
-                                            ]}
+                                            others={extra
+                                                ? s.others.map(o => ({ lat: o.lat, lng: o.lng, name: `Спирка на селото — ${o.count} качвания` }))
+                                                : [
+                                                    ...(stop && hasPoint(stop) ? [{ lat: stop.lat!, lng: stop.lng!, name: `${stop.name} — сегашното място` }] : []),
+                                                    ...s.others.map(o => ({ lat: o.lat, lng: o.lng, name: `Друго място в селото — ${o.count} качвания` })),
+                                                ]}
                                             height={280}
                                         />
                                         <div style={{ ...muted, marginTop: '0.35rem' }}>
-                                            Синият знак е мястото на качванията. Жълтите точки са {conflict ? 'сегашното място на спирката и ' : ''}други места в селото, където също се качват.
+                                            {extra
+                                                ? 'Синият знак е новата спирка. Жълтите точки са спирките, които селото вече има.'
+                                                : <>Синият знак е мястото на качванията. Жълтите точки са {conflict ? 'сегашното място на спирката и ' : ''}други места в селото, където също се качват.</>}
                                         </div>
                                     </div>
                                 )}

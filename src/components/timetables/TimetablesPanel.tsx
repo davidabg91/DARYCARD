@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     CalendarClock, MapPin, Route as RouteIcon, Plus, Trash2, Save, X, Check,
-    AlertTriangle, Loader2, Search, Download, CalendarDays, ChevronDown, ChevronUp, ListChecks, Ticket,
+    AlertTriangle, Loader2, Search, Download, CalendarDays, ChevronDown, ChevronUp, ListChecks, Ticket, Star,
 } from 'lucide-react';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import {
     HOLIDAY_RULES, STANDARD_SERVICES, WEEKDAYS, checkDirection, describeDays, hasPoint,
-    normalizeStopName, toMinutes, useServices, useStops, useTimetables,
+    normalizeStopName, stopsInPlace, toMinutes, useServices, useStops, useTimetables,
     type HolidayRule, type Service, type Stop, type Timetable,
 } from '../../utils/timetable';
 import { buildImportPlan } from '../../utils/timetableImport';
@@ -17,6 +17,7 @@ import StopMap, { type Point } from './StopMap';
 import TimetableEditor from './TimetableEditor';
 import ComplianceCard from './ComplianceCard';
 import StopSuggestions from './StopSuggestions';
+import { addStopInPlace, makeMainStop, removeStopInPlace } from './placeStops';
 import { RIDER_CATEGORIES, buildFareTable, sameFare } from '../../utils/fares';
 
 /**
@@ -232,19 +233,30 @@ const TimetablesPanel: React.FC = () => {
             setMessage({ text: `Спирка „${s.name}“ е в разписанието на ${used.join(', ')}. Махнете я първо оттам.`, ok: false });
             return;
         }
+        const inside = stopsInPlace(stops, s.id);
+        if (inside.length) {
+            setMessage({ text: `В „${s.name}“ има ${inside.length} спирки. Изтрийте първо тях.`, ok: false });
+            return;
+        }
         if (!window.confirm(`Да се изтрие ли спирка „${s.name}“?`)) return;
         try {
-            await deleteDoc(doc(db, 'stops', s.id));
+            if (s.parentId) await removeStopInPlace(stops, s);
+            else await deleteDoc(doc(db, 'stops', s.id));
         } catch (e) {
             setMessage({ text: errText(e, 'Спирката не беше изтрита.'), ok: false });
         }
     };
 
+    // Селата, всяко със спирките в него под себе си.
     const shownStops = useMemo(() => {
         const q = normalizeStopName(stopFilter);
-        const list = q ? stops.filter(s => normalizeStopName(s.name).includes(q)) : stops;
+        const places = stops.filter(s => !s.parentId || !stops.some(p => p.id === s.parentId));
+        const match = (s: Stop) => !q || normalizeStopName(s.name).includes(q);
         // The ones still to place first: that is what there is to do here.
-        return [...list].sort((a, b) => Number(hasPoint(a)) - Number(hasPoint(b)));
+        const sorted = places
+            .filter(p => match(p) || stopsInPlace(stops, p.id).some(match))
+            .sort((a, b) => Number(hasPoint(a)) - Number(hasPoint(b)));
+        return sorted.flatMap(p => [p, ...stopsInPlace(stops, p.id)]);
     }, [stops, stopFilter]);
 
     // ── Days of operation ────────────────────────────────────────────────────
@@ -499,9 +511,10 @@ const TimetablesPanel: React.FC = () => {
                     </button>
                 </div>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginTop: 0 }}>
-                    Всяка спирка трябва да е посочена на картата. Пренесените са по една на село — ако в
-                    селото автобусът спира на няколко места или спирката е от двете страни на пътя,
-                    добавете ги отделно и ги сложете в разписанията.
+                    Всяка спирка трябва да е посочена на картата. Пренесените са по една на село. Където
+                    автобусът спира на няколко места, селото има няколко спирки („Спирка в селото“ или
+                    от качванията) — една от тях е основната: там спират линиите, в чието разписание пише
+                    само селото. На друга спирка курсът спира, когато в разписанието е сложена самата тя.
                 </p>
 
                 <StopSuggestions stops={stops} who={currentUser?.username || ''} />
@@ -523,24 +536,45 @@ const TimetablesPanel: React.FC = () => {
                         {shownStops.map(s => {
                             const ok = hasPoint(s);
                             const on = usage.get(s.id) || [];
+                            const child = !!s.parentId;
+                            const inside = child ? [] : stopsInPlace(stops, s.id);
                             return (
                                 <div key={s.id} style={{
                                     display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap',
-                                    padding: '0.6rem 0.9rem', borderRadius: '11px',
-                                    background: 'rgba(0,0,0,0.2)', border: `1px solid ${ok ? 'rgba(255,255,255,0.06)' : 'rgba(255,171,0,0.3)'}`,
+                                    padding: '0.6rem 0.9rem', borderRadius: '11px', marginLeft: child ? '1.6rem' : 0,
+                                    background: child ? 'rgba(0,173,181,0.05)' : 'rgba(0,0,0,0.2)',
+                                    border: `1px solid ${ok ? (child ? 'rgba(0,173,181,0.2)' : 'rgba(255,255,255,0.06)') : 'rgba(255,171,0,0.3)'}`,
                                 }}>
                                     <MapPin size={16} color={ok ? '#00e676' : '#ffab00'} />
                                     <div style={{ flex: 1, minWidth: '160px' }}>
                                         <div style={{ fontWeight: 700 }}>
                                             {s.name}{s.code && <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}> · № {s.code}</span>}
+                                            {child && s.primary && (
+                                                <span title="Линиите, в чието разписание пише само селото, спират тук" style={{ marginLeft: '0.5rem', fontSize: '0.7rem', fontWeight: 800, color: '#ffd54f', background: 'rgba(255,213,79,0.12)', padding: '1px 7px', borderRadius: '6px' }}>основна</span>
+                                            )}
+                                            {inside.length > 0 && (
+                                                <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary-color)', background: 'rgba(0,173,181,0.12)', padding: '1px 7px', borderRadius: '6px' }}>{inside.length} спирки</span>
+                                            )}
                                         </div>
                                         <div style={{ fontSize: '0.76rem', color: ok ? 'var(--text-secondary)' : '#ffab00' }}>
-                                            {ok ? `${s.lat!.toFixed(5)}, ${s.lng!.toFixed(5)}` : 'не е посочена на картата'}
-                                            {ok && s.locatedBy === 'boardings' && <span style={{ color: 'var(--primary-color)' }}> · от качванията</span>}
+                                            {inside.length > 0 ? 'точката на селото е тази на основната му спирка'
+                                                : ok ? `${s.lat!.toFixed(5)}, ${s.lng!.toFixed(5)}` : 'не е посочена на картата'}
+                                            {ok && !inside.length && s.locatedBy === 'boardings' && <span style={{ color: 'var(--primary-color)' }}> · от качванията</span>}
                                             {on.length > 0 && <span style={{ color: 'var(--text-secondary)' }}> · {on.length > 4 ? `${on.length} линии` : on.join(', ')}</span>}
                                         </div>
                                     </div>
-                                    <button onClick={() => setEditingStop(s)} style={plainBtn}>{ok ? 'Промени' : 'Посочи на картата'}</button>
+                                    {child && !s.primary && (
+                                        <button onClick={() => makeMainStop(stops, s).catch(e => setMessage({ text: errText(e, 'Не се записа.'), ok: false }))}
+                                            title="Линиите, в чието разписание пише само селото, ще спират тук" style={plainBtn}>
+                                            <Star size={14} /> Направи основна
+                                        </button>
+                                    )}
+                                    {!child && (
+                                        <button onClick={() => setEditingStop({ id: '', name: `${s.name}, `, lat: null, lng: null, parentId: s.id })} style={plainBtn}>
+                                            <Plus size={14} /> Спирка в селото
+                                        </button>
+                                    )}
+                                    <button onClick={() => setEditingStop(s)} style={plainBtn}>{inside.length ? 'Име' : ok ? 'Промени' : 'Посочи на картата'}</button>
                                     <button onClick={() => removeStop(s)} title="Изтрий" style={{
                                         padding: '0.45rem 0.7rem', borderRadius: '9px', cursor: 'pointer',
                                         background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.3)', color: '#ff5252',
@@ -637,6 +671,7 @@ const TimetablesPanel: React.FC = () => {
             {editingStop && (
                 <StopDialog
                     stop={editingStop}
+                    allStops={stops}
                     others={stops.filter(s => s.id !== editingStop.id && hasPoint(s))}
                     onClose={() => setEditingStop(null)}
                     onSaved={text => { setEditingStop(null); setMessage({ text, ok: true }); }}
@@ -662,12 +697,14 @@ const TimetablesPanel: React.FC = () => {
 
 interface StopDialogProps {
     stop: Stop;
+    /** Всички спирки — за спирка в село (`parentId`), която добавя или мести спирките на селото. */
+    allStops: Stop[];
     others: Stop[];
     onClose: () => void;
     onSaved: (message: string) => void;
 }
 
-const StopDialog: React.FC<StopDialogProps> = ({ stop, others, onClose, onSaved }) => {
+const StopDialog: React.FC<StopDialogProps> = ({ stop, allStops, others, onClose, onSaved }) => {
     const [name, setName] = useState(stop.name);
     const [code, setCode] = useState(stop.code || '');
     const [point, setPoint] = useState<Point | null>(hasPoint(stop) ? { lat: stop.lat!, lng: stop.lng! } : null);
@@ -724,8 +761,23 @@ const StopDialog: React.FC<StopDialogProps> = ({ stop, others, onClose, onSaved 
                 lat: point ? point.lat : null,
                 lng: point ? point.lng : null,
             };
-            if (stop.id) await setDoc(doc(db, 'stops', stop.id), body);
-            else await addDoc(collection(db, 'stops'), body);
+            const place = stop.parentId ? allStops.find(p => p.id === stop.parentId) : undefined;
+            const inside = stop.id ? stopsInPlace(allStops, stop.id) : [];
+            const moved = !hasPoint(stop) || !point || stop.lat !== point.lat || stop.lng !== point.lng;
+            if (!stop.id && place) {
+                // Нова спирка в селото: първата му точка става основна спирка, тази — още една.
+                await addStopInPlace(allStops, place, body);
+            } else if (stop.id && inside.length) {
+                // Село със спирки: точката му е тази на основната спирка — тук се сменят само името и номерът.
+                await setDoc(doc(db, 'stops', stop.id), { name: body.name, code: body.code }, { merge: true });
+            } else if (stop.id) {
+                // merge: спирка в село пази към кое село е и дали е основната.
+                await setDoc(doc(db, 'stops', stop.id), { ...body, ...(moved ? { locatedBy: 'manual' } : {}) }, { merge: true });
+                // Селото пази точката на основната си спирка.
+                if (place && stop.primary && point) await setDoc(doc(db, 'stops', place.id), { lat: point.lat, lng: point.lng }, { merge: true });
+            } else {
+                await addDoc(collection(db, 'stops'), body);
+            }
             onSaved(`Спирка „${body.name}“ е запазена${point ? '' : ' — без точка на картата'}.`);
         } catch (e) {
             setError(errText(e, 'Спирката не беше запазена.'));
@@ -759,6 +811,12 @@ const StopDialog: React.FC<StopDialogProps> = ({ stop, others, onClose, onSaved 
                     </div>
                 </div>
 
+                {stop.id && stopsInPlace(allStops, stop.id).length > 0 ? (
+                    <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '0.8rem' }}>
+                        В това село има {stopsInPlace(allStops, stop.id).length} спирки. Точката на селото е тази на
+                        основната му спирка — мястото се сменя от самите спирки (или с „Направи основна“).
+                    </div>
+                ) : (<>
                 <label style={label}>Къде е</label>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.6rem' }}>
                     <input style={{ ...input, flex: 1 }} value={search} onChange={e => setSearch(e.target.value)}
@@ -797,6 +855,7 @@ const StopDialog: React.FC<StopDialogProps> = ({ stop, others, onClose, onSaved 
                         style={{ ...input, flex: 1, minWidth: '220px', padding: '0.5rem 0.7rem', fontSize: '0.85rem' }}
                     />
                 </div>
+                </>)}
 
                 {error && <div style={{ marginTop: '0.8rem', color: '#ff5252', fontSize: '0.88rem' }}>{error}</div>}
 

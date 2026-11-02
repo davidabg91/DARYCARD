@@ -1,4 +1,5 @@
 import * as admin from "firebase-admin";
+import { indexStops, physicalStop, placeOfStop } from "./stopModel";
 import { strToU8, zipSync } from "fflate";
 
 /**
@@ -123,6 +124,9 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
 
     // ── Inputs ───────────────────────────────────────────────────────────────
     const stops = new Map(stopsSnap.docs.map(d => [d.id, d.data() as Data]));
+    // Населено място със спирки под себе си: курсът спира на основната, освен ако
+    // разписанието не сочи друга от тях (виж stopModel.ts).
+    const stopIndex = indexStops(stops);
     const services = new Map(servicesSnap.docs.map(d => [d.id, d.data() as Data]));
     const served: GtfsReport["served"] = [];
     // A line driven by another (Градина on the Бъркач bus) is not a route of
@@ -157,15 +161,18 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
         let routeTrips = 0;
         for (const dir of dirs) {
             const dirId = dir.id === "B" ? 1 : 0;
-            const stopIds = Array.isArray(dir.stopIds) ? (dir.stopIds as unknown[]).map(String) : [];
+            const listed = Array.isArray(dir.stopIds) ? (dir.stopIds as unknown[]).map(String) : [];
             const trips = Array.isArray(dir.trips) ? dir.trips as Data[] : [];
-            if (stopIds.length < 2) {
+            if (listed.length < 2) {
                 if (trips.length) err(`${name}: посока ${dirId ? "„Връщане“" : "„Отиване“"} има курсове, но по-малко от две спирки.`);
                 continue;
             }
-            stopIds.forEach(id => {
+            listed.forEach(id => {
                 if (!stops.has(id)) err(`${name}: в разписанието има изтрита спирка.`);
-                else if (!hasPoint(stops.get(id)) && !unplacedWarned.has(id)) {
+            });
+            const stopIds = listed.map(id => (stops.has(id) ? physicalStop(id, stopIndex) : id));
+            stopIds.forEach(id => {
+                if (stops.has(id) && !hasPoint(stops.get(id)) && !unplacedWarned.has(id)) {
                     unplacedWarned.add(id);
                     err(`Спирка „${stopName(id)}“ не е посочена на картата — курсовете минават без нея.`);
                 }
@@ -251,9 +258,11 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
     const usedMedia = new Set<string>();
     const fareAreas = new Set<string>();
     let faresLeftOut = 0;
+    // Тарифите са между населени места — зоната на всяка спирка е нейното място.
+    const usedPlaces = new Set([...usedStops].map(id => placeOfStop(id, stopIndex)));
     for (const f of faresSnap.docs.map(d => ({ ...(d.data() as Data), id: d.id }) as Data & { id: string })) {
         const from = String(f.fromStopId || ""), to = String(f.toStopId || "");
-        if (!usedStops.has(from) || !usedStops.has(to) || from === to) { faresLeftOut++; continue; }
+        if (!usedPlaces.has(from) || !usedPlaces.has(to) || from === to) { faresLeftOut++; continue; }
         fareAreas.add(from); fareAreas.add(to);
         const label = `${f.fromName || stopName(from)} – ${f.toName || stopName(to)}`;
         const legs = (productId: string) => {
@@ -282,10 +291,23 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
     }
     if (faresLeftOut) warn(`${faresLeftOut} тарифи не са включени, защото спирките им още не са в данните (без точка на картата или без курс).`);
 
-    const stopRows = [...usedStops].map(id => {
+    // Физическите спирки (location_type 0), а над тези в населено място със
+    // спирки — самото място като станция (location_type 1). Зоната е мястото.
+    const stopRows: unknown[][] = [];
+    const stations = new Set<string>();
+    for (const id of usedStops) {
         const s = stops.get(id)!;
-        return [id, String(s.code || ""), String(s.name || ""), (s.lat as number).toFixed(6), (s.lng as number).toFixed(6), id];
-    });
+        const place = placeOfStop(id, stopIndex);
+        const parent = place !== id ? place : "";
+        if (parent) stations.add(parent);
+        stopRows.push([id, String(s.code || ""), String(s.name || ""), (s.lat as number).toFixed(6), (s.lng as number).toFixed(6), place, 0, parent]);
+    }
+    for (const id of stations) {
+        const p = stops.get(id)!;
+        // Точката на станцията е тази на основната ѝ спирка (мястото я пази).
+        const at = hasPoint(p) ? p : stops.get(physicalStop(id, stopIndex))!;
+        stopRows.push([id, String(p.code || ""), String(p.name || ""), (at.lat as number).toFixed(6), (at.lng as number).toFixed(6), "", 1, ""]);
+    }
 
     if (!tripRows.length) err("Няма нито един курс, готов за публикуване.");
 
@@ -294,7 +316,7 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
             ["agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang", "agency_phone", "agency_email"],
             [[AGENCY.id, AGENCY.name, AGENCY.url, TIMEZONE, "bg", AGENCY.phone, AGENCY.email]]
         ),
-        "stops.txt": csv(["stop_id", "stop_code", "stop_name", "stop_lat", "stop_lon", "zone_id"], stopRows),
+        "stops.txt": csv(["stop_id", "stop_code", "stop_name", "stop_lat", "stop_lon", "zone_id", "location_type", "parent_station"], stopRows),
         "routes.txt": csv(["route_id", "agency_id", "route_short_name", "route_long_name", "route_type"], routeRows),
         "trips.txt": csv(["route_id", "service_id", "trip_id", "trip_headsign", "direction_id"], tripRows),
         "stop_times.txt": csv(["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"], stopTimeRows),
@@ -321,7 +343,8 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
         files["fare_products.txt"] = csv(
             ["fare_product_id", "fare_product_name", "rider_category_id", "fare_media_id", "amount", "currency"], productRows);
         files["areas.txt"] = csv(["area_id", "area_name"], [...fareAreas].map(id => [id, stopName(id)]));
-        files["stop_areas.txt"] = csv(["area_id", "stop_id"], [...fareAreas].map(id => [id, id]));
+        files["stop_areas.txt"] = csv(["area_id", "stop_id"],
+            [...usedStops].map(id => [placeOfStop(id, stopIndex), id]).filter(([area]) => fareAreas.has(area)));
         files["fare_leg_rules.txt"] = csv(["leg_group_id", "from_area_id", "to_area_id", "fare_product_id"], legRuleRows);
     }
 
@@ -333,7 +356,7 @@ export async function buildGtfs(): Promise<{ files: Record<string, string>; repo
             feedStart: ymd(start),
             feedEnd: ymd(end),
             counts: {
-                routes: routeRows.length, stops: stopRows.length, trips: tripRows.length,
+                routes: routeRows.length, stops: usedStops.size, trips: tripRows.length,
                 stopTimes: stopTimeRows.length, services: calendarRows.length,
                 fareProducts: productRows.length,
             },

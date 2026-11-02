@@ -1,4 +1,5 @@
 import * as admin from "firebase-admin";
+import { indexStops, physicalStop } from "./stopModel";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const GtfsRealtimeBindings = require("gtfs-realtime-bindings");
 import { DISRUPTION_KINDS, type DisruptionKind } from "./disruptionKinds";
@@ -161,6 +162,8 @@ const loadRuns = async (db: admin.firestore.Firestore, now: number): Promise<Run
         db.collection("timetables").get(),
     ]);
     const stops = new Map(stopsSnap.docs.map(d => [d.id, d.data() as Data]));
+    // Същите физически спирки като в статичния файл (stopModel.ts).
+    const stopIndex = indexStops(stops);
     const services = new Map(servicesSnap.docs.map(d => [d.id, d.data() as Data]));
 
     const today = sofiaParts(now);
@@ -179,7 +182,8 @@ const loadRuns = async (db: admin.firestore.Firestore, now: number): Promise<Run
         const dirs = Array.isArray(t.get("directions")) ? t.get("directions") as Data[] : [];
         dirs.forEach(dir => {
             const directionId = dir.id === "B" ? 1 : 0;
-            const stopIds = Array.isArray(dir.stopIds) ? (dir.stopIds as unknown[]).map(String) : [];
+            const stopIds = (Array.isArray(dir.stopIds) ? (dir.stopIds as unknown[]).map(String) : [])
+                .map(id => (stops.has(id) ? physicalStop(id, stopIndex) : id));
             const trips = Array.isArray(dir.trips) ? dir.trips as Data[] : [];
             trips.forEach((trip, n) => {
                 const service = services.get(String(trip.serviceId || ""));

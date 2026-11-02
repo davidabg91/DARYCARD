@@ -16,7 +16,10 @@ import { getHoliday } from './holidays';
  * the timetable carries the line's name and single-ticket fare with it — that
  * is what the GTFS feed reads, and nothing here touches cards or payments.
  *
- *   stops/{id}        a stop: its name and where it is
+ *   stops/{id}        a stop: its name and where it is. A village is a stop
+ *                     too; when the bus stops at several places in it, each
+ *                     of those is a stop with `parentId` = the village, one of
+ *                     them `primary`, and the village keeps the main one's point
  *   services/{id}     a pattern of days: „Делник“, „Събота“, „Неделя“, „Празник“
  *   timetables/{id}   one per line, keyed by routeSlug(line name)
  *
@@ -38,10 +41,20 @@ export interface Stop {
     code?: string;
     /** 'boardings' when the place came from where passengers got on (stopLocator). */
     locatedBy?: string;
+    /**
+     * The village (stop) this one is in, when the bus stops at several places
+     * there. A line that names only the village calls at its `primary` stop.
+     */
+    parentId?: string;
+    primary?: boolean;
 }
 
 export const hasPoint = (s: Stop | undefined) =>
     !!s && typeof s.lat === 'number' && typeof s.lng === 'number';
+
+/** The stops in a village, the main one first. */
+export const stopsInPlace = (stops: Stop[], placeId: string) =>
+    stops.filter(s => s.parentId === placeId).sort((a, b) => Number(!!b.primary) - Number(!!a.primary) || a.name.localeCompare(b.name, 'bg'));
 
 /** For matching a typed name to a stop: case, spacing and „гр.“ do not count. */
 export const normalizeStopName = (name: string) =>
@@ -309,6 +322,9 @@ export const readStop = (id: string, data: Record<string, unknown>): Stop => ({
     lat: typeof data.lat === 'number' ? data.lat : null,
     lng: typeof data.lng === 'number' ? data.lng : null,
     code: data.code ? String(data.code) : undefined,
+    locatedBy: data.locatedBy ? String(data.locatedBy) : undefined,
+    parentId: data.parentId ? String(data.parentId) : undefined,
+    primary: data.primary === true ? true : undefined,
 });
 
 export const readService = (id: string, data: Record<string, unknown>): Service => {

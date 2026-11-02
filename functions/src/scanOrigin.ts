@@ -96,7 +96,11 @@ let stopsCache: { at: number; stops: Array<{ name: string; lat: number; lng: num
 const knownStops = async (db: admin.firestore.Firestore) => {
     if (stopsCache && Date.now() - stopsCache.at < STOPS_TTL_MS) return stopsCache.stops;
     const snap = await db.collection("stops").get();
+    // Населено място със спирки под себе си пази точката на основната — тя вече
+    // е в списъка като физическа спирка с по-точно име, затова мястото не влиза.
+    const places = new Set(snap.docs.map((d) => String(d.get("parentId") || "")).filter(Boolean));
     const stops = snap.docs
+        .filter((d) => !places.has(d.id))
         .map((d) => ({ name: String(d.get("name") || ""), lat: Number(d.get("lat")), lng: Number(d.get("lng")) }))
         .filter((s) => s.name && isFinite(s.lat) && isFinite(s.lng) && (s.lat !== 0 || s.lng !== 0));
     stopsCache = { at: Date.now(), stops };
