@@ -8,6 +8,8 @@ import {
 import { collection, collectionGroup, query, where, orderBy, limit, onSnapshot, updateDoc, doc, writeBatch, deleteField, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
+import { useClientList } from '../utils/clientList';
+import { useAbuseScans } from '../utils/scanSummary';
 import Card from '../components/Card';
 import AdminAlertsButton from '../components/AdminAlertsButton';
 import SecurityLog from '../components/SecurityLog';
@@ -102,20 +104,17 @@ const SystemAdminPanel: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'audit'>('dashboard');
 
     // Global Data
-    const [clients, setClients] = useState<Client[]>([]);
     // Two separate scan reads. АНАЛИЗ НА ТРАФИКА only ever looks at the selected
     // day (~0.8 MB); КОНТРОЛ НА ЗЛОУПОТРЕБИ is the one that needs 14 days (~5 MB).
     // Serving both from one multi-day listener made the chart wait ~6 s for data it
     // does not use.
     const [dayScans, setDayScans] = useState<ScanRecord[]>([]);
-    const [abuseScans, setAbuseScans] = useState<ScanRecord[]>([]);
-    const [abuseLoading, setAbuseLoading] = useState(true);
+    // За кой ден са `dayScans` — докато не съвпадне с избрания, те са от предишния.
+    const [dayScansFor, setDayScansFor] = useState<string | null>(null);
 
     const [globalLogs, setGlobalLogs] = useState<GlobalLog[]>([]);
     const [fines, setFines] = useState<{ amount: number; month: string; date: string }[]>([]);
     const [logLimit, setLogLimit] = useState(20);
-    const [loading, setLoading] = useState(true);
-    const [loadError, setLoadError] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
     // One-off maintenance (delete legacy scanHistory arrays)
@@ -187,67 +186,73 @@ const SystemAdminPanel: React.FC = () => {
                 deviceName: (d.data().deviceName as string) || undefined,
             }));
 
-    // Day of scans behind АНАЛИЗ НА ТРАФИКА — one day is ~0.24 MB, so re-reading it
+    const todayIso = new Date().toISOString().split('T')[0];
+
+    // Day of scans behind АНАЛИЗ НА ТРАФИКА — one day is under 1 MB, so re-reading it
     // when the date picker moves costs nothing. `dayEnd` bounds the range so the
     // query cannot widen into the whole history.
     useEffect(() => {
         if (!dashboardOpened) return;
         const dayEnd = selectedDate + '\uf8ff';
         const qDay = query(collectionGroup(db, 'scans'), where('at', '>=', selectedDate), where('at', '<=', dayEnd));
-        const unsub = onSnapshot(qDay, (snap) => setDayScans(toScanRecords(snap)),
+        const unsub = onSnapshot(qDay, (snap) => { setDayScans(toScanRecords(snap)); setDayScansFor(selectedDate); },
             (err) => console.error('Day scans listener error:', err));
         return () => unsub();
     }, [dashboardOpened, selectedDate]);
 
-    // Clients — loaded in full because the dashboard aggregates (revenue, route
-    // stats, abuse) need every client. Declared AFTER the day-scans effect on
-    // purpose: effects run in declaration order, so the small chart query goes out
-    // first instead of queueing behind this multi-MB download.
+    // „Сканирани“ брои различните карти с пътуване ДНЕС. Докато графиката гледа
+    // днешния ден, това са същите сканирания. Избран ли е друг ден, днешните се
+    // четат отделно — пак един ден, а не 14-те, от които числото идваше преди.
+    const [todayScans, setTodayScans] = useState<{ day: string; scans: ScanRecord[] } | null>(null);
+    useEffect(() => {
+        if (!dashboardOpened || selectedDate === todayIso) return;
+        const qToday = query(collectionGroup(db, 'scans'), where('at', '>=', todayIso), where('at', '<=', todayIso + '\uf8ff'));
+        const unsub = onSnapshot(qToday, (snap) => setTodayScans({ day: todayIso, scans: toScanRecords(snap) }),
+            (err) => console.error('Today scans listener error:', err));
+        return () => unsub();
+    }, [dashboardOpened, selectedDate, todayIso]);
+
+    // Clients — every one is needed, because the dashboard aggregates (revenue,
+    // route stats, abuse) run over all of them. They come from the light list
+    // `clients_index` (see utils/clientList), not the whole collection: the
+    // dashboard reads none of the photos, action history or scan counters that
+    // made the full documents 16 MB. Declared AFTER the day-scans effect on
+    // purpose: effects run in declaration order, so the small chart query goes
+    // out first.
+    const { clients, loaded: clientsLoaded, error: clientsError, watch: watchClient } = useClientList<Client>(dashboardOpened);
+    const loading = !clientsLoaded && !clientsError;
+    // Never fall through to rendering zeroes, which would read as "no revenue"
+    // rather than "not loaded". The list re-subscribes by itself every 4 s.
+    const loadError = clientsError && !clientsLoaded ? 'Няма връзка с базата — опитвам отново през 4 секунди.' : null;
+
+    // „Най-много сканирания“: броячът scanCount не е в лекия списък (сменя се при
+    // всяко пътуване), затова първите по него се питат направо от базата. Взимат
+    // се повече от петте показвани, за да се подредят равните точно както преди.
+    const [topScanned, setTopScanned] = useState<Client[]>([]);
     useEffect(() => {
         if (!dashboardOpened) return;
-        const unsub = onSnapshot(query(collection(db, 'clients')), (snap) => {
-            const list: Client[] = [];
-            snap.forEach(d => list.push({ id: d.id, ...d.data() } as Client));
-            setClients(list);
-            setLoadError(null);
-            setLoading(false);
-        }, (err) => {
-            // Previously there was no error callback at all, so a rules/offline error
-            // left `loading` true and the tab pulsed a skeleton forever with no hint
-            // why. Surface it instead — never fall through to rendering zeroes, which
-            // would read as "no revenue" rather than "not loaded".
-            console.error('Clients listener error:', err);
-            setLoadError(err instanceof Error ? err.message : 'Неизвестна грешка');
-            setLoading(false);
-        });
+        const qTop = query(collection(db, 'clients'), orderBy('scanCount', 'desc'), limit(25));
+        const unsub = onSnapshot(qTop, (snap) => setTopScanned(snap.docs.map(d => ({ ...d.data(), id: d.id }) as Client)),
+            (err) => console.error('Top scanned listener error:', err));
         return () => unsub();
     }, [dashboardOpened]);
 
-    // The 14-day window behind КОНТРОЛ НА ЗЛОУПОТРЕБИ. It was 60 days, but by
-    // October 2026 that had grown to 46k documents / 20.5 MB on the same connection
-    // as everything else; a card used >3 times a day shows up well within two weeks.
-    // Deliberately started only after the clients snapshot has landed, so the rest of
-    // ТАБЛО (and any small query on another tab) is not stuck behind it.
+    // The 14-day window behind КОНТРОЛ НА ЗЛОУПОТРЕБИ. A card used >3 times a day
+    // shows up well within two weeks.
     const abuseWindowStart = useMemo(
         () => new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0],
         []);
-    // Armed the first time ТАБЛО is on screen AND the clients snapshot has landed —
-    // then left armed. So jumping straight to ОДИТ never starts this 6.8 MB read,
-    // but once it has started, changing tabs does not throw the result away.
+    // Armed the first time ТАБЛО is on screen AND the clients have landed — then
+    // left armed, so changing tabs does not throw the result away.
     const [abuseArmed, setAbuseArmed] = useState(false);
     useEffect(() => {
         if (activeTab === 'dashboard' && !loading) setAbuseArmed(true);
     }, [activeTab, loading]);
 
-    useEffect(() => {
-        if (!abuseArmed) return;
-        const qAbuse = query(collectionGroup(db, 'scans'), where('at', '>=', abuseWindowStart));
-        const unsub = onSnapshot(qAbuse, (snap) => {
-            setAbuseScans(toScanRecords(snap));
-            setAbuseLoading(false);
-        }, (err) => { console.error('Abuse scans listener error:', err); setAbuseLoading(false); });
-        return () => unsub();
-    }, [abuseArmed, abuseWindowStart]);
+    // Only the days over the limit, from the per-day summary `scan_days`, checked
+    // against the real scans before it is shown (see utils/scanSummary). The whole
+    // window used to be read here: 17,000 scan documents, 21 MB.
+    const { scans: abuseScans, loading: abuseLoading } = useAbuseScans(abuseArmed, abuseWindowStart, toScanRecords);
 
     // Fines (Глоби) — standalone charges (e.g. lost-card fee) that count toward
     // revenue but live outside renewalHistory so they don't affect card validity.
@@ -309,12 +314,11 @@ const SystemAdminPanel: React.FC = () => {
     const paymentRate = totalNonCanceled > 0 ? Math.round((activeClientsCount / totalNonCanceled) * 100) : 0;
     const avgProfit = activeClientsCount > 0 ? Math.round(totalRevenue / activeClientsCount) : 0;
 
-    const topScannedClients = [...clients]
+    // При равен брой — по ид, както ги нареждаше подреждането върху цялата колекция.
+    const topScannedClients = [...topScanned]
         .filter(c => (c.scanCount || 0) > 0)
-        .sort((a, b) => (b.scanCount || 0) - (a.scanCount || 0))
+        .sort((a, b) => (b.scanCount || 0) - (a.scanCount || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
         .slice(0, 5);
-
-    const todayIso = new Date().toISOString().split('T')[0];
 
     // Revenue for selected day (subscription renewals + fines booked that day)
     const revenueSelectedDay = clients.reduce((acc, c) => {
@@ -339,10 +343,13 @@ const SystemAdminPanel: React.FC = () => {
     const peakHour = hourlyDistribution.indexOf(Math.max(...hourlyDistribution));
 
     // Различни карти с пътуване днес. `lastScanAt` не става — пише се и при прочитане
-    // в офиса. Докато 14-дневният прозорец се зарежда, показваме старата сметка.
-    const scannedToday = abuseLoading
-        ? clients.filter(c => c.lastScanAt?.startsWith(todayIso)).length
-        : new Set(abuseScans.filter(s => s.at.startsWith(todayIso)).map(s => s.clientId)).size;
+    // в офиса. Докато днешните сканирания не са дошли, числото не се показва.
+    const todayTrips = selectedDate === todayIso
+        ? (dayScansFor === todayIso ? dayScans : null)
+        : (todayScans?.day === todayIso ? todayScans.scans : null);
+    const scannedToday = todayTrips
+        ? new Set(todayTrips.filter(s => s.at.startsWith(todayIso)).map(s => s.clientId)).size
+        : '…';
 
     // Renewals & Pending
     const renewedCount = clients.filter(c => (c.renewalHistory || []).some(r => r.month === statsMonth)).length;
@@ -410,6 +417,8 @@ const SystemAdminPanel: React.FC = () => {
 
     const handleClearAbuse = async (clientId: string) => {
         try {
+            // Пълният документ показва прегледа веднага (виж utils/clientList).
+            watchClient(clientId);
             await updateDoc(doc(db, 'clients', clientId), {
                 abuseReviewedAt: new Date().toISOString()
             });
@@ -426,16 +435,13 @@ const SystemAdminPanel: React.FC = () => {
         setCleanupRunning(true);
         setCleanupMsg(null);
         try {
-            // This button lives in the ПОТРЕБИТЕЛИ tab, which deliberately does not
-            // subscribe to clients, so read them once here instead of running against
-            // an empty in-memory list and reporting "0 cleaned".
-            let targets = clients.filter(c => Array.isArray((c as { scanHistory?: unknown }).scanHistory));
-            if (!clients.length) {
-                const snap = await getDocs(collection(db, 'clients'));
-                targets = snap.docs
-                    .filter(d => Array.isArray((d.data() as { scanHistory?: unknown }).scanHistory))
-                    .map(d => ({ id: d.id }) as Client);
-            }
+            // Четат се направо от базата: списъкът в паметта е лекият
+            // (clients_index) и в него scanHistory изобщо го няма — върху него
+            // бутонът би отчел „0 изчистени“.
+            const snap = await getDocs(collection(db, 'clients'));
+            const targets = snap.docs
+                .filter(d => Array.isArray((d.data() as { scanHistory?: unknown }).scanHistory))
+                .map(d => ({ id: d.id }) as Client);
             for (let i = 0; i < targets.length; i += 400) {
                 const batch = writeBatch(db);
                 targets.slice(i, i + 400).forEach(c => {

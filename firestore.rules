@@ -67,6 +67,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- Дневно обобщение на сканиранията ----
+    // По един документ на карта на ден със сканиранията ѝ и дневен сбор — оттам
+    // ТАБЛО чете КОНТРОЛ НА ЗЛОУПОТРЕБИ, вместо да тегли всички сканирания за
+    // 14 дни. Пише ги единствено функцията summarizeScanDay (Admin SDK).
+    match /scan_days/{docId} {
+      allow read: if isStaff();
+      allow write: if false;
+    }
+    match /scan_day_totals/{day} {
+      allow read: if isStaff();
+      allow write: if false;
+    }
+
     // ---- Scans Collection Group ----
     // Per-scan records created on every scan — public, because drivers are not
     // logged in. Read by staff only (analytics/abuse).

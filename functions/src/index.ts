@@ -7,6 +7,8 @@ import { locateStops } from "./stopLocator";
 import { buildCardList, cardPhotos, trustedDevice } from "./cardList";
 import { findDevice, pickOrigin, placeOf } from "./scanOrigin";
 import { indexChanged, mirrorClient, rebuildClientIndex } from "./clientIndex";
+import { dayOf, entryOf, syncScan } from "./scanDays";
+import { isDeepStrictEqual } from "util";
 
 admin.initializeApp();
 
@@ -995,4 +997,23 @@ export const rebuildClientIndexNow = functions
             throw new functions.https.HttpsError("permission-denied", "Само администратор.");
         }
         return await rebuildClientIndex(admin.firestore());
+    });
+
+/**
+ * Поддържа дневното обобщение на сканиранията (`scan_days`), от което ТАБЛО
+ * чете КОНТРОЛ НА ЗЛОУПОТРЕБИ вместо да тегли всички сканирания за 14 дни.
+ * Виж scanDays.ts.
+ *
+ * onWrite, а не onCreate: името на терминала идва с отделна промяна малко след
+ * създаването (attributeScanToDevice) и трябва да стигне до обобщението.
+ * Промяна, която не засяга нищо от записа в обобщението, излиза без четене.
+ */
+export const summarizeScanDay = functions.firestore
+    .document("clients/{clientId}/scans/{scanId}")
+    .onWrite(async (change, context) => {
+        const before = change.before.exists ? entryOf(change.before.data() || {}) : null;
+        const after = change.after.exists ? entryOf(change.after.data() || {}) : null;
+        if (change.before.exists && change.after.exists && isDeepStrictEqual(before, after)) return;
+        await syncScan(admin.firestore(), context.params.clientId, context.params.scanId,
+            [before ? dayOf(before.at) : null, after ? dayOf(after.at) : null]);
     });

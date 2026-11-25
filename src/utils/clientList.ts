@@ -58,7 +58,8 @@ const matchesSource = async (list: () => Listed[]): Promise<boolean> => {
         && (!Number.isFinite(serverPaid) || Math.abs(serverPaid - paid) < 0.5);
 };
 
-export function useClientList<T extends Listed>() {
+/** `enabled`: докато е false, нищо не се чете (ТАБЛО го пуска чак като се отвори). */
+export function useClientList<T extends Listed>(enabled = true) {
     const [source, setSource] = useState<Source>('index');
     const [base, setBase] = useState<T[]>([]);
     const [loaded, setLoaded] = useState(false);
@@ -71,6 +72,7 @@ export function useClientList<T extends Listed>() {
     useEffect(() => { baseRef.current = base; }, [base]);
 
     useEffect(() => {
+        if (!enabled) return;
         let retryTimer: ReturnType<typeof setTimeout> | null = null;
         const unsubscribe = onSnapshot(
             collection(db, source === 'index' ? CLIENT_INDEX : 'clients'),
@@ -105,10 +107,10 @@ export function useClientList<T extends Listed>() {
             unsubscribe();
             if (retryTimer) clearTimeout(retryTimer);
         };
-    }, [source, retryKey]);
+    }, [enabled, source, retryKey]);
 
     useEffect(() => {
-        if (source !== 'index' || !serverSeen) return;
+        if (!enabled || source !== 'index' || !serverSeen) return;
         let stopped = false;
         let strikes = 0;
         let timer: ReturnType<typeof setTimeout>;
@@ -133,7 +135,7 @@ export function useClientList<T extends Listed>() {
         };
         timer = setTimeout(run, FIRST_CHECK_MS);
         return () => { stopped = true; clearTimeout(timer); };
-    }, [source, serverSeen]);
+    }, [enabled, source, serverSeen]);
 
     // ── „Горещи“ клиенти ────────────────────────────────────────────────────
     // `null` значи потвърдено изтрит; липсващ ключ — още няма отговор.
