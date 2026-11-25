@@ -58,6 +58,15 @@ service cloud.firestore {
       // looser match would win (rules OR together) and defeat its field check.
     }
 
+    // ---- Лек списък на клиентите ----
+    // Копие на `clients` без снимките, историята и броячите на сканиранията —
+    // това слуша `/admin`, за да не тегли цялата колекция. Пише го единствено
+    // функцията mirrorClientIndex (Admin SDK); от приложението само се чете.
+    match /clients_index/{clientId} {
+      allow read: if isStaff();
+      allow write: if false;
+    }
+
     // ---- Scans Collection Group ----
     // Per-scan records created on every scan — public, because drivers are not
     // logged in. Read by staff only (analytics/abuse).

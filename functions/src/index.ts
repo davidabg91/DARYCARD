@@ -6,6 +6,7 @@ import { handleDisruption, type DisruptionRequest } from "./disruptions";
 import { locateStops } from "./stopLocator";
 import { buildCardList, cardPhotos, trustedDevice } from "./cardList";
 import { findDevice, pickOrigin, placeOf } from "./scanOrigin";
+import { indexChanged, mirrorClient, rebuildClientIndex } from "./clientIndex";
 
 admin.initializeApp();
 
@@ -961,4 +962,37 @@ export const cardList = functions
             console.error("cardList failed", e);
             res.status(500).send("Error");
         }
+    });
+
+/**
+ * Поддържа лекия списък на клиентите (`clients_index`), който `/admin` слуша
+ * вместо цялата колекция. Виж clientIndex.ts.
+ *
+ * Пише само когато се е променило нещо, което списъкът показва. Сканиране пипа
+ * единствено броячите, а те не са в списъка — тогава функцията излиза, без да
+ * прочете или запише каквото и да е. Това са около 1 500 събития на ден.
+ */
+export const mirrorClientIndex = functions.firestore
+    .document("clients/{clientId}")
+    .onWrite(async (change, context) => {
+        const before = change.before.exists ? change.before.data() : undefined;
+        const after = change.after.exists ? change.after.data() : undefined;
+        if (!indexChanged(before, after)) return;
+        await mirrorClient(admin.firestore(), context.params.clientId);
+    });
+
+/**
+ * Прави лекия списък наново от `clients`. Само за администратор — за първото
+ * попълване и ако списъкът изостане (например след спрени функции).
+ */
+export const rebuildClientIndexNow = functions
+    .runWith({ timeoutSeconds: 300, memory: "512MB" })
+    .https.onCall(async (_data, context) => {
+        const uid = context.auth?.uid;
+        if (!uid) throw new functions.https.HttpsError("unauthenticated", "Трябва да сте влезли в системата.");
+        const caller = await admin.firestore().doc(`users/${uid}`).get();
+        if (caller.data()?.role !== "admin") {
+            throw new functions.https.HttpsError("permission-denied", "Само администратор.");
+        }
+        return await rebuildClientIndex(admin.firestore());
     });

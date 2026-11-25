@@ -55,6 +55,7 @@ import {
 } from '../utils/cardRegistry';
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
 import { useSchools, rememberSchool } from '../utils/customSchools';
+import { useClientList } from '../utils/clientList';
 import { SERVICE_ROSTERS } from '../data/serviceRosters';
 import type { ServiceRoster, ServiceRosterEntry } from '../data/serviceRosters';
 
@@ -95,6 +96,9 @@ interface Client {
     serviceApprovedYear?: number;
     serviceApprovedBy?: string;
     serviceApprovedAt?: string;
+    // Само в лекия списък (clients_index): кой и кога е издал служебната карта.
+    issuedBy?: string;
+    issuedAt?: string;
 }
 
 interface Signal {
@@ -453,13 +457,15 @@ const AdminPanel: React.FC = () => {
     const [activeTab, setActiveTab] = useState<AdminTabId>(
         'clients'
     );
-    const [clients, setClients] = useState<Client[]>([]);
-    // Дошъл ли е списъкът с клиенти (от паметта или от сървъра). Докато не е,
-    // табът КЛИЕНТИ показва „Зареждане…“ вместо „Няма намерени клиенти“.
-    const [clientsLoaded, setClientsLoaded] = useState(false);
-    const [clientsError, setClientsError] = useState(false);
-    // Смяната му абонира слушателя наново (повторен опит след грешка).
-    const [clientsRetryKey, setClientsRetryKey] = useState(0);
+    // Списъкът идва от лекото копие `clients_index`, а не от цялата колекция —
+    // виж utils/clientList. `clientsLoaded`: дошъл ли е (от паметта или от
+    // сървъра); докато не е, табът КЛИЕНТИ показва „Зареждане…“ вместо „Няма
+    // намерени клиенти“. `watchClient` закача пълния документ на клиент, който
+    // панелът отваря или променя, за да се вижда промяната веднага.
+    const {
+        clients, loaded: clientsLoaded, error: clientsError, retry: retryClients,
+        watch: watchClient, hot: hotClients,
+    } = useClientList<Client>();
     const [fines, setFines] = useState<{ amount: number; date: string }[]>([]);
     const [signals, setSignals] = useState<Signal[]>([]);
     const [rentals, setRentals] = useState<Rental[]>([]);
@@ -520,7 +526,13 @@ const AdminPanel: React.FC = () => {
     const [isWaitingForScan, setIsWaitingForScan] = useState(false);
 
     // Modal/Action State
-    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+    // Редът от списъка е лек — без история, сканирания и снимка в документа.
+    // Щом профилът се отвори, се закача пълният документ и той замества реда,
+    // затова всичко надолу чете `selectedClient` и получава най-пресните данни.
+    const [selectedClientRow, setSelectedClient] = useState<Client | null>(null);
+    const selectedClientId = selectedClientRow?.id;
+    useEffect(() => { watchClient(selectedClientId); }, [selectedClientId, watchClient]);
+    const selectedClient = (selectedClientId && hotClients[selectedClientId]) || selectedClientRow;
     const [showActionModal, setShowActionModal] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
     const [newMonth, setNewMonth] = useState('');
@@ -946,13 +958,17 @@ const AdminPanel: React.FC = () => {
     }, [selectedRoute, cardType]);
 
     // Auto-price logic for renewal modal
+    const selectedCardType = selectedClient?.cardType;
     useEffect(() => {
-        if (selectedClient?.cardType === 'Служебна карта') { setNewAmount('0'); return; }
-        if (newRoute && ROUTE_METADATA[newRoute] && selectedClient) {
-            const price = cardPrice(newRoute, selectedClient.cardType);
+        if (selectedCardType === 'Служебна карта') { setNewAmount('0'); return; }
+        if (newRoute && ROUTE_METADATA[newRoute] && selectedClientId) {
+            const price = cardPrice(newRoute, selectedCardType);
             if (price !== null) setNewAmount(price.toFixed(2));
         }
-    }, [newRoute, selectedClient]);
+        // Зависи от вида на картата, а не от целия клиент: обектът се сменя при
+        // всяка промяна в документа му (и при сканиране на картата), а това не
+        // бива да връща вече въведена на ръка сума към цената по подразбиране.
+    }, [newRoute, selectedClientId, selectedCardType]);
 
 
 
@@ -1099,52 +1115,29 @@ const AdminPanel: React.FC = () => {
 
 
 
+    // `?edit=<ид>` в адреса отваря профила на този клиент, щом списъкът дойде.
+    // Веднъж за дадено ид: преди това стоеше в слушателя на клиентите и
+    // отваряше прозореца наново при всяка промяна в колекцията (всяко
+    // сканиране), а самият слушател се презакачаше при смяна на адреса.
+    const openedEditId = useRef<string | null>(null);
     useEffect(() => {
-        // 1. Listen for Clients in Real-time.
-        // Отделен от другите слушатели: при грешка само той се абонира наново —
-        // преди грешката оставаше в конзолата, а списъкът празен до презареждане.
-        let retryTimer: ReturnType<typeof setTimeout> | null = null;
-        const q = query(collection(db, 'clients'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const clientList: Client[] = [];
-            snapshot.forEach((doc) => {
-                clientList.push({ id: doc.id, ...doc.data() } as Client);
-            });
-            setClients(clientList);
-            // Празна снимка от студения кеш не значи „няма клиенти“ — чакаме сървъра.
-            if (clientList.length > 0 || !snapshot.metadata.fromCache) setClientsLoaded(true);
-            setClientsError(false);
-
-            // Check for edit param in URL after clients are loaded
-            const params = new URLSearchParams(location.search);
-            const editId = params.get('edit');
-            if (editId) {
-                const clientToEdit = clientList.find((c: Client) => c.id === editId);
-                if (clientToEdit) {
-                    setSelectedClient(clientToEdit as Client);
-                    setNewRoute(clientToEdit.route);
-                    setShowActionModal(true);
-                    setActiveTab('clients');
-                }
-            }
-        }, (err) => {
-            console.error("Firestore error:", err);
-            setClientsError(true);
-            // Слушател с грешка е мъртъв — абонираме наново след малко.
-            retryTimer = setTimeout(() => setClientsRetryKey(k => k + 1), 4000);
-        });
-
-        return () => {
-            unsubscribe();
-            if (retryTimer) clearTimeout(retryTimer);
-        };
-    }, [location.search, clientsRetryKey]);
+        const editId = new URLSearchParams(location.search).get('edit');
+        if (!editId) { openedEditId.current = null; return; }
+        if (openedEditId.current === editId) return;
+        const clientToEdit = clients.find(c => c.id === editId);
+        if (!clientToEdit) return;
+        openedEditId.current = editId;
+        setSelectedClient(clientToEdit);
+        setNewRoute(clientToEdit.route);
+        setShowActionModal(true);
+        setActiveTab('clients');
+    }, [location.search, clients]);
 
     const clientsLoadingNote = clientsError ? (
         <span>
             Няма връзка с базата — опитваме отново…{' '}
             <button
-                onClick={() => setClientsRetryKey(k => k + 1)}
+                onClick={retryClients}
                 style={{ marginLeft: '0.5rem', padding: '0.35rem 0.9rem', borderRadius: '50px', border: '1px solid var(--primary-color)', background: 'transparent', color: 'var(--primary-color)', fontWeight: 700, cursor: 'pointer' }}
             >
                 Опитай пак
@@ -1223,7 +1216,7 @@ const AdminPanel: React.FC = () => {
             actionUnsubscribe();
             unsubscribeFines();
         };
-    }, [location.search]);
+    }, []);
 
     const handleSendNotification = async () => {
         if (!notifTitle || !notifBody || selectedNotifRoutes.length === 0) return;
@@ -1451,6 +1444,9 @@ const AdminPanel: React.FC = () => {
 
     const saveClient = async (client: Client, isNew: boolean = true) => {
         try {
+            // Нов клиент го няма в лекия списък, докато функцията не го пренесе —
+            // пълният му документ го показва веднага.
+            watchClient(client.id);
             await setDoc(doc(db, 'clients', client.id), client);
             
             if (isNew) {
@@ -1603,6 +1599,8 @@ const AdminPanel: React.FC = () => {
         setBulkResult(null);
         let ok = 0, fail = 0, skipped = 0;
         for (const c of targets) {
+            // Пълният документ показва подновяването веднага (виж utils/clientList).
+            watchClient(c.id);
             const isoNow = new Date().toISOString();
             const cardNum = getClientCardNumber(c);
             const nameWithCard = cardNum ? `${c.name} (Карта № ${cardNum})` : c.name;
@@ -1659,6 +1657,7 @@ const AdminPanel: React.FC = () => {
         // the live data (not the stale in-memory copy) avoids resurrecting a payment
         // that another moderator added or deleted in the meantime.
         try {
+            watchClient(client.id);
             await runTransaction(db, async (tx) => {
                 const ref = doc(db, 'clients', client.id);
                 const snap = await tx.get(ref);
@@ -1745,6 +1744,7 @@ const AdminPanel: React.FC = () => {
         }
 
         try {
+            watchClient(client.id);
             await runTransaction(db, async (tx) => {
                 const ref = doc(db, 'clients', client.id);
                 const snap = await tx.get(ref);
@@ -2115,6 +2115,7 @@ const AdminPanel: React.FC = () => {
         )) return;
 
         setServiceApprovalBusy(client.id);
+        watchClient(client.id);
         try {
             await updateDoc(doc(db, 'clients', client.id), {
                 serviceApprovedYear: approve ? year : deleteField(),
@@ -2220,6 +2221,7 @@ const AdminPanel: React.FC = () => {
         if (currentUser?.role !== 'admin') return;
         if (window.confirm(`Сигурни ли сте, че искате да ИЗТРИЕТЕ ПОСТОЯННО клиента "${name}"? Това ще премахне цялата история и плащания!`)) {
             try {
+                watchClient(id);
                 await deleteDoc(doc(db, 'clients', id));
                 setMessage({ text: `Клиентът "${name}" бе изтрит постоянно.`, type: 'success' });
                 const cardNum = CARDS_MAPPING[id] || '';
@@ -2437,7 +2439,8 @@ const AdminPanel: React.FC = () => {
                 cardMatch.set(c.id, m);
             } else {
                 const creation = (c.history || []).find(h => /Активиране|Създаване/i.test(h.action)) || (c.history || [])[0];
-                outside.push({ client: c, issuedBy: creation?.performedBy, issuedAt: creation?.date || c.createdAt, relative });
+                // В лекия списък историята я няма — оттам идват issuedBy/issuedAt.
+                outside.push({ client: c, issuedBy: creation?.performedBy || c.issuedBy, issuedAt: creation?.date || c.issuedAt || c.createdAt, relative });
             }
         }
 
