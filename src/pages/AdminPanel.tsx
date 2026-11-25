@@ -840,6 +840,13 @@ const AdminPanel: React.FC = () => {
     const [filterCardType, setFilterCardType] = useState<string>('all');
     // Payment-method filter (matches a payment for the selected month via that method).
     const [filterPayment, setFilterPayment] = useState<string>('all');
+    // Бърз филтър от числата под филтрите в КЛИЕНТИ: натискаш „Анулирани: 15“ и
+    // списъкът показва тези 15. Самите числа не се променят от него — смятат се
+    // преди него, за да остават видими и да може да се мине на друго.
+    //   paid / unpaid / canceled — по статуса за избрания месец;
+    //   payers — всички с плащане за месеца (стоят зад „Сума за…“);
+    //   method:<начин> — платили за месеца по този начин.
+    const [statFilter, setStatFilter] = useState<string>('all');
     // School filter, only used when the card-type filter is "Ученическа карта".
     const [filterSchool, setFilterSchool] = useState<string>('all');
     // How the clients list is ordered. Defaults to the most recently added.
@@ -849,7 +856,7 @@ const AdminPanel: React.FC = () => {
     // search always starts from the first 20 matches.
     useEffect(() => {
         setVisibleClients(20);
-    }, [searchTerm, filterRoute, filterMonth, filterCardType, filterSchool, filterPayment, sortBy]);
+    }, [searchTerm, filterRoute, filterMonth, filterCardType, filterSchool, filterPayment, sortBy, statFilter]);
 
     const [reportPeriodType, setReportPeriodType] = useState<'month' | 'day' | 'range'>('day');
     const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -2328,6 +2335,40 @@ const AdminPanel: React.FC = () => {
         }
         return { total: filteredClientsByFilters.length, paid, unpaid, canceled, totalAmount, byMethod };
     })();
+
+    // Списъкът на екрана: филтрираните клиенти, стеснени до натиснатото число.
+    // Условията са същите, по които clientsTabStats брои — затова „В брой: 650“
+    // показва точно 650 профила.
+    const matchesStatFilter = (c: Client): boolean => {
+        if (statFilter.startsWith('method:')) {
+            const method = statFilter.slice('method:'.length);
+            return (c.renewalHistory || []).some(rh => rh.month === filterMonth && (rh.paymentMethod || 'В брой') === method);
+        }
+        if (statFilter === 'payers') return (c.renewalHistory || []).some(rh => rh.month === filterMonth);
+        const status = getClientStatusForMonth(c, filterMonth);
+        if (statFilter === 'paid') return status === 'Платен';
+        if (statFilter === 'unpaid') return status === 'Неплатен';
+        return status !== 'Платен' && status !== 'Неплатен';
+    };
+    const shownClients = statFilter === 'all' ? filteredClientsByFilters : filteredClientsByFilters.filter(matchesStatFilter);
+
+    // Едно число от обобщението като бутон: натиснато филтрира, второ натискане връща всички.
+    const statChip = (key: string, label: React.ReactNode, title: string) => {
+        const active = statFilter === key && key !== 'all';
+        return (
+            <button
+                key={key} type="button" title={title} aria-pressed={active}
+                onClick={() => setStatFilter(active ? 'all' : key)}
+                style={{
+                    font: 'inherit', color: 'inherit', cursor: 'pointer', padding: '0.3rem 0.65rem', borderRadius: '50px',
+                    border: `1px solid ${active ? 'var(--primary-color)' : 'rgba(255,255,255,0.12)'}`,
+                    background: active ? 'rgba(0,173,181,0.22)' : 'rgba(255,255,255,0.03)',
+                }}
+            >
+                {label}
+            </button>
+        );
+    };
 
     // Financial Calculations for Accountant
     const todayIso = new Date().toISOString().split('T')[0];
@@ -4526,17 +4567,25 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
 
                     {/* Small stats reflecting the current filters (payment for {filterMonth}) */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.9rem', alignItems: 'center', marginBottom: '1.25rem', padding: '0.6rem 1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--surface-border)', borderRadius: '12px', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                        <span>Клиенти: <b style={{ color: '#fff' }}>{clientsTabStats.total}</b></span>
+                        {statChip('all', <>Клиенти: <b style={{ color: '#fff' }}>{clientsTabStats.total}</b></>, 'Покажи всички')}
                         <span style={{ opacity: 0.35 }}>•</span>
-                        <span>Платени за {filterMonth}: <b style={{ color: 'var(--success-color)' }}>{clientsTabStats.paid}</b></span>
-                        <span>Неплатени: <b style={{ color: '#ff5252' }}>{clientsTabStats.unpaid}</b></span>
-                        {clientsTabStats.canceled > 0 && <span>Анулирани: <b style={{ color: '#ff8a80' }}>{clientsTabStats.canceled}</b></span>}
+                        {statChip('paid', <>Платени за {filterMonth}: <b style={{ color: 'var(--success-color)' }}>{clientsTabStats.paid}</b></>, 'Покажи само платилите за този месец')}
+                        {statChip('unpaid', <>Неплатени: <b style={{ color: '#ff5252' }}>{clientsTabStats.unpaid}</b></>, 'Покажи само неплатилите за този месец')}
+                        {(clientsTabStats.canceled > 0 || statFilter === 'canceled') && statChip('canceled', <>Анулирани: <b style={{ color: '#ff8a80' }}>{clientsTabStats.canceled}</b></>, 'Покажи само анулираните')}
                         <span style={{ opacity: 0.35 }}>•</span>
-                        <span>Сума за {filterMonth}: <b style={{ color: 'var(--success-color)' }}>{clientsTabStats.totalAmount.toFixed(2)} €</b></span>
+                        {statChip('payers', <>Сума за {filterMonth}: <b style={{ color: 'var(--success-color)' }}>{clientsTabStats.totalAmount.toFixed(2)} €</b></>, 'Покажи всички с плащане за този месец')}
                         {[...PAYMENT_METHODS, 'Служебна'].filter(m => clientsTabStats.byMethod[m]).length > 0 && <span style={{ opacity: 0.35 }}>•</span>}
                         {[...PAYMENT_METHODS, 'Служебна'].filter(m => clientsTabStats.byMethod[m]).map(m => (
-                            <span key={m}>{m}: <b style={{ color: paymentMethodColor(m) }}>{clientsTabStats.byMethod[m].count}</b> <span style={{ opacity: 0.6 }}>({clientsTabStats.byMethod[m].sum.toFixed(2)} €)</span></span>
+                            statChip(`method:${m}`, <>{m}: <b style={{ color: paymentMethodColor(m) }}>{clientsTabStats.byMethod[m].count}</b> <span style={{ opacity: 0.6 }}>({clientsTabStats.byMethod[m].sum.toFixed(2)} €)</span></>, `Покажи платилите за този месец — ${m}`)
                         ))}
+                        {statFilter !== 'all' && (
+                            <button
+                                type="button" onClick={() => setStatFilter('all')}
+                                style={{ font: 'inherit', cursor: 'pointer', marginLeft: 'auto', padding: '0.3rem 0.75rem', borderRadius: '50px', border: '1px solid var(--primary-color)', background: 'transparent', color: 'var(--primary-color)', fontWeight: 700 }}
+                            >
+                                Показани: {shownClients.length} · ✕ Покажи всички
+                            </button>
+                        )}
                     </div>
 
                     <div className="desktop-table">
@@ -4548,11 +4597,11 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             <input
                                                 type="checkbox"
                                                 title="Избери всички (по текущия филтър)"
-                                                checked={filteredClientsByFilters.length > 0 && filteredClientsByFilters.every(c => selectedClientIds.has(c.id))}
+                                                checked={shownClients.length > 0 && shownClients.every(c => selectedClientIds.has(c.id))}
                                                 onChange={(e) => setSelectedClientIds(prev => {
                                                     const next = new Set(prev);
-                                                    if (e.target.checked) filteredClientsByFilters.forEach(c => next.add(c.id));
-                                                    else filteredClientsByFilters.forEach(c => next.delete(c.id));
+                                                    if (e.target.checked) shownClients.forEach(c => next.add(c.id));
+                                                    else shownClients.forEach(c => next.delete(c.id));
                                                     return next;
                                                 })}
                                                 style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary-color)' }}
@@ -4568,8 +4617,8 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredClientsByFilters.length > 0 ? (
-                                        filteredClientsByFilters.slice(0, visibleClients).map(client => {
+                                    {shownClients.length > 0 ? (
+                                        shownClients.slice(0, visibleClients).map(client => {
                                             const status = getClientStatusForMonth(client, filterMonth);
                                             return (
                                                 <tr key={client.id} style={{ background: selectedClientIds.has(client.id) ? 'rgba(0,173,181,0.06)' : undefined }}>
@@ -4693,8 +4742,8 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                     </div>
 
                     <div className="mobile-cards">
-                        {filteredClientsByFilters.length > 0 ? (
-                            filteredClientsByFilters.slice(0, visibleClients).map(client => {
+                        {shownClients.length > 0 ? (
+                            shownClients.slice(0, visibleClients).map(client => {
                                 const status = getClientStatusForMonth(client, filterMonth);
                                 const isMonthPaid = getMonthPayment(client, filterMonth) > 0;
                                 return (
@@ -4797,13 +4846,13 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                         )}
                     </div>
 
-                    {filteredClientsByFilters.length > visibleClients && (
+                    {shownClients.length > visibleClients && (
                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
                             <button
                                 onClick={() => setVisibleClients(n => n + 20)}
                                 style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid var(--surface-border)', borderRadius: '50px', padding: '0.8rem 2rem', fontWeight: 800, cursor: 'pointer' }}
                             >
-                                Зареди още ({filteredClientsByFilters.length - visibleClients})
+                                Зареди още ({shownClients.length - visibleClients})
                             </button>
                         </div>
                     )}
