@@ -56,6 +56,7 @@ import {
 import { MUNICIPALITIES, MUNICIPALITY_CUSTOM, DEFAULT_MUNICIPALITY, needsMunicipality } from '../data/municipalities';
 import { useSchools, rememberSchool } from '../utils/customSchools';
 import { useClientList } from '../utils/clientList';
+import { nameMatches, searchText } from '../utils/nameSearch';
 import { SERVICE_ROSTERS } from '../data/serviceRosters';
 import type { ServiceRoster, ServiceRosterEntry } from '../data/serviceRosters';
 
@@ -2256,12 +2257,14 @@ const AdminPanel: React.FC = () => {
 
 
 
+    // Търсеното се подготвя веднъж, а не за всеки клиент. Името се търси по
+    // думи и без оглед на интервалите — виж utils/nameSearch.
+    const sTerm = searchText(searchTerm);
+    const sSanitized = sanitizeId(searchTerm).toLowerCase();
     const filteredClientsByFilters = clients.filter(c => {
-        const sTerm = searchTerm.toLowerCase();
-        const sSanitized = sanitizeId(searchTerm).toLowerCase();
         const cCardNum = getClientCardNumber(c).toLowerCase();
-        const matchesSearch = !searchTerm || 
-            c.name.toLowerCase().includes(sTerm) ||
+        const matchesSearch = !sTerm ||
+            nameMatches(c.name, sTerm) ||
             c.id.toLowerCase().includes(sTerm) ||
             c.id.toLowerCase().includes(sSanitized) ||
             (c.nfcUid && c.nfcUid.toLowerCase().includes(sTerm)) ||

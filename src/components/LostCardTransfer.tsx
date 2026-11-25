@@ -6,6 +6,7 @@ import { uploadClientPhoto } from '../utils/photoStorage';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { lookupCardNumber, markCardAssigned } from '../utils/cardRegistry';
 import { LOST_CARD_FINE } from '../data/lostCard';
+import { nameMatches, searchText } from '../utils/nameSearch';
 import { Search, X, AlertTriangle, CreditCard, CheckCircle, Loader2, ArrowRight } from 'lucide-react';
 
 /** Minimal client shape needed for the transfer (mirrors the clients collection). */
@@ -89,12 +90,13 @@ const LostCardTransfer: React.FC<Props> = ({ newCardId, newCardUid = '', onClose
     }, []);
 
     const results = useMemo(() => {
-        const q = queryText.trim().toLowerCase();
+        // Името се търси по думи и без оглед на интервалите — виж utils/nameSearch.
+        const q = searchText(queryText);
         if (!q) return [];
         return clients
             .filter(c => c.id !== newCardId)
             .filter(c =>
-                (c.name || '').toLowerCase().includes(q) ||
+                nameMatches(c.name, q) ||
                 (c.id || '').toLowerCase().includes(q) ||
                 (c.cardNumber || CARDS_MAPPING[c.id] || '').toLowerCase().includes(q) ||
                 (c.route || '').toLowerCase().includes(q)
