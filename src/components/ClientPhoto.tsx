@@ -44,6 +44,9 @@ const ClientPhoto: React.FC<ClientPhotoProps> = ({ src, thumb, alt, style, class
                 <img
                     src={src}
                     alt={alt}
+                    // Списъкът с клиенти идва без малките снимки и всеки ред
+                    // тегли пълната — нека са само тези, които се виждат.
+                    loading="lazy"
                     onError={() => setFailed(true)}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />

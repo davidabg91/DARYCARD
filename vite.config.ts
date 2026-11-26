@@ -37,6 +37,9 @@ export default defineConfig({
         // visitor for pages most of them never open.
         globIgnores: ['**/version.json', '**/bus_rental_hero*.png', '**/favicon.ico', 'linia/**'],
         cleanupOutdatedCaches: true,
+        // Трие стария кеш със снимки, щом новият worker поеме — виж правилото
+        // за firebasestorage по-долу.
+        importScripts: ['sw-cleanup.js'],
         // Those pages are real files, so the SW must not answer a /linia/...
         // navigation with index.html — a returning visitor (and Googlebot on a
         // repeat crawl) would get the app shell instead of the page.
@@ -68,17 +71,46 @@ export default defineConfig({
           {
             // Cache client photos from Firebase Storage so each photo, once viewed
             // online, is available instantly and offline on later scans.
+            //
+            // Снимката се иска от worker-а с CORS, каквото и да е поискал <img>.
+            // Обикновен <img> я иска без CORS и получава „непрозрачен“ отговор, а
+            // Chromium брои всеки такъв в кеша с пълнеж от няколко мегабайта —
+            // измерено 7–9 MB в квотата за снимка от 26 KB. В офисната програма
+            // (вграден браузър с малка квота) стотина снимки я изчерпваха и
+            // Firestore спираше да записва: „Картата не е намерена …
+            // QuotaExceededError“. С CORS снимката се пази с истинския си размер.
+            //
+            // Затова в кеша влиза само отговор 200. Непрозрачният е със статус 0
+            // и през него се кешираше за 90 дни и отказ (403/404).
+            //
+            // Името на кеша е сменено, за да не се сервират старите непрозрачни
+            // записи; стария кеш го трие public/sw-cleanup.js.
             urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'client-photos',
+              cacheName: 'client-photos-v2',
               expiration: {
                 maxEntries: 2000,
                 maxAgeSeconds: 60 * 60 * 24 * 90, // 90 days
+                purgeOnQuotaError: true,
               },
               cacheableResponse: {
-                statuses: [0, 200],
+                statuses: [200],
               },
+              // Двете функции се преписват като текст в sw.js — не бива да
+              // ползват нищо извън себе си.
+              plugins: [{
+                // Заявките на Firebase SDK (качване, getDownloadURL) вече са с
+                // CORS и носят Authorization — тях не ги пипаме.
+                requestWillFetch: async ({ request }) =>
+                  request.mode === 'no-cors'
+                    ? new Request(request.url, { mode: 'cors', credentials: 'omit' })
+                    : request,
+                // Произход, който кофата не допуска (на терминала приложението
+                // е на https://localhost), или няма връзка: показваме снимката
+                // както преди, без да я пазим.
+                handlerDidError: async ({ request }) => fetch(request),
+              }],
             },
           }
         ]

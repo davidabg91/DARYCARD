@@ -12,6 +12,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "preview", "--port", "4173"],
       "port": 4173
+    },
+    {
+      "name": "dary-preview-5173",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "preview", "--port", "5173", "--strictPort"],
+      "port": 5173
     }
   ]
 }
