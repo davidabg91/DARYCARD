@@ -1,11 +1,20 @@
 # -*- mode: python ; coding: utf-8 -*-
+# Билд:  pyinstaller --noconfirm nfc-bridge/DARY-NFC-Chetec.spec
+# Пътищата са спрямо папката на този файл (SPECPATH), не към D:\.
+import os
 
+HERE = SPECPATH
 
 a = Analysis(
-    ['bridge.py'],
+    [os.path.join(HERE, 'bridge.py')],
     pathex=[],
     binaries=[],
-    datas=[('d:\\DARY\\nfc-bridge\\true_icon.ico', '.')],
+    # cards.txt — отпечатаните номера на първите 1000 карти. Преди не влизаше
+    # в инсталатора и програмата показваше „Заредени: 0 бр.“.
+    datas=[
+        (os.path.join(HERE, 'true_icon.ico'), '.'),
+        (os.path.join(HERE, 'cards.txt'), '.'),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -34,7 +43,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['d:\\DARY\\nfc-bridge\\true_icon.ico'],
+    icon=[os.path.join(HERE, 'true_icon.ico')],
 )
 
 coll = COLLECT(
