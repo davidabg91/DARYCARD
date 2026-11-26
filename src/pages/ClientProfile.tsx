@@ -441,6 +441,12 @@ const ClientProfile: React.FC = () => {
     const [isWarningDismissed, setIsWarningDismissed] = useState(false);
     const quickRenewRef = useRef<HTMLDivElement>(null);
 
+    // Картата е отворена през линка на клиента, но чипът ѝ не е този, който е
+    // записан при него — най-често линкът е копиран върху друга карта.
+    const [chipMismatch, setChipMismatch] = useState<{ registered: string; scanned: string } | null>(null);
+    const [chipSaving, setChipSaving] = useState(false);
+    const chipAlertLoggedRef = useRef('');
+
     const audioContextRef = useRef<AudioContext | null>(null);
     const audioInitializedRef = useRef(false);
     const soundPendingRef = useRef<'success' | 'error' | null>(null);
@@ -558,6 +564,7 @@ const ClientProfile: React.FC = () => {
         setIsWarningDismissed(false);
         setShowInactivityModal(false);
         setPendingAction(null);
+        setChipMismatch(null);
     }
 
     useEffect(() => {
@@ -847,9 +854,24 @@ const ClientProfile: React.FC = () => {
                 const data = docSnap.data() as Record<string, unknown>;
                 const clientData: Client = { ...data, id: docSnap.id } as Client;
                 
-                if (isSignedIn && urlUid && clientData.nfcUid !== urlUid.toUpperCase()) {
-                    updateDoc(doc(db, 'clients', id), { nfcUid: urlUid.toUpperCase() }).catch(console.error);
-                    clientData.nfcUid = urlUid.toUpperCase();
+                // Номерът на чипа, с който офисният четец е отворил картата (?uid=).
+                // Празен при клиента → записва се (първо обвързване). Различен от
+                // записания → НЕ се презаписва. Преди се презаписваше тихо: копие
+                // на линка върху друг чип, сканирано в офиса, ставаше „истинската“
+                // карта, а картата на самия клиент излизаше на терминала като
+                // „ОПИТ ЗА ИЗМАМА“. Сега служителят вижда предупреждение, а
+                // администраторът — сигнал (същите clone_alerts като от терминалите).
+                const scannedUid = urlUid.toUpperCase();
+                const registeredUid = (clientData.nfcUid || '').toUpperCase();
+                if (isSignedIn && scannedUid && !registeredUid) {
+                    updateDoc(doc(db, 'clients', id), { nfcUid: scannedUid }).catch(console.error);
+                    clientData.nfcUid = scannedUid;
+                    setChipMismatch(null);
+                } else if (isSignedIn && scannedUid && registeredUid !== scannedUid) {
+                    setChipMismatch(prev => prev && prev.registered === registeredUid && prev.scanned === scannedUid
+                        ? prev : { registered: registeredUid, scanned: scannedUid });
+                } else {
+                    setChipMismatch(null);
                 }
 
                 setClient(clientData);
@@ -911,6 +933,55 @@ const ClientProfile: React.FC = () => {
     const latestClientRef = useRef(client);
     latestClientRef.current = client;
     const hasClient = !!client;
+
+    // Сигнал за администратора, веднъж на карта и чип за това отваряне на страницата.
+    const chipAlertBy = currentUser?.username || '';
+    useEffect(() => {
+        if (!id || !chipMismatch) return;
+        const key = `${id}|${chipMismatch.scanned}`;
+        if (chipAlertLoggedRef.current === key) return;
+        chipAlertLoggedRef.current = key;
+        const c = latestClientRef.current;
+        setDoc(doc(collection(db, 'clone_alerts')), {
+            timestamp: new Date().toISOString(),
+            clientId: id,
+            clientName: c?.name ?? '',
+            route: c?.route ?? '',
+            registeredUid: chipMismatch.registered,
+            scannedUid: chipMismatch.scanned,
+            resolved: false,
+            // Засечено на офисния четец, не в автобус.
+            office: true,
+            reportedBy: chipAlertBy,
+            ...scanContext(),
+        }).catch(err => console.error('Failed to log clone alert:', err));
+        console.log(`[DARY_BRIDGE_LOG]: ВНИМАНИЕ — картата на ${c?.name ?? id} е с друг чип (записан …${chipMismatch.registered.slice(-6)}, сканиран …${chipMismatch.scanned.slice(-6)})`);
+    }, [id, chipMismatch, chipAlertBy]);
+
+    // Само администратор: това наистина е новата карта на клиента.
+    const acceptNewChip = async () => {
+        if (!id || !client || !chipMismatch || currentUser?.role !== 'admin' || chipSaving) return;
+        if (!window.confirm(`Да запиша ли новия чип за ${client.name}?\n\nКартата със стария чип (…${chipMismatch.registered.slice(-6)}) ще спре да се приема като негова.`)) return;
+        setChipSaving(true);
+        const isoNow = new Date().toISOString();
+        const details = `Стар чип ${chipMismatch.registered} → нов ${chipMismatch.scanned}`;
+        const performedBy = currentUser.username || 'Админ';
+        try {
+            await updateDoc(doc(db, 'clients', id), {
+                nfcUid: chipMismatch.scanned,
+                history: arrayUnion({ date: isoNow, action: 'Смяна на чип', details, amount: 0, performedBy }),
+            });
+            addDoc(collection(db, 'activity_logs'), {
+                timestamp: isoNow, performedBy, action: 'Смяна на чип', targetName: client.name, details, amount: 0,
+            }).catch(err => console.error('Error logging activity:', err));
+            setHasMadeChange(true);
+        } catch (err) {
+            console.error(err);
+            alert('Грешка при записване на новия чип.');
+        } finally {
+            setChipSaving(false);
+        }
+    };
     // Visible scan feedback shown on the profile: green "recorded" / yellow "passback".
     const [scanFeedback, setScanFeedback] = useState<{ type: 'recorded' | 'passback' | 'recent' | 'inspection'; secs?: number } | null>(null);
 
@@ -1573,6 +1644,42 @@ const ClientProfile: React.FC = () => {
             {/* Background Ambient Layers */}
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100vh', background: `radial-gradient(circle at 20% 20%, ${themeColor}08 0%, transparent 50%)`, pointerEvents: 'none' }} />
             <div style={{ position: 'fixed', bottom: 0, right: 0, left: 0, height: '100vh', background: `radial-gradient(circle at 80% 80%, ${themeColor}08 0%, transparent 50%)`, pointerEvents: 'none' }} />
+
+            {/* Друг чип: над всичко останало и без анимация (вграденият браузър
+                на офисната програма трепти при пулсиращи елементи). */}
+            {chipMismatch && client && (
+                <div role="alert" style={{
+                    position: 'relative', zIndex: 11, width: '100%', maxWidth: '960px', margin: '0 auto 1.5rem',
+                    background: '#b71c1c', border: '2px solid #ff5252', borderRadius: '20px',
+                    padding: '1.25rem 1.5rem', color: '#fff', textAlign: 'left'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '0.6rem' }}>
+                        <AlertTriangle size={34} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+                        <div style={{ fontSize: '1.35rem', fontWeight: 900, letterSpacing: '0.3px' }}>ТАЗИ КАРТА Е С ДРУГ ЧИП</div>
+                    </div>
+                    <div style={{ fontSize: '0.95rem', lineHeight: 1.5, fontWeight: 600 }}>
+                        Профилът е на <b>{client.name}</b>, но картата върху четеца не е тази, която е записана при него —
+                        възможно е линкът да е копиран върху друга карта. <b>Не подновявайте, преди да изясните чия е картата.</b>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1.5rem', marginTop: '0.7rem', fontSize: '0.85rem', fontFamily: 'monospace' }}>
+                        <span>Записан чип: <b>{chipMismatch.registered}</b></span>
+                        <span>Сканиран чип: <b>{chipMismatch.scanned}</b></span>
+                    </div>
+                    <div style={{ marginTop: '0.7rem', fontSize: '0.8rem', opacity: 0.9 }}>
+                        Профилът не е променен. Случаят е записан при сигналите за дублирани карти.
+                        {currentUser?.role !== 'admin' && ' Ако клиентът наистина е с нова карта, новият чип се записва от администратор.'}
+                    </div>
+                    {currentUser?.role === 'admin' && (
+                        <button
+                            onClick={acceptNewChip}
+                            disabled={chipSaving}
+                            style={{ marginTop: '0.9rem', padding: '0.7rem 1.2rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.6)', background: 'rgba(0,0,0,0.25)', color: '#fff', fontWeight: 800, fontSize: '0.85rem', cursor: chipSaving ? 'default' : 'pointer', opacity: chipSaving ? 0.5 : 1 }}
+                        >
+                            {chipSaving ? 'Записване…' : 'Това е новата карта на клиента — запиши новия чип'}
+                        </button>
+                    )}
+                </div>
+            )}
 
             {/* Card + action panels. Stacked on mobile; on desktop the card moves to
                 the left and the panels sit to its right (see .profile-layout CSS). */}

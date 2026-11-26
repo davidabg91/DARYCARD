@@ -2657,7 +2657,7 @@ const AdminPanel: React.FC = () => {
                         </div>
                         {isAdmin && (
                             <a 
-                                href="https://drive.google.com/drive/folders/1r666nS3BCGAV9WVNm69aiOTtdyyAp4IB?usp=sharing"
+                                href="https://drive.google.com/drive/folders/1ssb8DioRk6wg2H1WBadDzWApYpmR93tU?usp=sharing"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{ 

@@ -17,6 +17,9 @@ interface CloneAlert {
     resolved?: boolean;
     /** Терминалът и мястото (utils/scanContext) — само в сигналите от новите APK. */
     deviceId?: string;
+    /** Засечено на офисния четец (профилът на картата), не в автобус. */
+    office?: boolean;
+    reportedBy?: string;
 }
 
 /**
@@ -114,6 +117,11 @@ const CloneAlertsLog: React.FC = () => {
                                         <AlertTriangle size={13} color="#ff1744" /> Сканиран UID: <code style={{ background: 'rgba(255,23,68,0.15)', color: '#ff8a80', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>{a.scannedUid}</code>
                                     </span>
                                 </div>
+                                {a.office && (
+                                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
+                                        Засечено на четеца в офиса{a.reportedBy ? ` — ${a.reportedBy}` : ''}. Профилът не е променен.
+                                    </div>
+                                )}
                                 {a.deviceId && (() => {
                                     const origin = { ...readOrigin(a as unknown as Record<string, unknown>), deviceName: deviceNames.get(a.deviceId) || undefined };
                                     return (
