@@ -553,6 +553,36 @@ const AdminPanel: React.FC = () => {
 
     const [modalTab, setModalTab] = useState<'info' | 'actions' | 'history'>('info');
     const [modalMessage, setModalMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+    // Последната успешна промяна по профила. Остава на видно място в прозореца
+    // „Управление“ и след като потвърждението се затвори — за да е ясно, че
+    // промяната вече е направена, и да не се прави втори път.
+    const [lastModalChange, setLastModalChange] = useState<{ clientId: string; text: string; at: string } | null>(null);
+    // Докато един запис тече, бутоните за запис в прозореца не приемат второ натискане.
+    const [modalBusy, setModalBusy] = useState(false);
+    const announceModal = (msg: { text: string; type: 'success' | 'error' }) => {
+        setModalMessage(msg);
+        if (msg.type === 'success' && selectedClientId) {
+            setLastModalChange({
+                clientId: selectedClientId,
+                text: msg.text,
+                at: new Date().toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }),
+            });
+        }
+    };
+    const runModalAction = async (action: () => Promise<void> | void) => {
+        if (modalBusy) return;
+        setModalBusy(true);
+        try { await action(); } finally { setModalBusy(false); }
+    };
+    // Потвърждението е за профила, който е отворен в момента. Затвори ли се
+    // прозорецът (или се отвори друг клиент), старото не бива да излезе върху
+    // следващия — сега в него пише и името на клиента.
+    const modalKey = showActionModal ? selectedClientId : undefined;
+    const [prevModalKey, setPrevModalKey] = useState(modalKey);
+    if (modalKey !== prevModalKey) {
+        setPrevModalKey(modalKey);
+        setModalMessage(null);
+    }
     // Inline "смени направление" editor in Управление → ДЕЙСТВИЯ: which direction is
     // being re-routed and the route picked to replace it.
     const [changingDir, setChangingDir] = useState<string | null>(null);
@@ -1488,7 +1518,7 @@ const AdminPanel: React.FC = () => {
         // Service cards renew for a whole year (unpaid): append all 12 monthly
         // entries of the chosen year and set the expiry to that December.
         if (isServiceCard) {
-            if (!newRoute) { alert('Моля, изберете направление.'); return; }
+            if (!newRoute) { announceModal({ text: 'Моля, изберете направление.', type: 'error' }); return; }
             const isoNowSvc = new Date().toISOString();
             const curRoutesSvc = getClientRoutes(selectedClient);
             const newRoutesSvc = curRoutesSvc.includes(newRoute) ? curRoutesSvc : [...curRoutesSvc, newRoute];
@@ -1511,30 +1541,30 @@ const AdminPanel: React.FC = () => {
                 });
             } catch (err) {
                 console.error(err);
-                setModalMessage({ text: 'Грешка при подновяване.', type: 'error' });
+                announceModal({ text: 'Грешка при подновяване.', type: 'error' });
                 return;
             }
             const cardNumSvc = getClientCardNumber(selectedClient);
             const nameSvc = cardNumSvc ? `${selectedClient.name} (Карта № ${cardNumSvc})` : selectedClient.name;
             await logGlobalActivity(isNewDirSvc ? 'Добавяне на направление' : 'Подновяване', nameSvc, `Служебна карта, направление ${newRoute} за цялата ${newServiceYear} г.`, 0);
-            setModalMessage({ text: `${isNewDirSvc ? 'Добавено' : 'Подновено'} направление „${newRoute}" (служебна) за цялата ${newServiceYear} г.`, type: 'success' });
+            announceModal({ text: `${isNewDirSvc ? 'Добавено' : 'Подновено'} направление „${newRoute}" (служебна) за цялата ${newServiceYear} г.`, type: 'success' });
             return;
         }
 
         const renewAmountError = negativeAmountError(effectiveNewAmount, isMixedRenew ? [renewBank, renewCash] : []);
         if (renewAmountError) {
-            alert(renewAmountError);
+            announceModal({ text: renewAmountError, type: 'error' });
             return;
         }
 
         if (!newMonth || !newRoute || (effectiveNewAmount <= 0 && !isServiceCard) || Number.isNaN(effectiveNewAmount)) {
-            alert(isMixedRenew ? 'Моля, въведете месец, курс и сумите за смесеното плащане.' : 'Моля, въведете валиден месец, сума и курс.');
+            announceModal({ text: isMixedRenew ? 'Моля, въведете месец, курс и сумите за смесеното плащане.' : 'Моля, въведете валиден месец, сума и курс.', type: 'error' });
             return;
         }
 
         // Prevent a duplicate payment: this direction is already paid for this month.
         if (isDirectionPaid(selectedClient, newRoute, newMonth)) {
-            setModalMessage({
+            announceModal({
                 text: `Вече има платен абонамент за направление „${newRoute}" за месец ${newMonth}. Второ плащане за същия месец не е разрешено.`,
                 type: 'error'
             });
@@ -1580,14 +1610,14 @@ const AdminPanel: React.FC = () => {
             });
         } catch (err) {
             console.error(err);
-            setModalMessage({ text: 'Грешка при подновяване.', type: 'error' });
+            announceModal({ text: 'Грешка при подновяване.', type: 'error' });
             return;
         }
 
         const cardNum = getClientCardNumber(selectedClient);
         const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
         await logGlobalActivity(isNewDir ? 'Добавяне на направление' : 'Подновяване', nameWithCard, `Направление ${newRoute} — месец ${newMonth}. Сума: ${effectiveNewAmount.toFixed(2)} € | Начин на плащане: ${renewPaymentLabel}`, effectiveNewAmount);
-        setModalMessage({
+        announceModal({
             text: `${isNewDir ? 'Добавено' : 'Подновено'} направление „${newRoute}" за ${newMonth}. Сума: ${effectiveNewAmount.toFixed(2)} €.`,
             type: 'success'
         });
@@ -1708,7 +1738,7 @@ const AdminPanel: React.FC = () => {
         const cardNum = getClientCardNumber(client);
         const nameWithCard = cardNum ? `${client.name} (Карта № ${cardNum})` : client.name;
         await logGlobalActivity('Изтриване на плащане', nameWithCard, `Месец: ${entryToDelete.month} (${entryToDelete.amount} €).`, -entryToDelete.amount);
-        setModalMessage({ 
+        announceModal({ 
             text: `Изтрито плащане за месец ${entryToDelete.month} (${entryToDelete.amount} €). Общата сума и валидността бяха преизчислени.`, 
             type: 'success' 
         });
@@ -1739,11 +1769,11 @@ const AdminPanel: React.FC = () => {
 
         if (method === MIXED_METHOD) {
             const err = negativeAmountError(bank + cash, [bank, cash]);
-            if (err) { setModalMessage({ text: err, type: 'error' }); return; }
+            if (err) { announceModal({ text: err, type: 'error' }); return; }
             // Разбивката трябва да дава точно платената сума, иначе отчетът ще
             // показва друго общо от това в картона.
             if (Math.abs((bank + cash) - entry.amount) > 0.005) {
-                setModalMessage({
+                announceModal({
                     text: `Сборът на двете части (${(bank + cash).toFixed(2)} €) трябва да е равен на платената сума ${entry.amount.toFixed(2)} €.`,
                     type: 'error',
                 });
@@ -1793,7 +1823,7 @@ const AdminPanel: React.FC = () => {
             });
         } catch (err) {
             console.error(err);
-            setModalMessage({ text: 'Начинът на плащане не се промени.', type: 'error' });
+            announceModal({ text: 'Начинът на плащане не се промени.', type: 'error' });
             return;
         }
 
@@ -1804,7 +1834,7 @@ const AdminPanel: React.FC = () => {
             'Промяна на начин на плащане', nameWithCard,
             `Месец ${entry.month} (${entry.amount.toFixed(2)} €): „${before}" → „${method}".`,
         );
-        setModalMessage({
+        announceModal({
             text: `Плащането за ${entry.month} вече е отбелязано като „${method}". Сумата не е променяна.`,
             type: 'success',
         });
@@ -1817,7 +1847,7 @@ const AdminPanel: React.FC = () => {
         if (!selectedClient) return;
         const dirs = getClientRoutes(selectedClient);
         if (dirs.length <= 1) {
-            setModalMessage({ text: 'Не може да се премахне единственото направление. Клиентът трябва да има поне едно.', type: 'error' });
+            announceModal({ text: 'Не може да се премахне единственото направление. Клиентът трябва да има поне едно.', type: 'error' });
             return;
         }
         if (!window.confirm(`Да се премахне ли направление „${dir}" от профила?\n\nЗабележка: маха се само направлението — записаните плащания в историята остават непроменени.`)) return;
@@ -1836,7 +1866,7 @@ const AdminPanel: React.FC = () => {
             });
         } catch (err) {
             console.error(err);
-            setModalMessage({ text: 'Грешка при премахване на направлението.', type: 'error' });
+            announceModal({ text: 'Грешка при премахване на направлението.', type: 'error' });
             return;
         }
 
@@ -1847,7 +1877,7 @@ const AdminPanel: React.FC = () => {
         const cardNum = getClientCardNumber(selectedClient);
         const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
         await logGlobalActivity('Премахване на направление', nameWithCard, `Премахнато направление „${dir}".`);
-        setModalMessage({ text: `Направление „${dir}" е премахнато от профила.`, type: 'success' });
+        announceModal({ text: `Направление „${dir}" е премахнато от профила.`, type: 'success' });
     };
 
     // Change (re-route) one of a client's directions — e.g. the passenger moved and
@@ -1860,11 +1890,11 @@ const AdminPanel: React.FC = () => {
     const changeDirection = async (oldDir: string, targetDir: string) => {
         if (!selectedClient || !isStaff) return;
         if (!targetDir || targetDir === oldDir) {
-            setModalMessage({ text: 'Изберете различно направление.', type: 'error' });
+            announceModal({ text: 'Изберете различно направление.', type: 'error' });
             return;
         }
         if (getClientRoutes(selectedClient).includes(targetDir)) {
-            setModalMessage({ text: `Клиентът вече има направление „${targetDir}". Изберете друго.`, type: 'error' });
+            announceModal({ text: `Клиентът вече има направление „${targetDir}". Изберете друго.`, type: 'error' });
             return;
         }
         const thisMonth = new Date().toISOString().substring(0, 7);
@@ -1921,7 +1951,7 @@ const AdminPanel: React.FC = () => {
         } catch (err) {
             console.error(err);
             setChangeDirBusy(false);
-            setModalMessage({ text: err instanceof Error ? err.message : 'Грешка при смяна на направлението.', type: 'error' });
+            announceModal({ text: err instanceof Error ? err.message : 'Грешка при смяна на направлението.', type: 'error' });
             return;
         }
         setChangeDirBusy(false);
@@ -1940,7 +1970,7 @@ const AdminPanel: React.FC = () => {
             nameCh,
             `„${oldDir}" → „${targetDir}"` + (moved ? ` | Прехвърлени ${moved} платени месеца (от ${thisMonth} нататък)` : ' | Без прехвърлени плащания')
         );
-        setModalMessage({
+        announceModal({
             text: `Направлението е сменено: „${oldDir}" → „${targetDir}".` + (moved ? ` Прехвърлени са ${moved} платени месеца.` : ''),
             type: 'success'
         });
@@ -1954,19 +1984,19 @@ const AdminPanel: React.FC = () => {
         if (!selectedClient || !isStaff) return;
         const targetSchool = (schoolEdit === 'custom' ? schoolEditCustom : schoolEdit).trim();
         if (!targetSchool) {
-            setModalMessage({ text: 'Изберете или въведете училище.', type: 'error' });
+            announceModal({ text: 'Изберете или въведете училище.', type: 'error' });
             return;
         }
         const targetMunicipality = (schoolEditMunicipality === MUNICIPALITY_CUSTOM ? schoolEditCustomMunicipality : schoolEditMunicipality).trim();
         if (!targetMunicipality) {
-            setModalMessage({ text: 'Изберете община за новото училище.', type: 'error' });
+            announceModal({ text: 'Изберете община за новото училище.', type: 'error' });
             return;
         }
 
         const oldSchool = selectedClient.school || '';
         const oldMunicipality = selectedClient.municipality || '';
         if (targetSchool === oldSchool && targetMunicipality === oldMunicipality) {
-            setModalMessage({ text: 'Няма промяна — училището и общината са същите.', type: 'error' });
+            announceModal({ text: 'Няма промяна — училището и общината са същите.', type: 'error' });
             return;
         }
 
@@ -1994,7 +2024,7 @@ const AdminPanel: React.FC = () => {
         } catch (err) {
             console.error(err);
             setSchoolEditBusy(false);
-            setModalMessage({ text: 'Грешка при смяна на училището.', type: 'error' });
+            announceModal({ text: 'Грешка при смяна на училището.', type: 'error' });
             return;
         }
         setSchoolEditBusy(false);
@@ -2007,7 +2037,7 @@ const AdminPanel: React.FC = () => {
         const cardNumSc = getClientCardNumber(selectedClient);
         const nameSc = cardNumSc ? `${selectedClient.name} (Карта № ${cardNumSc})` : selectedClient.name;
         await logGlobalActivity('Смяна на училище', nameSc, details);
-        setModalMessage({
+        announceModal({
             text: `Училището е сменено на „${targetSchool}".` + (muniChanged ? ` Общината е обновена на „${targetMunicipality}".` : ''),
             type: 'success'
         });
@@ -2177,14 +2207,14 @@ const AdminPanel: React.FC = () => {
             });
         } catch (err) {
             console.error(err);
-            setModalMessage({ text: 'Грешка при анулиране.', type: 'error' });
+            announceModal({ text: 'Грешка при анулиране.', type: 'error' });
             return;
         }
 
         const cardNum = getClientCardNumber(selectedClient);
         const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
         await logGlobalActivity('Анулиране', nameWithCard, `Анулирана карта. Причина: ${cancelReason}`);
-        setModalMessage({ 
+        announceModal({ 
             text: `Картата бе анулирана успешно. Причина: ${cancelReason}`, 
             type: 'success' 
         });
@@ -2211,14 +2241,14 @@ const AdminPanel: React.FC = () => {
             });
         } catch (err) {
             console.error(err);
-            setModalMessage({ text: 'Грешка при премахване на анулирането.', type: 'error' });
+            announceModal({ text: 'Грешка при премахване на анулирането.', type: 'error' });
             return;
         }
 
         const cardNum = getClientCardNumber(selectedClient);
         const nameWithCard = cardNum ? `${selectedClient.name} (Карта № ${cardNum})` : selectedClient.name;
         await logGlobalActivity('Премахнато анулиране', nameWithCard, `Премахнато анулиране (предишна причина: ${prevReason}).`);
-        setModalMessage({
+        announceModal({
             text: 'Анулирането бе премахнато. Картата може да се поднови.',
             type: 'success'
         });
@@ -5946,6 +5976,36 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                 {showActionModal && selectedClient && (
                     <div className="modal-overlay" onClick={() => setShowActionModal(false)} style={{ padding: isMobile ? '0.5rem' : '1rem' }}>
                         <div className="modal-content" style={{ maxWidth: '600px', width: '100%', padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+                            {/* Потвърждението покрива целия прозорец, а не превъртаемата част.
+                                Преди беше вързано за началото на съдържанието: при подновяване
+                                панелът е превъртян надолу и „Операцията е успешна“ оставаше
+                                горе, извън екрана. */}
+                                {modalMessage && (
+                                    <div style={{ 
+                                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, 
+                                        background: 'rgba(0,0,0,0.94)', display: 'flex', flexDirection: 'column', 
+                                        alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center'
+                                    }}>
+                                        <div style={{ 
+                                            width: '64px', height: '64px', borderRadius: '50%', 
+                                            background: modalMessage.type === 'success' ? 'rgba(0,255,150,0.1)' : 'rgba(255,82,82,0.1)',
+                                            color: modalMessage.type === 'success' ? 'var(--success-color)' : 'var(--error-color)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem'
+                                        }}>
+                                            {modalMessage.type === 'success' ? <ShieldCheck size={40} /> : <XCircle size={40} />}
+                                        </div>
+                                        <h3 style={{ color: modalMessage.type === 'success' ? 'var(--success-color)' : 'var(--error-color)', marginBottom: '1rem' }}>
+                                            {modalMessage.type === 'success' ? 'Операцията е успешна' : 'Грешка'}
+                                        </h3>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Клиент: <b style={{ color: '#fff' }}>{selectedClient.name}</b></div>
+                                        <p style={{ fontSize: '1rem', lineHeight: '1.5', marginBottom: '2rem' }}>{modalMessage.text}</p>
+                                        <button 
+                                            onClick={() => setModalMessage(null)}
+                                            style={{ padding: '0.8rem 2rem', borderRadius: '50px', background: 'var(--primary-color)', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                                        >Разбрах</button>
+                                    </div>
+                                )}
+
                             {/* Header */}
                             <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -5953,6 +6013,18 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{selectedClient.name}</h3>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>ID: {selectedClient.id}</div>
+                                        {/* Състоянието на картата се вижда от всеки таб и се сменя веднага след запис. */}
+                                        {(() => {
+                                            const canceled = !!selectedClient.isCanceled;
+                                            const unpaid = !canceled && isExpired(selectedClient.expiryDate, selectedClient);
+                                            const color = canceled || unpaid ? 'var(--error-color)' : 'var(--success-color)';
+                                            return (
+                                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.35rem', padding: '2px 10px', borderRadius: '50px', border: `1px solid ${color}`, color, fontSize: '0.72rem', fontWeight: 800 }}>
+                                                    {canceled ? 'АНУЛИРАН' : unpaid ? 'НЕПЛАТЕН' : 'ПЛАТЕН'}
+                                                    {!canceled && selectedClient.expiryDate ? <span style={{ fontWeight: 600, opacity: 0.85 }}>· до {selectedClient.expiryDate}</span> : null}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                                 <button onClick={() => setShowActionModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer' }}><XCircle size={20} /></button>
@@ -5974,34 +6046,15 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                 ><Clock size={isMobile ? 12 : 14} /> ИСТОРИЯ</button>
                             </div>
 
+                            {lastModalChange && lastModalChange.clientId === selectedClient.id && (
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.7rem 1.5rem', background: 'rgba(0,230,118,0.10)', borderBottom: '1px solid rgba(0,230,118,0.3)', color: 'var(--success-color)', fontSize: '0.85rem', lineHeight: 1.4 }}>
+                                    <CheckCircle size={18} style={{ flexShrink: 0, marginTop: '1px' }} />
+                                    <div><b>Направено в {lastModalChange.at} ч.:</b> <span style={{ color: '#fff' }}>{lastModalChange.text}</span></div>
+                                </div>
+                            )}
+
                             {/* Content */}
                             <div style={{ padding: '1.5rem', minHeight: '300px', maxHeight: '70vh', overflowY: 'auto', position: 'relative' }}>
-                                {modalMessage && (
-                                    <div style={{ 
-                                        position: 'absolute', inset: 0, zIndex: 100, 
-                                        background: 'rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', 
-                                        alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center',
-                                        animation: 'fadeIn 0.3s ease'
-                                    }}>
-                                        <div style={{ 
-                                            width: '64px', height: '64px', borderRadius: '50%', 
-                                            background: modalMessage.type === 'success' ? 'rgba(0,255,150,0.1)' : 'rgba(255,82,82,0.1)',
-                                            color: modalMessage.type === 'success' ? 'var(--success-color)' : 'var(--error-color)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem'
-                                        }}>
-                                            {modalMessage.type === 'success' ? <ShieldCheck size={40} /> : <XCircle size={40} />}
-                                        </div>
-                                        <h3 style={{ color: modalMessage.type === 'success' ? 'var(--success-color)' : 'var(--error-color)', marginBottom: '1rem' }}>
-                                            {modalMessage.type === 'success' ? 'Операцията е успешна' : 'Грешка'}
-                                        </h3>
-                                        <p style={{ fontSize: '1rem', lineHeight: '1.5', marginBottom: '2rem' }}>{modalMessage.text}</p>
-                                        <button 
-                                            onClick={() => setModalMessage(null)}
-                                            style={{ padding: '0.8rem 2rem', borderRadius: '50px', background: 'var(--primary-color)', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}
-                                        >Разбрах</button>
-                                    </div>
-                                )}
-
                                 {modalTab === 'info' && (
                                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem', animation: 'fadeIn 0.3s ease' }}>
                                         <div style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
@@ -6264,7 +6317,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 </div>
                                                 )}
                                             </div>
-                                            <button onClick={renewClient} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Поднови Абонамент</button>
+                                            <button onClick={() => runModalAction(renewClient)} disabled={modalBusy} style={{ width: '100%', background: 'var(--success-color)', color: '#ffffff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: modalBusy ? 'default' : 'pointer', border: 'none', opacity: modalBusy ? 0.5 : 1 }}>{modalBusy ? 'Записване…' : 'Поднови Абонамент'}</button>
                                         </div>
 
                                         {/* Cancel / restore — анулирана карта се връща обратно оттук */}
@@ -6274,7 +6327,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: 1.5 }}>
                                                 Картата е анулирана{selectedClient.cancelReason ? ` (причина: ${selectedClient.cancelReason})` : ''}. Премахни анулирането, за да може отново да се подновява и да се чете при сканиране. Абонаментът не се променя.
                                             </div>
-                                            <button onClick={restoreClient} style={{ width: '100%', background: 'var(--success-color)', color: '#fff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Премахни Анулирането</button>
+                                            <button onClick={() => runModalAction(restoreClient)} disabled={modalBusy} style={{ width: '100%', background: 'var(--success-color)', color: '#fff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: modalBusy ? 'default' : 'pointer', border: 'none', opacity: modalBusy ? 0.5 : 1 }}>{modalBusy ? 'Записване…' : 'Премахни Анулирането'}</button>
                                         </div>
                                         ) : (
                                         <div style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(255,0,0,0.03)', border: '1px solid rgba(255,0,0,0.1)' }}>
@@ -6284,7 +6337,7 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 style={{ width: '100%', padding: '0.8rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--surface-border)', borderRadius: '6px', marginBottom: '1rem', minHeight: '80px', color: '#fff', fontSize: '0.85rem' }}
                                                 value={cancelReason} onChange={e => setCancelReason(e.target.value)}
                                             />
-                                            <button onClick={cancelClient} style={{ width: '100%', background: 'var(--error-color)', color: '#fff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Анулирай Картата</button>
+                                            <button onClick={() => runModalAction(cancelClient)} disabled={modalBusy} style={{ width: '100%', background: 'var(--error-color)', color: '#fff', padding: '0.75rem', borderRadius: '8px', fontWeight: 700, cursor: modalBusy ? 'default' : 'pointer', border: 'none', opacity: modalBusy ? 0.5 : 1 }}>{modalBusy ? 'Записване…' : 'Анулирай Картата'}</button>
                                         </div>
                                         )}
                                     </div>

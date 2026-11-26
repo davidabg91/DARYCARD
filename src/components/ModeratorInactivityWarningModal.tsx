@@ -1,5 +1,9 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+
+/** След колко секунди без промяна по картата излиза напомнянето. */
+export const MODERATOR_GUARD_SECONDS = 60;
 
 interface ModeratorInactivityWarningModalProps {
     isOpen: boolean;
@@ -26,46 +30,47 @@ const ModeratorInactivityWarningModal: React.FC<ModeratorInactivityWarningModalP
 }) => {
     if (!isOpen) return null;
 
-    return (
+    // Прозорецът се рисува направо в <body> и БЕЗ никакво движение.
+    //
+    // В <body>: `position: fixed` се мери спрямо екрана само докато никой родител
+    // няма transform. Страницата влиза с анимация (`main` в Layout, `fadeIn` с
+    // translateY), а под това име има няколко различни @keyframes из приложението —
+    // докато някоя тече, прозорецът се закача за родителя, а не за екрана, и после
+    // отскача на място.
+    //
+    // Без движение: във вградения браузър на офисната програма (Qt) всяка анимация
+    // тук — влизането с мащабиране, пулсиращата икона, размазаният фон — караше
+    // целия прозорец да трепти и текстът не се четеше.
+    return createPortal(
         <div style={{
             position: 'fixed',
-            inset: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             zIndex: 100000,
-            // No backdrop blur: the PC program's embedded Qt browser re-blurs the whole
-            // screen on every animation frame and the modal shakes. The dark overlay
-            // alone looks the same.
             background: 'rgba(0, 0, 0, 0.9)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             padding: '1.25rem',
-            animation: 'fadeIn 0.25s ease-out'
+            overflowY: 'auto'
         }}>
-            <div style={{
-                width: '100%',
-                maxWidth: '480px',
-                background: '#18181b',
-                border: '2px solid rgba(255, 152, 0, 0.5)',
-                borderRadius: '24px',
-                padding: '2rem 1.75rem',
-                boxShadow: '0 20px 60px rgba(255, 152, 0, 0.25)',
-                textAlign: 'center',
-                color: '#fff',
-                position: 'relative',
-                animation: 'scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-            }}>
-                <style>{`
-                    @keyframes pulseWarning {
-                        0%, 100% { opacity: 1; }
-                        50% { opacity: 0.55; }
-                    }
-                    @keyframes scaleUp {
-                        from { transform: scale(0.92); opacity: 0; }
-                        to { transform: scale(1); opacity: 1; }
-                    }
-                `}</style>
-
-                {/* Pulsing Warning Icon */}
+            <div
+                role="alertdialog"
+                aria-modal="true"
+                style={{
+                    width: '100%',
+                    maxWidth: '480px',
+                    background: '#18181b',
+                    border: '2px solid #ff9800',
+                    borderRadius: '24px',
+                    padding: '2rem 1.75rem',
+                    textAlign: 'center',
+                    color: '#fff'
+                }}
+            >
+                {/* Warning Icon */}
                 <div style={{
                     width: '68px',
                     height: '68px',
@@ -76,8 +81,7 @@ const ModeratorInactivityWarningModal: React.FC<ModeratorInactivityWarningModalP
                     alignItems: 'center',
                     justifyContent: 'center',
                     margin: '0 auto 1.25rem',
-                    color: '#ff9800',
-                    animation: 'pulseWarning 2s infinite ease-in-out'
+                    color: '#ff9800'
                 }}>
                     <AlertTriangle size={36} />
                 </div>
@@ -118,7 +122,7 @@ const ModeratorInactivityWarningModal: React.FC<ModeratorInactivityWarningModalP
                     margin: '0 0 1.25rem 0'
                 }}>
                     {reason === 'timeout' ? (
-                        <>Изминаха <strong>20 секунди</strong> от влизането в картата, без да бъде направено подновяване на абонамент или друга промяна.</>
+                        <>Изминаха <strong>{MODERATOR_GUARD_SECONDS} секунди</strong> от влизането в картата, без да бъде направено подновяване на абонамент или друга промяна.</>
                     ) : (
                         <>Опитвате се да излезете / натиснахте бутон, преди да направите <strong>бързо подновяване</strong> или промяна по тази карта.</>
                     )}
@@ -172,7 +176,7 @@ const ModeratorInactivityWarningModal: React.FC<ModeratorInactivityWarningModalP
                             padding: '1rem',
                             borderRadius: '14px',
                             border: 'none',
-                            background: 'linear-gradient(135deg, #00e676 0%, #00b0ff 100%)',
+                            background: '#00e676',
                             color: '#000',
                             fontWeight: 900,
                             fontSize: '1rem',
@@ -180,9 +184,7 @@ const ModeratorInactivityWarningModal: React.FC<ModeratorInactivityWarningModalP
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '0.6rem',
-                            boxShadow: '0 8px 24px rgba(0, 230, 118, 0.3)',
-                            transition: 'transform 0.15s ease'
+                            gap: '0.6rem'
                         }}
                     >
                         <RefreshCw size={18} />
@@ -211,7 +213,8 @@ const ModeratorInactivityWarningModal: React.FC<ModeratorInactivityWarningModalP
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

@@ -9,9 +9,10 @@ import LoadingScreen from '../components/LoadingScreen';
 import { ROUTE_METADATA, ROUTES, cardPrice } from '../data/routeMetadata';
 import { uploadClientPhoto, describeUploadError } from '../utils/photoStorage';
 import ClientPhoto from '../components/ClientPhoto';
+import { createPortal } from 'react-dom';
 import LostCardTransfer from '../components/LostCardTransfer';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
-import ModeratorInactivityWarningModal from '../components/ModeratorInactivityWarningModal';
+import ModeratorInactivityWarningModal, { MODERATOR_GUARD_SECONDS } from '../components/ModeratorInactivityWarningModal';
 import { MIXED_METHOD, negativeAmountError } from '../data/paymentMethods';
 import { CARDS_MAPPING } from '../data/cardsMapping';
 import { lookupCardNumber, markCardAssigned } from '../utils/cardRegistry';
@@ -175,6 +176,17 @@ const compressImage = (dataUrl: string, maxWidth: number, maxHeight: number, qua
             resolve(canvas.toDataURL('image/jpeg', quality));
         };
     });
+};
+
+/**
+ * Карта, активирана преди минути. Самото активиране е промяната, която пазачът
+ * за модератора чака — важи и след презареждане на страницата, и когато картата
+ * е активирана от /admin и профилът е отворен веднага след това.
+ */
+const JUST_ACTIVATED_MS = 10 * 60 * 1000;
+const isJustActivated = (createdAt?: string): boolean => {
+    const t = createdAt ? new Date(createdAt).getTime() : NaN;
+    return Number.isFinite(t) && Math.abs(Date.now() - t) < JUST_ACTIVATED_MS;
 };
 
 const formatBGMonth = (monthStr: string) => {
@@ -538,6 +550,14 @@ const ClientProfile: React.FC = () => {
         // We let the inline logic handle the data arrival.
         setError(null);
         setIsRegistering(false);
+        // Пазачът за модератора е за всяка карта отделно. Досега състоянието му
+        // оставаше от предишната карта: след първото подновяване (или първото
+        // „Продължи без промяна“) той мълчеше за всички следващи карти до
+        // презареждане на страницата.
+        setHasMadeChange(false);
+        setIsWarningDismissed(false);
+        setShowInactivityModal(false);
+        setPendingAction(null);
     }
 
     useEffect(() => {
@@ -545,20 +565,24 @@ const ClientProfile: React.FC = () => {
         initAudio();
     }, [id, initAudio]);
 
-    // 20-second inactivity guard for moderator
+    // Пазач за модератора: 60 секунди на картата без подновяване или друга промяна.
+    //
+    // Зависи от ид-то на клиента, не от целия документ: документът идва наново при
+    // всяко сканиране и всеки запис, и всеки път връщаше срока отначало. Докато
+    // напомнянето е на екрана, не се брои; затвори ли се с „Върни се и направи
+    // подновяване“, започва нов пълен срок.
+    const guardClientId = client?.id;
     useEffect(() => {
-        if (currentUser?.role !== 'moderator' || !client || loading || hasMadeChange || isWarningDismissed) return;
+        if (currentUser?.role !== 'moderator' || !guardClientId || loading || hasMadeChange || isWarningDismissed || showInactivityModal) return;
 
         const timer = setTimeout(() => {
-            if (!hasMadeChange && !isWarningDismissed) {
-                playErrorSound();
-                setInactivityModalReason('timeout');
-                setShowInactivityModal(true);
-            }
-        }, 20000);
+            playErrorSound();
+            setInactivityModalReason('timeout');
+            setShowInactivityModal(true);
+        }, MODERATOR_GUARD_SECONDS * 1000);
 
         return () => clearTimeout(timer);
-    }, [currentUser?.role, client, loading, hasMadeChange, isWarningDismissed, playErrorSound]);
+    }, [currentUser?.role, guardClientId, loading, hasMadeChange, isWarningDismissed, showInactivityModal, playErrorSound]);
 
     // Global navigation interceptor for navbar, logo, and external link clicks
     useEffect(() => {
@@ -772,6 +796,10 @@ const ClientProfile: React.FC = () => {
 
             setIsRegistering(false);
             hasPlayedSound.current = false;
+            // Активирането Е промяната — без това минута по-късно излизаше
+            // „НЕ Е НАПРАВЕНА ПРОМЯНА“ върху току-що издадена карта.
+            setHasMadeChange(true);
+            setShowInactivityModal(false);
         } catch (err) {
             console.error(err);
             alert('Грешка при записване.');
@@ -825,6 +853,7 @@ const ClientProfile: React.FC = () => {
                 }
 
                 setClient(clientData);
+                if (isJustActivated(clientData.createdAt)) setHasMadeChange(true);
                 if (!hasPlayedSound.current) {
                     initAudio();
                     const now = new Date();
@@ -2202,8 +2231,10 @@ const ClientProfile: React.FC = () => {
                 )}
 
                 {/* Success Modal */}
-                {showSuccessModal && (
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(30px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+                {/* В <body> и без размазан фон — вграденият браузър на офисната
+                    програма преизчислява размазването на всеки кадър и прозорецът трепти. */}
+                {showSuccessModal && createPortal(
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100000, background: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
                         <div style={{ background: '#18181b', borderRadius: '32px', padding: '3rem 2rem', width: '100%', maxWidth: '400px', textAlign: 'center', border: '1px solid #00e67644', boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}>
                             <div style={{ background: 'rgba(0,230,118,0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
                                 <CheckCircle size={60} color="#00e676" />
@@ -2217,7 +2248,8 @@ const ClientProfile: React.FC = () => {
                                 РАЗБРАХ
                             </button>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </div>
             </div>{/* /.profile-layout */}

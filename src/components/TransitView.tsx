@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import AdSlideshow from './AdSlideshow';
 import ClientPhoto from './ClientPhoto';
 import PaymentMethodSelector from './PaymentMethodSelector';
-import ModeratorInactivityWarningModal from './ModeratorInactivityWarningModal';
+import ModeratorInactivityWarningModal, { MODERATOR_GUARD_SECONDS } from './ModeratorInactivityWarningModal';
 import { MIXED_METHOD, negativeAmountError } from '../data/paymentMethods';
 import MyPosSmartSdk from '../services/MyPosSmartSdk';
 import TicketButton from './TicketButton';
@@ -157,20 +157,21 @@ const TransitView: React.FC<TransitViewProps> = ({ id, physicalUid, nfcCounter, 
     
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'moderator';
 
-    // 20-second inactivity guard for moderator
+    // Пазач за модератора: 60 секунди на картата без промяна. Зависи от ид-то на
+    // клиента, а не от целия документ — иначе всяко ново идване на документа
+    // връщаше срока отначало. Виж същия пазач в ClientProfile.
+    const guardClientId = client?.id;
     useEffect(() => {
-        if (currentUser?.role !== 'moderator' || !client || loading || hasMadeChange || isWarningDismissed) return;
+        if (currentUser?.role !== 'moderator' || !guardClientId || loading || hasMadeChange || isWarningDismissed || showInactivityModal) return;
 
         const timer = setTimeout(() => {
-            if (!hasMadeChange && !isWarningDismissed) {
-                playErrorRef.current();
-                setInactivityModalReason('timeout');
-                setShowInactivityModal(true);
-            }
-        }, 20000);
+            playErrorRef.current();
+            setInactivityModalReason('timeout');
+            setShowInactivityModal(true);
+        }, MODERATOR_GUARD_SECONDS * 1000);
 
         return () => clearTimeout(timer);
-    }, [currentUser?.role, client, loading, hasMadeChange, isWarningDismissed]);
+    }, [currentUser?.role, guardClientId, loading, hasMadeChange, isWarningDismissed, showInactivityModal]);
 
     const handleGuardedClose = (customCallback?: () => void) => {
         if (currentUser?.role === 'moderator' && !hasMadeChange && !isWarningDismissed) {
