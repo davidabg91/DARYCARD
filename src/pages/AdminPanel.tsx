@@ -598,17 +598,28 @@ const AdminPanel: React.FC = () => {
     const [schoolEditCustomMunicipality, setSchoolEditCustomMunicipality] = useState('');
     const [schoolEditBusy, setSchoolEditBusy] = useState(false);
 
+    // „Вид на картата“ в Управление → ДЕЙСТВИЯ (само администратор): смяна на вида
+    // и на данните, които видът иска — адрес, община, училище, причина. За
+    // училището и общината ползва същите полета като редактора на училище по-горе.
+    const [changingType, setChangingType] = useState(false);
+    const [typeEditTo, setTypeEditTo] = useState('');
+    const [typeEditAddress, setTypeEditAddress] = useState('');
+    const [typeEditReason, setTypeEditReason] = useState('');
+    const [typeEditFreeYear, setTypeEditFreeYear] = useState(true);
+    const [typeEditBusy, setTypeEditBusy] = useState(false);
+
     // Never let an open editor carry over to another profile.
     useEffect(() => {
         setChangingDir(null);
         setChangeDirTo('');
         setChangingSchool(false);
+        setChangingType(false);
     }, [selectedClient?.id, showActionModal]);
 
     // Prefill the school editor from the client when it is opened. A school or
     // община that isn't in the dropdowns (entered by hand back then) reopens as
     // "Друго" with the saved text, so nothing is silently lost.
-    const openSchoolEditor = () => {
+    const prefillSchoolFields = () => {
         const school = selectedClient?.school || '';
         const muni = selectedClient?.municipality || '';
         if (school && SCHOOLS.includes(school)) {
@@ -625,7 +636,22 @@ const AdminPanel: React.FC = () => {
             setSchoolEditMunicipality(muni ? MUNICIPALITY_CUSTOM : '');
             setSchoolEditCustomMunicipality(muni);
         }
+    };
+    const openSchoolEditor = () => {
+        prefillSchoolFields();
+        setChangingType(false);
         setChangingSchool(true);
+    };
+    // Редакторът на вида тръгва от сегашното състояние на картата: сменя се само
+    // това, което админът пипне. Така в него може и само да се допише адрес.
+    const openTypeEditor = () => {
+        prefillSchoolFields();
+        setTypeEditTo(selectedClient?.cardType || 'Нормална карта');
+        setTypeEditAddress(selectedClient?.address || '');
+        setTypeEditReason(selectedClient?.serviceReason || '');
+        setTypeEditFreeYear(true);
+        setChangingSchool(false);
+        setChangingType(true);
     };
 
     // Пътувания (сканирания) на отворения профил — четат се лениво при отваряне на модала,
@@ -2039,6 +2065,107 @@ const AdminPanel: React.FC = () => {
         await logGlobalActivity('Смяна на училище', nameSc, details);
         announceModal({
             text: `Училището е сменено на „${targetSchool}".` + (muniChanged ? ` Общината е обновена на „${targetMunicipality}".` : ''),
+            type: 'success'
+        });
+    };
+
+    // Смяна на вида на вече издадена карта и на данните, които видът носи.
+    // Правилата са същите като при издаване: пенсионерска и инвалидна искат адрес
+    // и община, учителска — община, ученическа — училище и община, служебна —
+    // причина. Полетата, които новият вид не носи, се изчистват, както ги оставя
+    // и формата за нова карта. Плащанията не се пипат — цената важи от следващото
+    // подновяване; изключението е служебната карта, която по желание става
+    // безплатна до края на годината (както при подновяване на служебна карта).
+    const changeCardType = async () => {
+        if (!selectedClient || !isAdmin) return;
+        const oldType = selectedClient.cardType || 'Нормална карта';
+        const newType = typeEditTo;
+        if (!CARD_TYPES.includes(newType)) {
+            announceModal({ text: 'Изберете вид на картата.', type: 'error' });
+            return;
+        }
+        const wantsAddress = newType === 'Пенсионерска карта' || newType === 'Инвалидна карта';
+        const isStudent = newType === 'Ученическа карта';
+        const isService = newType === 'Служебна карта';
+
+        const address = wantsAddress ? typeEditAddress.trim() : '';
+        const municipality = needsMunicipality(newType)
+            ? (schoolEditMunicipality === MUNICIPALITY_CUSTOM ? schoolEditCustomMunicipality : schoolEditMunicipality).trim() : '';
+        const school = isStudent ? (schoolEdit === 'custom' ? schoolEditCustom : schoolEdit).trim() : '';
+        const serviceReason = isService ? typeEditReason.trim() : '';
+
+        if (wantsAddress && !address) { announceModal({ text: 'Въведете адрес — задължителен е за пенсионерска и инвалидна карта.', type: 'error' }); return; }
+        if (isStudent && !school) { announceModal({ text: 'Изберете или въведете училище.', type: 'error' }); return; }
+        if (needsMunicipality(newType) && !municipality) { announceModal({ text: 'Изберете община.', type: 'error' }); return; }
+        if (isService && !serviceReason) { announceModal({ text: 'Въведете причина за служебната карта.', type: 'error' }); return; }
+
+        const old = {
+            address: selectedClient.address || '', municipality: selectedClient.municipality || '',
+            school: selectedClient.school || '', serviceReason: selectedClient.serviceReason || '',
+        };
+        const typeChanged = newType !== oldType;
+
+        // Служебна карта: безплатни месеци от текущия до декември за всяко направление,
+        // което още не е платено за съответния месец.
+        const now = new Date();
+        const isoNow = now.toISOString();
+        const year = now.getFullYear();
+        const thisMonth = `${year}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const freeEntries = (isService && typeChanged && typeEditFreeYear)
+            ? getClientRoutes(selectedClient).flatMap(dir => buildYearMonths(year)
+                .filter(m => m >= thisMonth && !isDirectionPaid(selectedClient, dir, m))
+                .map(m => ({ date: isoNow, amount: 0, month: m, route: dir, paymentMethod: 'Служебна' })))
+            : [];
+        const makeFree = isService && typeChanged && typeEditFreeYear;
+        const newExpiry = makeFree && `${year}-12` > (selectedClient.expiryDate || '') ? `${year}-12` : selectedClient.expiryDate;
+
+        const parts: string[] = [];
+        if (typeChanged) parts.push(`„${oldType}" → „${newType}"`);
+        if (address !== old.address) parts.push(address ? `Адрес: ${address}${old.address ? ` (преди: ${old.address})` : ''}` : `Адресът е изчистен (беше: ${old.address})`);
+        if (school !== old.school) parts.push(school ? `Училище: ${school}${old.school ? ` (преди: ${old.school})` : ''}` : `Училището е изчистено (беше: ${old.school})`);
+        if (municipality !== old.municipality) parts.push(municipality ? `Община: ${municipality}${old.municipality ? ` (преди: ${old.municipality})` : ''}` : `Общината е изчистена (беше: ${old.municipality})`);
+        if (serviceReason !== old.serviceReason) parts.push(serviceReason ? `Причина: ${serviceReason}` : `Причината е изчистена (беше: ${old.serviceReason})`);
+        if (makeFree) parts.push(`Безплатна до ${year}-12`);
+        if (parts.length === 0) {
+            announceModal({ text: 'Няма промяна — видът и данните са същите.', type: 'error' });
+            return;
+        }
+        const details = parts.join(' | ');
+        const action = typeChanged ? 'Смяна на вид карта' : 'Редакция на данни за картата';
+
+        if (!window.confirm(
+            (typeChanged ? `Да сменя ли вида на картата на ${selectedClient.name}\nот „${oldType}" на „${newType}"?` : `Да запиша ли промените по картата на ${selectedClient.name}?`)
+            + `\n\n${parts.slice(typeChanged ? 1 : 0).join('\n')}`
+            + (typeChanged ? '\n\nПлащанията досега не се променят.' : '')
+        )) return;
+
+        setTypeEditBusy(true);
+        try {
+            await updateDoc(doc(db, 'clients', selectedClient.id), {
+                cardType: newType,
+                address, municipality, school, serviceReason,
+                ...(makeFree ? { expiryDate: newExpiry } : {}),
+                ...(freeEntries.length ? { renewalHistory: arrayUnion(...freeEntries) } : {}),
+                history: arrayUnion({ date: isoNow, action, details, amount: 0, performedBy: currentUser?.username || 'Админ' }),
+            });
+        } catch (err) {
+            console.error(err);
+            setTypeEditBusy(false);
+            announceModal({ text: 'Грешка при смяна на вида на картата.', type: 'error' });
+            return;
+        }
+        setTypeEditBusy(false);
+        if (isStudent && schoolEdit === 'custom') void rememberSchool(school, municipality, currentUser?.username);
+
+        setSelectedClient({ ...selectedClient, cardType: newType, address, municipality, school, serviceReason, ...(makeFree ? { expiryDate: newExpiry } : {}) });
+        setChangingType(false);
+
+        const cardNumT = getClientCardNumber(selectedClient);
+        const nameT = cardNumT ? `${selectedClient.name} (Карта № ${cardNumT})` : selectedClient.name;
+        await logGlobalActivity(action, nameT, details, 0);
+        announceModal({
+            text: (typeChanged ? `Картата вече е „${newType}".` : 'Данните за картата са записани.')
+                + (parts.length > (typeChanged ? 1 : 0) ? ` ${parts.slice(typeChanged ? 1 : 0).join('. ')}.` : ''),
             type: 'success'
         });
     };
@@ -6162,6 +6289,140 @@ if(!imgs.length){ setTimeout(go,200); } else { var left=imgs.length; var tick=fu
                                                 За да <b>добавиш ново направление</b> или да <b>подновиш</b> — избери маршрута долу в „Подновяване". Ново направление се добавя; съществуващо се подновява.
                                                 <br />
                                                 За да <b>смениш направление</b> (клиентът пътува по друга линия) — натисни ⇄ до него. Платените месеци от текущия нататък се прехвърлят; миналите остават към старото.
+                                            </div>
+                                        </div>
+
+                                        {/* Вид на картата — вижда го всеки служител, сменя го само администратор */}
+                                        <div style={{ padding: isMobile ? '1.25rem' : '1.5rem', borderRadius: '12px', background: 'rgba(130,177,255,0.05)', border: '1px solid rgba(130,177,255,0.2)' }}>
+                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#82b1ff', margin: '0 0 1rem 0', fontSize: isMobile ? '1rem' : '1.1rem' }}><Pencil size={18} /> Вид на картата</h4>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0.9rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--surface-border)' }}>
+                                                <div style={{ marginRight: 'auto', minWidth: 0 }}>
+                                                    <div style={{ fontWeight: 700 }}>{selectedClient.cardType || 'Нормална карта'}</div>
+                                                    {(selectedClient.cardType === 'Пенсионерска карта' || selectedClient.cardType === 'Инвалидна карта') && (
+                                                        <div style={{ fontSize: '0.75rem', color: selectedClient.address ? 'var(--text-secondary)' : 'var(--error-color)', marginTop: '0.15rem', overflowWrap: 'anywhere' }}>
+                                                            Адрес: {selectedClient.address || 'липсва'}
+                                                        </div>
+                                                    )}
+                                                    {needsMunicipality(selectedClient.cardType) && selectedClient.cardType !== 'Ученическа карта' && (
+                                                        <div style={{ fontSize: '0.75rem', color: selectedClient.municipality ? 'var(--text-secondary)' : 'var(--error-color)', marginTop: '0.15rem' }}>
+                                                            Община: {selectedClient.municipality || 'липсва'}
+                                                        </div>
+                                                    )}
+                                                    {selectedClient.cardType === 'Служебна карта' && (
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem', overflowWrap: 'anywhere' }}>
+                                                            Причина: {selectedClient.serviceReason || 'няма въведена'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {isAdmin && (
+                                                    <button
+                                                        onClick={() => (changingType ? setChangingType(false) : openTypeEditor())}
+                                                        title="Смени вида или данните на картата"
+                                                        style={{ background: changingType ? 'rgba(130,177,255,0.25)' : 'rgba(130,177,255,0.1)', border: '1px solid rgba(130,177,255,0.4)', color: '#82b1ff', borderRadius: '8px', padding: '0.35rem 0.7rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0, fontWeight: 700, fontSize: '0.8rem' }}
+                                                    >
+                                                        <Pencil size={14} /> Промени
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {changingType && isAdmin && (() => {
+                                                const wantsAddress = typeEditTo === 'Пенсионерска карта' || typeEditTo === 'Инвалидна карта';
+                                                const isStudentT = typeEditTo === 'Ученическа карта';
+                                                const isServiceT = typeEditTo === 'Служебна карта';
+                                                const typeChangedT = typeEditTo !== (selectedClient.cardType || 'Нормална карта');
+                                                return (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.75rem' }}>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Вид на картата</label>
+                                                        <select value={typeEditTo} onChange={e => setTypeEditTo(e.target.value)} style={{ width: '100%', padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', colorScheme: 'dark', fontSize: '0.85rem' }}>
+                                                            {CARD_TYPES.map(t => <option key={t} value={t} style={{ background: '#222' }}>{t}{t === (selectedClient.cardType || 'Нормална карта') ? ' (сегашен)' : ''}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    {wantsAddress && (
+                                                        <div>
+                                                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Адрес (задължителен)</label>
+                                                            <input type="text" value={typeEditAddress} onChange={e => setTypeEditAddress(e.target.value)} placeholder="гр./с., улица и номер..." style={{ width: '100%', padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', fontSize: '0.85rem' }} />
+                                                        </div>
+                                                    )}
+                                                    {isStudentT && (
+                                                        <>
+                                                            <div>
+                                                                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Училище</label>
+                                                                <select
+                                                                    value={schoolEdit}
+                                                                    onChange={e => {
+                                                                        const val = e.target.value;
+                                                                        setSchoolEdit(val);
+                                                                        if (val === 'custom' || val === '') setSchoolEditMunicipality('');
+                                                                        else setSchoolEditMunicipality(SCHOOL_MUNICIPALITY[val] || DEFAULT_MUNICIPALITY);
+                                                                        setSchoolEditCustomMunicipality('');
+                                                                    }}
+                                                                    style={{ width: '100%', padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', colorScheme: 'dark', fontSize: '0.85rem' }}
+                                                                >
+                                                                    <option value="" style={{ background: '#222' }}>-- Изберете училище --</option>
+                                                                    {SCHOOLS.map(sc => <option key={sc} value={sc} style={{ background: '#222' }}>{sc}</option>)}
+                                                                    <option value="custom" style={{ background: '#222' }}>Друго (въведи ръчно)...</option>
+                                                                </select>
+                                                            </div>
+                                                            {schoolEdit === 'custom' && (
+                                                                <input type="text" value={schoolEditCustom} onChange={e => setSchoolEditCustom(e.target.value)} placeholder="Име на училището..." style={{ width: '100%', padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', fontSize: '0.85rem' }} />
+                                                            )}
+                                                        </>
+                                                    )}
+                                                    {needsMunicipality(typeEditTo) && (
+                                                        <>
+                                                            <div>
+                                                                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Община</label>
+                                                                <select
+                                                                    value={schoolEditMunicipality}
+                                                                    onChange={e => { setSchoolEditMunicipality(e.target.value); if (e.target.value !== MUNICIPALITY_CUSTOM) setSchoolEditCustomMunicipality(''); }}
+                                                                    style={{ width: '100%', padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', colorScheme: 'dark', fontSize: '0.85rem' }}
+                                                                >
+                                                                    <option value="" style={{ background: '#222' }}>-- Изберете община --</option>
+                                                                    {MUNICIPALITIES.map(m => <option key={m} value={m} style={{ background: '#222' }}>{m}</option>)}
+                                                                    <option value={MUNICIPALITY_CUSTOM} style={{ background: '#222' }}>Друго (въведи ръчно)...</option>
+                                                                </select>
+                                                            </div>
+                                                            {schoolEditMunicipality === MUNICIPALITY_CUSTOM && (
+                                                                <input type="text" value={schoolEditCustomMunicipality} onChange={e => setSchoolEditCustomMunicipality(e.target.value)} placeholder="Име на общината..." style={{ width: '100%', padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', fontSize: '0.85rem' }} />
+                                                            )}
+                                                        </>
+                                                    )}
+                                                    {isServiceT && (
+                                                        <>
+                                                            <div>
+                                                                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Причина за служебната карта (задължителна)</label>
+                                                                <textarea value={typeEditReason} onChange={e => setTypeEditReason(e.target.value)} placeholder="Напр. от общината, служител на фирмата..." style={{ width: '100%', padding: '0.55rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--surface-border)', borderRadius: '8px', color: '#fff', fontSize: '0.85rem', minHeight: '60px' }} />
+                                                            </div>
+                                                            {typeChangedT && (
+                                                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer' }}>
+                                                                    <input type="checkbox" checked={typeEditFreeYear} onChange={e => setTypeEditFreeYear(e.target.checked)} />
+                                                                    Безплатна до края на {new Date().getFullYear()} г. (добавя неплатените месеци до декември с 0 €)
+                                                                </label>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <button
+                                                            onClick={changeCardType}
+                                                            disabled={typeEditBusy}
+                                                            style={{ flex: 1, background: '#82b1ff', border: 'none', color: '#0d1b2a', borderRadius: '8px', padding: '0.55rem 1rem', fontWeight: 800, fontSize: '0.8rem', cursor: typeEditBusy ? 'default' : 'pointer', opacity: typeEditBusy ? 0.45 : 1 }}
+                                                        >
+                                                            {typeEditBusy ? 'Записване…' : (typeChangedT ? 'Смени вида на картата' : 'Запази данните')}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setChangingType(false)}
+                                                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--surface-border)', color: 'var(--text-secondary)', borderRadius: '8px', padding: '0.55rem 1rem', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', flexShrink: 0 }}
+                                                        >
+                                                            Отказ
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                );
+                                            })()}
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem' }}>
+                                                {isAdmin
+                                                    ? 'Плащанията досега не се променят — цената за новия вид важи от следващото подновяване. Смяната се записва в историята и в одита.'
+                                                    : 'Видът на картата се сменя от администратор.'}
                                             </div>
                                         </div>
 
